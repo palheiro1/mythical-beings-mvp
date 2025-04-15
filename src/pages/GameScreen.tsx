@@ -1,34 +1,45 @@
 import React, { useEffect, useReducer, useState } from 'react';
 import { useParams } from 'react-router-dom';
+// Remove unused supabase import - Re-added for logMove and updateGameState
 import { getGameState, subscribeToGameState, unsubscribeFromGameState, updateGameState, logMove } from '../utils/supabase';
-import { gameReducer } from '../game/state';
-import { GameState, GameAction, PlayerState, Creature, Knowledge } from '../game/types'; // Added PlayerState, Creature, Knowledge
+import { gameReducer, initializeGame } from '../game/state'; // Import initializeGame
+import { isValidAction } from '../game/rules'; // Import isValidAction
+import { GameState, GameAction, PlayerState, Creature, Knowledge } from '../game/types';
+// Remove unused Card import - Re-added for potential use later if needed
+import Card from '../components/Card';
+import Hand from '../components/Hand'; // Import Hand component
+import Market from '../components/Market'; // Import Market component
+import CreatureZone from '../components/CreatureZone'; // Import CreatureZone component
 
 // Define a type for the state that can be null initially
 type GameScreenState = GameState | null;
 
-// Define the reducer function type explicitly to handle null initial state
-// The reducer itself should handle the case where the initial state is null (e.g., for SET_GAME_STATE)
-// but for game actions, it assumes a non-null state.
+// Define the reducer function type explicitly
+// It now correctly handles GameState | null as input and output
 type GameReducerType = (state: GameScreenState, action: GameAction) => GameScreenState;
 
 // Wrapper for the original reducer to handle the null case gracefully
 const gameScreenReducer: GameReducerType = (state, action) => {
   if (action.type === 'SET_GAME_STATE') {
-    return action.payload; // Directly set the state, which might be GameState or null
+    // Directly set the state, which might be GameState or null
+    // Ensure payload is not undefined before returning
+    return action.payload ?? null;
   }
   if (action.type === 'INITIALIZE_GAME') {
-    // Assuming initializeGame returns GameState
-    // This case might not be used directly here if fetching handles init
-    return gameReducer(null as unknown as GameState, action); // Need to call original reducer
+    // Call the actual initializeGame function
+    const { gameId, player1Id, player2Id, selectedCreaturesP1, selectedCreaturesP2 } = action.payload;
+    return initializeGame(gameId, player1Id, player2Id, selectedCreaturesP1, selectedCreaturesP2);
   }
-  // For all other actions, assume state is not null (validated before dispatching handleAction)
+  // For all other actions, state must be non-null
   if (state === null) {
     console.error("Reducer called with null state for action type:", action.type);
-    return null; // Or handle error appropriately
+    // Return null or throw an error, depending on desired behavior for invalid states
+    return null;
   }
+  // Delegate to the original gameReducer for actual game logic
   return gameReducer(state, action);
 };
+
 
 const GameScreen: React.FC = () => {
   const { gameId } = useParams<{ gameId: string }>();
@@ -36,160 +47,282 @@ const GameScreen: React.FC = () => {
   const [state, dispatch] = useReducer(gameScreenReducer, null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const currentPlayerId = 'p1'; // TODO: Replace with actual player ID
+  // TODO: Replace with actual authenticated player ID (e.g., from wallet connection context)
+  const [currentPlayerId, setCurrentPlayerId] = useState<string | null>(null); // Example: 'p1' or 'p2'
+  const [selectedKnowledgeId, setSelectedKnowledgeId] = useState<string | null>(null); // For summon action flow
+
+  // --- Mock Player ID Setup (Replace with actual auth) ---
+  useEffect(() => {
+    // Simulate fetching player ID or determining it based on URL/session
+    // For testing, alternate between p1 and p2 based on a query param or local storage
+    const urlParams = new URLSearchParams(window.location.search);
+    const mockPlayer = urlParams.get('player');
+    if (mockPlayer === 'p1' || mockPlayer === 'p2') {
+        setCurrentPlayerId(mockPlayer);
+        console.log(`Mock Player ID set to: ${mockPlayer}`);
+    } else {
+        // Default or prompt for player ID for testing
+        const assignedPlayer = prompt("Enter player ID for testing (p1 or p2):", "p1");
+        if (assignedPlayer === 'p1' || assignedPlayer === 'p2') {
+            setCurrentPlayerId(assignedPlayer);
+            console.log(`Mock Player ID set to: ${assignedPlayer}`);
+        } else {
+            setError("Could not determine player ID for this session.");
+        }
+    }
+  }, []);
+  // --- End Mock Player ID Setup ---
+
 
   useEffect(() => {
-    if (!gameId) {
-      setError('No game ID provided.');
-      setLoading(false);
+    if (!gameId || !currentPlayerId) { // Also wait for currentPlayerId
+      // setError('No game ID or Player ID provided.'); // Don't set error yet, might just be loading
+      setLoading(true); // Keep loading until both are available
       return;
     }
 
-    let subscription: any = null;
+    setLoading(true);
+    setError(null);
+    let subscription: any = null; // Use 'any' for Supabase channel type for simplicity
 
-    const fetchAndSubscribe = async () => {
-      setLoading(true);
-      setError(null);
+    const handleRealtimeUpdate = (newState: GameState) => {
+      console.log('Realtime update received:', newState);
+      dispatch({ type: 'SET_GAME_STATE', payload: newState });
+    };
+
+    const setupGame = async () => {
       try {
         const initialState = await getGameState(gameId);
-        // Dispatch SET_GAME_STATE regardless of whether initialState is null or GameState
-        dispatch({ type: 'SET_GAME_STATE', payload: initialState });
-        if (!initialState) {
-           console.error(`Initial game state for ${gameId} not found.`);
-           setError(`Game ${gameId} not found or could not be loaded.`);
-        }
-
-        // Subscribe only if initial state was found (or decide based on requirements)
         if (initialState) {
-            subscription = subscribeToGameState(gameId, (newState) => {
-              console.log('Realtime update received:', newState);
-              dispatch({ type: 'SET_GAME_STATE', payload: newState });
-            });
+          dispatch({ type: 'SET_GAME_STATE', payload: initialState });
+        } else {
+          // TODO: Handle case where game doesn't exist or needs initialization
+          // This might involve fetching selected creatures and calling initializeGame
+          // For now, log an error if state is null after fetch attempt
+          console.error(`Game state for ${gameId} not found. Initialization needed.`);
+          setError(`Game state for ${gameId} not found. Needs initialization.`);
+          // Example Initialization (requires creature data):
+          // const mockCreaturesP1: Creature[] = []; // Fetch or define mock creatures
+          // const mockCreaturesP2: Creature[] = []; // Fetch or define mock creatures
+          // dispatch({ type: 'INITIALIZE_GAME', payload: { gameId, player1Id: 'p1', player2Id: 'p2', selectedCreaturesP1: mockCreaturesP1, selectedCreaturesP2: mockCreaturesP2 } });
         }
+        setLoading(false);
 
-      } catch (err: any) {
+        // Subscribe after initial state is set
+        subscription = subscribeToGameState(gameId, handleRealtimeUpdate);
+
+      } catch (err) {
         console.error('Error fetching initial game state:', err);
-        setError(`Failed to load game: ${err.message}`);
-      } finally {
+        setError('Failed to fetch game state.');
         setLoading(false);
       }
     };
 
-    fetchAndSubscribe();
+    setupGame();
 
+    // Cleanup function
     return () => {
       if (subscription) {
         unsubscribeFromGameState(subscription);
       }
     };
-  }, [gameId]);
+  }, [gameId, currentPlayerId]); // Add currentPlayerId dependency
 
+
+  // --- Action Handling ---
   const handleAction = async (action: GameAction) => {
-    // State must be non-null to perform game actions
-    if (!state || !gameId) return;
+    if (!state || !gameId || !currentPlayerId) {
+      console.error("Cannot handle action: State, gameId, or currentPlayerId missing.");
+      return;
+    }
 
-    // The wrapper reducer handles the state type, no need for casting here
-    const nextState = gameScreenReducer(state, action);
-    // Dispatch the result (which could be null if reducer handles errors that way, but unlikely for valid actions)
-    dispatch({ type: 'SET_GAME_STATE', payload: nextState as GameState }); // Assume valid actions return GameState
-
-    // Persist the new state and log the move to Supabase
-    try {
-      // Ensure nextState is a valid GameState before updating Supabase
-      if (nextState) {
-        await updateGameState(gameId, nextState);
-        // Log the move
-        if (action.type !== 'SET_GAME_STATE' && action.type !== 'INITIALIZE_GAME') {
-          // Use the state *before* the action for logging END_TURN correctly
-          const loggingPlayerId = (action.payload && 'playerId' in action.payload) ? action.payload.playerId : state.players[state.currentPlayerIndex]?.id;
-          if (loggingPlayerId) {
-             await logMove(gameId, loggingPlayerId, action.type, action.payload);
-          }
+    // Ensure the action payload has the correct player ID
+    if ('payload' in action && typeof action.payload === 'object' && action.payload && 'playerId' in action.payload) {
+        if (action.payload.playerId !== currentPlayerId) {
+            console.warn("Action originated from wrong player context?", action);
+            // Optionally prevent action if payload.playerId doesn't match currentPlayerId
+            // return;
         }
+    } else if (action.type !== 'SET_GAME_STATE' && action.type !== 'INITIALIZE_GAME') {
+        console.error("Action payload missing playerId:", action);
+        return; // Don't process actions without player context (except system ones)
+    }
+
+
+    // Validate action before dispatching locally or sending to Supabase
+    if (!isValidAction(state, action)) {
+      console.warn("Invalid action attempted:", action.type, action.payload);
+      setError(`Invalid action: ${action.type}. Check game rules or state.`);
+      // Clear selection if the invalid action was part of summon flow
+      setSelectedKnowledgeId(null);
+      return; // Don't proceed if action is invalid
+    }
+
+    // Optimistic UI update
+    const nextState = gameScreenReducer(state, action); // Use the wrapper reducer
+    if (!nextState) {
+        console.error("Reducer returned null state after action:", action);
+        setError("An error occurred processing the action.");
+        return;
+    }
+    dispatch(action); // Dispatch the original action to the reducer managing the component's state
+
+    // Persist state change and log move via Supabase
+    try {
+      const updateResult = await updateGameState(gameId, nextState);
+      if (!updateResult) {
+          throw new Error("Failed to update game state in Supabase.");
       }
+      // Only log actions with payloads (i.e., player actions)
+      if ('payload' in action && action.payload) {
+          await logMove(gameId, currentPlayerId, action.type, action.payload);
+      }
+      setError(null); // Clear previous errors on successful action
     } catch (err) {
-      console.error('Error updating game state in Supabase:', err);
-      setError('Failed to save move. Please try again or refresh.');
-      // Revert local state (optional)
-      // dispatch({ type: 'SET_GAME_STATE', payload: state });
+      console.error('Error updating game state or logging move:', err);
+      setError('Failed to sync game state. Please try again.');
+      // TODO: Consider reverting optimistic update if Supabase fails
+      // dispatch({ type: 'SET_GAME_STATE', payload: state }); // Revert state
+    }
+
+    // Clear selection after successful summon
+    if (action.type === 'SUMMON_KNOWLEDGE') {
+        setSelectedKnowledgeId(null);
     }
   };
 
-  if (loading) {
-    return <div>Loading game...</div>;
-  }
+  // --- Click Handlers ---
 
-  if (error) {
-    return <div className="text-red-500">Error: {error}</div>;
-  }
+  const handleRotateCreature = (creatureId: string) => {
+    if (!currentPlayerId) return;
+    handleAction({ type: 'ROTATE_CREATURE', payload: { playerId: currentPlayerId, creatureId } });
+  };
 
-  if (!state) {
-    return <div>Initializing game state or game not found...</div>;
-  }
+  const handleDrawKnowledge = (knowledgeId: string) => {
+    if (!currentPlayerId) return;
+    handleAction({ type: 'DRAW_KNOWLEDGE', payload: { playerId: currentPlayerId, knowledgeId } });
+  };
 
-  const currentPlayer = state.players[state.currentPlayerIndex];
-  // const opponentPlayer = state.players[(state.currentPlayerIndex + 1) % 2]; // Still unused
+  const handleHandCardClick = (knowledgeId: string) => {
+    // Start the summon process: select the knowledge card
+    setSelectedKnowledgeId(knowledgeId);
+    console.log(`Selected knowledge card ${knowledgeId} to summon. Click a creature to target.`);
+    setError(`Selected ${state?.players[state.currentPlayerIndex].hand.find(k=>k.id === knowledgeId)?.name}. Click a creature to summon onto.`); // Provide feedback
+  };
+
+  const handleCreatureClickForSummon = (creatureId: string) => {
+    if (!currentPlayerId || !selectedKnowledgeId) return; // Only proceed if a knowledge card is selected
+
+    // Clear error message related to selection prompt
+    setError(null);
+
+    handleAction({
+      type: 'SUMMON_KNOWLEDGE',
+      payload: { playerId: currentPlayerId, knowledgeId: selectedKnowledgeId, creatureId }
+    });
+    // handleAction will clear selectedKnowledgeId on success
+  };
+
+  const handleEndTurn = () => {
+    if (!currentPlayerId) return;
+    handleAction({ type: 'END_TURN', payload: { playerId: currentPlayerId } });
+  };
+
+  // --- Render Logic ---
+
+  if (loading) return <div className="text-center p-10">Loading game...</div>;
+  if (error) return <div className="text-center p-10 text-red-500">Error: {error}</div>;
+  if (!state) return <div className="text-center p-10">Game data not available.</div>;
+
+  const currentPlayer: PlayerState | undefined = state.players[state.currentPlayerIndex];
+  const opponentPlayer: PlayerState | undefined = state.players[(state.currentPlayerIndex + 1) % 2];
+  const isMyTurn = currentPlayer?.id === currentPlayerId;
+
+  if (!currentPlayer || !opponentPlayer) {
+      return <div className="text-center p-10 text-red-500">Error: Player data is missing.</div>;
+  }
 
   return (
-    <div className="p-4">
-      <h1 className="text-xl font-bold mb-4">Game Screen - Game ID: {gameId}</h1>
-      <p className="mb-2">Turn: {state.turn}, Phase: {state.phase}</p>
-      {state.winner && <p className="text-2xl font-bold text-green-500">Winner: Player {state.players.findIndex(p => p.id === state.winner) + 1} ({state.winner})!</p>}
-
-      <div className="grid grid-cols-2 gap-4 mb-4">
-        <div>
-          <h2 className="font-semibold">Player 1 ({state.players[0].id})</h2>
-          <p>Power: {state.players[0].power}</p>
-          {/* TODO Task 18: Add <CreatureZone creatures={state.players[0].creatures} field={state.players[0].field} /> */}
-          {/* TODO Task 18: Add <Hand cards={state.players[0].hand} /> */}
+    // Adjusted padding and spacing for responsiveness
+    <div className="flex flex-col h-screen bg-gray-900 text-white p-2 md:p-4 space-y-2 md:space-y-4">
+      {/* Game Info Bar - Adjusted padding and text sizes */}
+      <div className="flex flex-col md:flex-row justify-between items-center bg-gray-800 p-1 md:p-2 rounded text-xs md:text-base">
+        <h1 className="text-sm md:text-xl font-bold mb-1 md:mb-0">Game: {gameId}</h1>
+        <div className="text-center mb-1 md:mb-0">
+          <p className="text-sm md:text-lg">Turn: {state.turn} - Phase: {state.phase}</p>
+          {state.winner ? (
+            <p className="text-lg md:text-2xl font-bold text-yellow-400">
+              Player {state.players.findIndex(p => p.id === state.winner) + 1} ({state.winner}) Wins!
+            </p>
+          ) : (
+            <p className={`text-sm md:text-lg font-semibold ${isMyTurn ? 'text-green-400' : 'text-red-400'}`}>
+              {isMyTurn ? `Your Turn (${currentPlayerId})` : `Opponent's Turn (${opponentPlayer.id})`}
+              {isMyTurn && state.phase === 'action' && ` - Actions Left: ${2 - state.actionsTakenThisTurn}`}
+            </p>
+          )}
         </div>
-        <div>
-          <h2 className="font-semibold">Player 2 ({state.players[1].id})</h2>
-          <p>Power: {state.players[1].power}</p>
-          {/* TODO Task 18: Add <CreatureZone creatures={state.players[1].creatures} field={state.players[1].field} /> */}
-          {/* TODO Task 18: Add <Hand cards={state.players[1].hand} /> */}
-        </div>
+        <div className="text-xs md:text-base">Player ID: {currentPlayerId}</div>
       </div>
 
-      {!state.winner && (
-        <p className="font-semibold mb-2">
-          Current Turn: Player {state.currentPlayerIndex + 1} ({currentPlayer.id})
-          {state.phase === 'action' && ` - Actions Left: ${2 - state.actionsTakenThisTurn}`}
-        </p>
-      )}
-
-      {/* TODO Task 18: Replace placeholder with <Market cards={state.market} /> */}
-      <div className="my-4 p-2 border rounded bg-gray-700">
-        <h3 className="font-semibold mb-1">Market</h3>
-        <pre className="text-xs whitespace-pre-wrap">{JSON.stringify(state.market, null, 2)}</pre>
+      {/* Opponent's Area - Adjusted padding */}
+      <div className="flex-1 bg-gray-800 p-1 md:p-2 rounded border border-red-700">
+        <h2 className="text-center text-sm md:text-base font-semibold mb-1 md:mb-2">Opponent ({opponentPlayer.id}) - Power: {opponentPlayer.power}</h2>
+        <CreatureZone creatures={opponentPlayer.creatures} field={opponentPlayer.field} />
+        <Hand cards={opponentPlayer.hand} /> {/* Show opponent hand count or cards if desired */}
       </div>
 
-      {state.phase === 'action' && currentPlayerId === currentPlayer.id && !state.winner && (
-        <div className="my-4 space-x-2">
-          {/* TODO Task 18: Implement onClick handlers for actions */}
-          <button className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-2 rounded text-sm" disabled>Rotate (NYI)</button>
-          <button className="bg-green-500 hover:bg-green-700 text-white font-bold py-1 px-2 rounded text-sm" disabled>Draw (NYI)</button>
-          <button className="bg-yellow-500 hover:bg-yellow-700 text-white font-bold py-1 px-2 rounded text-sm" disabled>Summon (NYI)</button>
-          <button
-            className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2 rounded text-sm"
-            onClick={() => handleAction({ type: 'END_TURN', payload: { playerId: currentPlayerId } })}
-          >
-            End Turn
-          </button>
+      {/* Market - No changes needed here, relies on Market component */}
+      <Market
+        cards={state.market}
+        onCardClick={isMyTurn && state.phase === 'action' ? handleDrawKnowledge : undefined}
+      />
+
+      {/* Current Player's Area - Adjusted padding */}
+      <div className="flex-1 bg-gray-800 p-1 md:p-2 rounded border border-green-700">
+         <h2 className="text-center text-sm md:text-base font-semibold mb-1 md:mb-2">You ({currentPlayer.id}) - Power: {currentPlayer.power}</h2>
+         <CreatureZone
+            creatures={currentPlayer.creatures}
+            field={currentPlayer.field}
+            onCreatureClick={isMyTurn && state.phase === 'action'
+                ? (selectedKnowledgeId ? handleCreatureClickForSummon : handleRotateCreature)
+                : undefined}
+         />
+         <Hand
+            cards={currentPlayer.hand}
+            onCardClick={isMyTurn && state.phase === 'action' ? handleHandCardClick : undefined}
+         />
+      </div>
+
+      {/* Action Buttons & Log - Adjusted layout and sizing */}
+      <div className="flex flex-col md:flex-row justify-between items-center md:items-start mt-2 md:mt-0">
+        <div className="flex space-x-2 mb-2 md:mb-0">
+            {isMyTurn && state.phase === 'action' && state.winner === null && (
+                <button
+                    onClick={handleEndTurn}
+                    disabled={state.actionsTakenThisTurn < 2} // Can only end turn after 2 actions
+                    className={`px-3 py-1 md:px-4 md:py-2 rounded text-xs md:text-base ${state.actionsTakenThisTurn < 2 ? 'bg-gray-600 cursor-not-allowed' : 'bg-red-600 hover:bg-red-700'}`}
+                >
+                    End Turn
+                </button>
+            )}
+             {selectedKnowledgeId && (
+                <button
+                    onClick={() => { setSelectedKnowledgeId(null); setError(null); }}
+                    className="px-3 py-1 md:px-4 md:py-2 rounded bg-yellow-600 hover:bg-yellow-700 text-xs md:text-base"
+                >
+                    Cancel Summon
+                </button>
+            )}
         </div>
-      )}
 
-      <div className="mt-4 p-2 border rounded bg-gray-800 h-40 overflow-y-auto text-sm">
-        <h3 className="font-semibold mb-1">Game Log</h3>
-        {state.log.map((entry, index) => (
-          <p key={index} className="text-xs">{entry}</p>
-        ))}
+        {/* Game Log - Adjusted width and height */}
+        <div className="w-full md:w-1/3 h-24 md:h-32 overflow-y-auto bg-black p-2 rounded border border-gray-600 text-[10px] md:text-xs">
+            <h3 className="font-semibold mb-1">Game Log:</h3>
+            {state.log.slice(-10).map((entry, index) => ( // Show last 10 log entries
+                <p key={index}>{entry}</p>
+            ))}
+        </div>
       </div>
-
-      {/* <details className="mt-4">
-        <summary>Raw Game State (Debug)</summary>
-        <pre className="text-xs whitespace-pre-wrap bg-black p-2 rounded">{JSON.stringify(state, null, 2)}</pre>
-      </details> */}
     </div>
   );
 };

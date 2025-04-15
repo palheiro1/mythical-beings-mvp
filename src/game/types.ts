@@ -59,4 +59,4 @@ export type GameAction =
   | { type: 'SUMMON_KNOWLEDGE'; payload: { playerId: string; knowledgeId: string; creatureId: string } }
   | { type: 'END_TURN'; payload: { playerId: string } }
   | { type: 'INITIALIZE_GAME'; payload: { gameId: string; player1Id: string; player2Id: string; selectedCreaturesP1: Creature[]; selectedCreaturesP2: Creature[] } }
-  | { type: 'SET_GAME_STATE'; payload: GameState }; // For loading state from Supabase
+  | { type: 'SET_GAME_STATE'; payload: GameState | null }; // Allow null payload for setting/clearing state

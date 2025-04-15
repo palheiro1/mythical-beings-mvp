@@ -13,12 +13,16 @@ const Card: React.FC<CardProps> = ({ card, onClick, isSelected }) => {
 
   return (
     <div
-      className={`border-2 ${borderColor} rounded-lg p-2 m-1 bg-gray-800 text-white w-32 h-48 flex flex-col justify-between items-center text-center shadow-md ${onClick ? 'cursor-pointer hover:border-blue-500' : ''}`}
+      // Adjusted size: smaller base, scales up on medium screens
+      className={`border-2 ${borderColor} rounded-lg p-1 m-1 bg-gray-800 text-white w-24 h-36 md:w-32 md:h-48 flex flex-col justify-between items-center text-center shadow-md ${onClick ? 'cursor-pointer hover:border-blue-500 transition-colors' : ''}`}
       onClick={onClick}
     >
-      <div className="text-xs font-bold mb-1 truncate w-full">{card.name}</div>
-      <img src={card.image} alt={card.name} className="w-20 h-20 object-contain my-1" />
-      <div className="text-xs w-full">
+      {/* Adjusted text size for smaller base card */}
+      <div className="text-[10px] md:text-xs font-bold mb-1 truncate w-full">{card.name}</div>
+      {/* Adjusted image size */}
+      <img src={card.image} alt={card.name} className="w-16 h-16 md:w-20 md:h-20 object-contain my-1" />
+      {/* Adjusted text size */}
+      <div className="text-[10px] md:text-xs w-full">
         {isCreature ? (
           <>
             <div>Element: {card.element}</div>
@@ -28,13 +32,12 @@ const Card: React.FC<CardProps> = ({ card, onClick, isSelected }) => {
           <>
             <div>Type: {card.type}</div>
             <div>Cost: {card.cost}</div>
-            {/* Display rotation if present */} 
             {card.rotation !== undefined && <div>Rot: {card.rotation}°</div>}
           </>
         )}
       </div>
-      {/* Basic effect/ability display - can be expanded */} 
-      <div className="text-[10px] mt-1 overflow-hidden text-ellipsis h-6 w-full">
+      {/* Adjusted text size and height */}
+      <div className="text-[9px] md:text-[10px] mt-1 overflow-hidden text-ellipsis h-5 md:h-6 w-full">
         {isCreature ? card.passiveAbility : card.effect}
       </div>
     </div>
