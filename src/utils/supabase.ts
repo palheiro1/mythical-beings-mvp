@@ -16,23 +16,25 @@ export const supabase: SupabaseClient = createClient(supabaseUrl, supabaseAnonKe
  * @param initialState The initial GameState object.
  * @returns The newly created game data or null on error.
  */
-export async function createGame(player1Id: string, player2Id: string | null, initialState: GameState): Promise<any | null> {
+export async function createGame(gameId: string, player1Id: string, player2Id: string | null, initialState: GameState): Promise<any | null> {
   try {
     const { data, error } = await supabase
       .from('games')
       .insert([{ 
+        id: gameId, // <-- Explicitly set the game ID here
         player1_id: player1Id, 
         player2_id: player2Id, 
         // Store initial state directly in games table for simplicity in MVP
         state: initialState 
       }])
       .select()
-      .single(); // Assuming you want the created record back
+      .single();
 
     if (error) throw error;
     console.log('Game created:', data);
-    // Also create initial entry in game_states
-    await updateGameState(data.id, initialState);
+    // The updateGameState call inside createGame might be redundant now,
+    // but we'll leave it for now unless it causes issues.
+    // await updateGameState(data.id, initialState); 
     return data;
   } catch (error) {
     console.error('Error creating game:', error);

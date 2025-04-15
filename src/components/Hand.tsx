@@ -4,25 +4,21 @@ import Card from './Card';
 
 interface HandProps {
   cards: Knowledge[];
-  onCardClick?: (cardId: string) => void; // Optional: For selecting a card to play
+  onCardClick?: (id: string) => void;
 }
 
 const Hand: React.FC<HandProps> = ({ cards, onCardClick }) => {
   return (
-    // Added flex-wrap, gap, and adjusted padding/min-height for responsiveness
-    <div className="flex flex-wrap justify-center items-end p-1 md:p-2 bg-gray-700 rounded min-h-[100px] md:min-h-[150px] gap-1 md:gap-2">
-      <h3 className="text-xs md:text-sm font-semibold mr-2 self-center w-full md:w-auto text-center md:text-left mb-1 md:mb-0">Hand:</h3>
-      {cards.length === 0 ? (
-        <p className="text-xs text-gray-400 self-center">Empty</p>
-      ) : (
-        cards.map((card) => (
-          <Card
-            key={card.id}
-            card={card}
-            onClick={onCardClick ? () => onCardClick(card.id) : undefined}
-          />
-        ))
-      )}
+    <div className="flex justify-center items-end space-x-1 md:space-x-2 p-1 bg-black/20 rounded min-h-[7rem]"> {/* Adjusted min-height */}
+      {cards.map((card) => (
+        <Card 
+          key={card.id} 
+          card={card} 
+          onClick={onCardClick} 
+          size="small" // Use small cards in hand
+        />
+      ))}
+      {cards.length === 0 && <p className="text-xs text-gray-400 italic">Hand is empty</p>}
     </div>
   );
 };

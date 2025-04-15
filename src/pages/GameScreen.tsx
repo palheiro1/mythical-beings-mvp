@@ -1,15 +1,15 @@
 import React, { useEffect, useReducer, useState } from 'react';
 import { useParams } from 'react-router-dom';
-// Remove unused supabase import - Re-added for logMove and updateGameState
-import { getGameState, subscribeToGameState, unsubscribeFromGameState, updateGameState, logMove } from '../utils/supabase';
-import { gameReducer, initializeGame } from '../game/state'; // Import initializeGame
-import { isValidAction } from '../game/rules'; // Import isValidAction
+// Import createGame and mock creature data
+import { getGameState, subscribeToGameState, unsubscribeFromGameState, updateGameState, logMove, createGame } from '../utils/supabase';
+import { gameReducer, initializeGame } from '../game/state';
+import { isValidAction } from '../game/rules';
 import { GameState, GameAction, PlayerState, Creature, Knowledge } from '../game/types';
-// Remove unused Card import - Re-added for potential use later if needed
 import Card from '../components/Card';
-import Hand from '../components/Hand'; // Import Hand component
-import Market from '../components/Market'; // Import Market component
-import CreatureZone from '../components/CreatureZone'; // Import CreatureZone component
+import Hand from '../components/Hand';
+import Market from '../components/Market';
+import CreatureZone from '../components/CreatureZone';
+import creatureData from '../assets/creatures.json'; // Import creature data
 
 // Define a type for the state that can be null initially
 type GameScreenState = GameState | null;
@@ -92,28 +92,44 @@ const GameScreen: React.FC = () => {
 
     const setupGame = async () => {
       try {
-        const initialState = await getGameState(gameId);
-        if (initialState) {
-          dispatch({ type: 'SET_GAME_STATE', payload: initialState });
-        } else {
-          // TODO: Handle case where game doesn't exist or needs initialization
-          // This might involve fetching selected creatures and calling initializeGame
-          // For now, log an error if state is null after fetch attempt
-          console.error(`Game state for ${gameId} not found. Initialization needed.`);
-          setError(`Game state for ${gameId} not found. Needs initialization.`);
-          // Example Initialization (requires creature data):
-          // const mockCreaturesP1: Creature[] = []; // Fetch or define mock creatures
-          // const mockCreaturesP2: Creature[] = []; // Fetch or define mock creatures
-          // dispatch({ type: 'INITIALIZE_GAME', payload: { gameId, player1Id: 'p1', player2Id: 'p2', selectedCreaturesP1: mockCreaturesP1, selectedCreaturesP2: mockCreaturesP2 } });
+        let gameState = await getGameState(gameId); // Use let
+        if (!gameState) {
+          // --- Game Initialization Logic --- 
+          console.log(`Game state for ${gameId} not found. Attempting to initialize...`);
+          // Use mock data and IDs for testing initialization
+          const mockCreaturesP1: Creature[] = creatureData.slice(0, 3) as Creature[];
+          const mockCreaturesP2: Creature[] = creatureData.slice(3, 6) as Creature[];
+          const player1Id = 'p1'; // Mock player ID
+          const player2Id = 'p2'; // Mock player ID
+
+          if (mockCreaturesP1.length < 3 || mockCreaturesP2.length < 3) {
+              throw new Error("Not enough mock creature data available for initialization.");
+          }
+
+          // Initialize the state locally
+          const initializedState = initializeGame(gameId, player1Id, player2Id, mockCreaturesP1, mockCreaturesP2);
+
+          // Create the game record in Supabase, passing the desired gameId
+          const createdGame = await createGame(gameId, player1Id, player2Id, initializedState);
+
+          if (!createdGame || !createdGame.state) {
+            throw new Error("Failed to create game in Supabase.");
+          }
+          gameState = createdGame.state as GameState; // Use the newly created state
+          console.log(`Game ${gameId} created and initialized.`);
+          // --- End Initialization Logic ---
         }
+
+        // Set the state (either fetched or newly initialized)
+        dispatch({ type: 'SET_GAME_STATE', payload: gameState });
         setLoading(false);
 
-        // Subscribe after initial state is set
+        // Subscribe after initial state is set or created
         subscription = subscribeToGameState(gameId, handleRealtimeUpdate);
 
       } catch (err) {
-        console.error('Error fetching initial game state:', err);
-        setError('Failed to fetch game state.');
+        console.error('Error setting up game:', err);
+        setError(`Failed to fetch or initialize game state: ${err instanceof Error ? err.message : String(err)}`);
         setLoading(false);
       }
     };
@@ -194,6 +210,7 @@ const GameScreen: React.FC = () => {
   // --- Click Handlers ---
 
   const handleRotateCreature = (creatureId: string) => {
+    console.log('[GameScreen] handleRotateCreature called for creature:', creatureId);
     if (!currentPlayerId) return;
     handleAction({ type: 'ROTATE_CREATURE', payload: { playerId: currentPlayerId, creatureId } });
   };
@@ -231,7 +248,6 @@ const GameScreen: React.FC = () => {
   // --- Render Logic ---
 
   if (loading) return <div className="text-center p-10">Loading game...</div>;
-  if (error) return <div className="text-center p-10 text-red-500">Error: {error}</div>;
   if (!state) return <div className="text-center p-10">Game data not available.</div>;
 
   const currentPlayer: PlayerState | undefined = state.players[state.currentPlayerIndex];
@@ -243,10 +259,10 @@ const GameScreen: React.FC = () => {
   }
 
   return (
-    // Adjusted padding and spacing for responsiveness
-    <div className="flex flex-col h-screen bg-gray-900 text-white p-2 md:p-4 space-y-2 md:space-y-4">
-      {/* Game Info Bar - Adjusted padding and text sizes */}
-      <div className="flex flex-col md:flex-row justify-between items-center bg-gray-800 p-1 md:p-2 rounded text-xs md:text-base">
+    // Use min-h-screen to allow scrolling if content overflows
+    <div className="flex flex-col min-h-screen bg-gray-900 text-white p-2 md:p-4">
+      {/* Game Info Bar - Remains at the top */}
+      <div className="flex-shrink-0 flex flex-col md:flex-row justify-between items-center bg-gray-800 p-1 md:p-2 rounded shadow-md mb-2"> {/* Reduced bottom margin */} 
         <h1 className="text-sm md:text-xl font-bold mb-1 md:mb-0">Game: {gameId}</h1>
         <div className="text-center mb-1 md:mb-0">
           <p className="text-sm md:text-lg">Turn: {state.turn} - Phase: {state.phase}</p>
@@ -264,37 +280,58 @@ const GameScreen: React.FC = () => {
         <div className="text-xs md:text-base">Player ID: {currentPlayerId}</div>
       </div>
 
-      {/* Opponent's Area - Adjusted padding */}
-      <div className="flex-1 bg-gray-800 p-1 md:p-2 rounded border border-red-700">
-        <h2 className="text-center text-sm md:text-base font-semibold mb-1 md:mb-2">Opponent ({opponentPlayer.id}) - Power: {opponentPlayer.power}</h2>
-        <CreatureZone creatures={opponentPlayer.creatures} field={opponentPlayer.field} />
-        <Hand cards={opponentPlayer.hand} /> {/* Show opponent hand count or cards if desired */}
+      {/* Error Display Area */} 
+      {error && (
+        <div className="flex-shrink-0 bg-red-800/80 text-white p-2 rounded mb-2 text-center text-sm md:text-base">
+          Error: {error}
+        </div>
+      )}
+
+      {/* Main Game Area - Use flex-grow to fill space */}
+      <div className="flex-grow flex flex-col space-y-4 overflow-hidden"> {/* Added overflow-hidden */}
+
+        {/* Opponent's Area - Use flex basis for sizing */}
+        <div className="flex-shrink-0 bg-gray-800/50 p-2 rounded border border-red-700/50 flex flex-col min-h-0"> {/* Added min-h-0 */}
+          <h2 className="flex-shrink-0 text-center text-sm md:text-base font-semibold mb-2">Opponent ({opponentPlayer.id}) - Power: {opponentPlayer.power}</h2>
+          {/* Make internal content scrollable if needed */}
+          <div className="flex-grow overflow-auto space-y-2">
+            <CreatureZone creatures={opponentPlayer.creatures} field={opponentPlayer.field} />
+            <Hand cards={opponentPlayer.hand} /> {/* Show opponent hand count or cards if desired */}
+          </div>
+        </div>
+
+        {/* Market - Use flex basis */}
+        <div className="flex-shrink-0 bg-blue-900/50 p-2 rounded flex flex-col min-h-0"> {/* Added min-h-0 */}
+           <h2 className="flex-shrink-0 text-center text-sm md:text-base font-semibold mb-2">Market</h2>
+           <div className="flex-grow overflow-auto">
+             <Market
+               cards={state.market}
+               onCardClick={isMyTurn && state.phase === 'action' ? handleDrawKnowledge : undefined}
+             />
+           </div>
+        </div>
+
+        {/* Current Player's Area - Use flex basis */}
+        <div className="flex-shrink-0 bg-gray-800/50 p-2 rounded border border-green-700/50 flex flex-col min-h-0"> {/* Added min-h-0 */}
+           <h2 className="flex-shrink-0 text-center text-sm md:text-base font-semibold mb-2">You ({currentPlayer.id}) - Power: {currentPlayer.power}</h2>
+           <div className="flex-grow overflow-auto space-y-2">
+             <CreatureZone
+                creatures={currentPlayer.creatures}
+                field={currentPlayer.field}
+                onCreatureClick={isMyTurn && state.phase === 'action'
+                    ? (selectedKnowledgeId ? handleCreatureClickForSummon : handleRotateCreature)
+                    : undefined}
+             />
+             <Hand
+                cards={currentPlayer.hand}
+                onCardClick={isMyTurn && state.phase === 'action' ? handleHandCardClick : undefined}
+             />
+           </div>
+        </div>
       </div>
 
-      {/* Market - No changes needed here, relies on Market component */}
-      <Market
-        cards={state.market}
-        onCardClick={isMyTurn && state.phase === 'action' ? handleDrawKnowledge : undefined}
-      />
-
-      {/* Current Player's Area - Adjusted padding */}
-      <div className="flex-1 bg-gray-800 p-1 md:p-2 rounded border border-green-700">
-         <h2 className="text-center text-sm md:text-base font-semibold mb-1 md:mb-2">You ({currentPlayer.id}) - Power: {currentPlayer.power}</h2>
-         <CreatureZone
-            creatures={currentPlayer.creatures}
-            field={currentPlayer.field}
-            onCreatureClick={isMyTurn && state.phase === 'action'
-                ? (selectedKnowledgeId ? handleCreatureClickForSummon : handleRotateCreature)
-                : undefined}
-         />
-         <Hand
-            cards={currentPlayer.hand}
-            onCardClick={isMyTurn && state.phase === 'action' ? handleHandCardClick : undefined}
-         />
-      </div>
-
-      {/* Action Buttons & Log - Adjusted layout and sizing */}
-      <div className="flex flex-col md:flex-row justify-between items-center md:items-start mt-2 md:mt-0">
+      {/* Action Buttons & Log - Remains at the bottom */}
+      <div className="flex-shrink-0 flex flex-col md:flex-row justify-between items-center md:items-start mt-4 pt-4 border-t border-gray-700">
         <div className="flex space-x-2 mb-2 md:mb-0">
             {isMyTurn && state.phase === 'action' && state.winner === null && (
                 <button
@@ -315,8 +352,8 @@ const GameScreen: React.FC = () => {
             )}
         </div>
 
-        {/* Game Log - Adjusted width and height */}
-        <div className="w-full md:w-1/3 h-24 md:h-32 overflow-y-auto bg-black p-2 rounded border border-gray-600 text-[10px] md:text-xs">
+        {/* Game Log */}
+        <div className="w-full md:w-1/3 h-24 md:h-32 overflow-y-auto bg-black/50 p-2 rounded border border-gray-600 text-[10px] md:text-xs">
             <h3 className="font-semibold mb-1">Game Log:</h3>
             {state.log.slice(-10).map((entry, index) => ( // Show last 10 log entries
                 <p key={index}>{entry}</p>

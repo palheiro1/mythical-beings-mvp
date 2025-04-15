@@ -4,21 +4,21 @@ import Card from './Card';
 
 interface MarketProps {
   cards: Knowledge[];
-  onCardClick?: (cardId: string) => void; // Optional: For selecting a card to draw
+  onCardClick?: (id: string) => void;
 }
 
 const Market: React.FC<MarketProps> = ({ cards, onCardClick }) => {
   return (
-    // Added gap for better spacing when wrapping
-    <div className="flex flex-wrap justify-center items-center p-1 md:p-2 bg-blue-900 rounded min-h-[100px] md:min-h-[150px] gap-1 md:gap-2">
-      <h3 className="text-xs md:text-sm font-semibold mr-2 self-center w-full md:w-auto text-center md:text-left mb-1 md:mb-0">Market:</h3>
+    <div className="flex justify-center items-center space-x-1 md:space-x-2 p-1 bg-blue-900/30 rounded min-h-[7rem]"> {/* Adjusted min-height */}
       {cards.map((card) => (
-        <Card
-          key={card.id}
-          card={card}
-          onClick={onCardClick ? () => onCardClick(card.id) : undefined}
+        <Card 
+          key={card.id} 
+          card={card} 
+          onClick={onCardClick} 
+          size="small" // Use small cards in market
         />
       ))}
+      {cards.length === 0 && <p className="text-xs text-gray-400 italic">Market is empty</p>}
     </div>
   );
 };
