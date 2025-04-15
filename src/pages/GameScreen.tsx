@@ -258,106 +258,215 @@ const GameScreen: React.FC = () => {
       return <div className="text-center p-10 text-red-500">Error: Player data is missing.</div>;
   }
 
+  // Helper: get rotation for beings/spells
+  const beingRotation = (isOpponent: boolean) => isOpponent ? 180 : 0;
+  const spellRotation = (isOpponent: boolean) => isOpponent ? 180 : 0;
+
+  // Helper: get hand for display (backs for opponent)
+  const renderHand = (hand: Knowledge[], isOpponent: boolean) => (
+    <div className={`flex ${isOpponent ? 'flex-col' : 'flex-row'} items-center gap-1 p-1`}>
+      {hand.length === 0 && <Card card={{id:'back',name:'Back',image:'/images/spells/back.jpg',type:'spell',cost:0,effect:''}} showBack size="small" />}
+      {hand.map((card, idx) => (
+        <Card key={card.id+idx} card={card} showBack={isOpponent} size="small" />
+      ))}
+    </div>
+  );
+
+  // Market deck (remaining)
+  const marketDeckCount = state.knowledgeDeck.length;
+
   return (
-    // Use min-h-screen to allow scrolling if content overflows
-    <div className="flex flex-col min-h-screen bg-gray-900 text-white p-2 md:p-4">
-      {/* Game Info Bar - Remains at the top */}
-      <div className="flex-shrink-0 flex flex-col md:flex-row justify-between items-center bg-gray-800 p-1 md:p-2 rounded shadow-md mb-2"> {/* Reduced bottom margin */} 
-        <h1 className="text-sm md:text-xl font-bold mb-1 md:mb-0">Game: {gameId}</h1>
-        <div className="text-center mb-1 md:mb-0">
-          <p className="text-sm md:text-lg">Turn: {state.turn} - Phase: {state.phase}</p>
-          {state.winner ? (
-            <p className="text-lg md:text-2xl font-bold text-yellow-400">
-              Player {state.players.findIndex(p => p.id === state.winner) + 1} ({state.winner}) Wins!
-            </p>
-          ) : (
-            <p className={`text-sm md:text-lg font-semibold ${isMyTurn ? 'text-green-400' : 'text-red-400'}`}>
-              {isMyTurn ? `Your Turn (${currentPlayerId})` : `Opponent's Turn (${opponentPlayer.id})`}
-              {isMyTurn && state.phase === 'action' && ` - Actions Left: ${2 - state.actionsTakenThisTurn}`}
-            </p>
-          )}
+    <div className="fixed inset-0 w-screen h-screen overflow-hidden bg-gradient-to-br from-[#1a1a2e] via-[#16213e] to-[#0f3460]">
+      {/* Status Bar */}
+      <div className="h-10 w-full flex justify-between items-center px-4 py-1 bg-black/50 text-white text-xs md:text-sm">
+        <div className="flex items-center gap-2">
+          <span className="font-bold">Game: {gameId}</span>
+          <span>|</span>
+          <span>Turn: {state.turn}</span>
+          <span>|</span>
+          <span>Phase: <span className="uppercase font-semibold">{state.phase}</span></span>
         </div>
-        <div className="text-xs md:text-base">Player ID: {currentPlayerId}</div>
+        <div className="flex items-center gap-2">
+          <span className="text-green-300">Your Power: {currentPlayer.power}</span>
+          <span>|</span>
+          <span className="text-red-300">Opponent: {opponentPlayer.power}</span>
+          <span>|</span>
+          <span className="text-yellow-300">Actions: {2 - state.actionsTakenThisTurn}/2</span>
+        </div>
       </div>
 
-      {/* Error Display Area */} 
+      {/* Game notification */}
       {error && (
-        <div className="flex-shrink-0 bg-red-800/80 text-white p-2 rounded mb-2 text-center text-sm md:text-base">
-          Error: {error}
+        <div className="absolute top-12 left-1/2 transform -translate-x-1/2 z-50 bg-black/80 text-white px-3 py-1 rounded-full text-sm">
+          {error}
         </div>
       )}
 
-      {/* Main Game Area - Use flex-grow to fill space */}
-      <div className="flex-grow flex flex-col space-y-4 overflow-hidden"> {/* Added overflow-hidden */}
-
-        {/* Opponent's Area - Use flex basis for sizing */}
-        <div className="flex-shrink-0 bg-gray-800/50 p-2 rounded border border-red-700/50 flex flex-col min-h-0"> {/* Added min-h-0 */}
-          <h2 className="flex-shrink-0 text-center text-sm md:text-base font-semibold mb-2">Opponent ({opponentPlayer.id}) - Power: {opponentPlayer.power}</h2>
-          {/* Make internal content scrollable if needed */}
-          <div className="flex-grow overflow-auto space-y-2">
-            <CreatureZone creatures={opponentPlayer.creatures} field={opponentPlayer.field} />
-            <Hand cards={opponentPlayer.hand} /> {/* Show opponent hand count or cards if desired */}
+      {/* Main Game Grid: 3 columns [Market | Table | Hands] */}
+      <div className="w-full h-[calc(100vh-3.5rem)] grid grid-cols-[15vw_1fr_15vw] gap-1 items-center">
+        {/* MARKET (left column) */}
+        <div className="h-full flex flex-col items-center space-y-2 py-4 px-2 bg-blue-900/20 rounded-lg overflow-y-auto">
+          {/* Deck */}
+          <div className="relative w-full max-w-[15vw] aspect-[2/3]">
+            <Card card={{id:'marketdeck',name:'Deck',image:'/images/spells/back.jpg',type:'spell',cost:0,effect:''}} showBack size="small" />
+            <span className="absolute -right-2 -bottom-2 bg-black/70 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">{marketDeckCount}</span>
           </div>
+          
+          {/* Market Cards */}
+          {state.market.map((card) => (
+            <div key={card.id} className="w-full max-w-[15vw] aspect-[2/3]">
+              <Card 
+                card={card} 
+                onClick={isMyTurn && state.phase==='action' ? handleDrawKnowledge : undefined} 
+                size="small" 
+              />
+            </div>
+          ))}
         </div>
 
-        {/* Market - Use flex basis */}
-        <div className="flex-shrink-0 bg-blue-900/50 p-2 rounded flex flex-col min-h-0"> {/* Added min-h-0 */}
-           <h2 className="flex-shrink-0 text-center text-sm md:text-base font-semibold mb-2">Market</h2>
-           <div className="flex-grow overflow-auto">
-             <Market
-               cards={state.market}
-               onCardClick={isMyTurn && state.phase === 'action' ? handleDrawKnowledge : undefined}
-             />
-           </div>
+        {/* TABLE (center area) - 4 row grid with responsive sizing */}
+        <div className="grid grid-cols-3 grid-rows-4 gap-1 justify-items-center items-center w-full h-full">
+          {/* Row 1: Opponent Beings */}
+          {opponentPlayer.creatures.map((creature) => (
+            <div key={creature.id} className="flex flex-col items-center w-full">
+              <div className="w-full max-w-[18vw] aspect-[2/3]">
+                <Card card={creature} rotation={180} size="medium" />
+              </div>
+              <span className="text-xs text-gray-300 mt-1">{creature.name}</span>
+            </div>
+          ))}
+
+          {/* Row 2: Opponent Spells */}
+          {opponentPlayer.field.map((slot, idx) => (
+            <div key={slot.creatureId + idx} className="flex flex-col items-center justify-center w-full">
+              <div className="w-full max-w-[12vw] aspect-[2/3]">
+                {slot.knowledge ? 
+                  <Card card={slot.knowledge} rotation={180} size="small" /> : 
+                  <div className="w-full h-full border border-dashed border-gray-700/30 rounded-lg"></div>
+                }
+              </div>
+            </div>
+          ))}
+
+          {/* Row 3: Player Spells */}
+          {currentPlayer.field.map((slot, idx) => (
+            <div key={slot.creatureId + idx + 10} className="flex flex-col items-center justify-center w-full">
+              <div className="w-full max-w-[12vw] aspect-[2/3]">
+                {slot.knowledge ? 
+                  <Card card={slot.knowledge} size="small" /> : 
+                  <div className="w-full h-full border border-dashed border-gray-700/30 rounded-lg"></div>
+                }
+              </div>
+            </div>
+          ))}
+
+          {/* Row 4: Player Beings */}
+          {currentPlayer.creatures.map((creature) => (
+            <div key={creature.id} className="flex flex-col items-center w-full">
+              <div className="w-full max-w-[18vw] aspect-[2/3]">
+                <Card 
+                  key={creature.id} 
+                  card={creature} 
+                  onClick={isMyTurn && state.phase==='action' ? 
+                    (selectedKnowledgeId ? handleCreatureClickForSummon : handleRotateCreature) : 
+                    undefined
+                  } 
+                  rotation={0} 
+                  size="medium" 
+                  isSelected={selectedKnowledgeId !== null} 
+                />
+              </div>
+              <span className="text-xs text-gray-300 mt-1">{creature.name}</span>
+            </div>
+          ))}
         </div>
 
-        {/* Current Player's Area - Use flex basis */}
-        <div className="flex-shrink-0 bg-gray-800/50 p-2 rounded border border-green-700/50 flex flex-col min-h-0"> {/* Added min-h-0 */}
-           <h2 className="flex-shrink-0 text-center text-sm md:text-base font-semibold mb-2">You ({currentPlayer.id}) - Power: {currentPlayer.power}</h2>
-           <div className="flex-grow overflow-auto space-y-2">
-             <CreatureZone
-                creatures={currentPlayer.creatures}
-                field={currentPlayer.field}
-                onCreatureClick={isMyTurn && state.phase === 'action'
-                    ? (selectedKnowledgeId ? handleCreatureClickForSummon : handleRotateCreature)
-                    : undefined}
-             />
-             <Hand
-                cards={currentPlayer.hand}
-                onCardClick={isMyTurn && state.phase === 'action' ? handleHandCardClick : undefined}
-             />
-           </div>
+        {/* RIGHT COLUMN: PLAYER AND OPPONENT HANDS */}
+        <div className="relative h-full w-full">
+          {/* Opponent Hand (top) */}
+          <div className="relative h-full w-full flex items-start justify-start">
+            <span className="absolute -top-5 left-0 text-xs text-gray-400">Opponent's Hand ({opponentPlayer.hand.length})</span>
+            {opponentPlayer.hand.map((card, idx) => (
+              <div 
+                key={card.id + idx} 
+                className="absolute transition-all duration-200"
+                style={{ 
+                  left: `${idx * 6}vw`, 
+                  top: '20px',
+                  zIndex: idx + 1
+                }}
+              >
+                <Card card={card} showBack size="small" />
+              </div>
+            ))}
+            {opponentPlayer.hand.length === 0 && 
+              <div className="absolute left-0 top-20px">
+                <Card card={{id:'back',name:'Back',image:'/images/spells/back.jpg',type:'spell',cost:0,effect:''}} showBack size="small" />
+              </div>
+            }
+          </div>
+          
+          {/* Player Hand (bottom) */}
+          <div className="relative h-full w-full flex items-end justify-start">
+            <span className="absolute -bottom-5 left-0 text-xs text-gray-400">Your Hand ({currentPlayer.hand.length}/5)</span>
+            {currentPlayer.hand.map((card, idx) => (
+              <div 
+                key={card.id} 
+                className="absolute transition-all duration-200"
+                style={{ 
+                  left: `${idx * 6}vw`, 
+                  bottom: selectedKnowledgeId === card.id ? '20px' : '5px',
+                  zIndex: 10 + idx,
+                  transform: `rotate(${-10 + idx * 5}deg)`
+                }}
+              >
+                <Card 
+                  card={card} 
+                  onClick={isMyTurn && state.phase==='action' ? handleHandCardClick : undefined} 
+                  size="small" 
+                  isSelected={selectedKnowledgeId === card.id} 
+                />
+              </div>
+            ))}
+            {currentPlayer.hand.length === 0 && 
+              <div className="absolute left-0 bottom-5px">
+                <Card card={{id:'back',name:'Back',image:'/images/spells/back.jpg',type:'spell',cost:0,effect:''}} showBack size="small" />
+              </div>
+            }
+          </div>
         </div>
       </div>
 
-      {/* Action Buttons & Log - Remains at the bottom */}
-      <div className="flex-shrink-0 flex flex-col md:flex-row justify-between items-center md:items-start mt-4 pt-4 border-t border-gray-700">
-        <div className="flex space-x-2 mb-2 md:mb-0">
-            {isMyTurn && state.phase === 'action' && state.winner === null && (
-                <button
-                    onClick={handleEndTurn}
-                    disabled={state.actionsTakenThisTurn < 2} // Can only end turn after 2 actions
-                    className={`px-3 py-1 md:px-4 md:py-2 rounded text-xs md:text-base ${state.actionsTakenThisTurn < 2 ? 'bg-gray-600 cursor-not-allowed' : 'bg-red-600 hover:bg-red-700'}`}
-                >
-                    End Turn
-                </button>
-            )}
-             {selectedKnowledgeId && (
-                <button
-                    onClick={() => { setSelectedKnowledgeId(null); setError(null); }}
-                    className="px-3 py-1 md:px-4 md:py-2 rounded bg-yellow-600 hover:bg-yellow-700 text-xs md:text-base"
-                >
-                    Cancel Summon
-                </button>
-            )}
+      {/* Action Buttons & Game Status */}
+      <div className="absolute bottom-0 left-0 right-0 flex justify-between items-center px-4 py-2 bg-black/50 h-10">
+        <div className="flex gap-2">
+          {isMyTurn && state.phase === 'action' && state.winner === null && (
+            <button
+              onClick={handleEndTurn}
+              disabled={state.actionsTakenThisTurn < 2}
+              className={`px-3 py-1 rounded text-xs font-bold transition-colors
+                ${state.actionsTakenThisTurn < 2 ? 
+                  'bg-gray-600 cursor-not-allowed' : 
+                  'bg-red-700 hover:bg-red-600 text-white'}`}
+            >
+              End Turn
+            </button>
+          )}
+          {selectedKnowledgeId && (
+            <button
+              onClick={() => { setSelectedKnowledgeId(null); setError(null); }}
+              className="px-3 py-1 rounded bg-yellow-700 hover:bg-yellow-600 text-xs font-bold text-white transition-colors"
+            >
+              Cancel
+            </button>
+          )}
         </div>
-
-        {/* Game Log */}
-        <div className="w-full md:w-1/3 h-24 md:h-32 overflow-y-auto bg-black/50 p-2 rounded border border-gray-600 text-[10px] md:text-xs">
-            <h3 className="font-semibold mb-1">Game Log:</h3>
-            {state.log.slice(-10).map((entry, index) => ( // Show last 10 log entries
-                <p key={index}>{entry}</p>
-            ))}
+        
+        <div className="text-xs text-gray-300">
+          {isMyTurn ? 
+            <span className="text-green-300 font-bold">Your turn</span> : 
+            <span className="text-red-300">Opponent's turn</span>
+          }
         </div>
       </div>
     </div>
