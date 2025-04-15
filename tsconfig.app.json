@@ -10,6 +10,7 @@
     /* Bundler mode */
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
+    "resolveJsonModule": true, // Added from TODO
     "isolatedModules": true,
     "moduleDetection": "force",
     "noEmit": true,
@@ -20,7 +21,8 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
-    "noUncheckedSideEffectImports": true
+    "noUncheckedSideEffectImports": true,
+    "forceConsistentCasingInFileNames": true // Added from TODO
   },
-  "include": ["src"]
+  "include": ["src", "tests"] // Added "tests"
 }

@@ -1,0 +1,114 @@
+[
+  {
+    "id": "adaro",
+    "name": "Adaro",
+    "element": "water",
+    "passiveAbility": "Placeholder passive ability for Adaro",
+    "image": "/images/beings/adaro.jpg",
+    "baseWisdom": 0
+  },
+  {
+    "id": "caapora",
+    "name": "Caapora",
+    "element": "earth",
+    "passiveAbility": "Placeholder passive ability for Caapora",
+    "image": "/images/beings/caapora.jpg",
+    "baseWisdom": 0
+  },
+  {
+    "id": "dudugera",
+    "name": "Dudugera",
+    "element": "air",
+    "passiveAbility": "Placeholder passive ability for Dudugera",
+    "image": "/images/beings/dudugera.jpg",
+    "baseWisdom": 0
+  },
+  {
+    "id": "inkanyamba",
+    "name": "Inkanyamba",
+    "element": "water",
+    "passiveAbility": "Placeholder passive ability for Inkanyamba",
+    "image": "/images/beings/inkanyamba.jpg",
+    "baseWisdom": 0
+  },
+  {
+    "id": "japinunus",
+    "name": "Japinunus",
+    "element": "air",
+    "passiveAbility": "Placeholder passive ability for Japinunus",
+    "image": "/images/beings/japinunus.jpg",
+    "baseWisdom": 0
+  },
+  {
+    "id": "kappa",
+    "name": "Kappa",
+    "element": "water",
+    "passiveAbility": "Placeholder passive ability for Kappa",
+    "image": "/images/beings/kappa.jpg",
+    "baseWisdom": 0
+  },
+  {
+    "id": "kyzy",
+    "name": "Kyzy",
+    "element": "fire",
+    "passiveAbility": "Placeholder passive ability for Kyzy",
+    "image": "/images/beings/kyzy.jpg",
+    "baseWisdom": 0
+  },
+  {
+    "id": "lisovik",
+    "name": "Lisovik",
+    "element": "earth",
+    "passiveAbility": "Placeholder passive ability for Lisovik",
+    "image": "/images/beings/lisovik.jpg",
+    "baseWisdom": 0
+  },
+  {
+    "id": "pele",
+    "name": "Pele",
+    "element": "fire",
+    "passiveAbility": "Placeholder passive ability for Pele",
+    "image": "/images/beings/pele.jpg",
+    "baseWisdom": 0
+  },
+  {
+    "id": "tarasca",
+    "name": "Tarasca",
+    "element": "earth",
+    "passiveAbility": "Placeholder passive ability for Tarasca",
+    "image": "/images/beings/tarasca.jpg",
+    "baseWisdom": 0
+  },
+  {
+    "id": "trepulcahue",
+    "name": "Trepulcahue",
+    "element": "water",
+    "passiveAbility": "Placeholder passive ability for Trepulcahue",
+    "image": "/images/beings/trepulcahue.jpg",
+    "baseWisdom": 0
+  },
+  {
+    "id": "tsenehale",
+    "name": "Tsenehale",
+    "element": "air",
+    "passiveAbility": "Placeholder passive ability for Tsenehale",
+    "image": "/images/beings/tsenehale.jpg",
+    "baseWisdom": 0
+  },
+  {
+    "id": "tulpar",
+    "name": "Tulpar",
+    "element": "air",
+    "passiveAbility": "Placeholder passive ability for Tulpar",
+    "image": "/images/beings/tulpar.jpg",
+    "baseWisdom": 0
+  },
+  {
+    "id": "zhar-ptitsa",
+    "name": "Zhar Ptitsa",
+    "element": "fire",
+    "passiveAbility": "Placeholder passive ability for Zhar Ptitsa",
+    "image": "/images/beings/zhar-ptitsa.jpg",
+    "baseWisdom": 0
+  }
+]
