@@ -35,7 +35,10 @@ const Card: React.FC<CardProps> = ({ card, onClick, isSelected, rotation = 0, sh
         ${onClick ? 'hover:shadow-lg' : 'cursor-default'}
         ${isSelected ? 'border-yellow-400 border-2 ring-2 ring-yellow-400' : 'border-gray-500'}
       `}
-      onClick={handleClick}
+      onClick={(e) => {
+        console.log('Card clicked:', card, 'onClick:', !!onClick);
+        handleClick();
+      }}
     >
       {/* Using a wrapper div for card content that rotates */}
       <div 
