@@ -11,7 +11,9 @@ export type CreatureElement = 'earth' | 'water' | 'air' | 'fire' | 'neutral'; //
 export interface Creature extends BaseCard {
   element: CreatureElement;
   passiveAbility: string; // Description of passive effect
-  baseWisdom: number; // Starting wisdom
+  baseWisdom: number; // Starting wisdom (legacy, use wisdomCycle[0] if present)
+  // Wisdom per rotation (0, 90, 180, 270 degrees)
+  wisdomCycle?: number[];
   // Runtime properties (added during gameplay, not in JSON)
   currentWisdom?: number;
   summonedKnowledgeId?: string | null; // ID of knowledge card attached

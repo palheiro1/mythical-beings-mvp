@@ -5,7 +5,7 @@
     "element": "water",
     "passiveAbility": "Placeholder passive ability for Adaro",
     "image": "/images/beings/adaro.jpg",
-    "baseWisdom": 0
+    "wisdomCycle": [0, 1, 4, 5]
   },
   {
     "id": "caapora",
@@ -13,7 +13,7 @@
     "element": "earth",
     "passiveAbility": "Placeholder passive ability for Caapora",
     "image": "/images/beings/caapora.jpg",
-    "baseWisdom": 0
+    "wisdomCycle": [0, 1, 4, 5]
   },
   {
     "id": "dudugera",
@@ -21,7 +21,7 @@
     "element": "air",
     "passiveAbility": "Placeholder passive ability for Dudugera",
     "image": "/images/beings/dudugera.jpg",
-    "baseWisdom": 0
+    "wisdomCycle": [0, 1, 4, 5]
   },
   {
     "id": "inkanyamba",
@@ -29,7 +29,7 @@
     "element": "water",
     "passiveAbility": "Placeholder passive ability for Inkanyamba",
     "image": "/images/beings/inkanyamba.jpg",
-    "baseWisdom": 0
+    "wisdomCycle": [0, 2, 3, 5]
   },
   {
     "id": "japinunus",
@@ -37,7 +37,7 @@
     "element": "air",
     "passiveAbility": "Placeholder passive ability for Japinunus",
     "image": "/images/beings/japinunus.jpg",
-    "baseWisdom": 0
+    "wisdomCycle": [0, 1, 4, 5]
   },
   {
     "id": "kappa",
@@ -45,7 +45,7 @@
     "element": "water",
     "passiveAbility": "Placeholder passive ability for Kappa",
     "image": "/images/beings/kappa.jpg",
-    "baseWisdom": 0
+    "wisdomCycle": [0, 1, 4, 5]
   },
   {
     "id": "kyzy",
@@ -53,7 +53,7 @@
     "element": "fire",
     "passiveAbility": "Placeholder passive ability for Kyzy",
     "image": "/images/beings/kyzy.jpg",
-    "baseWisdom": 0
+    "wisdomCycle": [1, 2, 3, 4]
   },
   {
     "id": "lisovik",
@@ -61,7 +61,7 @@
     "element": "earth",
     "passiveAbility": "Placeholder passive ability for Lisovik",
     "image": "/images/beings/lisovik.jpg",
-    "baseWisdom": 0
+    "wisdomCycle": [0, 2, 3, 5]
   },
   {
     "id": "pele",
@@ -69,7 +69,7 @@
     "element": "fire",
     "passiveAbility": "Placeholder passive ability for Pele",
     "image": "/images/beings/pele.jpg",
-    "baseWisdom": 0
+    "wisdomCycle": [1, 2, 3, 4]
   },
   {
     "id": "tarasca",
@@ -77,7 +77,7 @@
     "element": "earth",
     "passiveAbility": "Placeholder passive ability for Tarasca",
     "image": "/images/beings/tarasca.jpg",
-    "baseWisdom": 0
+    "wisdomCycle": [0, 2, 3, 5]
   },
   {
     "id": "trepulcahue",
@@ -85,7 +85,7 @@
     "element": "water",
     "passiveAbility": "Placeholder passive ability for Trepulcahue",
     "image": "/images/beings/trepulcahue.jpg",
-    "baseWisdom": 0
+    "wisdomCycle": [1, 2, 3, 4]
   },
   {
     "id": "tsenehale",
@@ -93,7 +93,7 @@
     "element": "air",
     "passiveAbility": "Placeholder passive ability for Tsenehale",
     "image": "/images/beings/tsenehale.jpg",
-    "baseWisdom": 0
+    "wisdomCycle": [0, 2, 3, 5]
   },
   {
     "id": "tulpar",
@@ -101,7 +101,7 @@
     "element": "air",
     "passiveAbility": "Placeholder passive ability for Tulpar",
     "image": "/images/beings/tulpar.jpg",
-    "baseWisdom": 0
+    "wisdomCycle": [0, 2, 3, 5]
   },
   {
     "id": "zhar-ptitsa",
@@ -109,6 +109,6 @@
     "element": "fire",
     "passiveAbility": "Placeholder passive ability for Zhar Ptitsa",
     "image": "/images/beings/zhar-ptitsa.jpg",
-    "baseWisdom": 0
+    "wisdomCycle": [1, 2, 3, 4]
   }
 ]

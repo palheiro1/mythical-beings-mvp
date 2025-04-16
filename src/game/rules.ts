@@ -1,3 +1,4 @@
+import { knowledgeEffects } from './effects';
 import knowledgeData from '../assets/knowledges.json';
 import { GameState, GameAction, PlayerState } from './types';
 
@@ -97,11 +98,13 @@ export function isValidAction(state: GameState, action: GameAction): boolean {
           return false;
       }
 
-      if ((creature.currentWisdom ?? creature.baseWisdom) < knowledgeCard.cost) {
-        console.error("Invalid action: Insufficient Wisdom.");
+      const wisdom = getCreatureWisdom(creature);
+      const cost = knowledgeCard.cost;
+      if (wisdom < cost) {
+        console.error(`Invalid action: Insufficient Wisdom. Creature wisdom: ${wisdom}, Knowledge cost: ${cost}`);
         return false; // Not enough wisdom
       }
-
+      console.log(`[SUMMON_KNOWLEDGE] Creature: ${creature.name}, Wisdom: ${wisdom}, Knowledge: ${knowledgeCard.name}, Cost: ${cost}`);
       return true;
     }
 
@@ -119,6 +122,17 @@ export function isValidAction(state: GameState, action: GameAction): boolean {
   }
 }
 
+// Helper to get wisdom by rotation
+function getCreatureWisdom(creature: any): number {
+  if (!creature) return 0;
+  const rotation = creature.rotation ?? 0;
+  if (Array.isArray(creature.wisdomCycle)) {
+    const idx = Math.floor((rotation % 360) / 90);
+    return creature.wisdomCycle[idx] ?? 0;
+  }
+  return 0;
+}
+
 /**
  * Executes the Knowledge Phase logic.
  * - Executes effects of summoned knowledge cards.
@@ -130,11 +144,28 @@ export function isValidAction(state: GameState, action: GameAction): boolean {
 export function executeKnowledgePhase(state: GameState): GameState {
   let newState = { ...state, log: [...state.log, `Turn ${state.turn}: Knowledge Phase started.`] };
 
-  // Placeholder for effect execution - needs detailed implementation based on card effects
+  // Execute effects for each knowledge card
   newState.players.forEach((player, playerIndex) => {
-    player.field.forEach(fieldSlot => {
+    player.field.forEach((fieldSlot, fieldSlotIndex) => {
       if (fieldSlot.knowledge) {
-        newState.log.push(`Executing effect for ${fieldSlot.knowledge.name} on ${fieldSlot.creatureId} for Player ${playerIndex + 1}`);
+        const rotation = fieldSlot.knowledge.rotation ?? 0;
+        // Find maxRotations for this card
+        const cardData = (knowledgeData as any[]).find(k => k.id === fieldSlot.knowledge!.id);
+        const maxRotations = cardData?.maxRotations ?? 4;
+        const isFinalRotation = (rotation + 90) / 90 >= maxRotations;
+        const effectFn = knowledgeEffects[fieldSlot.knowledge.id];
+        if (effectFn) {
+          newState = effectFn({
+            state: newState,
+            playerIndex,
+            fieldSlotIndex,
+            knowledge: fieldSlot.knowledge,
+            rotation,
+            isFinalRotation,
+          });
+        } else {
+          newState.log.push(`Executing effect for ${fieldSlot.knowledge.name} on ${fieldSlot.creatureId} for Player ${playerIndex + 1}`);
+        }
       }
     });
   });
