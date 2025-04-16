@@ -8,9 +8,7 @@ import { useGameActions } from '../hooks/useGameActions';
 
 // Import UI Components
 import TopBar from '../components/game/TopBar';
-import MarketColumn from '../components/game/MarketColumn';
-import TableArea from '../components/game/TableArea';
-import HandsColumn from '../components/game/HandsColumn';
+import Card from '../components/Card';
 import ActionBar from '../components/game/ActionBar';
 
 const GameScreen: React.FC = () => {
@@ -46,6 +44,25 @@ const GameScreen: React.FC = () => {
 
   const actionsRemaining = 2 - state.actionsTakenThisTurn;
 
+  // --- Helper for unified grid ---
+  // Market: deck + 3 cards
+  const marketDeck = { id: 'marketdeck', name: 'Deck', image: '/images/spells/back.jpg', type: 'spell', cost: 0, effect: '' };
+  const marketCards = state.market.slice(0, 3);
+  // Table: 3 creatures per player, 3 knowledge per player
+  const oppCreatures = opponentPlayer.creatures.slice(0, 3);
+  const oppKnowledges = opponentPlayer.field.map(f => f.knowledge).slice(0, 3);
+  const playerCreatures = currentPlayer.creatures.slice(0, 3);
+  const playerKnowledges = currentPlayer.field.map(f => f.knowledge).slice(0, 3);
+  // Hands: up to 4 cards per player
+  const oppHand = opponentPlayer.hand.slice(0, 4);
+  const playerHand = currentPlayer.hand.slice(0, 4);
+
+  // Helper to render a card or empty slot
+  const renderCardSlot = (card, key, props = {}) => (
+    <div key={key} className="w-full h-full flex items-center justify-center">
+      {card ? <Card card={card} {...props} /> : <div className="w-full h-full border border-dashed border-gray-500/50 rounded-lg bg-gray-800/40" />}
+    </div>
+  );
 
   return (
     <div className="fixed inset-0 w-screen h-screen overflow-hidden bg-gray-100 grid grid-rows-[auto_1fr_auto] gap-6">
@@ -72,40 +89,25 @@ const GameScreen: React.FC = () => {
           {actionMessage}
         </div>
       )}
-
-      {/* Main game area with gradient background */}
-      <div className="px-4 bg-gradient-to-br from-[#1a1a2e] via-[#16213e] to-[#0f3460] rounded-lg mx-4">
-        <div className="grid grid-cols-[1fr_2fr_3fr] gap-4 h-full py-4">
-          <div className="bg-white/10 backdrop-blur-sm rounded-lg shadow-md overflow-hidden border border-white/20">
-            <MarketColumn
-              marketCards={state.market}
-              deckCount={state.knowledgeDeck.length}
-              isMyTurn={isMyTurn}
-              phase={state.phase}
-              onDrawKnowledge={handleDrawKnowledge}
-            />
-          </div>
-          <div className="bg-white/10 backdrop-blur-sm rounded-lg shadow-md border border-white/20">
-            <TableArea
-              currentPlayer={currentPlayer}
-              opponentPlayer={opponentPlayer}
-              isMyTurn={isMyTurn}
-              phase={state.phase}
-              selectedKnowledgeId={selectedKnowledgeId}
-              onCreatureClickForSummon={handleCreatureClickForSummon}
-              onRotateCreature={handleRotateCreature}
-            />
-          </div>
-          <div className="bg-white/10 backdrop-blur-sm rounded-lg shadow-md overflow-hidden border border-white/20">
-            <HandsColumn
-              currentPlayerHand={currentPlayer.hand}
-              opponentPlayerHand={opponentPlayer.hand}
-              isMyTurn={isMyTurn}
-              phase={state.phase}
-              selectedKnowledgeId={selectedKnowledgeId}
-              onHandCardClick={handleHandCardClick}
-            />
-          </div>
+      {/* Unified 4x8 grid */}
+      <div className="px-4 bg-gradient-to-br from-[#1a1a2e] via-[#16213e] to-[#0f3460] rounded-lg mx-4 flex flex-col justify-center items-center">
+        <div className="grid grid-cols-8 grid-rows-4 gap-2 w-full h-full max-w-screen-lg mx-auto py-8">
+          {/* Row 1: Market deck, Opponent creatures, Opponent hand */}
+          <div className="col-start-1 row-start-1 row-span-1 aspect-[2/3]">{renderCardSlot(marketDeck, 'marketdeck', { showBack: true })}</div>
+          {[0,1,2].map(i => <div key={'oc'+i} className="col-start-" style={{gridColumnStart: 2+i, gridRowStart: 1}}>{renderCardSlot(oppCreatures[i], 'oc'+i, { rotation: (oppCreatures[i]?.rotation ?? 0) + 180 })}</div>)}
+          {[0,1,2,3].map(i => <div key={'oh'+i} className="col-start-" style={{gridColumnStart: 5+i, gridRowStart: 1}}>{renderCardSlot(oppHand[i], 'oh'+i, { showBack: true })}</div>)}
+          {/* Row 2: Market card 1, Opponent knowledges */}
+          <div className="col-start-1 row-start-2 aspect-[2/3]">{renderCardSlot(marketCards[0], 'market1')}</div>
+          {[0,1,2].map(i => <div key={'ok'+i} className="col-start-" style={{gridColumnStart: 2+i, gridRowStart: 2}}>{renderCardSlot(oppKnowledges[i], 'ok'+i)}</div>)}
+          {[0,1,2,3].map(i => <div key={'eh2'+i} className="col-start-" style={{gridColumnStart: 5+i, gridRowStart: 2}}>{renderCardSlot(null, 'eh2'+i)}</div>)}
+          {/* Row 3: Market card 2, Player knowledges */}
+          <div className="col-start-1 row-start-3 aspect-[2/3]">{renderCardSlot(marketCards[1], 'market2')}</div>
+          {[0,1,2].map(i => <div key={'pk'+i} className="col-start-" style={{gridColumnStart: 2+i, gridRowStart: 3}}>{renderCardSlot(playerKnowledges[i], 'pk'+i)}</div>)}
+          {[0,1,2,3].map(i => <div key={'eh3'+i} className="col-start-" style={{gridColumnStart: 5+i, gridRowStart: 3}}>{renderCardSlot(null, 'eh3'+i)}</div>)}
+          {/* Row 4: Market card 3, Player creatures, Player hand */}
+          <div className="col-start-1 row-start-4 aspect-[2/3]">{renderCardSlot(marketCards[2], 'market3')}</div>
+          {[0,1,2].map(i => <div key={'pc'+i} className="col-start-" style={{gridColumnStart: 2+i, gridRowStart: 4}}>{renderCardSlot(playerCreatures[i], 'pc'+i)}</div>)}
+          {[0,1,2,3].map(i => <div key={'ph'+i} className="col-start-" style={{gridColumnStart: 5+i, gridRowStart: 4}}>{renderCardSlot(playerHand[i], 'ph'+i)}</div>)}
         </div>
       </div>
 
