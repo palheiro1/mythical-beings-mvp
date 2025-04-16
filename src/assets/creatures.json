@@ -3,7 +3,7 @@
     "id": "adaro",
     "name": "Adaro",
     "element": "water",
-    "passiveAbility": "Placeholder passive ability for Adaro",
+    "passiveAbility": "When Adaro summons an aquatic Knowledge, draw a card from the Market (no Action cost).",
     "image": "/images/beings/adaro.jpg",
     "wisdomCycle": [0, 1, 4, 5]
   },
@@ -11,7 +11,7 @@
     "id": "caapora",
     "name": "Caapora",
     "element": "earth",
-    "passiveAbility": "Placeholder passive ability for Caapora",
+    "passiveAbility": "At the start of your turn, if the Opponent has more cards in hand than you, deal 1 damage to the Opponent.",
     "image": "/images/beings/caapora.jpg",
     "wisdomCycle": [0, 1, 4, 5]
   },
@@ -19,7 +19,7 @@
     "id": "dudugera",
     "name": "Dudugera",
     "element": "air",
-    "passiveAbility": "Placeholder passive ability for Dudugera",
+    "passiveAbility": "Dudugera can summon Knowledges without spending Actions.",
     "image": "/images/beings/dudugera.jpg",
     "wisdomCycle": [0, 1, 4, 5]
   },
@@ -27,7 +27,7 @@
     "id": "inkanyamba",
     "name": "Inkanyamba",
     "element": "water",
-    "passiveAbility": "Placeholder passive ability for Inkanyamba",
+    "passiveAbility": "When you draw an aquatic Knowledge, you may discard 1 card from the Market.",
     "image": "/images/beings/inkanyamba.jpg",
     "wisdomCycle": [0, 2, 3, 5]
   },
@@ -35,7 +35,7 @@
     "id": "japinunus",
     "name": "Japinunus",
     "element": "air",
-    "passiveAbility": "Placeholder passive ability for Japinunus",
+    "passiveAbility": "Your aeric Knowledges gain: 'On Summon: +1 Power'.",
     "image": "/images/beings/japinunus.jpg",
     "wisdomCycle": [0, 1, 4, 5]
   },
@@ -43,7 +43,7 @@
     "id": "kappa",
     "name": "Kappa",
     "element": "water",
-    "passiveAbility": "Placeholder passive ability for Kappa",
+    "passiveAbility": "Kappa can summon aquatic Knowledges without spending Actions.",
     "image": "/images/beings/kappa.jpg",
     "wisdomCycle": [0, 1, 4, 5]
   },
@@ -51,7 +51,7 @@
     "id": "kyzy",
     "name": "Kyzy",
     "element": "fire",
-    "passiveAbility": "Placeholder passive ability for Kyzy",
+    "passiveAbility": "When any player summons a terrestrial Knowledge, the Opponent must discard 1 card.",
     "image": "/images/beings/kyzy.jpg",
     "wisdomCycle": [1, 2, 3, 4]
   },
@@ -59,7 +59,7 @@
     "id": "lisovik",
     "name": "Lisovik",
     "element": "earth",
-    "passiveAbility": "Placeholder passive ability for Lisovik",
+    "passiveAbility": "Your terrestrial Knowledges gain: 'On Leave: Deal 1 damage'.",
     "image": "/images/beings/lisovik.jpg",
     "wisdomCycle": [0, 2, 3, 5]
   },
@@ -67,7 +67,7 @@
     "id": "pele",
     "name": "Pele",
     "element": "fire",
-    "passiveAbility": "Placeholder passive ability for Pele",
+    "passiveAbility": "When Pele summons a terrestrial Knowledge, discard an Opponent's Knowledge with a lower Wisdom cost.",
     "image": "/images/beings/pele.jpg",
     "wisdomCycle": [1, 2, 3, 4]
   },
@@ -75,7 +75,7 @@
     "id": "tarasca",
     "name": "Tarasca",
     "element": "earth",
-    "passiveAbility": "Placeholder passive ability for Tarasca",
+    "passiveAbility": "When the Opponent summons a terrestrial Knowledge, deal 1 damage to the Opponent.",
     "image": "/images/beings/tarasca.jpg",
     "wisdomCycle": [0, 2, 3, 5]
   },
@@ -83,7 +83,7 @@
     "id": "trepulcahue",
     "name": "Trepulcahue",
     "element": "water",
-    "passiveAbility": "Placeholder passive ability for Trepulcahue",
+    "passiveAbility": "Your Knowledges gain +1 Defense.",
     "image": "/images/beings/trepulcahue.jpg",
     "wisdomCycle": [1, 2, 3, 4]
   },
@@ -91,7 +91,7 @@
     "id": "tsenehale",
     "name": "Tsenehale",
     "element": "air",
-    "passiveAbility": "Placeholder passive ability for Tsenehale",
+    "passiveAbility": "Your aeric Knowledges gain: 'On Leave: +1 Power'.",
     "image": "/images/beings/tsenehale.jpg",
     "wisdomCycle": [0, 2, 3, 5]
   },
@@ -99,7 +99,7 @@
     "id": "tulpar",
     "name": "Tulpar",
     "element": "air",
-    "passiveAbility": "Placeholder passive ability for Tulpar",
+    "passiveAbility": "When Tulpar summons an aeric Knowledge, rotate this creature 1 time (no Action cost).",
     "image": "/images/beings/tulpar.jpg",
     "wisdomCycle": [0, 2, 3, 5]
   },
@@ -107,7 +107,7 @@
     "id": "zhar-ptitsa",
     "name": "Zhar Ptitsa",
     "element": "fire",
-    "passiveAbility": "Placeholder passive ability for Zhar Ptitsa",
+    "passiveAbility": "Your aeric Knowledges cannot be blocked.",
     "image": "/images/beings/zhar-ptitsa.jpg",
     "wisdomCycle": [1, 2, 3, 4]
   }

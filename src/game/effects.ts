@@ -150,4 +150,198 @@ export const knowledgeEffects: Record<string, KnowledgeEffectFn> = {
     // The on-leave effect (eliminate 1 opponent knowledge) should be handled in rules.ts when the card is discarded
     return newState;
   },
+
+  // Aquatic 1: Rotates 1 Knowledge 90º counterclockwise (MVP: just log, real: needs user selection)
+  aquatic1: ({ state, playerIndex, fieldSlotIndex, knowledge }) => {
+    let logMsg = `[Aquatic1] Rotates a selected knowledge 90º counterclockwise.`;
+    return { ...state, log: [...state.log, `${knowledge.name}: ${logMsg}`] };
+  },
+
+  // Aquatic 2: While rotating, provides defense or deals damage depending on rotation
+  aquatic2: ({ state, playerIndex, fieldSlotIndex, knowledge, rotation }) => {
+    let logMsg = `[Aquatic2] Rotation: ${rotation}º. `;
+    let newState = state;
+    let effect = '';
+    const opponentIndex = playerIndex === 0 ? 1 : 0;
+    let defense = 0;
+    if (rotation === 0 || rotation === 270) {
+      effect = '+1 defense';
+      defense = 1;
+      logMsg += 'Provides 1 defense this turn.';
+    } else if (rotation === 90 || rotation === 180) {
+      effect = '1 damage';
+      newState.players[opponentIndex].power = Math.max(0, newState.players[opponentIndex].power - 1);
+      logMsg += 'Deals 1 damage.';
+    }
+    // Bonus defense if opponent's creature has no knowledge
+    const opponentFieldSlot = state.players[opponentIndex].field[fieldSlotIndex];
+    if ((rotation === 0 || rotation === 270) && !opponentFieldSlot.knowledge) {
+      defense += 1;
+      logMsg += ' Opponent has no knowledge: +1 defense.';
+    }
+    if (defense > 0) {
+      effect += ` (+${defense} defense)`;
+    }
+    newState = {
+      ...newState,
+      log: [...newState.log, `${knowledge.name}: ${effect}. ${logMsg}`],
+    };
+    return newState;
+  },
+
+  // Aquatic 3: While in play, the opposite creature cannot summon knowledge
+  aquatic3: ({ state, playerIndex, fieldSlotIndex, knowledge }) => {
+    // For MVP, just log. For real, add a flag to state or check in validation.
+    let logMsg = `[Aquatic3] While in play, the opposite creature cannot summon knowledge.`;
+    return { ...state, log: [...state.log, `${knowledge.name}: ${logMsg}`] };
+  },
+
+  // Aquatic 4: Rotation: depending on the rotation deals damage or provides defense
+  aquatic4: ({ state, playerIndex, fieldSlotIndex, knowledge, rotation }) => {
+    let logMsg = `[Aquatic4] Rotation: ${rotation}º. `;
+    let newState = state;
+    let effect = '';
+    const opponentIndex = playerIndex === 0 ? 1 : 0;
+    let damage = 0;
+    if (rotation === 0) {
+      effect = '1 damage';
+      newState.players[opponentIndex].power = Math.max(0, newState.players[opponentIndex].power - 1);
+      logMsg += 'Deals 1 damage.';
+    } else if (rotation === 90) {
+      effect = '+2 defense';
+      logMsg += 'Provides 2 defense this turn.';
+    } else if (rotation === 180) {
+      effect = '1 damage';
+      newState.players[opponentIndex].power = Math.max(0, newState.players[opponentIndex].power - 1);
+      logMsg += 'Deals 1 damage.';
+    } else if (rotation === 270) {
+      effect = '2 damage';
+      newState.players[opponentIndex].power = Math.max(0, newState.players[opponentIndex].power - 2);
+      logMsg += 'Deals 2 damage.';
+    }
+    newState = {
+      ...newState,
+      log: [...newState.log, `${knowledge.name}: ${effect}. ${logMsg}`],
+    };
+    // On summon: handled in rules.ts (draw 1 card from market)
+    return newState;
+  },
+
+  // Aquatic 5: Rotation: depending on the rotation deals damage or provides defense
+  aquatic5: ({ state, playerIndex, fieldSlotIndex, knowledge, rotation, isFinalRotation }) => {
+    let logMsg = `[Aquatic5] Rotation: ${rotation}º. `;
+    let newState = state;
+    let effect = '';
+    const opponentIndex = playerIndex === 0 ? 1 : 0;
+    if (rotation === 0 || rotation === 180) {
+      effect = '+2 defense';
+      logMsg += 'Provides 2 defense this turn.';
+      // For MVP, just log. For real defense, add a defense flag to the player/creature.
+    } else if (rotation === 90 || rotation === 270) {
+      effect = '2 damage';
+      const newPlayers = [...state.players];
+      newPlayers[opponentIndex] = {
+        ...newPlayers[opponentIndex],
+        power: Math.max(0, newPlayers[opponentIndex].power - 2),
+      };
+      newState = {
+        ...state,
+        players: newPlayers as [typeof state.players[0], typeof state.players[1]],
+      };
+      logMsg += 'Deals 2 damage to opponent.';
+    }
+    newState = {
+      ...newState,
+      log: [...newState.log, `${knowledge.name}: ${effect}. ${logMsg}`],
+    };
+    // On leave: handled in rules.ts (grant +1 action)
+    return newState;
+  },
+
+  // Aerial 1: 1,1 damage; on summon, +1 power
+  aerial1: ({ state, playerIndex, knowledge, rotation }) => {
+    let logMsg = `[Aerial1] Rotation: ${rotation}º. `;
+    let newState = state;
+    const opponentIndex = playerIndex === 0 ? 1 : 0;
+    let damage = 0;
+    if (rotation === 0 || rotation === 90) { damage = 1; }
+    if (damage > 0) {
+      newState.players[opponentIndex].power = Math.max(0, newState.players[opponentIndex].power - damage);
+      logMsg += `Deals ${damage} damage.`;
+    }
+    // On summon: handled in rules.ts (+1 power)
+    newState = {
+      ...newState,
+      log: [...newState.log, `${knowledge.name}: ${logMsg}`],
+    };
+    return newState;
+  },
+
+  // Aerial 2: Provides power points to player: 1,2,3
+  aerial2: ({ state, playerIndex, knowledge, rotation }) => {
+    let logMsg = `[Aerial2] Rotation: ${rotation}º. `;
+    let newState = state;
+    let power = 0;
+    if (rotation === 0) { power = 1; }
+    else if (rotation === 90) { power = 2; }
+    else if (rotation === 180) { power = 3; }
+    if (power > 0) {
+      newState.players[playerIndex].power += power;
+      logMsg += `Gains ${power} power.`;
+    }
+    newState = {
+      ...newState,
+      log: [...newState.log, `${knowledge.name}: ${logMsg}`],
+    };
+    return newState;
+  },
+
+  // Aerial 3: 1,1,2 damage; while in play, +1 wisdom to all 3 creatures
+  aerial3: ({ state, playerIndex, knowledge, rotation }) => {
+    let logMsg = `[Aerial3] Rotation: ${rotation}º. `;
+    let newState = state;
+    const opponentIndex = playerIndex === 0 ? 1 : 0;
+    let damage = 0;
+    if (rotation === 0 || rotation === 90) { damage = 1; }
+    else if (rotation === 180) { damage = 2; }
+    if (damage > 0) {
+      newState.players[opponentIndex].power = Math.max(0, newState.players[opponentIndex].power - damage);
+      logMsg += `Deals ${damage} damage.`;
+    }
+    logMsg += ' While in play, +1 wisdom to all 3 creatures.';
+    // For MVP, just log. For real, add wisdom bonus in state.
+    newState = {
+      ...newState,
+      log: [...newState.log, `${knowledge.name}: ${logMsg}`],
+    };
+    return newState;
+  },
+
+  // Aerial 4: Rotation: depending on the rotation deals damage or provides defense
+  aerial4: ({ state, playerIndex, knowledge, rotation }) => {
+    let logMsg = `[Aerial4] Rotation: ${rotation}º. `;
+    let newState = state;
+    let effect = '';
+    const opponentIndex = playerIndex === 0 ? 1 : 0;
+    let damage = 0;
+    if (rotation === 0) { damage = 1; }
+    else if (rotation === 90 || rotation === 180) { damage = 2; }
+    if (damage > 0) {
+      newState.players[opponentIndex].power = Math.max(0, newState.players[opponentIndex].power - damage);
+      newState.players[playerIndex].power += damage;
+      effect = `${damage} damage, +${damage} power to player`;
+      logMsg += `Deals ${damage} damage and gives ${damage} power to player.`;
+    }
+    newState = {
+      ...newState,
+      log: [...newState.log, `${knowledge.name}: ${effect}. ${logMsg}`],
+    };
+    return newState;
+  },
+
+  // Aerial 5: All opponent creatures rotate 90º clockwise (MVP: just log, real: update rotation)
+  aerial5: ({ state, playerIndex, knowledge }) => {
+    let logMsg = `[Aerial5] All opponent creatures rotate 90º clockwise.`;
+    return { ...state, log: [...state.log, `${knowledge.name}: ${logMsg}`] };
+  },
 };
