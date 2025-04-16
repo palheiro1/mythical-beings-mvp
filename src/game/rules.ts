@@ -1,3 +1,4 @@
+import knowledgeData from '../assets/knowledges.json';
 import { GameState, GameAction, PlayerState } from './types';
 
 // Constants
@@ -133,22 +134,24 @@ export function executeKnowledgePhase(state: GameState): GameState {
   newState.players.forEach((player, playerIndex) => {
     player.field.forEach(fieldSlot => {
       if (fieldSlot.knowledge) {
-        // TODO: Implement actual effect logic based on fieldSlot.knowledge.effect
-        // Example: Check effect string and apply damage, healing, etc.
-        // This will likely involve modifying opponent's state or player's state.
         newState.log.push(`Executing effect for ${fieldSlot.knowledge.name} on ${fieldSlot.creatureId} for Player ${playerIndex + 1}`);
       }
     });
   });
 
-  // Rotate and discard knowledge cards
+  // Rotate and discard knowledge cards using maxRotations from knowledges.json
   const updatedPlayers = newState.players.map((player, playerIndex) => {
     const updatedField = player.field.map(fieldSlot => {
       if (fieldSlot.knowledge) {
-        const newRotation = (fieldSlot.knowledge.rotation ?? 0) + 90;
-        if (newRotation >= 360) {
+        // Find maxRotations for this card
+        const cardData = (knowledgeData as any[]).find(k => k.id === fieldSlot.knowledge!.id);
+        const maxRotations = cardData?.maxRotations ?? 4; // Default to 4 if not found
+        const prevRotation = fieldSlot.knowledge.rotation ?? 0;
+        const newRotation = prevRotation + 90;
+        // If completed all cycles, discard
+        if (newRotation / 90 >= maxRotations) {
           newState.log.push(`${fieldSlot.knowledge.name} on ${fieldSlot.creatureId} (Player ${playerIndex + 1}) completed rotation and is discarded.`);
-          return { ...fieldSlot, knowledge: null }; // Discard card
+          return { ...fieldSlot, knowledge: null };
         } else {
           newState.log.push(`${fieldSlot.knowledge.name} on ${fieldSlot.creatureId} (Player ${playerIndex + 1}) rotated to ${newRotation} degrees.`);
           return { ...fieldSlot, knowledge: { ...fieldSlot.knowledge, rotation: newRotation } };
