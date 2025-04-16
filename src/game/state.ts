@@ -1,7 +1,9 @@
 import { GameState, GameAction, PlayerState, Knowledge, Creature } from './types';
 import { isValidAction, executeKnowledgePhase, checkWinCondition } from './rules';
 import { rotateCreature, drawKnowledge, summonKnowledge } from './actions';
+import { applyPassiveAbilities } from './passives'; // Import the new function
 import knowledgeData from '../assets/knowledges.json';
+import { getPlayerState } from './utils'; // Removed unused imports
 
 // Constants
 const INITIAL_POWER = 20;
@@ -58,6 +60,7 @@ export function initializeGame(
     ],
     market: initialMarket,
     knowledgeDeck: remainingDeck,
+    discardPile: [], // Initialize discardPile
     turn: 1,
     currentPlayerIndex: 0,
     phase: 'knowledge', // Start with Knowledge Phase of Turn 1
@@ -83,7 +86,13 @@ export function initializeGame(
 export function gameReducer(state: GameState, action: GameAction): GameState {
   // Handle state setting actions first
   if (action.type === 'SET_GAME_STATE') {
-    return action.payload;
+    // Ensure payload is not null before assigning
+    if (action.payload) {
+        return action.payload;
+    } else {
+        console.warn("Reducer: Received null payload for SET_GAME_STATE, returning current state.");
+        return state; // Or handle differently if null means reset/initial state
+    }
   }
   if (action.type === 'INITIALIZE_GAME') {
     const { gameId, player1Id, player2Id, selectedCreaturesP1, selectedCreaturesP2 } = action.payload;
@@ -99,58 +108,98 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
     };
   }
 
-  let nextState: GameState;
+  let processedState: GameState;
+  let eventData: any = { playerId: action.payload.playerId }; // Basic event data
 
   // Apply the action using action handlers
   switch (action.type) {
     case 'ROTATE_CREATURE':
-      nextState = rotateCreature(state, action.payload);
+      processedState = rotateCreature(state, action.payload);
+      // TODO: Add applyPassiveAbilities call for ROTATE triggers if needed
+      // eventData.creatureId = action.payload.creatureId;
+      // processedState = applyPassiveAbilities(processedState, 'CREATURE_ROTATE', eventData);
       break;
     case 'DRAW_KNOWLEDGE':
-      nextState = drawKnowledge(state, action.payload);
+      // Find the card *before* the state is updated by drawKnowledge
+      const marketCard = state.market.find(k => k.id === action.payload.knowledgeId);
+      processedState = drawKnowledge(state, action.payload);
+      // Apply passives triggered AFTER drawing
+      eventData.knowledgeId = action.payload.knowledgeId;
+      eventData.knowledgeCard = marketCard; // Pass the actual card drawn
+      // Determine which trigger based on whose turn it is vs who drew
+      const drawTrigger = action.payload.playerId === state.players[state.currentPlayerIndex].id ? 'AFTER_PLAYER_DRAW' : 'AFTER_OPPONENT_DRAW';
+      processedState = applyPassiveAbilities(processedState, drawTrigger, eventData);
       break;
     case 'SUMMON_KNOWLEDGE':
-      nextState = summonKnowledge(state, action.payload);
+      const playerSummoning = getPlayerState(state, action.payload.playerId);
+      const knowledgeToSummon = playerSummoning?.hand.find(k => k.id === action.payload.knowledgeId);
+
+      // TODO: Apply passives BEFORE summon validation (e.g., Dudugera, Kappa cost reduction)
+      // processedState = applyPassiveAbilities(state, 'BEFORE_SUMMON_VALIDATION', { ... });
+
+      processedState = summonKnowledge(state, action.payload);
+
+      // Apply passives triggered AFTER summoning
+      eventData.creatureId = action.payload.creatureId;
+      eventData.knowledgeId = action.payload.knowledgeId;
+      eventData.knowledgeCard = knowledgeToSummon; // Pass the actual card summoned
+      eventData.targetCreatureId = action.payload.creatureId; // Creature being summoned onto
+
+      // Determine which trigger based on whose turn it is vs who summoned
+      const summonTrigger = action.payload.playerId === state.players[state.currentPlayerIndex].id ? 'AFTER_PLAYER_SUMMON' : 'AFTER_OPPONENT_SUMMON';
+      processedState = applyPassiveAbilities(processedState, summonTrigger, eventData);
       break;
     case 'END_TURN':
-      const nextPlayerIndex = ((state.currentPlayerIndex + 1) % 2) as 0 | 1; // Cast to 0 | 1
+      const nextPlayerIndex = ((state.currentPlayerIndex + 1) % 2) as 0 | 1;
       const nextTurn = state.currentPlayerIndex === 1 ? state.turn + 1 : state.turn;
-      nextState = {
+      let turnStartState: GameState = {
         ...state,
         currentPlayerIndex: nextPlayerIndex,
         turn: nextTurn,
-        phase: 'knowledge',
+        phase: 'knowledge', // Will transition to knowledge phase
         actionsTakenThisTurn: 0,
         log: [...state.log, `Player ${state.currentPlayerIndex + 1} ended their turn. Turn ${nextTurn} begins.`]
       };
-      nextState = executeKnowledgePhase(nextState);
+
+      // Apply passives triggered at the START of the new player's turn
+      turnStartState = applyPassiveAbilities(turnStartState, 'TURN_START', {
+          playerId: turnStartState.players[nextPlayerIndex].id // ID of the player whose turn is starting
+      });
+
+      // Execute the knowledge phase for the new turn
+      processedState = executeKnowledgePhase(turnStartState);
       break;
     default:
       console.error("Reducer: Unhandled valid action", action);
       return state;
   }
 
+  // TODO: Integrate KNOWLEDGE_LEAVE trigger
+  // This needs to be called from logic that handles knowledge destruction/discarding
+  // e.g., after combat resolution or effects like Pele's passive.
+  // Example call: applyPassiveAbilities(state, 'KNOWLEDGE_LEAVE', { playerId: ownerId, knowledgeCard: leavingCard });
+
   // Increment actions taken if it was an action phase move (not END_TURN)
   if (action.type !== 'END_TURN') {
-      nextState = {
-          ...nextState,
-          actionsTakenThisTurn: state.actionsTakenThisTurn + 1,
+      processedState = {
+          ...processedState,
+          actionsTakenThisTurn: state.actionsTakenThisTurn + 1, // Base on original state's count before action
       };
-      if (nextState.actionsTakenThisTurn >= ACTIONS_PER_TURN) {
-          nextState.log.push(`Player ${state.currentPlayerIndex + 1} has taken ${ACTIONS_PER_TURN} actions.`);
+      if (processedState.actionsTakenThisTurn >= ACTIONS_PER_TURN) {
+          processedState.log.push(`Player ${state.currentPlayerIndex + 1} has taken ${ACTIONS_PER_TURN} actions.`);
       }
   }
 
-  // Check for win condition after every valid action
-  const winner = checkWinCondition(nextState);
+  // Check for win condition after action and passives are processed
+  const winner = checkWinCondition(processedState);
   if (winner) {
-    nextState = {
-      ...nextState,
+    processedState = {
+      ...processedState,
       winner: winner,
       phase: 'end',
-      log: [...nextState.log, `Game Over! Player ${winner === nextState.players[0].id ? 1 : 2} wins!`],
+      log: [...processedState.log, `Game Over! Player ${winner === processedState.players[0].id ? 1 : 2} wins!`],
     };
   }
 
-  return nextState;
+  return processedState;
 }

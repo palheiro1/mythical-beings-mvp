@@ -25,6 +25,7 @@ export type KnowledgeType = 'spell' | 'ally';
 
 export interface Knowledge extends BaseCard {
   type: KnowledgeType;
+  element: CreatureElement; // Add element property
   cost: number; // Wisdom cost to summon
   effect: string; // Description of the effect when played/activated
   // Runtime properties (added during gameplay, not in JSON)
@@ -47,6 +48,7 @@ export interface GameState {
   players: [PlayerState, PlayerState];
   market: Knowledge[]; // 5 face-up knowledge cards
   knowledgeDeck: Knowledge[]; // Remaining knowledge cards
+  discardPile: Knowledge[]; // Cards discarded from hand or market
   turn: number; // Current turn number
   currentPlayerIndex: 0 | 1; // Index of the current player in the players array
   phase: 'knowledge' | 'action' | 'end'; // Current game phase
@@ -63,3 +65,25 @@ export type GameAction =
   | { type: 'END_TURN'; payload: { playerId: string } }
   | { type: 'INITIALIZE_GAME'; payload: { gameId: string; player1Id: string; player2Id: string; selectedCreaturesP1: Creature[]; selectedCreaturesP2: Creature[] } }
   | { type: 'SET_GAME_STATE'; payload: GameState | null }; // Allow null payload for setting/clearing state
+
+// Passive Ability Trigger Types
+export type PassiveTriggerType =
+  | 'TURN_START'
+  | 'AFTER_PLAYER_SUMMON'
+  | 'AFTER_OPPONENT_SUMMON'
+  | 'AFTER_PLAYER_DRAW'
+  | 'AFTER_OPPONENT_DRAW'
+  | 'KNOWLEDGE_LEAVE' // When a knowledge card is discarded/destroyed
+  | 'BEFORE_ACTION_VALIDATION' // For cost modifications etc.
+  | 'DAMAGE_CALCULATION' // For defense modifications etc.
+  | 'BLOCK_VALIDATION'; // For effects like unblockable
+
+// Data passed with passive triggers
+export interface PassiveEventData {
+  playerId: string; // The player ID associated with the primary event (e.g., who summoned, who drew, whose turn started)
+  creatureId?: string; // ID of the creature involved (e.g., the one summoning, the one being targeted)
+  knowledgeId?: string; // ID of the knowledge card involved (e.g., the one summoned, drawn, leaving)
+  knowledgeCard?: Knowledge; // The actual knowledge card object (useful for checking element, cost etc.)
+  targetCreatureId?: string; // ID of the target creature (if applicable)
+  // Add more fields as needed for specific triggers
+}

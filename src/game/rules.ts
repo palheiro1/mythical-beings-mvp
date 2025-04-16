@@ -1,6 +1,7 @@
 import { knowledgeEffects } from './effects';
 import knowledgeData from '../assets/knowledges.json';
-import { GameState, GameAction, PlayerState } from './types';
+import { GameState, GameAction, PlayerState } from './types'; // Removed unused Knowledge import
+import { getCreatureWisdom } from './utils'; // Import helper
 
 // Constants
 const MAX_HAND_SIZE = 5;
@@ -44,10 +45,32 @@ export function isValidAction(state: GameState, action: GameAction): boolean {
     return false; // Can only perform actions during the action phase
   }
 
-  if (state.actionsTakenThisTurn >= ACTIONS_PER_TURN && action.type !== 'END_TURN') {
-    console.error("Invalid action: No actions remaining this turn.");
-    return false; // No actions left, unless it's END_TURN
+  // --- Action Cost Check (with Passive modifications) ---
+  let costsAction = true; // Assume action costs a point by default
+
+  // Check passives that might make SUMMON_KNOWLEDGE free
+  if (action.type === 'SUMMON_KNOWLEDGE') {
+    const summonPayload = payload as { playerId: string; knowledgeId: string; creatureId: string };
+    const knowledgeCard = player.hand.find(k => k.id === summonPayload.knowledgeId);
+    const hasDudugera = player.creatures.some(c => c.id === 'dudugera');
+    const hasKappa = player.creatures.some(c => c.id === 'kappa');
+
+    if (hasDudugera) {
+      costsAction = false;
+      console.log("Passive Check: Dudugera makes summon free.");
+    } else if (hasKappa && knowledgeCard && knowledgeCard.element === 'water') {
+      costsAction = false;
+      console.log("Passive Check: Kappa makes aquatic summon free.");
+    }
   }
+
+  // Now check if the player has enough actions IF the action costs one
+  if (costsAction && state.actionsTakenThisTurn >= ACTIONS_PER_TURN && action.type !== 'END_TURN') {
+    console.error("Invalid action: No actions remaining this turn.");
+    return false; // No actions left, unless it's END_TURN or made free by passive
+  }
+  // --- End Action Cost Check ---
+
 
   switch (action.type) {
     case 'ROTATE_CREATURE': {
@@ -105,6 +128,7 @@ export function isValidAction(state: GameState, action: GameAction): boolean {
         return false; // Not enough wisdom
       }
       console.log(`[SUMMON_KNOWLEDGE] Creature: ${creature.name}, Wisdom: ${wisdom}, Knowledge: ${knowledgeCard.name}, Cost: ${cost}`);
+      // Action cost check is now handled above
       return true;
     }
 
@@ -120,17 +144,6 @@ export function isValidAction(state: GameState, action: GameAction): boolean {
       console.error(`Unknown action type: ${(_exhaustiveCheck as GameAction).type}`);
       return false;
   }
-}
-
-// Helper to get wisdom by rotation
-function getCreatureWisdom(creature: any): number {
-  if (!creature) return 0;
-  const rotation = creature.rotation ?? 0;
-  if (Array.isArray(creature.wisdomCycle)) {
-    const idx = Math.floor((rotation % 360) / 90);
-    return creature.wisdomCycle[idx] ?? 0;
-  }
-  return 0;
 }
 
 /**
