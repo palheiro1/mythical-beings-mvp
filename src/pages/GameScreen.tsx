@@ -85,7 +85,7 @@ const GameScreen: React.FC = () => {
               onDrawKnowledge={handleDrawKnowledge}
             />
           </div>
-          <div className="bg-white/10 backdrop-blur-sm rounded-lg shadow-md overflow-hidden border border-white/20">
+          <div className="bg-white/10 backdrop-blur-sm rounded-lg shadow-md border border-white/20">
             <TableArea
               currentPlayer={currentPlayer}
               opponentPlayer={opponentPlayer}

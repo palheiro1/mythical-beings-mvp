@@ -33,25 +33,29 @@ const TableArea: React.FC<TableAreaProps> = ({
 
     // Helper to render a slot (either a card or an empty placeholder)
     const renderSlot = (cardData: Creature | Knowledge | null, key: string, rotation = 0, onClick?: () => void, isSelected?: boolean) => (
-        // This div now fully controls the size and aspect ratio of the card inside
-        <div key={key} className="w-full h-full flex items-center justify-center p-0.5 aspect-[2/3]"> {/* Enforce aspect ratio */}
-            {cardData ? (
-                <Card
-                    card={cardData}
-                    rotation={rotation}
-                    onClick={onClick}
-                    isSelected={isSelected}
-                />
-            ) : (
-                <div className="w-full h-full border border-dashed border-gray-500/50 rounded-lg"></div>
-            )}
+        // Outer div fills the grid cell and centers content
+        <div key={key} className="w-full h-full flex items-center justify-center p-0.5"> 
+            {/* Inner div enforces aspect ratio and takes full height of the cell */}
+            <div className="h-full aspect-[2/3]">
+                {cardData ? (
+                    <Card
+                        card={cardData}
+                        rotation={rotation}
+                        onClick={onClick}
+                        isSelected={isSelected}
+                    />
+                ) : (
+                    // Make placeholder also respect aspect ratio
+                    <div className="w-full h-full border border-dashed border-gray-500/50 rounded-lg"></div>
+                )}
+            </div>
         </div>
     );
 
 
     return (
-        // The grid layout defines the cells where cards will be placed
-        <div className="grid grid-cols-3 grid-rows-4 gap-1 justify-items-center items-center w-full h-full overflow-hidden bg-black/10 rounded p-1">
+        // Explicitly define rows with minmax(0, 1fr) to allow shrinking
+        <div className="grid grid-cols-3 grid-rows-[repeat(4,minmax(0,1fr))] gap-1 justify-items-center items-center w-full h-full bg-black/10 rounded p-1">
             {/* Row 1: Opponent Beings */}
             {opponentPlayer.creatures.map((creature) => renderSlot(
                 creature, 

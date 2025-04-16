@@ -42,35 +42,16 @@ const Card: React.FC<CardProps> = ({ card, onClick, isSelected, rotation = 0, sh
         className="w-full h-full flex flex-col transition-transform duration-300"
         style={rotationStyle}
       >
-        {/* Image Area - Maintain aspect ratio within its container */}
-        <div className="w-full h-2/3 bg-gray-800 flex items-center justify-center overflow-hidden">
+        {/* Image Area - Apply rounding and overflow here to clip the image */}
+        <div className="w-full h-full bg-gray-800 flex items-center justify-center overflow-hidden rounded-lg"> 
           <img 
             src={imagePath} 
             alt={card.name} 
-            className="object-contain w-full h-full" 
+            className="object-cover w-full h-full" 
             draggable={false} 
           />
         </div>
         
-        {/* Text Area */}
-        {!showBack && (
-          <div className="p-1 h-1/3 flex flex-col justify-between text-[8px] leading-tight bg-gray-700"> 
-            <h3 className="font-bold truncate">{card.name}</h3>
-            {cardType === 'Creature' && (
-              <div className="flex justify-between items-center">
-                <span>W: {(card as Creature).currentWisdom ?? (card as Creature).baseWisdom}</span>
-                <span className="text-xs">
-                  {(card as Creature).element.charAt(0).toUpperCase()}
-                </span>
-              </div>
-            )}
-            {cardType === 'Knowledge' && (
-              <div>
-                <p>Cost: {(card as Knowledge).cost}</p>
-              </div>
-            )}
-          </div>
-        )}
       </div>
     </div>
   );
