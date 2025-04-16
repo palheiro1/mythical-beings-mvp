@@ -152,26 +152,27 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       const summonTrigger = action.payload.playerId === state.players[state.currentPlayerIndex].id ? 'AFTER_PLAYER_SUMMON' : 'AFTER_OPPONENT_SUMMON';
       processedState = applyPassiveAbilities(processedState, summonTrigger, eventData);
       break;
-    case 'END_TURN':
+    case 'END_TURN': {
       const nextPlayerIndex = ((state.currentPlayerIndex + 1) % 2) as 0 | 1;
       const nextTurn = state.currentPlayerIndex === 1 ? state.turn + 1 : state.turn;
       let turnStartState: GameState = {
         ...state,
         currentPlayerIndex: nextPlayerIndex,
         turn: nextTurn,
-        phase: 'knowledge', // Will transition to knowledge phase
+        phase: 'knowledge',
         actionsTakenThisTurn: 0,
         log: [...state.log, `Player ${state.currentPlayerIndex + 1} ended their turn. Turn ${nextTurn} begins.`]
       };
 
       // Apply passives triggered at the START of the new player's turn
       turnStartState = applyPassiveAbilities(turnStartState, 'TURN_START', {
-          playerId: turnStartState.players[nextPlayerIndex].id // ID of the player whose turn is starting
+          playerId: turnStartState.players[nextPlayerIndex].id
       });
 
-      // Execute the knowledge phase for the new turn
+      // Only call executeKnowledgePhase here for the new turn
       processedState = executeKnowledgePhase(turnStartState);
       break;
+    }
     default:
       console.error("Reducer: Unhandled valid action", action);
       return state;

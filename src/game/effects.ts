@@ -24,7 +24,7 @@ export const knowledgeEffects: Record<string, KnowledgeEffectFn> = {
     else if (rotation === 180) damage = 2;
     logMsg += `Base damage: ${damage}. `;
     // Check if opponent's creature (same slot) has no knowledge
-    const opponentFieldSlot = state.players[opponentIndex].field[fieldSlotIndex];
+    const opponentFieldSlot = state.players[opponentIndex].field[fieldSlotIndex] || { knowledge: null };
     if (!opponentFieldSlot.knowledge) {
       damage += 1;
       logMsg += `Opponent's creature has no knowledge: +1 damage. `;
@@ -113,6 +113,20 @@ export const knowledgeEffects: Record<string, KnowledgeEffectFn> = {
   // Aquatic 1: Rotates knowledge (no combat)
   aquatic1: ({ state, knowledge }) => {
     state.log.push(`${knowledge.name}: Rotates a knowledge.`);
+    return state;
+  },
+
+  // Aquatic 2: Provide defense based on rotation
+  aquatic2: ({ state, playerIndex, knowledge, rotation, buffers }) => {
+    let defense = 0;
+    if (rotation === 0) defense = 1;
+    else if (rotation === 90) defense = 0;
+    else if (rotation === 180) defense = 1;
+    else if (rotation === 270) defense = 2;
+    if (defense > 0) {
+      buffers.defense[playerIndex] += defense;
+      state.log.push(`${knowledge.name} provides ${defense} defense to Player ${playerIndex + 1}.`);
+    }
     return state;
   },
 

@@ -122,7 +122,8 @@ export function isValidAction(state: GameState, action: GameAction): boolean {
           return false;
       }
 
-      const wisdom = getCreatureWisdom(creature);
+      // Use currentWisdom if set, else compute
+      const wisdom = creature.currentWisdom ?? getCreatureWisdom(creature);
       const cost = knowledgeCard.cost;
       if (wisdom < cost) {
         console.error(`Invalid action: Insufficient Wisdom. Creature wisdom: ${wisdom}, Knowledge cost: ${cost}`);
@@ -212,7 +213,7 @@ export function executeKnowledgePhase(state: GameState): GameState {
       newState = { ...newState, players: updatedPlayers as [PlayerState, PlayerState] };
       newState.log.push(`Combat: Player ${playerIndex + 1} takes ${net} damage (raw ${totalDamage} - defense ${totalDefense}).`);
     } else {
-      newState.log.push(`Combat: Player ${playerIndex + 1} absorbs all damage (raw ${totalDamage}, defense ${totalDefense}).`);
+      newState.log.push(`Combat: Player ${playerIndex + 1} absorbs all damage (raw ${totalDamage} - defense ${totalDefense}).`);
     }
   });
 
