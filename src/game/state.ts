@@ -134,10 +134,13 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       const playerSummoning = getPlayerState(state, action.payload.playerId);
       const knowledgeToSummon = playerSummoning?.hand.find(k => k.id === action.payload.knowledgeId);
 
-      // TODO: Apply passives BEFORE summon validation (e.g., Dudugera, Kappa cost reduction)
-      // processedState = applyPassiveAbilities(state, 'BEFORE_SUMMON_VALIDATION', { ... });
-
-      processedState = summonKnowledge(state, action.payload);
+      // Apply passives BEFORE summon validation (e.g., Dudugera, Kappa cost reduction)
+      eventData.creatureId = action.payload.creatureId;
+      eventData.knowledgeId = action.payload.knowledgeId;
+      eventData.knowledgeCard = knowledgeToSummon;
+      const stateBeforeSummon = applyPassiveAbilities(state, 'BEFORE_SUMMON_VALIDATION', eventData);
+      
+      processedState = summonKnowledge(stateBeforeSummon, action.payload);
 
       // Apply passives triggered AFTER summoning
       eventData.creatureId = action.payload.creatureId;

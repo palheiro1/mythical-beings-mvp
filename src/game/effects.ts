@@ -1,4 +1,5 @@
-import { GameState, Knowledge } from './types';
+/* eslint-disable @typescript-eslint/no-unused-vars */
+import { GameState, Knowledge, CombatBuffers } from './types';
 
 // Effect function signature
 export type KnowledgeEffectFn = (params: {
@@ -8,12 +9,13 @@ export type KnowledgeEffectFn = (params: {
   knowledge: Knowledge;
   rotation: number;
   isFinalRotation: boolean;
+  buffers: CombatBuffers;
 }) => GameState;
 
 // Effect function map
 export const knowledgeEffects: Record<string, KnowledgeEffectFn> = {
   // Terrestrial 1: Damage based on rotation, +1 if opponent's creature has no knowledge
-  terrestrial1: ({ state, playerIndex, fieldSlotIndex, knowledge, rotation, isFinalRotation }) => {
+  terrestrial1: ({ state, playerIndex, fieldSlotIndex, knowledge, rotation, buffers }) => {
     const opponentIndex = playerIndex === 0 ? 1 : 0;
     let damage = 0;
     let logMsg = `[Terrestrial1] Rotation: ${rotation}º. `;
@@ -29,21 +31,13 @@ export const knowledgeEffects: Record<string, KnowledgeEffectFn> = {
     }
     logMsg += `Total damage: ${damage}.`;
     if (damage > 0) {
-      const newPlayers = [...state.players];
-      newPlayers[opponentIndex] = {
-        ...newPlayers[opponentIndex],
-        power: Math.max(0, newPlayers[opponentIndex].power - damage),
-      };
-      return {
-        ...state,
-        players: newPlayers as [typeof state.players[0], typeof state.players[1]],
-        log: [...state.log, `${knowledge.name} deals ${damage} damage to Player ${opponentIndex + 1}. ${logMsg}`],
-      };
+      buffers.damage[opponentIndex] += damage;
+      return { ...state, log: [...state.log, `${knowledge.name} deals ${damage} damage to Player ${opponentIndex + 1}. ${logMsg}`] };
     }
     return { ...state, log: [...state.log, `${knowledge.name} causes no damage. ${logMsg}`] };
   },
 
-  // Terrestrial 2: Look at opponent's hand and discard 1 card (auto-discard random for now)
+  // Terrestrial 2: Look at opponent's hand and discard 1 card
   terrestrial2: ({ state, playerIndex, knowledge }) => {
     const opponentIndex = playerIndex === 0 ? 1 : 0;
     const opponentHand = state.players[opponentIndex].hand;
@@ -71,39 +65,20 @@ export const knowledgeEffects: Record<string, KnowledgeEffectFn> = {
   },
 
   // Terrestrial 3: Damage equal to summoning creature's wisdom
-  terrestrial3: ({ state, playerIndex, fieldSlotIndex, knowledge }) => {
+  terrestrial3: ({ state, playerIndex, fieldSlotIndex, knowledge, buffers }) => {
     const opponentIndex = playerIndex === 0 ? 1 : 0;
-    const player = state.players[playerIndex];
-    const creatureId = player.field[fieldSlotIndex].creatureId;
-    const creature = player.creatures.find(c => c.id === creatureId);
-    // Wisdom by rotation using wisdomCycle
-    let wisdom = 0;
-    if (creature) {
-      const rotation = creature.rotation ?? 0;
-      if (Array.isArray(creature.wisdomCycle)) {
-        const idx = Math.floor((rotation % 360) / 90);
-        wisdom = creature.wisdomCycle[idx] ?? 0;
-      } else {
-        wisdom = creature.baseWisdom ?? 0;
-      }
-    }
-    let logMsg = `[Terrestrial3] Creature: ${creature?.name || 'unknown'}, Wisdom: ${wisdom}.`;
+    // compute wisdom based on creature rotation
+    const creatureId = state.players[playerIndex].field[fieldSlotIndex].creatureId;
+    const creature = state.players[playerIndex].creatures.find(c => c.id === creatureId);
+    const wisdom = creature?.currentWisdom ?? creature?.baseWisdom ?? 0;
     if (wisdom > 0) {
-      const newPlayers = [...state.players];
-      newPlayers[opponentIndex] = {
-        ...newPlayers[opponentIndex],
-        power: Math.max(0, newPlayers[opponentIndex].power - wisdom),
-      };
-      return {
-        ...state,
-        players: newPlayers as [typeof state.players[0], typeof state.players[1]],
-        log: [...state.log, `${knowledge.name} deals ${wisdom} damage to Player ${opponentIndex + 1}. ${logMsg}`],
-      };
+      buffers.damage[opponentIndex] += wisdom;
+      state.log.push(`${knowledge.name} deals ${wisdom} damage to Player ${opponentIndex + 1}.`);
     }
-    return { ...state, log: [...state.log, `${knowledge.name} causes no damage. ${logMsg}`] };
+    return state;
   },
 
-  // Terrestrial 4: Eliminate opponent's knowledge cards with cost <= 2
+  // Terrestrial 4: Eliminate opponent's knowledge cards
   terrestrial4: ({ state, playerIndex, knowledge }) => {
     const opponentIndex = playerIndex === 0 ? 1 : 0;
     const newOpponentField = state.players[opponentIndex].field.map(slot => {
@@ -126,222 +101,86 @@ export const knowledgeEffects: Record<string, KnowledgeEffectFn> = {
     };
   },
 
-  // Terrestrial 5: Damage per rotation, on leave effect (handled in rules.ts)
-  terrestrial5: ({ state, playerIndex, fieldSlotIndex, knowledge, rotation, isFinalRotation }) => {
+  // Terrestrial 5: Damage per rotation
+  terrestrial5: ({ state, playerIndex, knowledge, rotation, buffers }) => {
     const opponentIndex = playerIndex === 0 ? 1 : 0;
-    let damage = 0;
-    if (rotation === 0) damage = 1;
-    else if (rotation === 90) damage = 1;
-    else if (rotation === 180) damage = 2;
-    else if (rotation === 270) damage = 3;
-    let newState = state;
-    if (damage > 0) {
-      const newPlayers = [...state.players];
-      newPlayers[opponentIndex] = {
-        ...newPlayers[opponentIndex],
-        power: Math.max(0, newPlayers[opponentIndex].power - damage),
-      };
-      newState = {
-        ...state,
-        players: newPlayers as [typeof state.players[0], typeof state.players[1]],
-        log: [...state.log, `${knowledge.name} deals ${damage} damage to Player ${opponentIndex + 1}`],
-      };
-    }
-    // The on-leave effect (eliminate 1 opponent knowledge) should be handled in rules.ts when the card is discarded
-    return newState;
+    const damage = [1,1,2,3][(rotation/90)%4] || 0;
+    if (damage > 0) buffers.damage[opponentIndex] += damage;
+    state.log.push(`${knowledge.name} deals ${damage} damage to Player ${opponentIndex + 1}.`);
+    return state;
   },
 
-  // Aquatic 1: Rotates 1 Knowledge 90º counterclockwise (MVP: just log, real: needs user selection)
-  aquatic1: ({ state, playerIndex, fieldSlotIndex, knowledge }) => {
-    let logMsg = `[Aquatic1] Rotates a selected knowledge 90º counterclockwise.`;
-    return { ...state, log: [...state.log, `${knowledge.name}: ${logMsg}`] };
+  // Aquatic 1: Rotates knowledge (no combat)
+  aquatic1: ({ state, knowledge }) => {
+    state.log.push(`${knowledge.name}: Rotates a knowledge.`);
+    return state;
   },
 
-  // Aquatic 2: While rotating, provides defense or deals damage depending on rotation
-  aquatic2: ({ state, playerIndex, fieldSlotIndex, knowledge, rotation }) => {
-    let logMsg = `[Aquatic2] Rotation: ${rotation}º. `;
-    let newState = state;
-    let effect = '';
+  // Aquatic 3: Prevent opponent summon (no combat)
+  aquatic3: ({ state, knowledge }) => {
+    state.log.push(`${knowledge.name}: Opponent cannot summon knowledge.`);
+    return state;
+  },
+
+  // Aquatic 4: Rotational damage/defense
+  aquatic4: ({ state, playerIndex, knowledge, rotation, buffers }) => {
     const opponentIndex = playerIndex === 0 ? 1 : 0;
-    let defense = 0;
-    if (rotation === 0 || rotation === 270) {
-      effect = '+1 defense';
-      defense = 1;
-      logMsg += 'Provides 1 defense this turn.';
-    } else if (rotation === 90 || rotation === 180) {
-      effect = '1 damage';
-      newState.players[opponentIndex].power = Math.max(0, newState.players[opponentIndex].power - 1);
-      logMsg += 'Deals 1 damage.';
-    }
-    // Bonus defense if opponent's creature has no knowledge
-    const opponentFieldSlot = state.players[opponentIndex].field[fieldSlotIndex];
-    if ((rotation === 0 || rotation === 270) && !opponentFieldSlot.knowledge) {
-      defense += 1;
-      logMsg += ' Opponent has no knowledge: +1 defense.';
-    }
-    if (defense > 0) {
-      effect += ` (+${defense} defense)`;
-    }
-    newState = {
-      ...newState,
-      log: [...newState.log, `${knowledge.name}: ${effect}. ${logMsg}`],
-    };
-    return newState;
+    let dmg=0, def=0;
+    if (rotation===0) dmg=1;
+    else if (rotation===90) def=2;
+    else if (rotation===180) dmg=1;
+    else if (rotation===270) dmg=2;
+    if (dmg) buffers.damage[opponentIndex]+=dmg;
+    if (def) buffers.defense[playerIndex]+=def;
+    state.log.push(`${knowledge.name}: deals ${dmg} dmg, +${def} def.`);
+    return state;
   },
 
-  // Aquatic 3: While in play, the opposite creature cannot summon knowledge
-  aquatic3: ({ state, playerIndex, fieldSlotIndex, knowledge }) => {
-    // For MVP, just log. For real, add a flag to state or check in validation.
-    let logMsg = `[Aquatic3] While in play, the opposite creature cannot summon knowledge.`;
-    return { ...state, log: [...state.log, `${knowledge.name}: ${logMsg}`] };
+  // Aquatic 5: Rotational damage/defense
+  aquatic5: ({ state, knowledge, rotation, buffers }) => {
+    const opponentIndex = 0; // placeholder if needed
+    const isDamage = rotation === 90 || rotation === 270;
+    if (isDamage) buffers.damage[opponentIndex] += 2;
+    else buffers.defense[0] += 2;
+    state.log.push(`${knowledge.name}: ${isDamage ? 'Deals 2 damage' : 'Provides 2 defense'}.`);
+    return state;
   },
 
-  // Aquatic 4: Rotation: depending on the rotation deals damage or provides defense
-  aquatic4: ({ state, playerIndex, fieldSlotIndex, knowledge, rotation }) => {
-    let logMsg = `[Aquatic4] Rotation: ${rotation}º. `;
-    let newState = state;
-    let effect = '';
+  // Aerial 1: Rotational damage
+  aerial1: ({ state, playerIndex, knowledge, rotation, buffers }) => {
     const opponentIndex = playerIndex === 0 ? 1 : 0;
-    let damage = 0;
-    if (rotation === 0) {
-      effect = '1 damage';
-      newState.players[opponentIndex].power = Math.max(0, newState.players[opponentIndex].power - 1);
-      logMsg += 'Deals 1 damage.';
-    } else if (rotation === 90) {
-      effect = '+2 defense';
-      logMsg += 'Provides 2 defense this turn.';
-    } else if (rotation === 180) {
-      effect = '1 damage';
-      newState.players[opponentIndex].power = Math.max(0, newState.players[opponentIndex].power - 1);
-      logMsg += 'Deals 1 damage.';
-    } else if (rotation === 270) {
-      effect = '2 damage';
-      newState.players[opponentIndex].power = Math.max(0, newState.players[opponentIndex].power - 2);
-      logMsg += 'Deals 2 damage.';
-    }
-    newState = {
-      ...newState,
-      log: [...newState.log, `${knowledge.name}: ${effect}. ${logMsg}`],
-    };
-    // On summon: handled in rules.ts (draw 1 card from market)
-    return newState;
+    const dmg = (rotation===0||rotation===90)?1:0;
+    if (dmg) buffers.damage[opponentIndex]+=dmg;
+    state.log.push(`${knowledge.name}: Deals ${dmg} damage.`);
+    return state;
   },
 
-  // Aquatic 5: Rotation: depending on the rotation deals damage or provides defense
-  aquatic5: ({ state, playerIndex, fieldSlotIndex, knowledge, rotation, isFinalRotation }) => {
-    let logMsg = `[Aquatic5] Rotation: ${rotation}º. `;
-    let newState = state;
-    let effect = '';
+  // Aerial 3: Rotational damage
+  aerial3: ({ state, playerIndex, knowledge, rotation, buffers }) => {
     const opponentIndex = playerIndex === 0 ? 1 : 0;
-    if (rotation === 0 || rotation === 180) {
-      effect = '+2 defense';
-      logMsg += 'Provides 2 defense this turn.';
-      // For MVP, just log. For real defense, add a defense flag to the player/creature.
-    } else if (rotation === 90 || rotation === 270) {
-      effect = '2 damage';
-      const newPlayers = [...state.players];
-      newPlayers[opponentIndex] = {
-        ...newPlayers[opponentIndex],
-        power: Math.max(0, newPlayers[opponentIndex].power - 2),
-      };
-      newState = {
-        ...state,
-        players: newPlayers as [typeof state.players[0], typeof state.players[1]],
-      };
-      logMsg += 'Deals 2 damage to opponent.';
-    }
-    newState = {
-      ...newState,
-      log: [...newState.log, `${knowledge.name}: ${effect}. ${logMsg}`],
-    };
-    // On leave: handled in rules.ts (grant +1 action)
-    return newState;
+    const dmg = (rotation===0||rotation===90)?1:(rotation===180?2:0);
+    if (dmg) buffers.damage[opponentIndex]+=dmg;
+    state.log.push(`${knowledge.name}: Deals ${dmg} damage.`);
+    return state;
   },
 
-  // Aerial 1: 1,1 damage; on summon, +1 power
-  aerial1: ({ state, playerIndex, knowledge, rotation }) => {
-    let logMsg = `[Aerial1] Rotation: ${rotation}º. `;
-    let newState = state;
+  // Aerial 4: Rotational damage & self-power
+  aerial4: ({ state, playerIndex, knowledge, rotation, buffers }) => {
     const opponentIndex = playerIndex === 0 ? 1 : 0;
-    let damage = 0;
-    if (rotation === 0 || rotation === 90) { damage = 1; }
-    if (damage > 0) {
-      newState.players[opponentIndex].power = Math.max(0, newState.players[opponentIndex].power - damage);
-      logMsg += `Deals ${damage} damage.`;
-    }
-    // On summon: handled in rules.ts (+1 power)
-    newState = {
-      ...newState,
-      log: [...newState.log, `${knowledge.name}: ${logMsg}`],
-    };
-    return newState;
-  },
-
-  // Aerial 2: Provides power points to player: 1,2,3
-  aerial2: ({ state, playerIndex, knowledge, rotation }) => {
-    let logMsg = `[Aerial2] Rotation: ${rotation}º. `;
-    let newState = state;
-    let power = 0;
-    if (rotation === 0) { power = 1; }
-    else if (rotation === 90) { power = 2; }
-    else if (rotation === 180) { power = 3; }
-    if (power > 0) {
-      newState.players[playerIndex].power += power;
-      logMsg += `Gains ${power} power.`;
-    }
-    newState = {
-      ...newState,
-      log: [...newState.log, `${knowledge.name}: ${logMsg}`],
-    };
-    return newState;
-  },
-
-  // Aerial 3: 1,1,2 damage; while in play, +1 wisdom to all 3 creatures
-  aerial3: ({ state, playerIndex, knowledge, rotation }) => {
-    let logMsg = `[Aerial3] Rotation: ${rotation}º. `;
-    let newState = state;
-    const opponentIndex = playerIndex === 0 ? 1 : 0;
-    let damage = 0;
-    if (rotation === 0 || rotation === 90) { damage = 1; }
-    else if (rotation === 180) { damage = 2; }
-    if (damage > 0) {
-      newState.players[opponentIndex].power = Math.max(0, newState.players[opponentIndex].power - damage);
-      logMsg += `Deals ${damage} damage.`;
-    }
-    logMsg += ' While in play, +1 wisdom to all 3 creatures.';
-    // For MVP, just log. For real, add wisdom bonus in state.
-    newState = {
-      ...newState,
-      log: [...newState.log, `${knowledge.name}: ${logMsg}`],
-    };
-    return newState;
-  },
-
-  // Aerial 4: Rotation: depending on the rotation deals damage or provides defense
-  aerial4: ({ state, playerIndex, knowledge, rotation }) => {
-    let logMsg = `[Aerial4] Rotation: ${rotation}º. `;
-    let newState = state;
-    let effect = '';
-    const opponentIndex = playerIndex === 0 ? 1 : 0;
-    let damage = 0;
-    if (rotation === 0) { damage = 1; }
-    else if (rotation === 90 || rotation === 180) { damage = 2; }
-    if (damage > 0) {
-      newState.players[opponentIndex].power = Math.max(0, newState.players[opponentIndex].power - damage);
-      newState.players[playerIndex].power += damage;
-      effect = `${damage} damage, +${damage} power to player`;
-      logMsg += `Deals ${damage} damage and gives ${damage} power to player.`;
-    }
-    newState = {
-      ...newState,
-      log: [...newState.log, `${knowledge.name}: ${effect}. ${logMsg}`],
-    };
-    return newState;
+    const dmg = (rotation===0?1:(rotation===90||rotation===180?2:0));
+    if (dmg) buffers.damage[opponentIndex]+=dmg;
+    state.players[playerIndex].power+=dmg;
+    state.log.push(`${knowledge.name}: Deals ${dmg} damage & grants ${dmg} power.`);
+    return state;
   },
 
   // Aerial 5: All opponent creatures rotate 90º clockwise (MVP: just log, real: update rotation)
-  aerial5: ({ state, playerIndex, knowledge }) => {
-    let logMsg = `[Aerial5] All opponent creatures rotate 90º clockwise.`;
-    return { ...state, log: [...state.log, `${knowledge.name}: ${logMsg}`] };
+  aerial5: ({ state, knowledge, rotation, buffers }) => {
+    const opponentIndex = 0; // placeholder if needed
+    const isDamage = rotation === 90 || rotation === 270;
+    if (isDamage) buffers.damage[opponentIndex] += 2;
+    else buffers.defense[0] += 2;
+    state.log.push(`${knowledge.name}: ${isDamage ? 'Deals 2 damage' : 'Provides 2 defense'}.`);
+    return state;
   },
 };

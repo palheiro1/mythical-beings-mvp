@@ -1,7 +1,8 @@
 import { knowledgeEffects } from './effects';
 import knowledgeData from '../assets/knowledges.json';
-import { GameState, GameAction, PlayerState } from './types'; // Removed unused Knowledge import
+import { GameState, GameAction, PlayerState, CombatBuffers } from './types'; // Removed unused Knowledge import
 import { getCreatureWisdom } from './utils'; // Import helper
+import { applyPassiveAbilities } from './passives'; // Import for passive abilities
 
 // Constants
 const MAX_HAND_SIZE = 5;
@@ -149,20 +150,22 @@ export function isValidAction(state: GameState, action: GameAction): boolean {
 /**
  * Executes the Knowledge Phase logic.
  * - Executes effects of summoned knowledge cards.
- * - Rotates knowledge cards.
- * - Discards completed knowledge cards.
+ * - Resolves damage/defense events centrally.
+ * - Rotates and discards knowledge cards.
  * @param state The current game state.
  * @returns The updated game state after the Knowledge Phase.
  */
 export function executeKnowledgePhase(state: GameState): GameState {
+  // Initialize combat buffers
+  const buffers: CombatBuffers = { damage: [0, 0], defense: [0, 0] };
+
   let newState = { ...state, log: [...state.log, `Turn ${state.turn}: Knowledge Phase started.`] };
 
-  // Execute effects for each knowledge card
+  // Execute effects and collect combat events
   newState.players.forEach((player, playerIndex) => {
     player.field.forEach((fieldSlot, fieldSlotIndex) => {
       if (fieldSlot.knowledge) {
         const rotation = fieldSlot.knowledge.rotation ?? 0;
-        // Find maxRotations for this card
         const cardData = (knowledgeData as any[]).find(k => k.id === fieldSlot.knowledge!.id);
         const maxRotations = cardData?.maxRotations ?? 4;
         const isFinalRotation = (rotation + 90) / 90 >= maxRotations;
@@ -175,12 +178,42 @@ export function executeKnowledgePhase(state: GameState): GameState {
             knowledge: fieldSlot.knowledge,
             rotation,
             isFinalRotation,
+            buffers
           });
         } else {
           newState.log.push(`Executing effect for ${fieldSlot.knowledge.name} on ${fieldSlot.creatureId} for Player ${playerIndex + 1}`);
         }
       }
     });
+  });
+
+  // --- Integrate Trepulcahue passive (bonus defense) ---
+  newState.players.forEach((player, playerIndex) => {
+    const trepulcahueCount = player.creatures.filter(c => c.id === 'trepulcahue').length;
+    if (trepulcahueCount > 0) {
+      const knowledgeCount = player.field.filter(slot => slot.knowledge).length;
+      const bonusDefense = trepulcahueCount * knowledgeCount;
+      if (bonusDefense > 0) {
+        buffers.defense[playerIndex] += bonusDefense;
+        newState.log.push(`Trepulcahue passive: +${bonusDefense} defense for Player ${playerIndex + 1}.`);
+      }
+    }
+  });
+
+  // Resolve combat: apply damage minus defense for each player
+  newState.players.forEach((_, playerIndex) => {
+    const totalDamage = buffers.damage[playerIndex];
+    const totalDefense = buffers.defense[playerIndex];
+    const net = Math.max(0, totalDamage - totalDefense);
+    if (net > 0) {
+      const updatedPlayers = [...newState.players];
+      const target = { ...updatedPlayers[playerIndex], power: Math.max(0, updatedPlayers[playerIndex].power - net) };
+      updatedPlayers[playerIndex] = target;
+      newState = { ...newState, players: updatedPlayers as [PlayerState, PlayerState] };
+      newState.log.push(`Combat: Player ${playerIndex + 1} takes ${net} damage (raw ${totalDamage} - defense ${totalDefense}).`);
+    } else {
+      newState.log.push(`Combat: Player ${playerIndex + 1} absorbs all damage (raw ${totalDamage}, defense ${totalDefense}).`);
+    }
   });
 
   // Rotate and discard knowledge cards using maxRotations from knowledges.json
@@ -194,7 +227,19 @@ export function executeKnowledgePhase(state: GameState): GameState {
         const newRotation = prevRotation + 90;
         // If completed all cycles, discard
         if (newRotation / 90 >= maxRotations) {
-          newState.log.push(`${fieldSlot.knowledge.name} on ${fieldSlot.creatureId} (Player ${playerIndex + 1}) completed rotation and is discarded.`);
+          const discardedKnowledge = { ...fieldSlot.knowledge }; // Make a copy of the knowledge card to be discarded
+          newState.log.push(`${discardedKnowledge.name} on ${fieldSlot.creatureId} (Player ${playerIndex + 1}) completed rotation and is discarded.`);
+          
+          // Add the discarded card to the discard pile
+          newState.discardPile.push(discardedKnowledge);
+          
+          // Trigger KNOWLEDGE_LEAVE passive abilities
+          newState = applyPassiveAbilities(newState, 'KNOWLEDGE_LEAVE', {
+            playerId: player.id,
+            knowledgeCard: discardedKnowledge,
+            creatureId: fieldSlot.creatureId
+          });
+          
           return { ...fieldSlot, knowledge: null };
         } else {
           newState.log.push(`${fieldSlot.knowledge.name} on ${fieldSlot.creatureId} (Player ${playerIndex + 1}) rotated to ${newRotation} degrees.`);

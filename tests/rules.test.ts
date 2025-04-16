@@ -189,3 +189,39 @@ describe('executeKnowledgePhase', () => {
     // This test requires effect implementation in executeKnowledgePhase
   });
 });
+
+describe('executeKnowledgePhase - damage/defense resolution', () => {
+  it('accumulates multiple effects and applies net damage correctly', () => {
+    // Setup: Player 0 has terrestrial1 (2 damage) and aquatic2 (+1 defense) at rotation 0
+    baseGameState.players[0].field = [
+      { creatureId: 'c1', knowledge: { ...mockKnowledge1, id: 'terrestrial1', name: 'Terr1', rotation: 0 } },
+      { creatureId: 'c2', knowledge: { ...mockKnowledge2, id: 'aquatic2', name: 'Aqua2', rotation: 0 } },
+    ];
+    baseGameState.players[1].field = [];
+    baseGameState.players[0].power = 20;
+    baseGameState.players[1].power = 20;
+    baseGameState.phase = 'knowledge';
+
+    const newState = executeKnowledgePhase(baseGameState);
+    // Terrestrial1 at rot 0 deals 1 +1 bonus =2 damage; aquatic2 at rot0 gives +1 defense; net = 1
+    expect(newState.players[1].power).toBe(19);
+    expect(newState.log).toContain('Combat: Player 2 takes 1 damage (raw 2 - defense 1).');
+  });
+
+  it('does not apply negative net damage when defense exceeds damage', () => {
+    // Setup: Player 0 has aquatic2 twice (+1 defense each), no damage effects
+    baseGameState.players[0].field = [
+      { creatureId: 'c1', knowledge: { ...mockKnowledge1, id: 'aquatic2', name: 'Aqua2', rotation: 0 } },
+      { creatureId: 'c2', knowledge: { ...mockKnowledge2, id: 'aquatic2', name: 'Aqua2', rotation: 0 } },
+    ];
+    baseGameState.players[1].field = [];
+    baseGameState.players[0].power = 20;
+    baseGameState.players[1].power = 20;
+    baseGameState.phase = 'knowledge';
+
+    const newState = executeKnowledgePhase(baseGameState);
+    // Two aquatic2 each give +1 defense => total defense=2, no damage => net=0
+    expect(newState.players[1].power).toBe(20);
+    expect(newState.log).toContain('Combat: Player 2 absorbs all damage (raw 0, defense 2).');
+  });
+});

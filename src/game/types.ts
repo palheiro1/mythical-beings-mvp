@@ -1,3 +1,8 @@
+export interface CombatBuffers {
+  damage: number[];
+  defense: number[];
+}
+
 // Base Card types
 export interface BaseCard {
   id: string; // Unique identifier (e.g., filename without extension)
