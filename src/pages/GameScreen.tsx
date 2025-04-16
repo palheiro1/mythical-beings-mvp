@@ -48,19 +48,23 @@ const GameScreen: React.FC = () => {
 
 
   return (
-    <div className="fixed inset-0 w-screen h-screen overflow-hidden bg-gradient-to-br from-[#1a1a2e] via-[#16213e] to-[#0f3460] flex flex-col">
-      <TopBar
-        // ...props...
-        gameId={gameId}
-        turn={state.turn}
-        phase={state.phase}
-        currentPlayerPower={currentPlayer.power}
-        opponentPlayerPower={opponentPlayer.power}
-        actionsRemaining={actionsRemaining}
-        marketCount={state.market.length}
-        selectedKnowledgeId={selectedKnowledgeId}
-        onCancelSelection={cancelSelection}
-      />
+    <div className="fixed inset-0 w-screen h-screen overflow-hidden bg-gray-100 grid grid-rows-[auto_1fr_auto] gap-6">
+      {/* TopBar with clean white background and border for separation */}
+      <div>
+        <div className="bg-white border-b-4 border-blue-200 shadow-lg">
+          <TopBar
+            gameId={gameId}
+            turn={state.turn}
+            phase={state.phase}
+            currentPlayerPower={currentPlayer.power}
+            opponentPlayerPower={opponentPlayer.power}
+            actionsRemaining={actionsRemaining}
+            marketCount={state.market.length}
+            selectedKnowledgeId={selectedKnowledgeId}
+            onCancelSelection={cancelSelection}
+          />
+        </div>
+      </div>
 
       {/* Display action messages/prompts as an overlay */}
       {actionMessage && (
@@ -69,43 +73,54 @@ const GameScreen: React.FC = () => {
         </div>
       )}
 
-      {/* Grid container takes remaining space */}
-      <div className="flex-grow w-full grid grid-cols-[1fr_3fr_1fr] gap-1 overflow-hidden p-1">
-        {/* ... MarketColumn, TableArea, HandsColumn ... */}
-        <MarketColumn
-            marketCards={state.market}
-            deckCount={state.knowledgeDeck.length}
-            isMyTurn={isMyTurn}
-            phase={state.phase}
-            onDrawKnowledge={handleDrawKnowledge}
-          />
-          <TableArea
-            currentPlayer={currentPlayer}
-            opponentPlayer={opponentPlayer}
-            isMyTurn={isMyTurn}
-            phase={state.phase}
-            selectedKnowledgeId={selectedKnowledgeId}
-            onCreatureClickForSummon={handleCreatureClickForSummon}
-            onRotateCreature={handleRotateCreature}
-          />
-          <HandsColumn
-            currentPlayerHand={currentPlayer.hand}
-            opponentPlayerHand={opponentPlayer.hand}
-            isMyTurn={isMyTurn}
-            phase={state.phase}
-            selectedKnowledgeId={selectedKnowledgeId}
-            onHandCardClick={handleHandCardClick}
-          />
+      {/* Main game area with gradient background */}
+      <div className="px-4 bg-gradient-to-br from-[#1a1a2e] via-[#16213e] to-[#0f3460] rounded-lg mx-4">
+        <div className="grid grid-cols-[1fr_2fr_3fr] gap-4 h-full py-4">
+          <div className="bg-white/10 backdrop-blur-sm rounded-lg shadow-md overflow-hidden border border-white/20">
+            <MarketColumn
+              marketCards={state.market}
+              deckCount={state.knowledgeDeck.length}
+              isMyTurn={isMyTurn}
+              phase={state.phase}
+              onDrawKnowledge={handleDrawKnowledge}
+            />
+          </div>
+          <div className="bg-white/10 backdrop-blur-sm rounded-lg shadow-md overflow-hidden border border-white/20">
+            <TableArea
+              currentPlayer={currentPlayer}
+              opponentPlayer={opponentPlayer}
+              isMyTurn={isMyTurn}
+              phase={state.phase}
+              selectedKnowledgeId={selectedKnowledgeId}
+              onCreatureClickForSummon={handleCreatureClickForSummon}
+              onRotateCreature={handleRotateCreature}
+            />
+          </div>
+          <div className="bg-white/10 backdrop-blur-sm rounded-lg shadow-md overflow-hidden border border-white/20">
+            <HandsColumn
+              currentPlayerHand={currentPlayer.hand}
+              opponentPlayerHand={opponentPlayer.hand}
+              isMyTurn={isMyTurn}
+              phase={state.phase}
+              selectedKnowledgeId={selectedKnowledgeId}
+              onHandCardClick={handleHandCardClick}
+            />
+          </div>
+        </div>
       </div>
 
-      <ActionBar
-        // ...props...
-        isMyTurn={isMyTurn}
-        phase={state.phase}
-        winner={state.winner}
-        actionsTaken={state.actionsTakenThisTurn}
-        onEndTurn={handleEndTurn}
-      />
+      {/* ActionBar with clean white background and border for separation */}
+      <div>
+        <div className="bg-white border-t-4 border-blue-200 shadow-lg">
+          <ActionBar
+            isMyTurn={isMyTurn}
+            phase={state.phase}
+            winner={state.winner}
+            actionsTaken={state.actionsTakenThisTurn}
+            onEndTurn={handleEndTurn}
+          />
+        </div>
+      </div>
     </div>
   );
 };

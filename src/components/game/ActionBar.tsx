@@ -32,29 +32,27 @@ const ActionBar: React.FC<ActionBarProps> = ({
 
 
     return (
-        <div className="flex-shrink-0 flex justify-between items-center px-6 py-3 bg-gradient-to-t from-black/90 via-black/70 to-black/80 text-gray-100 shadow-lg">
+        <div className="flex-shrink-0 flex justify-between items-center px-8 py-12 bg-white text-gray-900 text-xl font-semibold shadow-lg">
             {/* Left Side: Actions */}
-            <div className="flex gap-3">
+            <div className="flex gap-6">
                 {isMyTurn && phase === 'action' && winner === null && (
                     <button
                         onClick={onEndTurn}
                         disabled={!canEndTurn}
-                        className={`px-4 py-2 rounded-lg text-sm font-bold transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5
+                        className={`px-8 py-4 rounded-lg text-2xl font-bold transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5
                             ${!canEndTurn ?
-                                'bg-gray-700 text-gray-500 cursor-not-allowed' :
-                                'bg-red-700 hover:bg-red-600 text-white'}`}
+                                'bg-gray-200 text-gray-400 cursor-not-allowed' :
+                                'bg-red-600 hover:bg-red-500 text-white'}`}
                         title={!canEndTurn ? "Need to take 2 actions first!" : "End your turn"}
                     >
                         End Turn {!canEndTurn && `(${actionsTaken}/2)`}
                     </button>
                 )}
                 {!isMyTurn && winner === null && (
-                    <span className="text-sm text-gray-500 italic">Waiting for opponent...</span>
+                    <span className="text-xl text-gray-400 italic">Waiting for opponent...</span>
                  )}
             </div>
-
-            {/* Right Side: Turn Indicator */}
-            <div className={`text-sm ${turnIndicatorClass}`}>
+            <div className={`text-3xl ${turnIndicatorClass.replace('text-lg', 'text-3xl')}`}>
                 {turnIndicatorText}
             </div>
         </div>

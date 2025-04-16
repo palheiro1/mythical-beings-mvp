@@ -18,19 +18,29 @@ const CreatureZone: React.FC<CreatureZoneProps> = ({ creatures, field, onCreatur
         const attachedKnowledge = fieldSlot?.knowledge;
 
         return (
-          // Adjusted margin for wrapping
-          <div key={creature.id} className="flex flex-col items-center m-1 md:mx-2">
-            {/* Creature Card */} 
-            <Card
-              card={creature}
-              onClick={onCreatureClick ? () => onCreatureClick(creature.id) : undefined}
-            />
-            {/* Attached Knowledge Card (if any) */}
-            {/* Adjusted height placeholder */}
-            <div className="mt-1 h-20 md:h-24"> {/* Placeholder for spacing */} 
+          // Using relative positioning for card stacking
+          <div key={creature.id} className="relative m-2 md:m-3">
+            {/* Card container with necessary space for rotated cards */}
+            <div className="w-24 md:w-28 h-32 md:h-40 relative">
+              {/* Creature Card */} 
+              <div className="absolute inset-0 z-10">
+                <Card
+                  card={creature}
+                  onClick={onCreatureClick ? () => onCreatureClick(creature.id) : undefined}
+                />
+              </div>
+              
+              {/* Attached Knowledge Card (if any) - positioned on top with rotation */}
               {attachedKnowledge && (
-                // Render smaller card for attached knowledge potentially
-                <Card card={attachedKnowledge} />
+                <div className={`
+                  absolute inset-0 transform translate-y-6 md:translate-y-8
+                  ${attachedKnowledge.rotation ? 'z-30' : 'z-20'} // Increase z-index when rotated
+                `}>
+                  <Card 
+                    card={attachedKnowledge}
+                    rotation={attachedKnowledge.rotation || 0}
+                  />
+                </div>
               )}
             </div>
           </div>

@@ -53,7 +53,11 @@ const TableArea: React.FC<TableAreaProps> = ({
         // The grid layout defines the cells where cards will be placed
         <div className="grid grid-cols-3 grid-rows-4 gap-1 justify-items-center items-center w-full h-full overflow-hidden bg-black/10 rounded p-1">
             {/* Row 1: Opponent Beings */}
-            {opponentPlayer.creatures.map((creature) => renderSlot(creature, creature.id, 180))}
+            {opponentPlayer.creatures.map((creature) => renderSlot(
+                creature, 
+                creature.id, 
+                (creature.rotation ?? 0) + 180 // Add 180 to flip opponent cards, but respect their rotation
+            ))}
 
             {/* Row 2: Opponent Spells */}
             {opponentPlayer.field.map((slot, idx) => renderSlot(slot.knowledge, slot.creatureId + idx, 180))}
@@ -65,7 +69,7 @@ const TableArea: React.FC<TableAreaProps> = ({
             {currentPlayer.creatures.map((creature) => renderSlot(
                 creature,
                 creature.id,
-                0,
+                creature.rotation ?? 0, // Use the creature's rotation value
                 () => handlePlayerCreatureClick(creature.id),
                 selectedKnowledgeId !== null // Highlight all player creatures when selecting target
             ))}

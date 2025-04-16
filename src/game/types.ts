@@ -15,6 +15,7 @@ export interface Creature extends BaseCard {
   // Runtime properties (added during gameplay, not in JSON)
   currentWisdom?: number;
   summonedKnowledgeId?: string | null; // ID of knowledge card attached
+  rotation?: number; // Rotation angle in degrees (0, 90, 180, 270)
 }
 
 // Knowledge specific types

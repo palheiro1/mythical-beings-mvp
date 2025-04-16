@@ -18,7 +18,19 @@ export function rotateCreature(state: GameState, payload: { playerId: string; cr
   if (creatureIndex === -1) return state; // Should not happen if validated
 
   const creature = { ...player.creatures[creatureIndex] };
+  
+  // Check if the creature has already been rotated 3 times (270 degrees)
+  const currentRotation = creature.rotation ?? 0;
+  if (currentRotation >= 270) {
+    // Already at max rotation, don't rotate further
+    return state;
+  }
+  
+  // Increase wisdom
   creature.currentWisdom = (creature.currentWisdom ?? creature.baseWisdom) + 1;
+  
+  // Update rotation by 90 degrees counterclockwise (add 90 degrees)
+  creature.rotation = currentRotation + 90;
 
   player.creatures = [
     ...player.creatures.slice(0, creatureIndex),
