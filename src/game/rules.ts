@@ -15,146 +15,65 @@ const ACTIONS_PER_TURN = 2;
  * @returns True if the action is valid, false otherwise.
  */
 export function isValidAction(state: GameState, action: GameAction): boolean {
-  // Handle actions that don't have a standard player payload first
-  if (action.type === 'SET_GAME_STATE' || action.type === 'INITIALIZE_GAME') {
-    return true; // These are usually system actions, considered valid by default here
-  }
-
-  // All other actions should have a playerId in the payload
-  const { payload } = action;
-  // Use a type guard to safely check for playerId
-  if (!payload || typeof payload !== 'object' || !('playerId' in payload)) {
-      console.error("Invalid action: Action payload missing playerId or is not an object.");
-      return false; // Should not happen with defined types, but good safeguard
-  }
-  const playerId = (payload as { playerId: string }).playerId; // Safe access after check
-
-  const playerIndex = state.players.findIndex(p => p.id === playerId);
-  if (playerIndex === -1) {
-      console.error("Invalid action: Player not found in game state.");
-      return false; // Player ID from action not found in game
-  }
-
-  if (playerIndex !== state.currentPlayerIndex) {
-    console.error("Invalid action: Not the player's turn.");
-    return false; // Not the player's turn
-  }
+  const playerIndex = state.players.findIndex(p => p.id === action.payload.playerId);
+  if (playerIndex === -1) return false; // Player not found
 
   const player = state.players[playerIndex];
-  if (state.phase !== 'action') {
-    console.error("Invalid action: Not in action phase.");
-    return false; // Can only perform actions during the action phase
-  }
+  const opponentIndex = playerIndex === 0 ? 1 : 0;
+  const opponent = state.players[opponentIndex];
 
-  // --- Action Cost Check (with Passive modifications) ---
-  let costsAction = true; // Assume action costs a point by default
-
-  // Check passives that might make SUMMON_KNOWLEDGE free
-  if (action.type === 'SUMMON_KNOWLEDGE') {
-    const summonPayload = payload as { playerId: string; knowledgeId: string; creatureId: string };
-    const knowledgeCard = player.hand.find(k => k.id === summonPayload.knowledgeId);
-    const hasDudugera = player.creatures.some(c => c.id === 'dudugera');
-    const hasKappa = player.creatures.some(c => c.id === 'kappa');
-
-    if (hasDudugera) {
-      costsAction = false;
-      console.log("Passive Check: Dudugera makes summon free.");
-    } else if (hasKappa && knowledgeCard && knowledgeCard.element === 'water') {
-      costsAction = false;
-      console.log("Passive Check: Kappa makes aquatic summon free.");
-    }
-  }
-
-  // Now check if the player has enough actions IF the action costs one
-  // END_TURN is always valid action-wise if it's the player's turn in the action phase.
-  if (action.type !== 'END_TURN' && costsAction && state.actionsTakenThisTurn >= ACTIONS_PER_TURN) {
-    console.error("Invalid action: No actions remaining this turn.");
-    return false; // No actions left for a costly action
-  }
-  // --- End Action Cost Check ---
-
+  // Basic checks: Correct player, correct phase, actions available
+  if (state.currentPlayerIndex !== playerIndex) return false; // Not player's turn
+  if (state.phase !== 'action') return false; // Not action phase
+  if (state.actionsTakenThisTurn >= ACTIONS_PER_TURN && action.type !== 'END_TURN') return false; // No actions left (unless ending turn)
 
   switch (action.type) {
     case 'ROTATE_CREATURE': {
-      // Type assertion needed because payload structure varies
-      const rotatePayload = payload as { playerId: string; creatureId: string };
-      const creatureExists = player.creatures.some(c => c.id === rotatePayload.creatureId);
-      if (!creatureExists) {
-        console.error("Invalid action: Creature not found.");
+      // Check if creature exists and has knowledge attached
+      const fieldSlot = player.field.find(f => f.creatureId === action.payload.creatureId);
+      return !!fieldSlot?.knowledge;
+    }
+    case 'DRAW_KNOWLEDGE': {
+      // Check if hand is full and card is in market
+      if (player.hand.length >= MAX_HAND_SIZE) return false;
+      return state.market.some(k => k.id === action.payload.knowledgeId);
+    }
+    case 'SUMMON_KNOWLEDGE': {
+      // Check if card is in hand
+      const knowledgeCard = player.hand.find(k => k.id === action.payload.knowledgeId);
+      if (!knowledgeCard) return false;
+
+      // Check if creature exists and has no knowledge attached
+      const creature = player.creatures.find(c => c.id === action.payload.creatureId);
+      const fieldSlot = player.field.find(f => f.creatureId === action.payload.creatureId);
+      if (!creature || fieldSlot?.knowledge) return false;
+
+      // Check if opponent has aquatic3 active
+      const opponentHasAquatic3 = opponent.field.some(slot => slot.knowledge?.id === 'aquatic3');
+      if (opponentHasAquatic3) {
+        console.log("Validation failed: Opponent has aquatic3 active, cannot summon knowledge.");
         return false;
       }
-      return true;
+
+      // Check wisdom cost (consider passives like Kappa/Dudugera)
+      let effectiveCost = knowledgeCard.cost;
+      // Kappa Passive: Aquatic knowledge costs 1 less (min 1)
+      if (knowledgeCard.element === 'water' && player.creatures.some(c => c.id === 'kappa')) {
+        effectiveCost = Math.max(1, effectiveCost - 1);
+      }
+      // Dudugera Passive: Terrestrial knowledge costs 1 less (min 1)
+      if (knowledgeCard.element === 'earth' && player.creatures.some(c => c.id === 'dudugera')) {
+        effectiveCost = Math.max(1, effectiveCost - 1);
+      }
+
+      const creatureWisdom = creature.currentWisdom ?? creature.baseWisdom;
+      return creatureWisdom >= effectiveCost;
     }
-
-    case 'DRAW_KNOWLEDGE': {
-      // Type assertion
-      const drawPayload = payload as { playerId: string; knowledgeId: string };
-      if (player.hand.length >= MAX_HAND_SIZE) {
-        console.error("Invalid action: Hand is full.");
-        return false; // Hand is full
-      }
-      const cardInMarket = state.market.some(k => k.id === drawPayload.knowledgeId);
-      if (!cardInMarket) {
-        console.error("Invalid action: Card not in market.");
-        return false; // Card not available in the market
-      }
-      return true;
-    }
-
-    case 'SUMMON_KNOWLEDGE': {
-      // Type assertion
-      const summonPayload = payload as { playerId: string; knowledgeId: string; creatureId: string };
-      const { knowledgeId, creatureId } = summonPayload;
-      const knowledgeCard = player.hand.find(k => k.id === knowledgeId);
-      const creature = player.creatures.find(c => c.id === creatureId);
-
-      // --- Check for Summon Prevention Passives (e.g., Aquatic3) ---
-      const opponentIndex = playerIndex === 0 ? 1 : 0;
-      const opponent = state.players[opponentIndex];
-      const opponentHasAquatic3Active = opponent.field.some(slot => slot.knowledge?.id === 'aquatic3'); // Assuming 'aquatic3' is the ID
-      if (opponentHasAquatic3Active) {
-          console.error("Invalid action: Opponent's Aquatic 3 prevents summoning.");
-          return false;
-      }
-      // --- End Summon Prevention Check ---
-
-      if (!knowledgeCard) {
-        console.error("Invalid action: Knowledge card not in hand.");
-        return false; // Card not in hand
-      }
-      if (!creature) {
-        console.error("Invalid action: Target creature not found.");
-        return false; // Creature not found
-      }
-
-      const creatureField = player.field.find(f => f.creatureId === creatureId);
-      if (creatureField?.knowledge) {
-          console.error("Invalid action: Creature already has knowledge attached.");
-          return false;
-      }
-
-      // Use currentWisdom if set, else compute
-      const wisdom = creature.currentWisdom ?? getCreatureWisdom(creature);
-      const cost = knowledgeCard.cost;
-      if (wisdom < cost) {
-        console.error(`Invalid action: Insufficient Wisdom. Creature wisdom: ${wisdom}, Knowledge cost: ${cost}`);
-        return false; // Not enough wisdom
-      }
-      console.log(`[SUMMON_KNOWLEDGE] Creature: ${creature.name}, Wisdom: ${wisdom}, Knowledge: ${knowledgeCard.name}, Cost: ${cost}`);
-      // Action cost check is now handled above, including free summons
-      return true;
-    }
-
     case 'END_TURN':
-      // Can always end turn if it's your turn and in action phase
+      // Always valid during action phase
       return true;
-
+    // Add cases for other actions if any
     default:
-      // This should ideally be caught by TypeScript if all action types are handled
-      // but provides a fallback.
-      // We use an exhaustive check pattern here.
-      const _exhaustiveCheck: never = action;
-      console.error(`Unknown action type: ${(_exhaustiveCheck as GameAction).type}`);
       return false;
   }
 }
