@@ -128,25 +128,44 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       eventData.knowledgeCard = marketCard; // Pass the actual card drawn
       // Determine which trigger based on whose turn it is vs who drew
       const drawTrigger = action.payload.playerId === state.players[state.currentPlayerIndex].id ? 'AFTER_PLAYER_DRAW' : 'AFTER_OPPONENT_DRAW';
+      // Ensure eventData includes the player who performed the action
+      eventData.playerId = action.payload.playerId; 
       processedState = applyPassiveAbilities(processedState, drawTrigger, eventData);
       break;
     case 'SUMMON_KNOWLEDGE':
       const playerSummoning = getPlayerState(state, action.payload.playerId);
       const knowledgeToSummon = playerSummoning?.hand.find(k => k.id === action.payload.knowledgeId);
 
-      // Apply passives BEFORE summon validation (e.g., Dudugera, Kappa cost reduction)
+      // Apply passives BEFORE summon validation (e.g., Dudugera, Kappa cost modification/prevention)
+      // Note: Prevention logic might be better suited for isValidAction
       eventData.creatureId = action.payload.creatureId;
       eventData.knowledgeId = action.payload.knowledgeId;
       eventData.knowledgeCard = knowledgeToSummon;
-      const stateBeforeSummon = applyPassiveAbilities(state, 'BEFORE_SUMMON_VALIDATION', eventData);
+      // Align trigger name with types.ts
+      const stateBeforeSummon = applyPassiveAbilities(state, 'BEFORE_ACTION_VALIDATION', eventData); 
       
+      // Re-check validity *after* potential cost modifications from passives
+      // This assumes applyPassiveAbilities might change costs affecting validity.
+      // If BEFORE_ACTION_VALIDATION is purely for prevention (like Dudugera),
+      // the check might belong in isValidAction instead.
+      // For now, proceed with summonKnowledge using the potentially modified state.
+      if (!isValidAction(stateBeforeSummon, action)) {
+          console.error("Reducer: Action became invalid after BEFORE_ACTION_VALIDATION passive check", action);
+          return {
+              ...state, // Return original state if action becomes invalid
+              log: [...state.log, `Invalid action after passive check: ${action.type}`]
+          };
+      }
+
       processedState = summonKnowledge(stateBeforeSummon, action.payload);
 
       // Apply passives triggered AFTER summoning
       eventData.creatureId = action.payload.creatureId;
       eventData.knowledgeId = action.payload.knowledgeId;
       eventData.knowledgeCard = knowledgeToSummon; // Pass the actual card summoned
-      eventData.targetCreatureId = action.payload.creatureId; // Creature being summoned onto
+      // Ensure eventData includes the player who performed the action
+      eventData.playerId = action.payload.playerId; 
+      // eventData.targetCreatureId = action.payload.creatureId; // Redundant? creatureId is already there
 
       // Determine which trigger based on whose turn it is vs who summoned
       const summonTrigger = action.payload.playerId === state.players[state.currentPlayerIndex].id ? 'AFTER_PLAYER_SUMMON' : 'AFTER_OPPONENT_SUMMON';
@@ -178,9 +197,10 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       return state;
   }
 
-  // TODO: Integrate KNOWLEDGE_LEAVE trigger
+  // TODO: Integrate KNOWLEDGE_LEAVE trigger more comprehensively.
   // This needs to be called from logic that handles knowledge destruction/discarding
-  // e.g., after combat resolution or effects like Pele's passive.
+  // e.g., after combat resolution or effects like Pele's passive, or specific card effects.
+  // Currently handled in rules.ts (rotation) and passives.ts (Pele).
   // Example call: applyPassiveAbilities(state, 'KNOWLEDGE_LEAVE', { playerId: ownerId, knowledgeCard: leavingCard });
 
   // Increment actions taken if it was an action phase move (not END_TURN)

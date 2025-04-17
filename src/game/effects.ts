@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { GameState, Knowledge, CombatBuffers } from './types';
+import { applyPassiveAbilities } from './passives'; // Import applyPassiveAbilities
 
 // Effect function signature
 export type KnowledgeEffectFn = (params: {
@@ -81,23 +82,40 @@ export const knowledgeEffects: Record<string, KnowledgeEffectFn> = {
   // Terrestrial 4: Eliminate opponent's knowledge cards
   terrestrial4: ({ state, playerIndex, knowledge }) => {
     const opponentIndex = playerIndex === 0 ? 1 : 0;
-    const newOpponentField = state.players[opponentIndex].field.map(slot => {
+    const opponentId = state.players[opponentIndex].id;
+    let newState = JSON.parse(JSON.stringify(state)) as GameState; // Deep copy for mutation
+    const eliminatedNames: string[] = [];
+
+    const updatedField = newState.players[opponentIndex].field.map(slot => {
       if (slot.knowledge && slot.knowledge.cost <= 2) {
-        return { ...slot, knowledge: null };
+        const leavingKnowledge = { ...slot.knowledge }; // Copy before nulling
+        eliminatedNames.push(leavingKnowledge.name);
+        
+        // Trigger KNOWLEDGE_LEAVE for the eliminated card
+        newState = applyPassiveAbilities(newState, 'KNOWLEDGE_LEAVE', {
+          playerId: opponentId, // The owner of the knowledge
+          knowledgeCard: leavingKnowledge,
+          creatureId: slot.creatureId
+        });
+
+        return { ...slot, knowledge: null }; // Remove the knowledge
       }
       return slot;
     });
-    const eliminated = state.players[opponentIndex].field.filter(slot => slot.knowledge && slot.knowledge.cost <= 2).map(slot => slot.knowledge?.name).filter(Boolean);
-    let logMsg = `[Terrestrial4] Eliminated: ${eliminated.join(', ') || 'none'}.`;
-    const newPlayers = [...state.players];
-    newPlayers[opponentIndex] = {
-      ...newPlayers[opponentIndex],
-      field: newOpponentField,
+
+    let logMsg = `[Terrestrial4] Eliminated: ${eliminatedNames.join(', ') || 'none'}.`;
+    
+    // Update the player state within the potentially modified newState
+    const finalPlayers = [...newState.players];
+    finalPlayers[opponentIndex] = {
+      ...finalPlayers[opponentIndex],
+      field: updatedField,
     };
+
     return {
-      ...state,
-      players: newPlayers as [typeof state.players[0], typeof state.players[1]],
-      log: [...state.log, `${knowledge.name} eliminates opponent's knowledge cards: ${eliminated.join(', ') || 'none'}. ${logMsg}`],
+      ...newState, // Return the state potentially modified by passives
+      players: finalPlayers as [typeof newState.players[0], typeof newState.players[1]],
+      log: [...newState.log, `${knowledge.name} eliminates opponent's knowledge cards: ${eliminatedNames.join(', ') || 'none'}. ${logMsg}`],
     };
   },
 

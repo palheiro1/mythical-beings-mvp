@@ -286,12 +286,14 @@ export function applyPassiveAbilities(
       // --- Passives requiring integration elsewhere ---
 
       // TODO: Dudugera/Kappa - Affect action cost. Needs check during 'summonKnowledge' validation or 'BEFORE_ACTION_VALIDATION' trigger.
-      // if ((creature.id === 'dudugera' || (creature.id === 'kappa' && summonedKnowledge?.element === 'water')) && trigger === 'BEFORE_ACTION_VALIDATION'...)
+      // Note: Cost reduction logic is currently handled in rules.ts isValidAction for MVP simplicity.
 
       // TODO: Trepulcahue - "+1 Defense to Knowledges". Static effect. Apply during damage calculation or modify base stats.
+      // Note: Logic is currently handled directly in rules.ts executeKnowledgePhase for MVP simplicity, rather than using a DAMAGE_CALCULATION trigger here.
       // if (creature.id === 'trepulcahue' && trigger === 'DAMAGE_CALCULATION'...)
 
       // TODO: Zhar Ptitsa - "Aeric Knowledges cannot be blocked". Static effect. Apply during block declaration/validation phase.
+      // Note: Blocking is not implemented in MVP.
 
 
       // TODO: Implement other passives based on creatures.json and triggers

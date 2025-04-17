@@ -66,9 +66,10 @@ export function isValidAction(state: GameState, action: GameAction): boolean {
   }
 
   // Now check if the player has enough actions IF the action costs one
-  if (costsAction && state.actionsTakenThisTurn >= ACTIONS_PER_TURN && action.type !== 'END_TURN') {
+  // END_TURN is always valid action-wise if it's the player's turn in the action phase.
+  if (action.type !== 'END_TURN' && costsAction && state.actionsTakenThisTurn >= ACTIONS_PER_TURN) {
     console.error("Invalid action: No actions remaining this turn.");
-    return false; // No actions left, unless it's END_TURN or made free by passive
+    return false; // No actions left for a costly action
   }
   // --- End Action Cost Check ---
 
@@ -107,6 +108,16 @@ export function isValidAction(state: GameState, action: GameAction): boolean {
       const knowledgeCard = player.hand.find(k => k.id === knowledgeId);
       const creature = player.creatures.find(c => c.id === creatureId);
 
+      // --- Check for Summon Prevention Passives (e.g., Aquatic3) ---
+      const opponentIndex = playerIndex === 0 ? 1 : 0;
+      const opponent = state.players[opponentIndex];
+      const opponentHasAquatic3Active = opponent.field.some(slot => slot.knowledge?.id === 'aquatic3'); // Assuming 'aquatic3' is the ID
+      if (opponentHasAquatic3Active) {
+          console.error("Invalid action: Opponent's Aquatic 3 prevents summoning.");
+          return false;
+      }
+      // --- End Summon Prevention Check ---
+
       if (!knowledgeCard) {
         console.error("Invalid action: Knowledge card not in hand.");
         return false; // Card not in hand
@@ -130,7 +141,7 @@ export function isValidAction(state: GameState, action: GameAction): boolean {
         return false; // Not enough wisdom
       }
       console.log(`[SUMMON_KNOWLEDGE] Creature: ${creature.name}, Wisdom: ${wisdom}, Knowledge: ${knowledgeCard.name}, Cost: ${cost}`);
-      // Action cost check is now handled above
+      // Action cost check is now handled above, including free summons
       return true;
     }
 
