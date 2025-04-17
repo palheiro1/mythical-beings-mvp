@@ -71,7 +71,7 @@ export function drawKnowledge(state: GameState, payload: { playerId: string; kno
   // Remove card from market and refill from deck
   let updatedMarket = state.market.filter(k => k.id !== knowledgeId);
   let updatedDeck = [...state.knowledgeDeck];
-
+  // Refill the market if the deck has cards
   if (updatedDeck.length > 0) {
     const nextCard = updatedDeck.shift(); // Take the top card
     if (nextCard) {

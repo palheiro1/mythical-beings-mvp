@@ -13,12 +13,11 @@ const MARKET_SIZE = 5;
 
 // Helper function to shuffle an array (Fisher-Yates algorithm)
 function shuffleArray<T>(array: T[]): T[] {
-  const shuffled = [...array];
-  for (let i = shuffled.length - 1; i > 0; i--) {
+  for (let i = array.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
-    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    [array[i], array[j]] = [array[j], array[i]];
   }
-  return shuffled;
+  return array;
 }
 
 /**
@@ -28,7 +27,7 @@ function shuffleArray<T>(array: T[]): T[] {
  * @param player2Id ID for player 2.
  * @param selectedCreaturesP1 Creatures selected by player 1.
  * @param selectedCreaturesP2 Creatures selected by player 2.
- * @returns The initial GameState object.
+ * @returns The initial game state.
  */
 export function initializeGame(
   gameId: string,
@@ -37,43 +36,63 @@ export function initializeGame(
   selectedCreaturesP1: Creature[],
   selectedCreaturesP2: Creature[]
 ): GameState {
-  const allKnowledgeCards: Knowledge[] = knowledgeData as Knowledge[];
-  const shuffledDeck = shuffleArray(allKnowledgeCards);
+  // Create the full knowledge deck based on cost distribution
+  const fullDeck: Knowledge[] = [];
+  // Cast to any[] first to bypass stricter type checking during iteration, then assume elements match Knowledge
+  (knowledgeData as any[]).forEach((card: Knowledge) => { 
+    let copies = 0;
+    switch (card.cost) {
+      case 1:
+      case 2:
+        copies = 4;
+        break;
+      case 3:
+        copies = 3;
+        break;
+      case 4:
+      case 5:
+        copies = 2;
+        break;
+      default:
+        copies = 1; // Default for any other cost (shouldn't happen with current data)
+    }
+    for (let i = 0; i < copies; i++) {
+      // Create a unique instance for each copy if needed, or just push the reference
+      // For MVP, pushing references is fine as Knowledge cards don't hold unique state yet
+      // Ensure all required properties, including 'element', are present if copying
+      fullDeck.push({ ...card }); 
+    }
+  });
 
+  const shuffledDeck = shuffleArray(fullDeck);
   const initialMarket = shuffledDeck.slice(0, MARKET_SIZE);
   const remainingDeck = shuffledDeck.slice(MARKET_SIZE);
 
-  const createInitialPlayerState = (id: string, creatures: Creature[]): PlayerState => ({
+  const initialPlayerState = (id: string, creatures: Creature[]): PlayerState => ({
     id,
     power: INITIAL_POWER,
-    creatures: creatures.map(c => ({ ...c, currentWisdom: c.baseWisdom })), // Initialize currentWisdom
+    creatures: creatures.map(c => ({ ...c, currentWisdom: c.baseWisdom, rotation: 0 })), // Initialize wisdom and rotation
     hand: [],
     field: creatures.map(c => ({ creatureId: c.id, knowledge: null })), // Initialize field slots
-    selectedCreatures: creatures, // Keep track of original selection if needed
+    selectedCreatures: creatures, // Keep track of originally selected creatures if needed
   });
 
-  const initialState: GameState = {
+  return {
     gameId,
     players: [
-      createInitialPlayerState(player1Id, selectedCreaturesP1),
-      createInitialPlayerState(player2Id, selectedCreaturesP2),
+      initialPlayerState(player1Id, selectedCreaturesP1),
+      initialPlayerState(player2Id, selectedCreaturesP2),
     ],
-    market: initialMarket,
     knowledgeDeck: remainingDeck,
-    discardPile: [], // Initialize discardPile
-    turn: 1,
+    market: initialMarket,
+    discardPile: [],
     currentPlayerIndex: 0,
-    phase: 'knowledge', // Start with Knowledge Phase of Turn 1
+    turn: 1,
+    phase: 'knowledge', // Start with knowledge phase for turn 1 setup/rotation
     actionsTakenThisTurn: 0,
     winner: null,
     log: [`Game ${gameId} initialized. Player 1 starts.`],
   };
-
-  // Immediately execute the first Knowledge Phase
-  const stateAfterFirstKnowledgePhase = executeKnowledgePhase(initialState);
-  stateAfterFirstKnowledgePhase.log.push(`Turn 1: Action Phase started for Player 1.`);
-
-  return stateAfterFirstKnowledgePhase;
 }
 
 /**
@@ -84,22 +103,16 @@ export function initializeGame(
  * @returns The new game state.
  */
 export function gameReducer(state: GameState, action: GameAction): GameState {
-  // Handle state setting actions first
-  if (action.type === 'SET_GAME_STATE') {
-    // Ensure payload is not null before assigning
-    if (action.payload) {
-        return action.payload;
-    } else {
-        console.warn("Reducer: Received null payload for SET_GAME_STATE, returning current state.");
-        return state; // Or handle differently if null means reset/initial state
-    }
-  }
-  if (action.type === 'INITIALIZE_GAME') {
-    const { gameId, player1Id, player2Id, selectedCreaturesP1, selectedCreaturesP2 } = action.payload;
-    return initializeGame(gameId, player1Id, player2Id, selectedCreaturesP1, selectedCreaturesP2);
+  // Basic validation: Check if it's the player's turn and if they have actions remaining
+  // Note: isValidAction handles more complex rules, this is a preliminary check.
+  const playerIndex = state.players.findIndex(p => p.id === action.payload.playerId);
+  if (playerIndex !== state.currentPlayerIndex && action.type !== 'SET_GAME_STATE' && action.type !== 'INITIALIZE_GAME') {
+      // Allow actions from non-current player only if specifically handled (e.g., opponent effects)
+      // For now, log a warning but proceed, relying on isValidAction for strict enforcement.
+      console.warn(`Action ${action.type} received from non-current player ${action.payload.playerId}`);
   }
 
-  // Validate the action
+  // Validate the action based on game rules BEFORE processing
   if (!isValidAction(state, action)) {
     console.error("Reducer: Invalid action received", action);
     return {
@@ -165,15 +178,14 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       eventData.knowledgeCard = knowledgeToSummon; // Pass the actual card summoned
       // Ensure eventData includes the player who performed the action
       eventData.playerId = action.payload.playerId; 
-      // eventData.targetCreatureId = action.payload.creatureId; // Redundant? creatureId is already there
-
-      // Determine which trigger based on whose turn it is vs who summoned
       const summonTrigger = action.payload.playerId === state.players[state.currentPlayerIndex].id ? 'AFTER_PLAYER_SUMMON' : 'AFTER_OPPONENT_SUMMON';
       processedState = applyPassiveAbilities(processedState, summonTrigger, eventData);
       break;
     case 'END_TURN': {
-      const nextPlayerIndex = ((state.currentPlayerIndex + 1) % 2) as 0 | 1;
+      const nextPlayerIndex = (state.currentPlayerIndex + 1) % 2;
       const nextTurn = state.currentPlayerIndex === 1 ? state.turn + 1 : state.turn;
+
+      // Prepare state for the start of the next player's turn
       let turnStartState: GameState = {
         ...state,
         currentPlayerIndex: nextPlayerIndex,
@@ -197,33 +209,23 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       return state;
   }
 
-  // TODO: Integrate KNOWLEDGE_LEAVE trigger more comprehensively.
-  // This needs to be called from logic that handles knowledge destruction/discarding
-  // e.g., after combat resolution or effects like Pele's passive, or specific card effects.
-  // Currently handled in rules.ts (rotation) and passives.ts (Pele).
-  // Example call: applyPassiveAbilities(state, 'KNOWLEDGE_LEAVE', { playerId: ownerId, knowledgeCard: leavingCard });
-
-  // Increment actions taken if it was an action phase move (not END_TURN)
-  if (action.type !== 'END_TURN') {
-      processedState = {
-          ...processedState,
-          actionsTakenThisTurn: state.actionsTakenThisTurn + 1, // Base on original state's count before action
-      };
-      if (processedState.actionsTakenThisTurn >= ACTIONS_PER_TURN) {
-          processedState.log.push(`Player ${state.currentPlayerIndex + 1} has taken ${ACTIONS_PER_TURN} actions.`);
-      }
+  // Increment actions taken if it was an action phase action (not END_TURN)
+  let finalState = processedState;
+  if (state.phase === 'action' && action.type !== 'END_TURN') {
+    const actionsTaken = state.actionsTakenThisTurn + 1;
+    finalState = { ...finalState, actionsTakenThisTurn: actionsTaken };
+    if (actionsTaken >= ACTIONS_PER_TURN) {
+        finalState.log = [...finalState.log, `Player ${playerIndex + 1} has taken ${actionsTaken} actions.`];
+    }
   }
 
-  // Check for win condition after action and passives are processed
-  const winner = checkWinCondition(processedState);
+
+  // Check for win condition after every action is fully processed
+  const winner = checkWinCondition(finalState);
   if (winner) {
-    processedState = {
-      ...processedState,
-      winner: winner,
-      phase: 'end',
-      log: [...processedState.log, `Game Over! Player ${winner === processedState.players[0].id ? 1 : 2} wins!`],
-    };
+    finalState = { ...finalState, winner, phase: 'end' };
+    finalState.log = [...finalState.log, `Game Over! Player ${winner === finalState.players[0].id ? 1 : 2} wins!`];
   }
 
-  return processedState;
+  return finalState;
 }
