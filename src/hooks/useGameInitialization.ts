@@ -57,7 +57,7 @@ export function useGameInitialization(
     let subscription: any = null;
 
     const handleRealtimeUpdate = (newState: GameState) => {
-      console.log('Realtime update received:', newState);
+      console.log('[handleRealtimeUpdate] Received state phase:', newState.phase);
       dispatch({ type: 'SET_GAME_STATE', payload: newState });
     };
 
@@ -65,7 +65,7 @@ export function useGameInitialization(
       try {
         let gameState = await getGameState(gameId);
         if (!gameState) {
-          console.log(`Game state for ${gameId} not found. Attempting to initialize...`);
+          console.log(`[setupGame] Game state for ${gameId} not found. Initializing...`);
           const mockCreaturesP1: Creature[] = creatureData.slice(0, 3) as Creature[];
           const mockCreaturesP2: Creature[] = creatureData.slice(3, 6) as Creature[];
           const player1Id = 'p1'; // Mock player ID
@@ -75,14 +75,18 @@ export function useGameInitialization(
               throw new Error("Not enough mock creature data available for initialization.");
           }
 
+          // This state has already run executeKnowledgePhase
           const initializedState = initializeGame(gameId, player1Id, player2Id, mockCreaturesP1, mockCreaturesP2);
           const createdGame = await createGame(gameId, player1Id, player2Id, initializedState);
 
-          if (!createdGame || !createdGame.state) {
+          if (!createdGame) { // Check if game creation itself failed
             throw new Error("Failed to create game in Supabase.");
           }
-          gameState = createdGame.state as GameState;
-          console.log(`Game ${gameId} created and initialized.`);
+          // Use the state that already went through the initial knowledge phase
+          gameState = initializedState; 
+          console.log(`[setupGame] Game ${gameId} created. Initial local state phase will be:`, gameState.phase);
+        } else {
+          console.log(`[setupGame] Game ${gameId} found. Initial local state phase will be:`, gameState.phase);
         }
 
         dispatch({ type: 'SET_GAME_STATE', payload: gameState });
@@ -103,7 +107,7 @@ export function useGameInitialization(
         unsubscribeFromGameState(subscription);
       }
     };
-  }, [gameId, currentPlayerId, setError]); // Added setError dependency
+  }, [gameId, currentPlayerId, setError, dispatch]); // Added dispatch dependency
 
   return [state, dispatch, loading, gameId];
 }

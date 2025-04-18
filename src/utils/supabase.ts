@@ -18,21 +18,23 @@ export const supabase: SupabaseClient = createClient(supabaseUrl, supabaseAnonKe
  */
 export async function createGame(gameId: string, player1Id: string, player2Id: string | null, initialState: GameState): Promise<any | null> {
   try {
+    console.log('[createGame] Attempting to save initial state with phase:', initialState.phase);
     const { data, error } = await supabase
       .from('games')
-      .insert([{ 
-        id: gameId, // <-- Explicitly set the game ID here
-        player1_id: player1Id, 
-        player2_id: player2Id, 
-        // Store initial state directly in games table for simplicity in MVP
-        state: initialState 
+      .insert([{
+        id: gameId,
+        player1_id: player1Id,
+        player2_id: player2Id,
+        state: initialState, // Save the state that already went through executeKnowledgePhase
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
       }])
       .select()
       .single();
 
     if (error) throw error;
-    console.log('Game created:', data);
-    // The updateGameState call inside createGame might be redundant now,
+    console.log('[createGame] Successfully saved initial state. Returned data:', data);
+    // It might be redundant to call updateGameState immediately after insert
     // but we'll leave it for now unless it causes issues.
     // await updateGameState(data.id, initialState); 
     return data;
@@ -53,13 +55,12 @@ export async function joinGame(gameId: string, player2Id: string): Promise<any |
   try {
     const { data, error } = await supabase
       .from('games')
-      .update({ player2_id: player2Id })
+      .update({ player2_id: player2Id, updated_at: new Date().toISOString() })
       .eq('id', gameId)
       .select()
       .single();
 
     if (error) throw error;
-    console.log('Player joined game:', data);
     return data;
   } catch (error) {
     console.error('Error joining game:', error);
@@ -68,7 +69,7 @@ export async function joinGame(gameId: string, player2Id: string): Promise<any |
 }
 
 /**
- * Fetches the latest game state from the 'game_states' table.
+ * Fetches the latest game state from the 'games' table.
  * @param gameId The ID of the game.
  * @returns The latest GameState object or null on error.
  */
@@ -90,8 +91,12 @@ export async function getGameState(gameId: string): Promise<GameState | null> {
     //   .limit(1)
     //   .single();
 
-    if (error) throw error;
-    return data?.state as GameState || null;
+    if (error && error.code !== 'PGRST116') { // Ignore 'PGRST116' (No rows found)
+        throw error;
+    }
+    const fetchedState = data?.state as GameState || null;
+    console.log('[getGameState] Fetched state phase:', fetchedState?.phase);
+    return fetchedState;
   } catch (error) {
     console.error('Error fetching game state:', error);
     return null;
@@ -106,6 +111,7 @@ export async function getGameState(gameId: string): Promise<GameState | null> {
  */
 export async function updateGameState(gameId: string, newState: GameState): Promise<any | null> {
   try {
+    console.log(`[updateGameState] Attempting to save state for turn ${newState.turn}, phase: ${newState.phase}`);
     // Update the state directly in the 'games' table for MVP simplicity
     const { data, error } = await supabase
       .from('games')
@@ -124,7 +130,7 @@ export async function updateGameState(gameId: string, newState: GameState): Prom
     //   }]);
 
     if (error) throw error;
-    console.log('Game state updated for game:', gameId);
+    console.log(`[updateGameState] Successfully saved state for turn ${newState.turn}, phase: ${newState.phase}`);
     return data;
   } catch (error) {
     console.error('Error updating game state:', error);
@@ -146,12 +152,10 @@ export async function logMove(gameId: string, playerId: string, action: string, 
       .insert([{ 
         game_id: gameId, 
         player_id: playerId, 
-        action: action, 
+        action_type: action, 
         payload: payload 
       }]);
-
     if (error) throw error;
-    // console.log('Move logged:', action);
   } catch (error) {
     console.error('Error logging move:', error);
   }
@@ -163,21 +167,16 @@ export async function logMove(gameId: string, playerId: string, action: string, 
  * Subscribes to real-time updates for a specific game's state.
  * @param gameId The ID of the game to subscribe to.
  * @param callback Function to call when a state update is received.
- * @returns The Supabase real-time channel subscription.
+ * @returns The Supabase subscription channel.
  */
 export function subscribeToGameState(gameId: string, callback: (newState: GameState) => void): any {
   const channel = supabase
     .channel(`game:${gameId}`)
     .on(
       'postgres_changes',
-      { 
-        event: 'UPDATE', 
-        schema: 'public', 
-        table: 'games', 
-        filter: `id=eq.${gameId}` 
-      },
+      { event: 'UPDATE', schema: 'public', table: 'games', filter: `id=eq.${gameId}` },
       (payload) => {
-        console.log('Realtime update received:', payload);
+        console.log('[subscribeToGameState] Realtime UPDATE received:', payload);
         if (payload.new && payload.new.state) {
           callback(payload.new.state as GameState);
         }
@@ -187,9 +186,9 @@ export function subscribeToGameState(gameId: string, callback: (newState: GameSt
       if (status === 'SUBSCRIBED') {
         console.log(`Subscribed to game ${gameId} updates!`);
       } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-        console.error(`Subscription error for game ${gameId}:`, err);
-      } else if (status === 'CLOSED') {
-        console.log(`Subscription closed for game ${gameId}`);
+        console.error(`Subscription error for game ${gameId}:`, err || status);
+      } else {
+        console.log(`Subscription status for game ${gameId}:`, status);
       }
     });
 
@@ -197,16 +196,16 @@ export function subscribeToGameState(gameId: string, callback: (newState: GameSt
 }
 
 /**
- * Unsubscribes from game state updates.
- * @param channel The channel subscription to remove.
+ * Unsubscribes from real-time game state updates.
+ * @param subscription The Supabase subscription channel to unsubscribe from.
  */
-export async function unsubscribeFromGameState(channel: any): Promise<void> {
-  if (channel) {
+export async function unsubscribeFromGameState(subscription: any): Promise<void> {
+  if (subscription) {
     try {
-      await supabase.removeChannel(channel);
+      await supabase.removeChannel(subscription);
       console.log('Unsubscribed from game updates.');
     } catch (error) {
-      console.error('Error unsubscribing:', error);
+      console.error('Error unsubscribing from game updates:', error);
     }
   }
 }

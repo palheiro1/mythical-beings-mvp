@@ -31,12 +31,12 @@ const Card: React.FC<CardProps> = ({ card, onClick, isSelected, rotation = 0, sh
       className={`
         w-full h-full
         bg-gray-700 rounded-[10px] shadow-md overflow-hidden /* Use arbitrary radius */
-        cursor-pointer 
-        ${onClick ? 'hover:shadow-lg' : 'cursor-default'}
+        /* Removed transform/hover classes - will be handled by parent */
+        ${onClick ? 'cursor-pointer hover:shadow-lg' : 'cursor-default'} /* Conditional cursor and shadow */
         /* Apply border style conditionally */
         ${isSelected ? 'border-yellow-400 border-2 ring-2 ring-yellow-400' : 'border-2 border-gray-500'} 
       `}
-      onClick={(e) => {
+      onClick={() => { 
         console.log('Card clicked:', card, 'onClick:', !!onClick);
         handleClick();
       }}

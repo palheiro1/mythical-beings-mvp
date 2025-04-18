@@ -15,48 +15,102 @@ const ACTIONS_PER_TURN = 2;
  * @returns True if the action is valid, false otherwise.
  */
 export function isValidAction(state: GameState, action: GameAction): boolean {
-  const playerIndex = state.players.findIndex(p => p.id === action.payload.playerId);
-  if (playerIndex === -1) return false; // Player not found
+  // Ensure payload exists and has playerId for player-specific actions
+  // Allow SET_GAME_STATE and INITIALIZE_GAME without payload checks
+  if (action.type !== 'SET_GAME_STATE' && action.type !== 'INITIALIZE_GAME') {
+    if (!action.payload || typeof action.payload !== 'object' || !('playerId' in action.payload)) {
+      console.log('[isValidAction] Failed: Invalid payload structure for player action', action.type);
+      return false;
+    }
+    const playerId = action.payload.playerId as string;
+    const playerIndex = state.players.findIndex(p => p.id === playerId);
 
-  const player = state.players[playerIndex];
-  const opponentIndex = playerIndex === 0 ? 1 : 0;
-  const opponent = state.players[opponentIndex];
+    if (playerIndex === -1) {
+      console.log(`[isValidAction] Failed: Player ${playerId} not found`);
+      return false; // Player not found
+    }
 
-  // Basic checks: Correct player, correct phase, actions available
-  if (state.currentPlayerIndex !== playerIndex) return false; // Not player's turn
-  if (state.phase !== 'action') return false; // Not action phase
-  if (state.actionsTakenThisTurn >= ACTIONS_PER_TURN && action.type !== 'END_TURN') return false; // No actions left (unless ending turn)
+    // Basic checks: Correct player, correct phase, actions available
+    if (state.currentPlayerIndex !== playerIndex) {
+      console.log(`[isValidAction] Failed: Not player ${playerIndex}'s turn (Current: ${state.currentPlayerIndex})`);
+      return false; // Not player's turn
+    }
+    if (state.phase !== 'action') {
+      console.log(`[isValidAction] Failed: Not action phase (Current: ${state.phase})`);
+      return false; // Not action phase
+    }
+    // Allow END_TURN even if actions are 0 or more, but other actions require < ACTIONS_PER_TURN
+    if (state.actionsTakenThisTurn >= ACTIONS_PER_TURN && action.type !== 'END_TURN') {
+      console.log(`[isValidAction] Failed: No actions left (Taken: ${state.actionsTakenThisTurn})`);
+      return false; // No actions left (unless ending turn)
+    }
+  } // End of player-specific action checks
 
+  // Action-specific validation
   switch (action.type) {
     case 'ROTATE_CREATURE': {
-      // Check if creature exists and has knowledge attached
-      const fieldSlot = player.field.find(f => f.creatureId === action.payload.creatureId);
-      return !!fieldSlot?.knowledge;
+      // Payload structure already checked above for player actions
+      const { creatureId } = action.payload as { playerId: string; creatureId: string }; // Added playerId for clarity
+      const playerIndex = state.players.findIndex(p => p.id === (action.payload as { playerId: string }).playerId);
+      const player = state.players[playerIndex];
+      const creature = player.creatures.find(c => c.id === creatureId);
+      if (!creature) {
+        console.log(`[isValidAction] Failed ROTATE: Creature ${creatureId} not found for player ${player.id}`);
+        return false; // Creature not found in player's base creatures
+      }
+      // Check if the creature is actually on the field
+      const fieldSlot = player.field.find(f => f.creatureId === creatureId);
+       if (!fieldSlot) {
+         console.log(`[isValidAction] Failed ROTATE: Creature ${creatureId} not on field for player ${player.id}`);
+         return false; // Creature not on field
+       }
+      // Rotating is generally always valid if the creature exists on field and it's the action phase,
+      // even if it's at max rotation (the action handler can prevent over-rotation).
+      console.log(`[isValidAction] Passed: ROTATE_CREATURE for ${creatureId}`);
+      return true;
     }
     case 'DRAW_KNOWLEDGE': {
-      // Check if hand is full and card is in market
-      if (player.hand.length >= MAX_HAND_SIZE) return false;
-      return state.market.some(k => k.id === action.payload.knowledgeId);
+      const { knowledgeId } = action.payload as { playerId: string; knowledgeId: string };
+      const playerIndex = state.players.findIndex(p => p.id === (action.payload as { playerId: string }).playerId);
+      const player = state.players[playerIndex];
+      if (!state.market.some(k => k.id === knowledgeId)) {
+        console.log(`[isValidAction] Failed DRAW: Knowledge ${knowledgeId} not in market`);
+        return false; // Card not in market
+      }
+      if (player.hand.length >= MAX_HAND_SIZE) {
+        console.log(`[isValidAction] Failed DRAW: Hand full for player ${player.id}`);
+        return false; // Hand full
+      }
+      console.log(`[isValidAction] Passed: DRAW_KNOWLEDGE for ${knowledgeId}`);
+      return true;
     }
     case 'SUMMON_KNOWLEDGE': {
-      // Check if card is in hand
-      const knowledgeCard = player.hand.find(k => k.id === action.payload.knowledgeId);
-      if (!knowledgeCard) return false;
-
-      // Check if creature exists and has no knowledge attached
-      const creature = player.creatures.find(c => c.id === action.payload.creatureId);
-      const fieldSlot = player.field.find(f => f.creatureId === action.payload.creatureId);
-      if (!creature || fieldSlot?.knowledge) return false;
-
-      // Check if opponent has aquatic3 active
-      const opponentHasAquatic3 = opponent.field.some(slot => slot.knowledge?.id === 'aquatic3');
-      if (opponentHasAquatic3) {
-        console.log("Validation failed: Opponent has aquatic3 active, cannot summon knowledge.");
-        return false;
+      const { knowledgeId, creatureId } = action.payload as { playerId: string; knowledgeId: string; creatureId: string };
+      const playerIndex = state.players.findIndex(p => p.id === (action.payload as { playerId: string }).playerId);
+      const player = state.players[playerIndex];
+      const knowledgeCard = player.hand.find(k => k.id === knowledgeId);
+      if (!knowledgeCard) {
+        console.log(`[isValidAction] Failed SUMMON: Knowledge ${knowledgeId} not in hand for player ${player.id}`);
+        return false; // Card not in hand
+      }
+      const creatureSlot = player.field.find(f => f.creatureId === creatureId);
+      if (!creatureSlot) {
+        console.log(`[isValidAction] Failed SUMMON: Creature ${creatureId} not on field for player ${player.id}`);
+        return false; // Creature not on field
+      }
+      if (creatureSlot.knowledge) {
+        console.log(`[isValidAction] Failed SUMMON: Creature ${creatureId} already has knowledge`);
+        return false; // Creature already has knowledge
       }
 
-      // Check wisdom cost (consider passives like Kappa/Dudugera)
+      const creature = player.creatures.find(c => c.id === creatureId);
+      if (!creature) {
+        console.log(`[isValidAction] Failed SUMMON: Base creature data ${creatureId} not found (data inconsistency)`);
+        return false; // Base creature data not found (shouldn't happen if fieldSlot exists)
+      }
+
       let effectiveCost = knowledgeCard.cost;
+      // Apply cost reductions (consider moving this to a helper or central place if complex)
       // Kappa Passive: Aquatic knowledge costs 1 less (min 1)
       if (knowledgeCard.element === 'water' && player.creatures.some(c => c.id === 'kappa')) {
         effectiveCost = Math.max(1, effectiveCost - 1);
@@ -66,14 +120,27 @@ export function isValidAction(state: GameState, action: GameAction): boolean {
         effectiveCost = Math.max(1, effectiveCost - 1);
       }
 
-      const creatureWisdom = creature.currentWisdom ?? creature.baseWisdom;
-      return creatureWisdom >= effectiveCost;
+      const creatureWisdom = getCreatureWisdom(creature); // Use helper
+      if (creatureWisdom < effectiveCost) {
+          console.log(`[isValidAction] Failed SUMMON: Creature ${creatureId} wisdom (${creatureWisdom}) < cost (${effectiveCost})`);
+          return false; // Insufficient wisdom
+      }
+      console.log(`[isValidAction] Passed: SUMMON_KNOWLEDGE ${knowledgeId} onto ${creatureId}`);
+      return true;
     }
     case 'END_TURN':
-      // Always valid during action phase
+      // Ending turn is always valid if it's your turn (basic checks already cover this)
+      console.log(`[isValidAction] Passed: END_TURN`);
       return true;
-    // Add cases for other actions if any
+    // Add cases for non-player actions if needed
+    case 'SET_GAME_STATE':
+    case 'INITIALIZE_GAME':
+        console.log(`[isValidAction] Passed: ${action.type} (System Action)`);
+        return true; // Always allow system actions
     default:
+      // Ensure exhaustive check - this should ideally not be reached if types are correct
+      console.log(`[isValidAction] Failed: Unhandled action type`, action);
+      // const _exhaustiveCheck: never = action; // This might cause issues depending on action type definition
       return false;
   }
 }
