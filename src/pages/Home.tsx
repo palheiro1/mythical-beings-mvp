@@ -18,9 +18,9 @@ const Home: React.FC = () => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-gray-800 to-purple-900 text-white p-4">
       <div className="relative z-10 bg-black/50 backdrop-blur-sm p-10 rounded-lg shadow-xl max-w-md w-full flex flex-col items-center">
-        <div className="flex flex-col items-center justify-center text-center mb-8">
-          <h1 className="text-4xl font-bold text-yellow-400 mb-3">Mythical Beings</h1>
-          <p className="text-gray-300">Connect your wallet to enter the arena.</p>
+        <div className="flex flex-col items-center justify-center text-center mb-8 w-full">
+          <h1 className="text-4xl font-bold text-white mb-3">Mythical Beings</h1>
+          <p className="text-white">Connect your wallet to enter the arena.</p>
         </div>
 
         {!connected ? (
@@ -31,12 +31,12 @@ const Home: React.FC = () => {
             Connect Wallet
           </button>
         ) : (
-          <div className="flex flex-col items-center gap-3 p-4 bg-gray-700/70 rounded-md w-full">
-            <span className="text-green-400 font-medium">Wallet Connected!</span>
-            <span className="text-sm text-gray-300 font-mono bg-gray-800/80 px-3 py-1 rounded break-all w-full">
+          <div className="flex flex-col items-center gap-3 p-4 bg-gray-700/70 rounded-md w-full text-center">
+            <span className="text-white font-medium" style={{color: 'white'}}>Wallet Connected!</span>
+            <span className="text-sm text-white font-mono bg-gray-800/80 px-3 py-1 rounded w-full text-center" style={{color: 'white'}}>
               {account}
             </span>
-            <span className="text-sm text-gray-400 mt-2 animate-pulse">Redirecting to Lobby...</span>
+            <span className="text-sm text-white mt-2 animate-pulse" style={{color: 'white'}}>Redirecting to Lobby...</span>
           </div>
         )}
       </div>

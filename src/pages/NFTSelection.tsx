@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import Card from '../components/Card'; // Import the Card component
+import { Creature } from '../game/types'; // Import the Creature type
 
 // Mock Data - Ensure image paths are correct
-const mockHand = [
-  { id: 'c1', name: 'Adaro', image: '/images/beings/adaro.jpg' },
-  { id: 'c2', name: 'Kappa', image: '/images/beings/kappa.jpg' },
-  { id: 'c3', name: 'Pele', image: '/images/beings/pele.jpg' },
-  { id: 'c4', name: 'Lisovik', image: '/images/beings/lisovik.jpg' },
-  { id: 'c5', name: 'Tulpar', image: '/images/beings/tulpar.jpg' },
+const mockHand: Creature[] = [
+  { id: 'c1', name: 'Adaro', image: '/images/beings/adaro.jpg', element: 'water', passiveAbility: '', baseWisdom: 0 },
+  { id: 'c2', name: 'Kappa', image: '/images/beings/kappa.jpg', element: 'water', passiveAbility: '', baseWisdom: 0 },
+  { id: 'c3', name: 'Pele', image: '/images/beings/pele.jpg', element: 'fire', passiveAbility: '', baseWisdom: 0 },
+  { id: 'c4', name: 'Lisovik', image: '/images/beings/lisovik.jpg', element: 'earth', passiveAbility: '', baseWisdom: 0 },
+  { id: 'c5', name: 'Tulpar', image: '/images/beings/tulpar.jpg', element: 'air', passiveAbility: '', baseWisdom: 0 },
 ];
 
 const CARD_ASPECT_RATIO = 2.5 / 3.5; // Standard card aspect ratio
@@ -81,29 +83,27 @@ const NFTSelection: React.FC = () => {
           </div>
         </div>
 
-        {/* Card Hand */} 
+        {/* Card Hand */}
         <div className="flex justify-center items-center gap-6 flex-wrap mb-8">
-          {mockHand.map(card => (
+          {mockHand
+            .filter(card => !selected.includes(card.id)) // Filter out selected cards
+            .map(card => (
             <div
               key={card.id}
-              onClick={() => toggleSelect(card.id)}
-              style={{
-                width: CARD_WIDTH_DESKTOP,
-                height: getCardHeight(CARD_WIDTH_DESKTOP),
-              }}
-              className={`relative rounded-lg overflow-hidden border-4 transition-all duration-200 ease-in-out shadow-md 
-                ${lost || waiting ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer hover:scale-105'} 
-                ${selected.includes(card.id) ? 'border-yellow-400 ring-2 ring-yellow-300/50 scale-105' : 'border-gray-600 hover:border-yellow-500'}`}
+              style={{ width: CARD_WIDTH_DESKTOP, height: getCardHeight(CARD_WIDTH_DESKTOP) }}
+              // Apply hover effects and margin to this wrapper div
+              className={`relative group transform transition-transform duration-300 ease-in-out m-1
+                ${lost || waiting ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}
+                hover:scale-[2.0] hover:z-20`}
             >
-              <img
-                src={card.image}
-                alt={card.name}
-                className="absolute inset-0 w-full h-full object-cover" // Use object-cover for proper scaling
+              <Card
+                card={card} // Pass the card data
+                onClick={() => toggleSelect(card.id)} // Pass the click handler
+                isSelected={selected.includes(card.id)} // Pass selection state
               />
-              {/* Optional: Add name overlay if needed */}
-              {/* <div className="absolute bottom-0 left-0 right-0 bg-black/60 p-1 text-center text-xs font-semibold">{card.name}</div> */}
+              {/* Keep the checkmark overlay outside the Card component if needed */}
               {selected.includes(card.id) && (
-                <div className="absolute top-2 right-2 bg-yellow-400 text-black rounded-full p-1 leading-none">
+                <div className="absolute top-2 right-2 bg-yellow-400 text-black rounded-full p-1 leading-none z-10"> {/* Ensure checkmark is above card */} 
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                   </svg>
@@ -113,8 +113,34 @@ const NFTSelection: React.FC = () => {
           ))}
         </div>
 
-        {/* Action/Status Area */} 
-        <div className="text-center h-16 flex flex-col justify-center items-center">
+        {/* Selected Cards Section */}
+        {selected.length > 0 && (
+          <div className="mt-8 pt-4 border-t border-gray-700">
+            <h2 className="text-xl font-semibold text-center mb-4 text-yellow-300">Your Team ({selected.length}/3)</h2>
+            <div className="flex justify-center items-center gap-4 flex-wrap">
+              {mockHand
+                .filter(card => selected.includes(card.id))
+                .map(card => (
+                  // Render selected cards - potentially smaller or styled differently
+                  <div
+                    key={`selected-${card.id}`}
+                    style={{ width: '100px', height: getCardHeight('100px') }} // Example: Smaller size
+                    className="relative shadow-md rounded-[10px] overflow-hidden border-2 border-gray-600 cursor-pointer" // Added cursor-pointer
+                    onClick={() => toggleSelect(card.id)} // Add onClick to deselect
+                  >
+                    <Card
+                      card={card}
+                      // onClick is handled by the wrapper div now
+                      isSelected={true} // Visually indicate it's selected (uses yellow border)
+                    />
+                  </div>
+                ))}
+            </div>
+          </div>
+        )}
+
+        {/* Action/Status Area */}
+        <div className="text-center h-16 flex flex-col justify-center items-center mt-12"> {/* Increased margin-top */}
           {lost ? (
             <p className="text-2xl font-bold text-red-500">Time Expired - You Lost!</p>
           ) : waiting ? (
@@ -123,8 +149,10 @@ const NFTSelection: React.FC = () => {
             <button
               onClick={handleConfirm}
               disabled={selected.length !== 3}
-              className={`bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-10 rounded-md transition duration-200 ease-in-out 
-                ${selected.length !== 3 ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105'}`}
+              className={`font-bold py-3 px-10 rounded-md transition duration-200 ease-in-out 
+                ${selected.length !== 3 
+                  ? 'bg-gray-600 text-gray-400 cursor-not-allowed' 
+                  : 'bg-red-600 hover:bg-red-700 text-white hover:scale-105 active:scale-100'}`}
             >
               Confirm Selection ({selected.length}/3)
             </button>

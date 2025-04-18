@@ -34,7 +34,7 @@ function App() {
 
   // For all other routes, render without navigation
   return (
-    <div className="App">
+    <div className="h-full w-full">
       {/* Route Definitions */} 
       <Routes>
         <Route path="/" element={<Home />} />

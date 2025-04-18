@@ -2,37 +2,45 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Reset styles for consistent appearance */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
 /* Ensure html, body, and root take full height */
 html,
 body {
   height: 100%;
   margin: 0;
   padding: 0;
-  overflow: hidden; /* Prevent body scrollbars */
+  color-scheme: dark; /* Force dark mode */
+  color: white !important; /* Ensure text is white by default */
+}
+
+/* Override any light mode preferences */
+@media (prefers-color-scheme: light) {
+  :root {
+    color: white !important;
+    background-color: transparent !important;
+  }
+  
+  h1, h2, h3, h4, h5, h6, p, span, div, a, button {
+    color: inherit !important;
+  }
 }
 
 #root {
   height: 100%; /* Make root fill the body */
-  /* display: flex; */ /* Remove flex if it causes issues with GameScreen's fixed layout */
-  /* place-items: center; */ /* Remove centering */
+  width: 100%;
 }
 
-/* Keep default body styles for non-game pages if needed, */
-/* but ensure they don't interfere with the game screen layout */
-body {
-  /* font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif; */ /* Example default */
-  /* line-height: 1.5; */ /* Example default */
-  /* font-weight: 400; */ /* Example default */
-
-  /* color-scheme: light dark; */
-  /* color: rgba(255, 255, 255, 0.87); */
-  /* background-color: #242424; */
-
-  /* font-synthesis: none; */
-  /* text-rendering: optimizeLegibility; */
-  /* -webkit-font-smoothing: antialiased; */
-  /* -moz-osx-font-smoothing: grayscale; */
+/* Reset heading styles that might conflict with Tailwind */
+h1, h2, h3, h4, h5, h6 {
+  font-size: revert;
+  font-weight: revert;
+  margin: revert;
+  line-height: inherit;
+  color: white !important;
 }
-
-/* Remove potentially conflicting styles from App.css if they exist */
-/* Check App.css for any remaining height/width/overflow constraints on #root or body */
