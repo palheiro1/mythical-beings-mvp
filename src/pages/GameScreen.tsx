@@ -119,7 +119,8 @@ const GameScreen: React.FC = () => {
 
     // Render the Card component or an empty slot
     return (
-      <div className="aspect-[2/3] flex justify-center items-center bg-black/20 rounded-md overflow-hidden">
+      // Change hover:scale-110 to hover:scale-200 for a larger zoom
+      <div className="aspect-[2/3] flex justify-center items-center bg-black/20 rounded-md overflow-hidden transition-transform duration-200 hover:scale-200 hover:z-10">
         {card ? <Card card={card} {...props} /> : <div className="w-full h-full"></div>}
       </div>
     );
