@@ -32,14 +32,12 @@ export function applyPassiveAbilities(
   eventData: PassiveEventData
 ): GameState {
   // Create a deep copy to avoid mutating the original state unintentionally
-  // Note: Standard structuredClone might be better if available/compatible
   let newState = JSON.parse(JSON.stringify(state)) as GameState;
+  newState.log.push(`[Passive Check] Trigger: ${trigger}, Player: ${eventData.playerId}, Data: ${JSON.stringify(eventData)}`);
 
   // Iterate through both players
   for (let playerIndex = 0; playerIndex < newState.players.length; playerIndex++) {
     const pId = newState.players[playerIndex].id;
-    // Re-fetch player and opponent states inside the loop for safety,
-    // as the newState object can be modified by passives.
     let player = getPlayerState(newState, pId);
     let opponent = getOpponentState(newState, pId);
 
@@ -53,261 +51,235 @@ export function applyPassiveAbilities(
       if (!opponent) continue; // Should always find an opponent
 
       // --- Trigger Logic ---
+      newState.log.push(`[Passive Check] Evaluating ${creature.id} (Owner: ${pId}) for trigger ${trigger}`);
 
-      // Example: Caapora - "At the start of your turn, if the Opponent has more cards in hand than you, deal 1 damage to the Opponent."
+      // Caapora
       if (creature.id === 'caapora' && trigger === 'TURN_START' && eventData.playerId === pId) {
+        newState.log.push(`[Passive Condition] Caapora (Owner: ${pId}) checks hand sizes: P ${player.hand.length}, Opp ${opponent.hand.length}`);
         if (opponent.hand.length > player.hand.length) {
-          console.log(`Passive Triggered: Caapora deals 1 damage to ${opponent.id}`);
+          const oldPower = opponent.power;
           opponent.power -= 1;
-          newState.log.push(`${player.id}'s Caapora passive deals 1 damage to ${opponent.id}.`);
-          // Update the opponent state in the main state object
+          newState.log.push(`[Passive Effect] Caapora (Owner: ${pId}) deals 1 damage to ${opponent.id}. Power: ${oldPower} -> ${opponent.power}`);
           const opponentIndex = newState.players.findIndex(p => p.id === opponent!.id);
-          if (opponentIndex !== -1) {
-            newState.players[opponentIndex] = opponent;
-          }
+          if (opponentIndex !== -1) newState.players[opponentIndex] = opponent;
         }
       }
 
-      // Example: Adaro - "When Adaro summons an aquatic Knowledge, draw a card from the Market (no Action cost)."
+      // Adaro
       if (creature.id === 'adaro' && trigger === 'AFTER_PLAYER_SUMMON' && eventData.playerId === pId && eventData.creatureId === creature.id) {
         const summonedKnowledge = eventData.knowledgeCard;
+        newState.log.push(`[Passive Condition] Adaro (Owner: ${pId}) checks summoned knowledge: ${summonedKnowledge?.name} (Element: ${summonedKnowledge?.element})`);
         if (summonedKnowledge && summonedKnowledge.element === 'water') {
-          console.log(`Passive Triggered: Adaro allows ${pId} to draw a card.`);
-          newState.log.push(`${player.id}'s Adaro passive triggers a free draw.`);
-          // Call the draw action logic directly or dispatch a new action if needed
-          // For simplicity, let's assume we can call a part of the draw logic here.
-          // This needs careful implementation to avoid side effects or infinite loops.
-          // We'll simulate the core draw logic here for now.
+          newState.log.push(`[Passive Effect] Adaro (Owner: ${pId}) triggers free draw.`);
           if (newState.market.length > 0) {
-             const drawnCard = newState.market.shift(); // Take from market
+             const drawnCard = newState.market.shift();
              if (drawnCard) {
                player.hand.push(drawnCard);
-               newState.log.push(`${player.id} draws ${drawnCard.name} via Adaro passive.`);
-               // Refill market (simplified)
+               newState.log.push(`[Passive Effect] Adaro (Owner: ${pId}) draws ${drawnCard.name}. Hand size: ${player.hand.length}`);
                if (newState.knowledgeDeck.length > 0) {
-                 newState.market.push(newState.knowledgeDeck.shift()!);
+                 const refillCard = newState.knowledgeDeck.shift()!;
+                 newState.market.push(refillCard);
+                 newState.log.push(`[Passive Effect] Market refilled with ${refillCard.name}.`);
                }
              }
           } else {
-            newState.log.push(`Adaro passive triggered, but Market is empty.`);
+            newState.log.push(`[Passive Effect] Adaro (Owner: ${pId}) triggered, but Market is empty.`);
           }
-           // Update player state
-           const playerIndex = newState.players.findIndex(p => p.id === pId);
-           if (playerIndex !== -1) {
-             newState.players[playerIndex] = player;
-           }
+           const currentPlayerIndex = newState.players.findIndex(p => p.id === pId);
+           if (currentPlayerIndex !== -1) newState.players[currentPlayerIndex] = player;
         }
       }
 
-      // --- Add logic for other creatures and triggers here ---
-      // Example: Kyzy - "When any player summons a terrestrial Knowledge, the Opponent must discard 1 card."
+      // Kyzy
       if (creature.id === 'kyzy' && (trigger === 'AFTER_PLAYER_SUMMON' || trigger === 'AFTER_OPPONENT_SUMMON')) {
           const summonedKnowledge = eventData.knowledgeCard;
           const summoningPlayerId = eventData.playerId;
           const opponentOfSummoner = getOpponentState(newState, summoningPlayerId);
+          newState.log.push(`[Passive Condition] Kyzy (Owner: ${pId}) checks summon: ${summonedKnowledge?.name} (Element: ${summonedKnowledge?.element}), Summoner: ${summoningPlayerId}, Kyzy's owner is Opponent?: ${opponentOfSummoner?.id === pId}`);
 
           if (summonedKnowledge && summonedKnowledge.element === 'earth' && opponentOfSummoner && opponentOfSummoner.id === pId) { // Check if *this* Kyzy's owner is the opponent of the summoner
-              console.log(`Passive Triggered: Kyzy forces ${opponentOfSummoner.id} (summoner's opponent) to discard.`);
+              newState.log.push(`[Passive Effect] Kyzy (Owner: ${pId}) forces discard from ${opponentOfSummoner.id} (summoner's opponent).`);
               if (opponentOfSummoner.hand.length > 0) {
                   const discardedCard = opponentOfSummoner.hand.pop(); // Discard last card for simplicity
                   newState.discardPile.push(discardedCard!);
-                  newState.log.push(`${opponentOfSummoner.id} discards ${discardedCard!.name} due to Kyzy passive.`);
-                  // Update opponent state
+                  newState.log.push(`[Passive Effect] ${opponentOfSummoner.id} discards ${discardedCard!.name} due to Kyzy (Owner: ${pId}). Hand size: ${opponentOfSummoner.hand.length}`);
                   const opponentIndex = newState.players.findIndex(p => p.id === opponentOfSummoner!.id);
-                  if (opponentIndex !== -1) {
-                      newState.players[opponentIndex] = opponentOfSummoner;
-                  }
+                  if (opponentIndex !== -1) newState.players[opponentIndex] = opponentOfSummoner;
               } else {
-                  newState.log.push(`Kyzy passive triggered, but ${opponentOfSummoner.id} has no cards to discard.`);
+                  newState.log.push(`[Passive Effect] Kyzy (Owner: ${pId}) triggered, but ${opponentOfSummoner.id} has no cards to discard.`);
               }
           }
       }
 
-
-      // Example: Tarasca - "When the Opponent summons a terrestrial Knowledge, deal 1 damage to the Opponent."
+      // Tarasca
        if (creature.id === 'tarasca' && trigger === 'AFTER_OPPONENT_SUMMON' && eventData.playerId !== pId) { // Triggered by opponent's action
            const summonedKnowledge = eventData.knowledgeCard;
            let opponentPlayer = getPlayerState(newState, eventData.playerId); // The player who summoned
+           newState.log.push(`[Passive Condition] Tarasca (Owner: ${pId}) checks opponent summon: ${summonedKnowledge?.name} (Element: ${summonedKnowledge?.element}), Summoner: ${eventData.playerId}`);
 
            if (summonedKnowledge && summonedKnowledge.element === 'earth' && opponentPlayer) {
-               console.log(`Passive Triggered: Tarasca deals 1 damage to ${opponentPlayer.id}`);
+               const oldPower = opponentPlayer.power;
                opponentPlayer.power -= 1;
-               newState.log.push(`${pId}'s Tarasca passive deals 1 damage to ${opponentPlayer.id}.`);
-               // Update opponent state
+               newState.log.push(`[Passive Effect] Tarasca (Owner: ${pId}) deals 1 damage to ${opponentPlayer.id}. Power: ${oldPower} -> ${opponentPlayer.power}`);
                const opponentPlayerIndex = newState.players.findIndex(p => p.id === opponentPlayer!.id);
-               if (opponentPlayerIndex !== -1) {
-                   newState.players[opponentPlayerIndex] = opponentPlayer;
-               }
+               if (opponentPlayerIndex !== -1) newState.players[opponentPlayerIndex] = opponentPlayer;
            }
        }
 
-      // Example: Inkanyamba - "When you draw an aquatic Knowledge, you may discard 1 card from the Market."
+      // Inkanyamba
       if (creature.id === 'inkanyamba' && trigger === 'AFTER_PLAYER_DRAW' && eventData.playerId === pId) {
-          const drawnKnowledge = eventData.knowledgeCard; // Assuming eventData contains the drawn card
+          const drawnKnowledge = eventData.knowledgeCard;
+          newState.log.push(`[Passive Condition] Inkanyamba (Owner: ${pId}) checks drawn card: ${drawnKnowledge?.name} (Element: ${drawnKnowledge?.element})`);
           if (drawnKnowledge && drawnKnowledge.element === 'water') {
+              newState.log.push(`[Passive Effect] Inkanyamba (Owner: ${pId}) triggers market discard.`);
               if (newState.market.length > 0) {
-                  const discardedCard = newState.market.shift(); // Discard top card
+                  const discardedCard = newState.market.shift();
                   newState.discardPile.push(discardedCard!);
-                  newState.log.push(`${pId}'s Inkanyamba passive discards ${discardedCard!.name} from the Market.`);
-                  // Refill market (simplified) - TODO: Ensure this doesn't conflict with standard refill logic
+                  newState.log.push(`[Passive Effect] Inkanyamba (Owner: ${pId}) discards ${discardedCard!.name} from Market.`);
                   if (newState.knowledgeDeck.length > 0) {
-                      newState.market.push(newState.knowledgeDeck.shift()!);
+                      const refillCard = newState.knowledgeDeck.shift()!;
+                      newState.market.push(refillCard);
+                      newState.log.push(`[Passive Effect] Market refilled with ${refillCard.name}.`);
                   }
               } else {
-                  newState.log.push(`Inkanyamba passive triggered, but Market is empty.`);
+                  newState.log.push(`[Passive Effect] Inkanyamba (Owner: ${pId}) triggered, but Market is empty.`);
               }
           }
       }
 
-      // Example: Japinunus - "Your aeric Knowledges gain: 'On Summon: +1 Power'."
+      // Japinunus
       if (creature.id === 'japinunus' && trigger === 'AFTER_PLAYER_SUMMON' && eventData.playerId === pId) {
           const summonedKnowledge = eventData.knowledgeCard;
+          newState.log.push(`[Passive Condition] Japinunus (Owner: ${pId}) checks summoned card: ${summonedKnowledge?.name} (Element: ${summonedKnowledge?.element})`);
           if (summonedKnowledge && summonedKnowledge.element === 'air') {
-              // Grant +1 Power directly to the player for MVP
+              const oldPower = player.power;
               player.power += 1;
-              newState.log.push(`${pId}'s Japinunus passive grants +1 Power due to summoning ${summonedKnowledge.name}.`);
-              // Update player state in newState
+              newState.log.push(`[Passive Effect] Japinunus (Owner: ${pId}) grants +1 Power due to summoning ${summonedKnowledge.name}. Power: ${oldPower} -> ${player.power}`);
               newState.players[playerIndex] = player;
           }
       }
 
-      // Example: Lisovik - "Your terrestrial Knowledges gain: 'On Leave: Deal 1 damage'."
+      // Lisovik
       if (creature.id === 'lisovik' && trigger === 'KNOWLEDGE_LEAVE' && eventData.playerId === pId) {
-          const leavingKnowledge = eventData.knowledgeCard; // Assuming eventData contains the leaving card
+          const leavingKnowledge = eventData.knowledgeCard;
+          newState.log.push(`[Passive Condition] Lisovik (Owner: ${pId}) checks leaving card: ${leavingKnowledge?.name} (Element: ${leavingKnowledge?.element})`);
           if (leavingKnowledge && leavingKnowledge.element === 'earth') {
-              console.log(`Passive Triggered: Lisovik deals 1 damage to ${opponent.id}`);
+              const oldPower = opponent.power;
               opponent.power -= 1;
-              newState.log.push(`${pId}'s Lisovik passive (via ${leavingKnowledge.name}) deals 1 damage to ${opponent.id}.`);
-              // Update opponent state
+              newState.log.push(`[Passive Effect] Lisovik (Owner: ${pId}, via ${leavingKnowledge.name}) deals 1 damage to ${opponent.id}. Power: ${oldPower} -> ${opponent.power}`);
               const opponentIndex = newState.players.findIndex(p => p.id === opponent!.id);
-              if (opponentIndex !== -1) {
-                  newState.players[opponentIndex] = opponent;
-              }
+              if (opponentIndex !== -1) newState.players[opponentIndex] = opponent;
           }
       }
 
-      // Example: Pele - "When Pele summons a terrestrial Knowledge, discard an Opponent's Knowledge with a lower Wisdom cost."
+      // Pele
       if (creature.id === 'pele' && trigger === 'AFTER_PLAYER_SUMMON' && eventData.playerId === pId && eventData.creatureId === creature.id) {
           const summonedKnowledge = eventData.knowledgeCard;
+          newState.log.push(`[Passive Condition] Pele (Owner: ${pId}) checks summoned card: ${summonedKnowledge?.name} (Element: ${summonedKnowledge?.element}, Cost: ${summonedKnowledge?.cost})`);
           if (summonedKnowledge && summonedKnowledge.element === 'earth') {
               let targetToDiscard: { knowledge: Knowledge; fieldSlotIndex: number } | null = null;
               let minCostFound = summonedKnowledge.cost;
+              newState.log.push(`[Passive Condition] Pele searching opponent (${opponent.id}) field for knowledge with cost < ${minCostFound}`);
 
-              // Find the lowest cost knowledge on opponent's field that costs less than the summoned one
               opponent.field.forEach((oppFieldSlot, oppFieldSlotIndex) => {
-                  if (oppFieldSlot.knowledge && oppFieldSlot.knowledge.cost < minCostFound) {
-                      minCostFound = oppFieldSlot.knowledge.cost; // Update the minimum cost found so far
-                      targetToDiscard = { knowledge: oppFieldSlot.knowledge, fieldSlotIndex: oppFieldSlotIndex };
-                  } else if (oppFieldSlot.knowledge && oppFieldSlot.knowledge.cost === minCostFound && targetToDiscard) {
-                      // Optional: Tie-breaking logic if multiple targets have the same lowest cost.
-                      // For now, we just keep the first one found with the minimum cost.
+                  if (oppFieldSlot.knowledge) {
+                      newState.log.push(`[Passive Condition] Pele checking slot ${oppFieldSlotIndex}: ${oppFieldSlot.knowledge.name} (Cost ${oppFieldSlot.knowledge.cost})`);
+                      if (oppFieldSlot.knowledge.cost < minCostFound) {
+                          minCostFound = oppFieldSlot.knowledge.cost;
+                          targetToDiscard = { knowledge: oppFieldSlot.knowledge, fieldSlotIndex: oppFieldSlotIndex };
+                          newState.log.push(`[Passive Condition] Pele found new potential target: ${targetToDiscard.knowledge.name} (Cost ${minCostFound})`);
+                      } else if (oppFieldSlot.knowledge.cost === minCostFound && targetToDiscard) {
+                          newState.log.push(`[Passive Condition] Pele found another card with same min cost (${oppFieldSlot.knowledge.name}), keeping first target.`);
+                      }
                   }
               });
-
 
               if (targetToDiscard) {
                   const discardedKnowledge = targetToDiscard.knowledge;
                   const discardSlotIndex = targetToDiscard.fieldSlotIndex;
-                  console.log(`Passive Triggered: Pele targets ${discardedKnowledge.name} (Cost ${discardedKnowledge.cost}) in slot ${discardSlotIndex} on ${opponent.id}'s field.`);
+                  newState.log.push(`[Passive Effect] Pele (Owner: ${pId}) targets ${discardedKnowledge.name} (Cost ${discardedKnowledge.cost}) in slot ${discardSlotIndex} on ${opponent.id}'s field for discard.`);
 
-                  // Remove from opponent's field and add to discard pile
-                  opponent.field[discardSlotIndex].knowledge = null; // Clear the knowledge from the slot
+                  opponent.field[discardSlotIndex].knowledge = null;
                   newState.discardPile.push(discardedKnowledge);
-                  newState.log.push(`${pId}'s Pele passive discards ${discardedKnowledge.name} (Cost ${discardedKnowledge.cost}) from ${opponent.id}.`);
+                  newState.log.push(`[Passive Effect] Pele (Owner: ${pId}) discarded ${discardedKnowledge.name} from ${opponent.id}.`);
 
-                  // --- Trigger KNOWLEDGE_LEAVE for the discarded card ---
-                  // Important: Call applyPassiveAbilities recursively AFTER updating the state
-                  // to reflect the discard, but BEFORE returning the final state.
-                  // Pass the opponent's ID as the player who owned the knowledge.
-                  const stateBeforeLeaveTrigger = JSON.parse(JSON.stringify(newState)) as GameState; // Snapshot state before potential recursive changes
+                  // Trigger KNOWLEDGE_LEAVE
+                  newState.log.push(`[Passive Trigger] KNOWLEDGE_LEAVE for ${discardedKnowledge.name} (Owner: ${opponent.id}) due to Pele passive`);
+                  const stateBeforeLeaveTrigger = JSON.parse(JSON.stringify(newState));
                   newState = applyPassiveAbilities(stateBeforeLeaveTrigger, 'KNOWLEDGE_LEAVE', {
-                      playerId: opponent.id, // The owner of the knowledge that left
+                      playerId: opponent.id,
                       knowledgeCard: discardedKnowledge,
-                      // Optional: Add context like 'discardedByPassive: true' if needed
                   });
-                  // --- End KNOWLEDGE_LEAVE trigger ---
 
-
-                  // Update opponent state in newState (redundant if getOpponentState fetches fresh copy, but safe)
-                  const opponentIndex = newState.players.findIndex(p => p.id === opponent!.id);
-                  if (opponentIndex !== -1) {
-                      newState.players[opponentIndex] = opponent;
-                  }
+                  const opponentIdx = newState.players.findIndex(p => p.id === opponent!.id);
+                  if (opponentIdx !== -1) newState.players[opponentIdx] = opponent; // Ensure opponent state is updated in newState
 
               } else {
-                  newState.log.push(`Pele passive triggered, but no valid target (lower cost knowledge) found on ${opponent.id}'s field.`);
+                  newState.log.push(`[Passive Effect] Pele (Owner: ${pId}) triggered, but no valid target (lower cost knowledge) found on ${opponent.id}'s field.`);
               }
           }
       }
 
-      // Example: Tsenehale - "Your aeric Knowledges gain: 'On Leave: +1 Power'."
+      // Tsenehale
       if (creature.id === 'tsenehale' && trigger === 'KNOWLEDGE_LEAVE' && eventData.playerId === pId) {
           const leavingKnowledge = eventData.knowledgeCard;
+          newState.log.push(`[Passive Condition] Tsenehale (Owner: ${pId}) checks leaving card: ${leavingKnowledge?.name} (Element: ${leavingKnowledge?.element})`);
           if (leavingKnowledge && leavingKnowledge.element === 'air') {
-              console.log(`Passive Triggered: Tsenehale grants +1 Power to ${pId}`);
-              player.power += 1; // Grant power to the player owning Tsenehale
-              newState.log.push(`${pId}'s Tsenehale passive (via ${leavingKnowledge.name}) grants +1 Power.`);
-              // Update player state
+              const oldPower = player.power;
+              player.power += 1;
+              newState.log.push(`[Passive Effect] Tsenehale (Owner: ${pId}, via ${leavingKnowledge.name}) grants +1 Power. Power: ${oldPower} -> ${player.power}`);
               newState.players[playerIndex] = player;
           }
       }
 
-      // Example: Tulpar - "When Tulpar summons an aeric Knowledge, rotate this creature 1 time (no Action cost)."
+      // Tulpar
       if (creature.id === 'tulpar' && trigger === 'AFTER_PLAYER_SUMMON' && eventData.playerId === pId && eventData.creatureId === creature.id) {
           const summonedKnowledge = eventData.knowledgeCard;
+          newState.log.push(`[Passive Condition] Tulpar (Owner: ${pId}) checks summoned card: ${summonedKnowledge?.name} (Element: ${summonedKnowledge?.element})`);
           if (summonedKnowledge && summonedKnowledge.element === 'air') {
-              console.log(`Passive Triggered: Tulpar rotates.`);
+              newState.log.push(`[Passive Effect] Tulpar (Owner: ${pId}) triggers rotation.`);
               const tulparCreatureIndex = player.creatures.findIndex(c => c.id === 'tulpar');
               if (tulparCreatureIndex !== -1) {
                   const tulparCreature = player.creatures[tulparCreatureIndex];
                   const currentRotation = tulparCreature.rotation ?? 0;
-                  // Check if max rotation reached (assuming 270 is max for creatures)
-                  if (currentRotation < 270) {
-                      tulparCreature.currentWisdom = (tulparCreature.currentWisdom ?? tulparCreature.baseWisdom) + 1;
+                  newState.log.push(`[Passive Condition] Tulpar current rotation: ${currentRotation}°`);
+                  if (currentRotation < 270) { // Assuming 270 is max for creatures
+                      const oldWisdom = tulparCreature.currentWisdom ?? tulparCreature.baseWisdom;
+                      tulparCreature.currentWisdom = oldWisdom + 1;
                       tulparCreature.rotation = currentRotation + 90;
-                      newState.log.push(`${pId}'s Tulpar passive triggers a rotation. Wisdom: ${tulparCreature.currentWisdom}, Rotation: ${tulparCreature.rotation}deg.`);
-                      // Update player state
+                      newState.log.push(`[Passive Effect] Tulpar (Owner: ${pId}) rotates. Wisdom: ${oldWisdom} -> ${tulparCreature.currentWisdom}, Rotation: ${currentRotation}° -> ${tulparCreature.rotation}°.`);
                       newState.players[playerIndex] = player;
                   } else {
-                      newState.log.push(`${pId}'s Tulpar passive triggered, but Tulpar is already at max rotation.`);
+                      newState.log.push(`[Passive Effect] Tulpar (Owner: ${pId}) triggered, but Tulpar is already at max rotation.`);
                   }
+              } else {
+                 newState.log.push(`[Passive Error] Tulpar creature data not found for owner ${pId} despite matching creatureId.`);
               }
           }
       }
 
       // --- Update player/opponent references after potential modifications ---
-      // Re-fetch player and opponent states from the potentially modified newState
-      // This is crucial because a passive might modify player/opponent state,
-      // affecting subsequent passive checks within the same trigger event.
       player = getPlayerState(newState, pId);
       opponent = getOpponentState(newState, pId);
-      if (!player || !opponent) break; // Exit inner loop if state becomes invalid
+      if (!player || !opponent) {
+          newState.log.push(`[Passive Error] Player or Opponent state became invalid after passive effect for ${creature.id}. Exiting inner loop.`);
+          break; // Exit inner loop if state becomes invalid
+      }
 
-      // --- Passives requiring integration elsewhere ---
-
-      // TODO: Dudugera/Kappa - Affect action cost. Needs check during 'summonKnowledge' validation or 'BEFORE_ACTION_VALIDATION' trigger.
-      // Note: Cost reduction logic is currently handled in rules.ts isValidAction for MVP simplicity.
-
-      // TODO: Trepulcahue - "+1 Defense to Knowledges". Static effect. Apply during damage calculation or modify base stats.
-      // Note: Logic is currently handled directly in rules.ts executeKnowledgePhase for MVP simplicity, rather than using a DAMAGE_CALCULATION trigger here.
-      // if (creature.id === 'trepulcahue' && trigger === 'DAMAGE_CALCULATION'...)
-
-      // TODO: Zhar Ptitsa - "Aeric Knowledges cannot be blocked". Static effect. Apply during block declaration/validation phase.
-      // Note: Blocking is not implemented in MVP.
-
-
-      // TODO: Implement other passives based on creatures.json and triggers
-      // - Inkanyamba: Needs 'AFTER_PLAYER_DRAW' trigger - DONE
-      // - Japinunus: Needs modification in summonKnowledge action or 'AFTER_PLAYER_SUMMON' trigger to add power - DONE (Placeholder)
-      // - Lisovik: Needs 'KNOWLEDGE_LEAVE' trigger - DONE
-      // - Pele: Needs 'AFTER_PLAYER_SUMMON' trigger (check element, compare cost, discard opponent knowledge) - DONE
-      // - Trepulcahue: Needs 'DAMAGE_CALCULATION' trigger or modification in damage logic - TODO (Comment added)
-      // - Tsenehale: Needs 'KNOWLEDGE_LEAVE' trigger - DONE
-      // - Tulpar: Needs 'AFTER_PLAYER_SUMMON' trigger (check element, rotate self) - DONE (Placeholder)
-      // - Zhar Ptitsa: Needs modification in how knowledge effects/blocking are handled - TODO (Comment added)
+      // --- Passives requiring integration elsewhere (Logging placeholders) ---
+      if (creature.id === 'dudugera' || creature.id === 'kappa') {
+          newState.log.push(`[Passive Info] ${creature.id} cost reduction handled in isValidAction.`);
+      }
+      if (creature.id === 'trepulcahue') {
+          newState.log.push(`[Passive Info] ${creature.id} defense bonus handled in executeKnowledgePhase.`);
+      }
+      if (creature.id === 'zhar-ptitsa') {
+          newState.log.push(`[Passive Info] ${creature.id} unblockable effect not implemented in MVP.`);
+      }
 
     } // End loop through creatures
   } // End loop through players
 
+  newState.log.push(`[Passive Check] Finished applying passives for trigger: ${trigger}`);
   return newState; // Return the modified state
 }

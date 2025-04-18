@@ -6,7 +6,8 @@
     "cost": 1,
     "effect": "Placeholder effect for Aerial 1",
     "image": "/images/spells/aerial1.jpg",
-    "maxRotations": 2
+    "maxRotations": 2,
+    "element": "air"
   },
   {
     "id": "aerial2",
@@ -15,7 +16,8 @@
     "cost": 2,
     "effect": "Placeholder effect for Aerial 2",
     "image": "/images/spells/aerial2.jpg",
-    "maxRotations": 3
+    "maxRotations": 3,
+    "element": "air"
   },
   {
     "id": "aerial3",
@@ -24,7 +26,8 @@
     "cost": 3,
     "effect": "Placeholder effect for Aerial 3",
     "image": "/images/spells/aerial3.jpg",
-    "maxRotations": 3
+    "maxRotations": 3,
+    "element": "air"
   },
   {
     "id": "aerial4",
@@ -33,7 +36,8 @@
     "cost": 4,
     "effect": "Placeholder effect for Aerial 4",
     "image": "/images/spells/aerial4.jpg",
-    "maxRotations": 3
+    "maxRotations": 3,
+    "element": "air"
   },
   {
     "id": "aerial5",
@@ -42,7 +46,8 @@
     "cost": 5,
     "effect": "Placeholder effect for Aerial 5",
     "image": "/images/spells/aerial5.jpg",
-    "maxRotations": 1
+    "maxRotations": 1,
+    "element": "air"
   },
   {
     "id": "aquatic1",
@@ -51,7 +56,8 @@
     "cost": 1,
     "effect": "Placeholder effect for Aquatic 1",
     "image": "/images/spells/aquatic1.jpg",
-    "maxRotations": 1
+    "maxRotations": 1,
+    "element": "water"
   },
   {
     "id": "aquatic2",
@@ -60,7 +66,8 @@
     "cost": 2,
     "effect": "Placeholder effect for Aquatic 2",
     "image": "/images/spells/aquatic2.jpg",
-    "maxRotations": 4
+    "maxRotations": 4,
+    "element": "water"
   },
   {
     "id": "aquatic3",
@@ -69,7 +76,8 @@
     "cost": 3,
     "effect": "Placeholder effect for Aquatic 3",
     "image": "/images/spells/aquatic3.jpg",
-    "maxRotations": 2
+    "maxRotations": 2,
+    "element": "water"
   },
   {
     "id": "aquatic4",
@@ -78,7 +86,8 @@
     "cost": 4,
     "effect": "Placeholder effect for Aquatic 4",
     "image": "/images/spells/aquatic4.jpg",
-    "maxRotations": 4
+    "maxRotations": 4,
+    "element": "water"
   },
   {
     "id": "aquatic5",
@@ -87,7 +96,8 @@
     "cost": 5,
     "effect": "Placeholder effect for Aquatic 5",
     "image": "/images/spells/aquatic5.jpg",
-    "maxRotations": 4
+    "maxRotations": 4,
+    "element": "water"
   },
   {
     "id": "terrestrial1",
@@ -96,7 +106,8 @@
     "cost": 1,
     "effect": "Placeholder effect for Terrestrial 1",
     "image": "/images/spells/terrestrial1.jpg",
-    "maxRotations": 3
+    "maxRotations": 3,
+    "element": "earth"
   },
   {
     "id": "terrestrial2",
@@ -105,7 +116,8 @@
     "cost": 2,
     "effect": "Placeholder effect for Terrestrial 2",
     "image": "/images/spells/terrestrial2.jpg",
-    "maxRotations": 4
+    "maxRotations": 4,
+    "element": "earth"
   },
   {
     "id": "terrestrial3",
@@ -114,7 +126,8 @@
     "cost": 3,
     "effect": "Placeholder effect for Terrestrial 3",
     "image": "/images/spells/terrestrial3.jpg",
-    "maxRotations": 1
+    "maxRotations": 1,
+    "element": "earth"
   },
   {
     "id": "terrestrial4",
@@ -123,7 +136,8 @@
     "cost": 4,
     "effect": "Placeholder effect for Terrestrial 4",
     "image": "/images/spells/terrestrial4.jpg",
-    "maxRotations": 2
+    "maxRotations": 2,
+    "element": "earth"
   },
   {
     "id": "terrestrial5",
@@ -132,6 +146,7 @@
     "cost": 5,
     "effect": "Placeholder effect for Terrestrial 5",
     "image": "/images/spells/terrestrial5.jpg",
-    "maxRotations": 4
+    "maxRotations": 4,
+    "element": "earth"
   }
 ]
