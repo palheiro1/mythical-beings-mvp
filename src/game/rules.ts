@@ -1,8 +1,7 @@
 import { knowledgeEffects } from './effects';
-import knowledgeData from '../assets/knowledges.json';
-import { GameState, GameAction, PlayerState, CombatBuffers } from './types'; // Removed unused Knowledge import
-import { getCreatureWisdom } from './utils'; // Import helper
-import { applyPassiveAbilities } from './passives'; // Import for passive abilities
+import { GameState, GameAction, CombatBuffers } from './types';
+import { getCreatureWisdom, getPlayerState, getOpponentState } from './utils';
+import { applyPassiveAbilities } from './passives';
 
 // Constants
 const MAX_HAND_SIZE = 5;
@@ -146,117 +145,115 @@ export function isValidAction(state: GameState, action: GameAction): boolean {
 }
 
 /**
- * Executes the Knowledge Phase logic.
- * - Executes effects of summoned knowledge cards.
- * - Resolves damage/defense events centrally.
- * - Rotates and discards knowledge cards.
+ * Applies combat damage based on accumulated buffers.
  * @param state The current game state.
- * @returns The updated game state after the Knowledge Phase.
+ * @param buffers The combat buffers with accumulated damage and defense.
+ * @returns The updated game state.
+ */
+function applyCombatDamage(state: GameState, buffers: CombatBuffers): GameState {
+    let newState = JSON.parse(JSON.stringify(state)) as GameState;
+    const [p1, p2] = newState.players;
+
+    // Calculate net damage for each player
+    const netDamageP1 = Math.max(0, buffers.damage[0] - buffers.defense[0]);
+    const netDamageP2 = Math.max(0, buffers.damage[1] - buffers.defense[1]);
+
+    // Apply damage and log
+    if (netDamageP1 > 0) {
+        const oldPower = p1.power;
+        p1.power -= netDamageP1;
+        newState.log.push(`Combat: Player 1 takes ${netDamageP1} damage (raw ${buffers.damage[0]} - defense ${buffers.defense[0]}). Power: ${oldPower} -> ${p1.power}`);
+    } else if (buffers.damage[0] > 0) {
+        newState.log.push(`Combat: Player 1 absorbs all damage (raw ${buffers.damage[0]} - defense ${buffers.defense[0]}).`);
+    }
+
+    if (netDamageP2 > 0) {
+        const oldPower = p2.power;
+        p2.power -= netDamageP2;
+        newState.log.push(`Combat: Player 2 takes ${netDamageP2} damage (raw ${buffers.damage[1]} - defense ${buffers.defense[1]}). Power: ${oldPower} -> ${p2.power}`);
+    } else if (buffers.damage[1] > 0) {
+        newState.log.push(`Combat: Player 2 absorbs all damage (raw ${buffers.damage[1]} - defense ${buffers.defense[1]}).`);
+    }
+
+    return newState;
+}
+
+
+/**
+ * Executes the knowledge phase: rotates knowledge, applies effects, handles combat.
+ * @param state The current game state.
+ * @returns The updated game state after the knowledge phase.
  */
 export function executeKnowledgePhase(state: GameState): GameState {
-  // Initialize combat buffers
-  const buffers: CombatBuffers = { damage: [0, 0], defense: [0, 0] };
+  let newState = JSON.parse(JSON.stringify(state)) as GameState;
+  newState.log.push(`Turn ${newState.turn}: Knowledge Phase started.`);
 
-  let newState = { ...state, log: [...state.log, `Turn ${state.turn}: Knowledge Phase started.`] };
+  // 1. Rotate Knowledge Cards and Apply Effects
+  // Corrected CombatBuffers initialization
+  const combatBuffers: CombatBuffers = { damage: [0, 0], defense: [0, 0] };
 
-  // Execute effects and collect combat events
-  newState.players.forEach((player, playerIndex) => {
-    player.field.forEach((fieldSlot, fieldSlotIndex) => {
-      if (fieldSlot.knowledge) {
-        const rotation = fieldSlot.knowledge.rotation ?? 0;
-        const cardData = (knowledgeData as any[]).find(k => k.id === fieldSlot.knowledge!.id);
-        const maxRotations = cardData?.maxRotations ?? 4;
-        const isFinalRotation = (rotation + 90) / 90 >= maxRotations;
-        const effectFn = knowledgeEffects[fieldSlot.knowledge.id];
-        if (effectFn) {
-          newState = effectFn({
-            state: newState,
-            playerIndex,
-            fieldSlotIndex,
-            knowledge: fieldSlot.knowledge,
-            rotation,
-            isFinalRotation,
-            buffers
-          });
+  for (let playerIndex = 0; playerIndex < newState.players.length; playerIndex++) {
+    const player = newState.players[playerIndex];
+    const opponent = newState.players[(playerIndex + 1) % 2]; // Opponent reference for effects
+
+    player.field.forEach((slot, slotIndex) => {
+      if (slot.knowledge) {
+        const currentRotation = slot.knowledge.rotation ?? 0;
+        // Corrected rotation check: Use 270 degrees as max rotation before discard
+        const isFinalRotation = currentRotation >= 270;
+
+        if (!isFinalRotation) {
+          const nextRotation = currentRotation + 90;
+          slot.knowledge.rotation = nextRotation;
+          // REMOVED: Log for knowledge rotation
+
+          // Apply effect if rotation is a multiple of 90 and effect exists
+          const effectFn = knowledgeEffects[slot.knowledge.id];
+          if (effectFn) {
+             // Corrected call to knowledge effect function
+             newState = effectFn({
+                 state: newState,
+                 playerIndex: playerIndex,
+                 fieldSlotIndex: slotIndex,
+                 knowledge: slot.knowledge,
+                 rotation: nextRotation, // Pass the new rotation
+                 isFinalRotation: nextRotation >= 270, // Check if this *new* rotation is final
+                 buffers: combatBuffers
+             });
+          }
         } else {
-          newState.log.push(`Executing effect for ${fieldSlot.knowledge.name} on ${fieldSlot.creatureId} for Player ${playerIndex + 1}`);
-        }
-      }
-    });
-  });
-
-  // --- Integrate Trepulcahue passive (bonus defense) ---
-  newState.players.forEach((player, playerIndex) => {
-    const trepulcahueCount = player.creatures.filter(c => c.id === 'trepulcahue').length;
-    if (trepulcahueCount > 0) {
-      const knowledgeCount = player.field.filter(slot => slot.knowledge).length;
-      const bonusDefense = trepulcahueCount * knowledgeCount;
-      if (bonusDefense > 0) {
-        buffers.defense[playerIndex] += bonusDefense;
-        newState.log.push(`Trepulcahue passive: +${bonusDefense} defense for Player ${playerIndex + 1}.`);
-      }
-    }
-  });
-
-  // Resolve combat: apply damage minus defense for each player
-  newState.players.forEach((_, playerIndex) => {
-    const totalDamage = buffers.damage[playerIndex];
-    const totalDefense = buffers.defense[playerIndex];
-    const net = Math.max(0, totalDamage - totalDefense);
-    if (net > 0) {
-      const updatedPlayers = [...newState.players];
-      const target = { ...updatedPlayers[playerIndex], power: Math.max(0, updatedPlayers[playerIndex].power - net) };
-      updatedPlayers[playerIndex] = target;
-      newState = { ...newState, players: updatedPlayers as [PlayerState, PlayerState] };
-      newState.log.push(`Combat: Player ${playerIndex + 1} takes ${net} damage (raw ${totalDamage} - defense ${totalDefense}).`);
-    } else {
-      newState.log.push(`Combat: Player ${playerIndex + 1} absorbs all damage (raw ${totalDamage} - defense ${totalDefense}).`);
-    }
-  });
-
-  // Rotate and discard knowledge cards using maxRotations from knowledges.json
-  const updatedPlayers = newState.players.map((player, playerIndex) => {
-    const updatedField = player.field.map(fieldSlot => {
-      if (fieldSlot.knowledge) {
-        // Find maxRotations for this card
-        const cardData = (knowledgeData as any[]).find(k => k.id === fieldSlot.knowledge!.id);
-        const maxRotations = cardData?.maxRotations ?? 4; // Default to 4 if not found
-        const prevRotation = fieldSlot.knowledge.rotation ?? 0;
-        const newRotation = prevRotation + 90;
-        // If completed all cycles, discard
-        if (newRotation / 90 >= maxRotations) {
-          const discardedKnowledge = { ...fieldSlot.knowledge }; // Make a copy of the knowledge card to be discarded
-          newState.log.push(`${discardedKnowledge.name} on ${fieldSlot.creatureId} (Player ${playerIndex + 1}) completed rotation and is discarded.`);
-          
-          // Add the discarded card to the discard pile
+          // Knowledge is fully rotated, discard it
+          const discardedKnowledge = { ...slot.knowledge }; // Copy before nulling
           newState.discardPile.push(discardedKnowledge);
-          
-          // Trigger KNOWLEDGE_LEAVE passive abilities
+          const creatureName = player.creatures.find(c => c.id === slot.creatureId)?.name || `Creature ${slot.creatureId}`;
+          newState.log.push(`${discardedKnowledge.name} on ${creatureName} (Player ${playerIndex + 1}) was fully rotated and discarded.`);
+
+          // Apply KNOWLEDGE_LEAVE passive trigger
           newState = applyPassiveAbilities(newState, 'KNOWLEDGE_LEAVE', {
-            playerId: player.id,
-            knowledgeCard: discardedKnowledge,
-            creatureId: fieldSlot.creatureId
+              playerId: player.id,
+              creatureId: slot.creatureId,
+              knowledgeCard: discardedKnowledge // Pass the discarded card info
           });
-          
-          return { ...fieldSlot, knowledge: null };
-        } else {
-          newState.log.push(`${fieldSlot.knowledge.name} on ${fieldSlot.creatureId} (Player ${playerIndex + 1}) rotated to ${newRotation} degrees.`);
-          return { ...fieldSlot, knowledge: { ...fieldSlot.knowledge, rotation: newRotation } };
+          slot.knowledge = null; // Remove from field
         }
       }
-      return fieldSlot;
     });
-    return { ...player, field: updatedField };
-  });
+  }
 
-  newState = { ...newState, players: updatedPlayers as [PlayerState, PlayerState], phase: 'action', actionsTakenThisTurn: 0 };
-  newState.log.push(`Turn ${state.turn}: Knowledge Phase ended. Action Phase started for Player ${state.currentPlayerIndex + 1}.`);
+  // 2. Apply Combat Damage from Buffers
+  // Assuming applyCombatDamage is defined elsewhere in this file or imported correctly
+  newState = applyCombatDamage(newState, combatBuffers);
+
+  // 3. Transition to Action Phase
+  newState.phase = 'action';
+  newState.actionsTakenThisTurn = 0; // Reset actions for the new turn
+  newState.log.push(`Turn ${newState.turn}: Action Phase started.`);
 
   return newState;
 }
 
 /**
- * Checks if a win condition has been met.
+ * Checks if the game has reached a win condition.
  * @param state The current game state.
  * @returns The ID of the winning player, or null if no winner yet.
  */

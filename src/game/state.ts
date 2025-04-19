@@ -129,34 +129,31 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
   // Ensure payload exists and has playerId for player-specific actions
   if (!action.payload || typeof action.payload !== 'object' || !('playerId' in action.payload)) {
     console.error("Reducer: Action payload missing or invalid for player action", action);
-    return {
-        ...state,
-        log: [...state.log, `Invalid action payload received: ${action.type}`]
-    };
+    // Do NOT log this in the game log (keep logs clean)
+    return state;
   }
   const playerId = action.payload.playerId as string; // Assert playerId exists based on the check above
 
   const playerIndex = state.players.findIndex(p => p.id === playerId);
   if (playerIndex === -1) {
     console.error(`Reducer: Player ${playerId} not found in state.`);
-    return state; // Player not found
+    // Do NOT log this in the game log
+    return state;
   }
 
   // Basic validation: Check if it's the player's turn and if they have actions remaining
   // Note: isValidAction handles more complex rules, this is a preliminary check.
   if (playerIndex !== state.currentPlayerIndex) {
       // Allow actions from non-current player only if specifically handled (e.g., opponent effects)
-      // For now, log a warning but proceed, relying on isValidAction for strict enforcement.
+      // For now, log a warning but do NOT add to game log
       console.warn(`Action ${action.type} received from non-current player ${playerId}`);
   }
 
   // Validate the action based on game rules BEFORE processing
   if (!isValidAction(state, action)) {
     console.error("Reducer: Invalid action received", action);
-    return {
-        ...state,
-        log: [...state.log, `Invalid action attempted by Player ${state.currentPlayerIndex + 1}: ${action.type}`]
-    };
+    // Do NOT log this in the game log
+    return state;
   }
 
   let processedState: GameState;
@@ -166,9 +163,6 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
   switch (action.type) {
     case 'ROTATE_CREATURE':
       processedState = rotateCreature(state, action.payload as { playerId: string; creatureId: string });
-      // TODO: Add applyPassiveAbilities call for ROTATE triggers if needed
-      // eventData.creatureId = action.payload.creatureId;
-      // processedState = applyPassiveAbilities(processedState, 'CREATURE_ROTATE', eventData);
       break;
     case 'DRAW_KNOWLEDGE':
       // Find the card *before* the state is updated by drawKnowledge
@@ -220,25 +214,20 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       processedState = applyPassiveAbilities(processedState, summonTrigger, eventData);
       break;
     case 'END_TURN': {
-      const nextPlayerIndex = ((state.currentPlayerIndex + 1) % 2) as 0 | 1; // Cast to 0 | 1
+      const nextPlayerIndex = ((state.currentPlayerIndex + 1) % 2) as 0 | 1;
       const nextTurn = state.currentPlayerIndex === 1 ? state.turn + 1 : state.turn;
-
-      // Prepare state for the start of the next player's turn
       let turnStartState: GameState = {
         ...state,
         currentPlayerIndex: nextPlayerIndex,
         turn: nextTurn,
         phase: 'knowledge',
         actionsTakenThisTurn: 0,
-        log: [...state.log, `Player ${state.currentPlayerIndex + 1} ended their turn. Turn ${nextTurn} begins.`]
+        // Remove turn log: do not log turn changes
+        log: state.log
       };
-
-      // Apply passives triggered at the START of the new player's turn
       turnStartState = applyPassiveAbilities(turnStartState, 'TURN_START', {
           playerId: turnStartState.players[nextPlayerIndex].id
       });
-
-      // Only call executeKnowledgePhase here for the new turn
       processedState = executeKnowledgePhase(turnStartState);
       break;
     }
@@ -255,11 +244,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
   if (state.phase === 'action' && action.type !== 'END_TURN') {
     const actionsTaken = state.actionsTakenThisTurn + 1;
     finalState = { ...finalState, actionsTakenThisTurn: actionsTaken };
-    if (actionsTaken >= ACTIONS_PER_TURN) {
-        finalState.log = [...finalState.log, `Player ${playerIndex + 1} has taken ${actionsTaken} actions.`];
-    }
   }
-
 
   // Check for win condition after every action is fully processed
   const winner = checkWinCondition(finalState);

@@ -26,8 +26,10 @@ export function rotateCreature(state: GameState, payload: { playerId: string; cr
     return state;
   }
   
-  // Increase wisdom
-  creature.currentWisdom = (creature.currentWisdom ?? creature.baseWisdom) + 1;
+  // Robust wisdom calculation
+  const baseWisdom = typeof creature.baseWisdom === 'number' ? creature.baseWisdom : 0;
+  const prevWisdom = typeof creature.currentWisdom === 'number' ? creature.currentWisdom : baseWisdom;
+  creature.currentWisdom = prevWisdom + 1;
   
   // Update rotation by 90 degrees counterclockwise (add 90 degrees)
   creature.rotation = currentRotation + 90;
@@ -43,7 +45,8 @@ export function rotateCreature(state: GameState, payload: { playerId: string; cr
   return {
     ...state,
     players: updatedPlayers as [PlayerState, PlayerState],
-    log: [...state.log, `Player ${playerIndex + 1} rotated ${creature.name}, wisdom is now ${creature.currentWisdom}`]
+    // Remove rotate log: do not log rotate actions
+    log: state.log
   };
 }
 
