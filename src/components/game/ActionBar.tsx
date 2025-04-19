@@ -6,6 +6,8 @@ interface ActionBarProps {
     winner: string | null;
     actionsTaken: number;
     onEndTurn: () => void;
+    turnTimer: number; // Added prop for the timer value
+    actionsPerTurn: number; // Added prop for max actions
 }
 
 const ActionBar: React.FC<ActionBarProps> = ({
@@ -13,9 +15,12 @@ const ActionBar: React.FC<ActionBarProps> = ({
     phase,
     winner,
     actionsTaken,
-    onEndTurn
+    onEndTurn,
+    turnTimer, // Destructure new prop
+    actionsPerTurn // Destructure new prop
 }) => {
-    const canEndTurn = actionsTaken >= 2;
+    // Use actionsPerTurn constant passed from GameScreen
+    const canEndTurn = actionsTaken >= actionsPerTurn;
 
     let turnIndicatorText = '';
     let turnIndicatorClass = 'text-gray-400';
@@ -30,11 +35,18 @@ const ActionBar: React.FC<ActionBarProps> = ({
         turnIndicatorClass = 'text-red-300 font-semibold';
     }
 
+    // Timer display logic
+    const timerDisplay = isMyTurn && phase === 'action' && winner === null ? (
+        <span className={`text-2xl font-mono ml-6 px-3 py-1 rounded ${turnTimer <= 10 ? 'text-red-500 animate-pulse' : 'text-blue-600'}`}>
+            ⏳ {turnTimer}s
+        </span>
+    ) : null;
+
 
     return (
         <div className="flex-shrink-0 flex justify-between items-center px-8 py-12 bg-white text-gray-900 text-xl font-semibold shadow-lg">
-            {/* Left Side: Actions */}
-            <div className="flex gap-6">
+            {/* Left Side: Actions and Timer */}
+            <div className="flex items-center gap-6">
                 {isMyTurn && phase === 'action' && winner === null && (
                     <button
                         onClick={onEndTurn}
@@ -43,18 +55,20 @@ const ActionBar: React.FC<ActionBarProps> = ({
                             ${!canEndTurn ?
                                 'bg-gray-200 text-gray-400 cursor-not-allowed' :
                                 'bg-red-600 hover:bg-red-500 text-white'}`}
-                        title={!canEndTurn ? "Need to take 2 actions first!" : "End your turn"}
+                        // Use actionsPerTurn in the title and button text
+                        title={!canEndTurn ? `Need to take ${actionsPerTurn} actions first!` : "End your turn"}
                     >
-                        End Turn {!canEndTurn && `(${actionsTaken}/2)`}
+                        End Turn {!canEndTurn && `(${actionsTaken}/${actionsPerTurn})`}
                     </button>
                 )}
                 {!isMyTurn && winner === null && (
                     <span className="text-xl text-gray-400 italic">Waiting for opponent...</span>
                  )}
+                 {/* Display Timer Here */}
+                 {timerDisplay}
             </div>
-            <div className={`text-3xl ${turnIndicatorClass.replace('text-lg', 'text-3xl')}`}>
-                {turnIndicatorText}
-            </div>
+            {/* Right Side: Turn Indicator */}
+            <div className={`text-3xl ${turnIndicatorClass.replace('text-lg', 'text-3xl')}`}>\n                {turnIndicatorText}\n            </div>
         </div>
     );
 };

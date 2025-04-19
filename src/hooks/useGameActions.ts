@@ -1,13 +1,9 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { GameState, GameAction } from '../game/types';
 import { isValidAction } from '../game/rules';
 import { updateGameState, logMove } from '../utils/supabase';
-// Assuming gameScreenReducer is accessible, e.g., exported from useGameInitialization or state management context
-// For simplicity here, let's assume we pass the original state and reducer logic if needed,
-// but ideally, this hook only constructs and validates actions before calling a central dispatcher.
+import { gameReducer as originalGameReducer } from '../game/state';
 
-// Re-import the reducer logic if needed for optimistic updates within the hook
-import { gameReducer as originalGameReducer } from '../game/state'; // Adjust path if needed
 type GameScreenState = GameState | null;
 type GameReducerType = (state: GameScreenState, action: GameAction) => GameScreenState;
 const gameScreenReducer: GameReducerType = (state, action) => {
@@ -36,7 +32,8 @@ export function useGameActions(
 ) {
   const [selectedKnowledgeId, setSelectedKnowledgeId] = useState<string | null>(null);
 
-  const handleAction = async (action: GameAction) => {
+  // Memoize handleAction
+  const handleAction = useCallback(async (action: GameAction) => {
     if (!state || !gameId || !currentPlayerId) {
       console.error("Cannot handle action: State, gameId, or currentPlayerId missing.");
       return;
@@ -76,57 +73,55 @@ export function useGameActions(
           throw new Error("Failed to update game state in Supabase.");
       }
       if ('payload' in action && action.payload) {
-          await logMove(gameId, currentPlayerId, action.type, action.payload);
+          // Ensure action.type is a valid string for the database column
+          const actionTypeString = typeof action.type === 'string' ? action.type : JSON.stringify(action.type);
+          await logMove(gameId, currentPlayerId, actionTypeString, action.payload);
       }
       setError(null); // Clear previous errors
     } catch (err) {
       console.error('Error updating game state or logging move:', err);
       setError('Failed to sync game state. Please try again.');
       // TODO: Consider reverting optimistic update
-      // dispatch({ type: 'SET_GAME_STATE', payload: state });
     }
 
     // Clear selection after successful summon
     if (action.type === 'SUMMON_KNOWLEDGE') {
         setSelectedKnowledgeId(null);
     }
-  };
+    // Dependencies for handleAction
+  }, [state, gameId, currentPlayerId, dispatch, setError, setSelectedKnowledgeId]);
 
-  // --- Specific Action Handlers ---
-  const handleRotateCreature = (creatureId: string) => {
+  // --- Specific Action Handlers (Memoized) ---
+  const handleRotateCreature = useCallback((creatureId: string) => {
     if (!currentPlayerId) return;
     handleAction({ type: 'ROTATE_CREATURE', payload: { playerId: currentPlayerId, creatureId } });
-  };
+  }, [currentPlayerId, handleAction]);
 
-  const handleDrawKnowledge = (knowledgeId: string) => {
+  const handleDrawKnowledge = useCallback((knowledgeId: string) => {
     if (!currentPlayerId) return;
     handleAction({ type: 'DRAW_KNOWLEDGE', payload: { playerId: currentPlayerId, knowledgeId } });
-  };
+  }, [currentPlayerId, handleAction]);
 
-  const handleHandCardClick = (knowledgeId: string) => {
-    setSelectedKnowledgeId(knowledgeId);
-    const cardName = state?.players[state.currentPlayerIndex].hand.find(k => k.id === knowledgeId)?.name;
-    setError(`Selected ${cardName || 'card'}. Click a creature to summon onto.`);
-  };
+  const handleHandCardClick = useCallback((knowledgeId: string) => {
+    setSelectedKnowledgeId(prevId => (prevId === knowledgeId ? null : knowledgeId));
+  }, [setSelectedKnowledgeId]); // Only depends on the setter
 
-  const handleCreatureClickForSummon = (creatureId: string) => {
+  const handleCreatureClickForSummon = useCallback((creatureId: string) => {
     if (!currentPlayerId || !selectedKnowledgeId) return;
-    setError(null); // Clear selection prompt message
     handleAction({
       type: 'SUMMON_KNOWLEDGE',
       payload: { playerId: currentPlayerId, knowledgeId: selectedKnowledgeId, creatureId }
     });
-  };
+  }, [currentPlayerId, selectedKnowledgeId, handleAction]);
 
-  const handleEndTurn = () => {
+  const handleEndTurn = useCallback(() => {
     if (!currentPlayerId) return;
     handleAction({ type: 'END_TURN', payload: { playerId: currentPlayerId } });
-  };
+  }, [currentPlayerId, handleAction]);
 
-  const cancelSelection = () => {
-      setSelectedKnowledgeId(null);
-      setError(null);
-  };
+  const cancelSelection = useCallback(() => {
+    setSelectedKnowledgeId(null);
+  }, [setSelectedKnowledgeId]);
 
   return {
     selectedKnowledgeId,

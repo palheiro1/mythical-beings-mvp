@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react'; // Added useRef
 import { PlayerState, Knowledge } from '../game/types'; // Keep necessary types, added Knowledge
 
 // Import Hooks
@@ -12,11 +12,17 @@ import Card from '../components/Card';
 import ActionBar from '../components/game/ActionBar';
 import Logs from '../components/game/Logs'; // Import the new Logs component
 
+const ACTIONS_PER_TURN = 2;
+const TURN_DURATION = 30;
+
 const GameScreen: React.FC = () => {
   // --- State and Hooks ---
   const [currentPlayerId, , playerError, setPlayerError] = usePlayerIdentification();
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [state, dispatch, loading, gameId] = useGameInitialization(currentPlayerId, setPlayerError);
+  const [turnTimer, setTurnTimer] = useState<number>(TURN_DURATION); // State for the timer
+  const timerIntervalRef = useRef<NodeJS.Timeout | null>(null); // Ref to store interval ID
+
   const {
     selectedKnowledgeId,
     handleRotateCreature,
@@ -27,6 +33,10 @@ const GameScreen: React.FC = () => {
     cancelSelection,
   } = useGameActions(state, dispatch, gameId, currentPlayerId, setActionMessage);
 
+  // Determine local player index and isMyTurn
+  const localPlayerIndex = state ? state.players.findIndex(p => p.id === currentPlayerId) : -1;
+  const isMyTurn = state ? state.currentPlayerIndex === localPlayerIndex : false;
+
   // Log state phase whenever it changes
   useEffect(() => {
     if (state) {
@@ -34,26 +44,70 @@ const GameScreen: React.FC = () => {
     }
   }, [state]);
 
+  // Effect to automatically end turn when actions are depleted
+  useEffect(() => {
+    if (state && isMyTurn && state.phase === 'action' && state.actionsTakenThisTurn >= ACTIONS_PER_TURN) {
+      console.log('[GameScreen] Actions depleted, automatically ending turn.');
+      handleEndTurn();
+    }
+  }, [state, isMyTurn, handleEndTurn]);
+
+  // Effect to manage the turn timer
+  useEffect(() => {
+    const clearTimerInterval = () => {
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current);
+        timerIntervalRef.current = null;
+      }
+    };
+
+    // Start timer only if it's my turn, action phase, and game not ended
+    if (isMyTurn && state?.phase === 'action' && state?.winner === null) {
+      setTurnTimer(TURN_DURATION); // Reset timer
+      clearTimerInterval(); // Clear previous interval just in case
+
+      timerIntervalRef.current = setInterval(() => {
+        setTurnTimer(prevTimer => {
+          if (prevTimer <= 1) {
+            clearTimerInterval();
+            // Check conditions again *inside* the callback using latest state via closure or ref
+            // Since state is not a dependency, we rely on the initial check and handleEndTurn's internal logic
+            // Or, more robustly, get current state if needed, but handleEndTurn should handle it.
+            console.log('[TimerEffect] Timer expired. Attempting to end turn.');
+            handleEndTurn(); // handleEndTurn should ideally check conditions internally
+            return 0;
+          }
+          return prevTimer - 1;
+        });
+      }, 1000);
+
+    } else {
+      // Clear timer if conditions are not met
+      clearTimerInterval();
+    }
+
+    // Cleanup function
+    return () => {
+      clearTimerInterval();
+    };
+    // Refined Dependencies: Only re-run if these specific conditions change
+  }, [isMyTurn, state?.phase, state?.winner, handleEndTurn, localPlayerIndex]);
 
   // --- Render Logic ---
   if (loading) return <div className="text-center p-10">Loading game...</div>;
-  if (playerError) return <div className="text-center p-10 text-red-500">{playerError}</div>;
-  if (!state) return <div className="text-center p-10">Game data not available.</div>;
+  if (playerError) return <div className="text-center p-10 text-red-500">Error: {playerError}</div>;
+  if (!currentPlayerId) return <div className="text-center p-10">Identifying player...</div>;
 
-  // Determine local player (always at the bottom) and remote player (always at the top)
-  const localPlayerIndex = state.players.findIndex(p => p.id === currentPlayerId);
-  // Handle case where currentPlayerId might not be in players yet (shouldn't happen in normal flow)
-  if (localPlayerIndex === -1) {
+  // Ensure localPlayerIndex check happens after state is potentially available
+  if (localPlayerIndex === -1 && !loading) { // Check only if not loading
       return <div className="text-center p-10 text-red-500">Error: Could not identify local player.</div>;
   }
+  // Ensure state exists before accessing its properties
+  if (!state) return <div className="text-center p-10">Game data not available.</div>;
+
   const localPlayer: PlayerState = state.players[localPlayerIndex];
   const remotePlayer: PlayerState = state.players[(localPlayerIndex + 1) % 2];
-
-  // Determine if it's the local player's turn based on the game state's currentPlayerIndex
-  const isMyTurn = state.currentPlayerIndex === localPlayerIndex;
-
-  const actionsRemaining = 2 - state.actionsTakenThisTurn;
-
+  const actionsRemaining = ACTIONS_PER_TURN - state.actionsTakenThisTurn;
 
   // --- Helper for unified grid ---
   // Market: deck + 3 cards
@@ -71,7 +125,7 @@ const GameScreen: React.FC = () => {
 
   // Function to render a card slot
   const renderCardSlot = (card: any, key: string, location: string) => {
-    const props: any = { key: key }; // Add key prop here
+    const props: any = { key: key };
 
     // Market cards (draw knowledge)
     if (location === 'market' && isMyTurn && state.phase === 'action' && card) {
@@ -93,7 +147,9 @@ const GameScreen: React.FC = () => {
           }
         }
       };
-      props.isSelected = isMyTurn && selectedKnowledgeId !== null && !localPlayer.field.some(f => f.creature?.id === card.id && f.knowledge); // Highlight if selectable for summon
+      // FIX: Access creatureId directly from the field slot object (f)
+      const creatureHasKnowledge = localPlayer.field.some(f => f.creatureId === card.id && f.knowledge !== null);
+      props.isSelected = isMyTurn && selectedKnowledgeId !== null && !creatureHasKnowledge; // Highlight if selectable for summon and doesn't have knowledge
       props.rotation = card.rotation ?? 0;
     }
     // Opponent creatures (show rotation)
@@ -193,6 +249,8 @@ const GameScreen: React.FC = () => {
           winner={state.winner}
           actionsTaken={state.actionsTakenThisTurn}
           onEndTurn={handleEndTurn}
+          turnTimer={turnTimer} // Pass timer state
+          actionsPerTurn={ACTIONS_PER_TURN} // Pass constant
         />
       </div>
     </div>
