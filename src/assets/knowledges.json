@@ -136,7 +136,7 @@
     "cost": 4,
     "effect": "Placeholder effect for Terrestrial 4",
     "image": "/images/spells/terrestrial4.jpg",
-    "maxRotations": 2,l
+    "maxRotations": 2,
     "element": "earth"
   },
   {
