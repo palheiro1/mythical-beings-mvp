@@ -1,7 +1,7 @@
 [
   {
     "id": "aerial1",
-    "name": "Aerial 1",
+    "name": "Lepidoptera",
     "type": "spell",
     "cost": 1,
     "effect": "Placeholder effect for Aerial 1",
@@ -11,7 +11,7 @@
   },
   {
     "id": "aerial2",
-    "name": "Aerial 2",
+    "name": "Blue Sky",
     "type": "spell",
     "cost": 2,
     "effect": "Placeholder effect for Aerial 2",
@@ -21,7 +21,7 @@
   },
   {
     "id": "aerial3",
-    "name": "Aerial 3",
+    "name": "Owl",
     "type": "spell",
     "cost": 3,
     "effect": "Placeholder effect for Aerial 3",
@@ -31,7 +31,7 @@
   },
   {
     "id": "aerial4",
-    "name": "Aerial 4",
+    "name": "Chiropter",
     "type": "spell",
     "cost": 4,
     "effect": "Placeholder effect for Aerial 4",
@@ -41,7 +41,7 @@
   },
   {
     "id": "aerial5",
-    "name": "Aerial 5",
+    "name": "Migration",
     "type": "spell",
     "cost": 5,
     "effect": "Placeholder effect for Aerial 5",
@@ -51,7 +51,7 @@
   },
   {
     "id": "aquatic1",
-    "name": "Aquatic 1",
+    "name": "Tsunami",
     "type": "spell",
     "cost": 1,
     "effect": "Placeholder effect for Aquatic 1",
@@ -61,7 +61,7 @@
   },
   {
     "id": "aquatic2",
-    "name": "Aquatic 2",
+    "name": "Asteroid",
     "type": "spell",
     "cost": 2,
     "effect": "Placeholder effect for Aquatic 2",
@@ -71,7 +71,7 @@
   },
   {
     "id": "aquatic3",
-    "name": "Aquatic 3",
+    "name": "Hurricane",
     "type": "spell",
     "cost": 3,
     "effect": "Placeholder effect for Aquatic 3",
@@ -81,7 +81,7 @@
   },
   {
     "id": "aquatic4",
-    "name": "Aquatic 4",
+    "name": "Deslphinidae",
     "type": "spell",
     "cost": 4,
     "effect": "Placeholder effect for Aquatic 4",
@@ -91,7 +91,7 @@
   },
   {
     "id": "aquatic5",
-    "name": "Aquatic 5",
+    "name": "Galapago",
     "type": "spell",
     "cost": 5,
     "effect": "Placeholder effect for Aquatic 5",
@@ -101,7 +101,7 @@
   },
   {
     "id": "terrestrial1",
-    "name": "Terrestrial 1",
+    "name": "Ursus",
     "type": "spell",
     "cost": 1,
     "effect": "Placeholder effect for Terrestrial 1",
@@ -111,7 +111,7 @@
   },
   {
     "id": "terrestrial2",
-    "name": "Terrestrial 2",
+    "name": "Serpent",
     "type": "spell",
     "cost": 2,
     "effect": "Placeholder effect for Terrestrial 2",
@@ -121,7 +121,7 @@
   },
   {
     "id": "terrestrial3",
-    "name": "Terrestrial 3",
+    "name": "Earthquake",
     "type": "spell",
     "cost": 3,
     "effect": "Placeholder effect for Terrestrial 3",
@@ -131,17 +131,17 @@
   },
   {
     "id": "terrestrial4",
-    "name": "Terrestrial 4",
+    "name": "Fire",
     "type": "spell",
     "cost": 4,
     "effect": "Placeholder effect for Terrestrial 4",
     "image": "/images/spells/terrestrial4.jpg",
-    "maxRotations": 2,
+    "maxRotations": 2,l
     "element": "earth"
   },
   {
     "id": "terrestrial5",
-    "name": "Terrestrial 5",
+    "name": "Lupus",
     "type": "spell",
     "cost": 5,
     "effect": "Placeholder effect for Terrestrial 5",
