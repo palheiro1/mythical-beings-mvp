@@ -1,7 +1,8 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react'; // Import useRef
 import { GameState, GameAction } from '../game/types';
 import { isValidAction } from '../game/rules';
 import { gameReducer as originalGameReducer } from '../game/state';
+import { updateGameState, logMove } from '../utils/supabase'; // Import logMove
 
 type GameScreenState = GameState | null;
 type GameReducerType = (state: GameScreenState, action: GameAction) => GameScreenState;
@@ -11,7 +12,6 @@ const gameScreenReducer: GameReducerType = (state, action) => {
   if (state === null) return null;
   return originalGameReducer(state, action);
 };
-
 
 /**
  * Hook to manage game actions, validation, optimistic updates, and persistence.
@@ -30,12 +30,34 @@ export function useGameActions(
     setError: React.Dispatch<React.SetStateAction<string | null>>
 ) {
   const [selectedKnowledgeId, setSelectedKnowledgeId] = useState<string | null>(null);
+  const isProcessingAction = useRef(false); // Add ref to prevent concurrent actions
 
-  // Memoize handleAction
-  const handleAction = useCallback((action: GameAction) => {
+  const handleAction = useCallback(async (action: GameAction) => {
+    // Prevent concurrent actions
+    if (isProcessingAction.current) {
+        console.warn(`[handleAction] Action ${action.type} blocked, another action is already processing.`);
+        return;
+    }
+    isProcessingAction.current = true;
+
+    // Log entry point
+    console.log(`[handleAction] Received action: ${action.type}`, action.payload);
+
     if (!state || !gameId || !currentPlayerId) {
-      console.error("Cannot handle action: State, gameId, or currentPlayerId missing.");
+      console.error("[handleAction] Cannot handle action: State, gameId, or currentPlayerId missing.");
+      isProcessingAction.current = false; // Release lock
       return;
+    }
+
+    // *** Add check to prevent duplicate END_TURN processing ***
+    if (action.type === 'END_TURN') {
+        const playerIndexEndingTurn = state.players.findIndex(p => p.id === action.payload.playerId);
+        if (state.currentPlayerIndex !== playerIndexEndingTurn) {
+             console.warn(`[handleAction] Ignoring END_TURN from player ${action.payload.playerId} because currentPlayerIndex (${state.currentPlayerIndex}) doesn't match player index (${playerIndexEndingTurn}).`);
+             isProcessingAction.current = false; // Release lock
+             return;
+        }
+        console.log(`[handleAction] Processing END_TURN for player ${action.payload.playerId}. Current state player index: ${state.currentPlayerIndex}`);
     }
 
     // Ensure payload has correct player ID (except for system actions)
@@ -45,33 +67,67 @@ export function useGameActions(
             // return; // Optional: prevent action
         }
     } else if (action.type !== 'SET_GAME_STATE' && action.type !== 'INITIALIZE_GAME') {
-        console.error("Action payload missing playerId:", action);
+        console.error("[handleAction] Action payload missing playerId:", action);
+        isProcessingAction.current = false; // Release lock
         return;
     }
 
+    // Validate Action
+    console.log(`[handleAction] Validating action ${action.type}...`);
     if (!isValidAction(state, action)) {
-      console.warn("Invalid action attempted:", action.type, action.payload);
+      console.warn(`[handleAction] Invalid action attempted: ${action.type}`, action.payload);
       setError(`Invalid action: ${action.type}. Check game rules or state.`);
       setSelectedKnowledgeId(null); // Clear selection on invalid action
+      isProcessingAction.current = false; // Release lock
       return;
     }
+    console.log(`[handleAction] Action ${action.type} is valid.`);
 
-    // Optimistic UI update
+    // Calculate next state using the reducer
+    console.log(`[handleAction] Calculating next state for action ${action.type}...`);
     const nextState = gameScreenReducer(state, action);
     if (!nextState) {
-        console.error("Reducer returned null state after action:", action);
+        console.error(`[handleAction] Reducer returned null state after action: ${action.type}`);
         setError("An error occurred processing the action.");
+        isProcessingAction.current = false; // Release lock
         return;
     }
-    dispatch(action); // Update local state immediately
-    setError(null); // Clear previous errors on valid dispatch
+    console.log(`[handleAction] Reducer finished. Next state phase: ${nextState.phase}, Player: ${nextState.currentPlayerIndex}`);
 
-    // Clear selection after successful summon
-    if (action.type === 'SUMMON_KNOWLEDGE') {
-        setSelectedKnowledgeId(null);
+    // Persist the calculated state to Supabase BEFORE dispatching locally
+    try {
+        console.log(`[handleAction] Persisting state BEFORE dispatch for action ${action.type}. Phase: ${nextState.phase}, Player: ${nextState.currentPlayerIndex}`);
+        await updateGameState(gameId, nextState); // Await the update
+        console.log(`[handleAction] State persisted successfully for action ${action.type}.`);
+
+        // Log the move AFTER successful state persistence
+        // Avoid logging SET_GAME_STATE or INITIALIZE_GAME
+        if (action.type !== 'SET_GAME_STATE' && action.type !== 'INITIALIZE_GAME') {
+            console.log(`[handleAction] Logging move ${action.type}...`);
+            await logMove(gameId, action.payload.playerId, action.type, action.payload);
+            console.log(`[handleAction] Move ${action.type} logged.`);
+        }
+
+        // Update local state ONLY after successful persistence
+        console.log(`[handleAction] Dispatching SET_GAME_STATE with persisted state.`);
+        dispatch({ type: 'SET_GAME_STATE', payload: nextState });
+        setError(null); // Clear previous errors
+
+    } catch (error) {
+        console.error(`[handleAction] Failed to persist state or log move after action ${action.type}:`, error);
+        setError("Failed to save game state or log move. Please check connection or try again.");
+        // Do NOT dispatch if persistence failed
+    } finally {
+        // Clear selection after successful summon (regardless of persistence outcome?)
+        // Maybe move this inside the try block after dispatch?
+        if (action.type === 'SUMMON_KNOWLEDGE') {
+            setSelectedKnowledgeId(null);
+        }
+        isProcessingAction.current = false; // Release lock in finally block
+        console.log(`[handleAction] Finished processing action ${action.type}. Released lock.`);
     }
-    // Dependencies for handleAction
-  }, [state, gameId, currentPlayerId, dispatch, setError, setSelectedKnowledgeId]);
+
+  }, [state, gameId, currentPlayerId, dispatch, setError, setSelectedKnowledgeId]); // Removed isProcessingAction from dependencies
 
   // --- Specific Action Handlers (Memoized) ---
   const handleRotateCreature = useCallback((creatureId: string) => {

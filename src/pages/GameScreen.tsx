@@ -46,11 +46,13 @@ const GameScreen: React.FC = () => {
 
   // Effect to automatically end turn when actions are depleted
   useEffect(() => {
+    // Add check for state.phase === 'action'
     if (state && isMyTurn && state.phase === 'action' && state.actionsTakenThisTurn >= ACTIONS_PER_TURN) {
       console.log('[GameScreen] Actions depleted, automatically ending turn.');
       handleEndTurn();
     }
-  }, [state, isMyTurn, handleEndTurn]);
+    // Keep dependencies as they were, the check is now inside
+  }, [state, isMyTurn, handleEndTurn]); // Dependencies might need refinement based on testing
 
   // Effect to manage the turn timer
   useEffect(() => {
