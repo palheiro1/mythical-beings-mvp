@@ -1,6 +1,6 @@
 import { useEffect, useReducer, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { getGameState, subscribeToGameState, unsubscribeFromGameState, createGame } from '../utils/supabase';
+import { getGameState, subscribeToGameState, unsubscribeFromGameState, updateGameState } from '../utils/supabase';
 import { initializeGame } from '../game/state';
 import { GameState, GameAction, Creature } from '../game/types';
 import creatureData from '../assets/creatures.json';
@@ -64,8 +64,11 @@ export function useGameInitialization(
     const setupGame = async () => {
       try {
         let gameState = await getGameState(gameId);
+        let isNewGameInitialization = false; // Flag to track if we initialized
+
         if (!gameState) {
           console.log(`[setupGame] Game state for ${gameId} not found. Initializing...`);
+          isNewGameInitialization = true;
           const mockCreaturesP1: Creature[] = creatureData.slice(0, 3) as Creature[];
           const mockCreaturesP2: Creature[] = creatureData.slice(3, 6) as Creature[];
           const player1Id = 'p1'; // Mock player ID
@@ -75,21 +78,30 @@ export function useGameInitialization(
               throw new Error("Not enough mock creature data available for initialization.");
           }
 
-          // This state has already run executeKnowledgePhase
-          const initializedState = initializeGame(gameId, player1Id, player2Id, mockCreaturesP1, mockCreaturesP2);
-          const createdGame = await createGame(gameId, player1Id, player2Id, initializedState);
+          // Initialize the game state locally
+          gameState = initializeGame(gameId, player1Id, player2Id, mockCreaturesP1, mockCreaturesP2);
+          console.log(`[setupGame] Game ${gameId} initialized locally. Phase:`, gameState.phase);
 
-          if (!createdGame) { // Check if game creation itself failed
-            throw new Error("Failed to create game in Supabase.");
-          }
-          // Use the state that already went through the initial knowledge phase
-          gameState = initializedState; 
-          console.log(`[setupGame] Game ${gameId} created. Initial local state phase will be:`, gameState.phase);
         } else {
-          console.log(`[setupGame] Game ${gameId} found. Initial local state phase will be:`, gameState.phase);
+          console.log(`[setupGame] Game ${gameId} found in DB. Phase:`, gameState.phase);
         }
 
+        // Set the local state first
         dispatch({ type: 'SET_GAME_STATE', payload: gameState });
+
+        // If we just initialized the state, update it in the database
+        if (isNewGameInitialization && gameState) {
+            console.log(`[setupGame] Updating game state in Supabase for ${gameId}...`);
+            const updateResult = await updateGameState(gameId, gameState);
+            if (!updateResult) {
+                // Handle potential update failure (e.g., log error, maybe revert local state?)
+                console.error(`[setupGame] Failed to update initial game state in Supabase for ${gameId}.`);
+                throw new Error("Failed to save initial game state to database.");
+            } else {
+                console.log(`[setupGame] Successfully updated initial game state in Supabase for ${gameId}.`);
+            }
+        }
+
         setLoading(false);
         subscription = subscribeToGameState(gameId, handleRealtimeUpdate);
 

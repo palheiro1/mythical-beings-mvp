@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useParams } from 'react-router-dom'; // Import useParams
 import { PlayerState } from '../game/types';
 
 // Import Hooks
@@ -17,9 +18,10 @@ const TURN_DURATION = 30;
 
 const GameScreen: React.FC = () => {
   // --- State and Hooks ---
+  const { gameId } = useParams<{ gameId: string }>(); // Get gameId from URL
   const [currentPlayerId, , playerError, setPlayerError] = usePlayerIdentification();
   const [actionMessage, setActionMessage] = useState<string | null>(null);
-  const [state, dispatch, loading, gameId] = useGameInitialization(currentPlayerId, setPlayerError);
+  const [state, dispatch, loading] = useGameInitialization(currentPlayerId, setPlayerError); // Remove gameId from the arguments passed to useGameInitialization
   const [turnTimer, setTurnTimer] = useState<number>(TURN_DURATION); // State for the timer
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null); // Ref to store interval ID
 
@@ -31,7 +33,7 @@ const GameScreen: React.FC = () => {
     handleCreatureClickForSummon,
     handleEndTurn,
     cancelSelection,
-  } = useGameActions(state, dispatch, gameId, currentPlayerId, setActionMessage);
+  } = useGameActions(state, dispatch, gameId, currentPlayerId, setActionMessage); // Pass gameId to useGameActions as well
 
   // Determine local player index and isMyTurn
   const localPlayerIndex = state ? state.players.findIndex(p => p.id === currentPlayerId) : -1;
@@ -105,7 +107,7 @@ const GameScreen: React.FC = () => {
       return <div className="text-center p-10 text-red-500">Error: Could not identify local player.</div>;
   }
   // Ensure state exists before accessing its properties
-  if (!state) return <div className="text-center p-10">Game data not available.</div>;
+  if (!state) return <div className="text-center p-10">Loading game data for {gameId}...</div>; // Show gameId while loading
 
   const localPlayer: PlayerState = state.players[localPlayerIndex];
   const remotePlayer: PlayerState = state.players[(localPlayerIndex + 1) % 2];
