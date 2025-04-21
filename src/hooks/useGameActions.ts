@@ -1,7 +1,6 @@
 import { useState, useCallback } from 'react';
 import { GameState, GameAction } from '../game/types';
 import { isValidAction } from '../game/rules';
-import { updateGameState, logMove } from '../utils/supabase';
 import { gameReducer as originalGameReducer } from '../game/state';
 
 type GameScreenState = GameState | null;
@@ -33,7 +32,7 @@ export function useGameActions(
   const [selectedKnowledgeId, setSelectedKnowledgeId] = useState<string | null>(null);
 
   // Memoize handleAction
-  const handleAction = useCallback(async (action: GameAction) => {
+  const handleAction = useCallback((action: GameAction) => {
     if (!state || !gameId || !currentPlayerId) {
       console.error("Cannot handle action: State, gameId, or currentPlayerId missing.");
       return;
@@ -65,24 +64,7 @@ export function useGameActions(
         return;
     }
     dispatch(action); // Update local state immediately
-
-    // Persist state change and log move via Supabase
-    try {
-      const updateResult = await updateGameState(gameId, nextState);
-      if (!updateResult) {
-          throw new Error("Failed to update game state in Supabase.");
-      }
-      if ('payload' in action && action.payload) {
-          // Ensure action.type is a valid string for the database column
-          const actionTypeString = typeof action.type === 'string' ? action.type : JSON.stringify(action.type);
-          await logMove(gameId, currentPlayerId, actionTypeString, action.payload);
-      }
-      setError(null); // Clear previous errors
-    } catch (err) {
-      console.error('Error updating game state or logging move:', err);
-      setError('Failed to sync game state. Please try again.');
-      // TODO: Consider reverting optimistic update
-    }
+    setError(null); // Clear previous errors on valid dispatch
 
     // Clear selection after successful summon
     if (action.type === 'SUMMON_KNOWLEDGE') {
