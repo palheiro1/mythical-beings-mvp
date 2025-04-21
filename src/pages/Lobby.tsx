@@ -40,14 +40,6 @@ const Lobby: React.FC = () => {
     setTimeout(() => setNotification(null), 3000);
   };
 
-  // Function to handle spectating
-  const handleSpectate = () => {
-    console.log('Spectating a game');
-    // Add logic to find and spectate a game
-    setNotification('Spectator mode activated (mock)');
-    setTimeout(() => setNotification(null), 3000);
-  };
-
   // Function for "Open to Fight"
   const handleAction = (action: string) => {
     console.log(`Performing action: ${action}`);

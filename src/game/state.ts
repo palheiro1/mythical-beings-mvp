@@ -7,8 +7,6 @@ import { getPlayerState } from './utils'; // Removed unused imports
 
 // Constants
 const INITIAL_POWER = 20;
-// const MAX_HAND_SIZE = 5; // Removed, validation handled in rules.ts
-const ACTIONS_PER_TURN = 2;
 const MARKET_SIZE = 5;
 
 // Helper function to shuffle an array (Fisher-Yates algorithm)
@@ -234,8 +232,6 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
     default:
       // This should ideally be caught by type checking, but as a fallback:
       console.error("Reducer: Unhandled valid action type", action);
-      // To satisfy TypeScript, ensure action is never here
-      const _exhaustiveCheck: never = action;
       return state;
   }
 

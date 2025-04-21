@@ -1,6 +1,5 @@
 import { knowledgeEffects } from './effects';
-import { GameState, GameAction, CombatBuffers } from './types';
-import { getCreatureWisdom, getPlayerState, getOpponentState } from './utils';
+import { GameState, GameAction, CombatBuffers, Knowledge } from './types';
 import { applyPassiveAbilities } from './passives';
 
 // Constants

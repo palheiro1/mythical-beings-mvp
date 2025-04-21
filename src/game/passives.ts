@@ -1,20 +1,5 @@
-import { GameState, PassiveTriggerType, PassiveEventData, Knowledge, PlayerState } from './types';
+import { GameState, PassiveTriggerType, PassiveEventData } from './types';
 import { getOpponentState, getPlayerState } from './utils';
-
-// Helper function to find a specific knowledge card on a player's field
-function findKnowledgeOnField(player: PlayerState, knowledgeId: string): Knowledge | null {
-    for (const slot of player.field) {
-        if (slot.knowledge && slot.knowledge.id === knowledgeId) {
-            return slot.knowledge;
-        }
-    }
-    return null;
-}
-
-// Helper function to find the field slot index for a specific knowledge card
-function findFieldSlotIndexWithKnowledge(player: PlayerState, knowledgeId: string): number {
-    return player.field.findIndex(slot => slot.knowledge && slot.knowledge.id === knowledgeId);
-}
 
 
 /**
