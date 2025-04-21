@@ -7,9 +7,9 @@ import { initializeGame } from '../src/game/state'; // Import initializeGame for
 const mockCreature1: Creature = { id: 'c1', name: 'Creature 1', element: 'air', passiveAbility: '', baseWisdom: 0, image: '', currentWisdom: 2 };
 const mockCreature2: Creature = { id: 'c2', name: 'Creature 2', element: 'water', passiveAbility: '', baseWisdom: 0, image: '', currentWisdom: 1 };
 const mockCreature3: Creature = { id: 'c3', name: 'Creature 3', element: 'earth', passiveAbility: '', baseWisdom: 0, image: '', currentWisdom: 3 };
-const mockKnowledge1: Knowledge = { id: 'k1', name: 'Knowledge 1', type: 'spell', cost: 1, effect: 'Effect 1', image: '' };
-const mockKnowledge2: Knowledge = { id: 'k2', name: 'Knowledge 2', type: 'ally', cost: 2, effect: 'Effect 2', image: '' };
-const mockKnowledge3: Knowledge = { id: 'k3', name: 'Knowledge 3', type: 'spell', cost: 3, effect: 'Effect 3', image: '' };
+const mockKnowledge1: Knowledge = { id: 'k1', name: 'Knowledge 1', type: 'spell', cost: 1, effect: 'Effect 1', image: '', element: 'neutral' };
+const mockKnowledge2: Knowledge = { id: 'k2', name: 'Knowledge 2', type: 'ally', cost: 2, effect: 'Effect 2', image: '', element: 'neutral' };
+const mockKnowledge3: Knowledge = { id: 'k3', name: 'Knowledge 3', type: 'spell', cost: 3, effect: 'Effect 3', image: '', element: 'neutral' };
 
 let baseGameState: GameState;
 
@@ -20,7 +20,13 @@ beforeEach(() => {
   baseGameState.players[0].hand = [mockKnowledge1, mockKnowledge2];
   baseGameState.players[0].creatures[0].currentWisdom = 2; // Ensure creature 1 has enough wisdom for k2
   baseGameState.players[1].hand = [mockKnowledge3];
-  baseGameState.market = [mockKnowledge3, { id: 'k4', name: 'Knowledge 4', type: 'spell', cost: 1, effect: '', image: '' }, { id: 'k5', name: 'Knowledge 5', type: 'ally', cost: 2, effect: '', image: '' }, { id: 'k6', name: 'Knowledge 6', type: 'spell', cost: 3, effect: '', image: '' }, { id: 'k7', name: 'Knowledge 7', type: 'ally', cost: 4, effect: '', image: '' }];
+  baseGameState.market = [
+    mockKnowledge3,
+    { id: 'k4', name: 'Knowledge 4', type: 'spell', cost: 1, effect: '', image: '', element: 'neutral' },
+    { id: 'k5', name: 'Knowledge 5', type: 'ally', cost: 2, effect: '', image: '', element: 'neutral' },
+    { id: 'k6', name: 'Knowledge 6', type: 'spell', cost: 3, effect: '', image: '', element: 'neutral' },
+    { id: 'k7', name: 'Knowledge 7', type: 'ally', cost: 4, effect: '', image: '', element: 'neutral' }
+  ];
   baseGameState.phase = 'action'; // Set to action phase for most tests
   baseGameState.actionsTakenThisTurn = 0;
   baseGameState.currentPlayerIndex = 0; // Player 1 starts
@@ -48,7 +54,7 @@ describe('isValidAction', () => {
   });
 
   it('should return false for DRAW_KNOWLEDGE if hand is full', () => {
-    baseGameState.players[0].hand = [mockKnowledge1, mockKnowledge2, mockKnowledge3, {id: 'k4', name: 'K4', type: 'spell', cost: 1, effect: '', image: ''}, {id: 'k5', name: 'K5', type: 'spell', cost: 1, effect: '', image: ''}]; // Hand size 5
+    baseGameState.players[0].hand = [mockKnowledge1, mockKnowledge2, mockKnowledge3, {id: 'k4', name: 'K4', type: 'spell', cost: 1, effect: '', image: '', element: 'neutral'}, {id: 'k5', name: 'K5', type: 'spell', cost: 1, effect: '', image: '', element: 'neutral'}]; // Hand size 5
     const action: GameAction = { type: 'DRAW_KNOWLEDGE', payload: { playerId: 'p1', knowledgeId: 'k3' } };
     expect(isValidAction(baseGameState, action)).toBe(false);
   });
