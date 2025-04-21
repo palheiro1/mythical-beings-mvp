@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react'; // Added useRef
-import { PlayerState } from '../game/types'; // Removed unused Knowledge
+import React, { useState, useEffect, useRef } from 'react';
+import { PlayerState } from '../game/types';
 
 // Import Hooks
 import { usePlayerIdentification } from '../hooks/usePlayerIdentification'; // Added missing import
