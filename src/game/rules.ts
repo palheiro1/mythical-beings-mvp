@@ -104,7 +104,16 @@ export function isValidAction(state: GameState, action: GameAction): boolean {
       const creature = player.creatures.find(c => c.id === creatureId);
       if (!creature) {
         console.log(`[isValidAction] Failed SUMMON: Base creature data ${creatureId} not found (data inconsistency)`);
-        return false; // Base creature data not found (shouldn't happen if fieldSlot exists)
+        return false;
+      }
+
+      // Creature is guaranteed to be defined here
+      const creatureWisdom = creature.currentWisdom;
+
+      // Explicitly check if wisdom is a number before comparison
+      if (typeof creatureWisdom !== 'number') {
+          console.error(`[isValidAction] Error: Creature ${creatureId} has invalid or undefined currentWisdom: ${creatureWisdom}`);
+          return false;
       }
 
       let effectiveCost = knowledgeCard.cost;
@@ -118,7 +127,7 @@ export function isValidAction(state: GameState, action: GameAction): boolean {
         effectiveCost = Math.max(1, effectiveCost - 1);
       }
 
-      const creatureWisdom = getCreatureWisdom(creature); // Use helper
+      // Now creatureWisdom is confirmed to be a number
       if (creatureWisdom < effectiveCost) {
           console.log(`[isValidAction] Failed SUMMON: Creature ${creatureId} wisdom (${creatureWisdom}) < cost (${effectiveCost})`);
           return false; // Insufficient wisdom
