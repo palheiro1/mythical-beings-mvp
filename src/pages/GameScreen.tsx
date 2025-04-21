@@ -24,6 +24,7 @@ const GameScreen: React.FC = () => {
   const [state, dispatch, loading] = useGameInitialization(currentPlayerId, setPlayerError); // Remove gameId from the arguments passed to useGameInitialization
   const [turnTimer, setTurnTimer] = useState<number>(TURN_DURATION); // State for the timer
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null); // Ref to store interval ID
+  const [isSpectator, setIsSpectator] = useState<boolean | null>(null); // Initialize as null
 
   const {
     selectedKnowledgeId,
@@ -35,9 +36,18 @@ const GameScreen: React.FC = () => {
     cancelSelection,
   } = useGameActions(state, dispatch, gameId, currentPlayerId, setActionMessage); // Pass gameId to useGameActions as well
 
-  // Determine local player index and isMyTurn
-  const localPlayerIndex = state ? state.players.findIndex(p => p.id === currentPlayerId) : -1;
-  const isMyTurn = state ? state.currentPlayerIndex === localPlayerIndex : false;
+  // Determine local player index (only relevant if not spectator)
+  const localPlayerIndex = state && currentPlayerId ? state.players.findIndex(p => p.id === currentPlayerId) : -1;
+  const isMyTurn = !isSpectator && state ? state.currentPlayerIndex === localPlayerIndex : false;
+
+  // Determine if the current user is a player or spectator once state is loaded
+  useEffect(() => {
+    if (state && currentPlayerId !== null && isSpectator === null) { // Check only once when state is loaded
+      const isPlayerInGame = state.players.some(p => p.id === currentPlayerId);
+      setIsSpectator(!isPlayerInGame);
+      console.log(`[GameScreen] User is ${!isPlayerInGame ? 'Spectator' : 'Player'}. Player ID: ${currentPlayerId}`);
+    }
+  }, [state, currentPlayerId, isSpectator]); // Depend on state, currentPlayerId, and isSpectator itself
 
   // Log state phase whenever it changes
   useEffect(() => {
@@ -98,24 +108,65 @@ const GameScreen: React.FC = () => {
   }, [isMyTurn, state?.phase, state?.winner, handleEndTurn, localPlayerIndex]);
 
   // --- Render Logic ---
-  if (loading) return <div className="text-center p-10">Loading game...</div>;
-  if (playerError) return <div className="text-center p-10 text-red-500">Error: {playerError}</div>;
-  if (!currentPlayerId) return <div className="text-center p-10">Identifying player...</div>;
-
-  // Ensure localPlayerIndex check happens after state is potentially available
-  if (localPlayerIndex === -1 && !loading) { // Check only if not loading
-      return <div className="text-center p-10 text-red-500">Error: Could not identify local player.</div>;
+  // 1. Handle Loading State
+  if (loading) {
+    console.log("[Render] Showing Loading Game..."); // Log render state
+    return <div className="text-center p-10">Loading game...</div>;
   }
-  // Ensure state exists before accessing its properties
-  if (!state) return <div className="text-center p-10">Loading game data for {gameId}...</div>; // Show gameId while loading
 
-  const localPlayer: PlayerState = state.players[localPlayerIndex];
-  const remotePlayer: PlayerState = state.players[(localPlayerIndex + 1) % 2];
+  // 2. Handle Errors
+  if (playerError) {
+    console.log("[Render] Showing Player Error:", playerError); // Log render state
+    return <div className="text-center p-10 text-red-500">Error: {playerError}</div>;
+  }
+
+  // 3. Handle Missing Player ID (should ideally not happen after loading)
+  if (!currentPlayerId) {
+    console.log("[Render] Showing Identifying Player..."); // Log render state
+    return <div className="text-center p-10">Identifying player...</div>;
+  }
+
+  // 4. Handle Missing Game State (should ideally not happen after loading)
+  if (!state) {
+    console.log("[Render] Showing Loading Game Data..."); // Log render state
+    return <div className="text-center p-10">Loading game data for {gameId}...</div>;
+  }
+
+  // 5. Handle Spectator status not yet determined
+  if (isSpectator === null) {
+    console.log("[Render] Determining player/spectator status..."); // Log render state
+    return <div className="text-center p-10">Checking player status...</div>;
+  }
+
+  // 6. Determine players for display AFTER loading and state checks
+  let localPlayer: PlayerState | undefined;
+  let remotePlayer: PlayerState | undefined;
+
+  if (!isSpectator) {
+    if (localPlayerIndex === -1) {
+      // This case means loading is done, state exists, user ID exists, but user is not in state.players AND not spectator
+      console.error("[Render] Error: Could not identify local player in game state."); // Log render state
+      return <div className="text-center p-10 text-red-500">Error: Could not identify local player in game state.</div>;
+    }
+    localPlayer = state.players[localPlayerIndex];
+    remotePlayer = state.players[(localPlayerIndex + 1) % 2];
+  } else { // User is a spectator
+    localPlayer = state.players[0]; // Display player 0 as "local" for spectators
+    remotePlayer = state.players[1]; // Display player 1 as "remote"
+  }
+
+  // Ensure players are defined before proceeding (should be guaranteed by checks above)
+  if (!localPlayer || !remotePlayer) {
+    console.error("[Render] Error: Game player data incomplete."); // Log render state
+    return <div className="text-center p-10 text-red-500">Error: Game data incomplete.</div>;
+  }
+
+  console.log("[Render] Rendering main game screen."); // Log render state
+
   const actionsRemaining = ACTIONS_PER_TURN - state.actionsTakenThisTurn;
 
   // --- Helper for unified grid ---
-  // Market: deck + 3 cards
-  const marketDeck = { id: 'marketdeck', name: 'Deck', image: '/images/spells/back.jpg', type: 'spell', cost: 0, effect: '', element: 'none' }; // Added element none
+  const marketDeck = { id: 'marketdeck', name: 'Deck', image: '/images/spells/back.jpg', type: 'spell', cost: 0, effect: '', element: 'none' };
   const marketCards = state.market.slice(0, 3);
 
   // Table: Use localPlayer for bottom, remotePlayer for top
@@ -130,30 +181,32 @@ const GameScreen: React.FC = () => {
   // Function to render a card slot
   const renderCardSlot = (card: any, key: string, location: string) => {
     const props: any = { key: key };
+    // Use the already determined isSpectator and isMyTurn
+    const canInteract = !isSpectator && isMyTurn && state.phase === 'action';
 
-    // Market cards (draw knowledge)
-    if (location === 'market' && isMyTurn && state.phase === 'action' && card) {
+    // Market cards (draw knowledge) - only if player & can interact
+    if (location === 'market' && canInteract && card) {
       props.onClick = () => handleDrawKnowledge(card.id);
     }
-    // Player hand (play knowledge)
-    if (location === 'player-hand' && isMyTurn && state.phase === 'action' && card) {
+    // Player hand (play knowledge) - only if player & can interact
+    if (location === 'player-hand' && canInteract && card) {
       props.onClick = () => handleHandCardClick(card.id);
       props.isSelected = selectedKnowledgeId === card.id;
     }
-    // Player creatures (rotate or summon knowledge)
+    // Player creatures (rotate or summon knowledge) - only if player & can interact
     if (location === 'player-creature' && card) {
-      props.onClick = () => {
-        if (isMyTurn && state.phase === 'action') {
+      if (canInteract) {
+        props.onClick = () => {
           if (selectedKnowledgeId) {
             handleCreatureClickForSummon(card.id);
           } else {
             handleRotateCreature(card.id);
           }
-        }
-      };
-      // FIX: Access creatureId directly from the field slot object (f)
-      const creatureHasKnowledge = localPlayer.field.some(f => f.creatureId === card.id && f.knowledge !== null);
-      props.isSelected = isMyTurn && selectedKnowledgeId !== null && !creatureHasKnowledge; // Highlight if selectable for summon and doesn't have knowledge
+        };
+        // Use optional chaining on localPlayer
+        const creatureHasKnowledge = localPlayer?.field.some(f => f.creatureId === card.id && f.knowledge !== null);
+        props.isSelected = selectedKnowledgeId !== null && !creatureHasKnowledge;
+      }
       props.rotation = card.rotation ?? 0;
     }
     // Opponent creatures (show rotation)
@@ -164,31 +217,32 @@ const GameScreen: React.FC = () => {
     if (location === 'opp-hand' && card) {
       props.showBack = true;
     }
+    // Player hand (show back if spectator)
+    if (location === 'player-hand' && isSpectator && card) {
+      props.showBack = true;
+    }
     // Market deck (show back)
     if (location === 'market-deck') {
       props.showBack = true;
     }
-     // Player knowledge (show rotation)
+    // Player knowledge (show rotation)
     if (location === 'player-knowledge' && card) {
-        props.rotation = card.rotation ?? 0;
+      props.rotation = card.rotation ?? 0;
     }
     // Opponent knowledge (show rotation)
     if (location === 'opp-knowledge' && card) {
-        props.rotation = (card.rotation ?? 0) + 180;
+      props.rotation = (card.rotation ?? 0) + 180;
     }
 
     // Render the Card component or an empty slot
     return (
-      // Change hover:scale-110 to hover:scale-200 for a larger zoom
-      <div className="aspect-[2/3] flex justify-center items-center bg-black/20 rounded-md overflow-hidden transition-transform duration-200 hover:scale-200 hover:z-10">
+      <div className={`aspect-[2/3] flex justify-center items-center bg-black/20 rounded-md overflow-hidden transition-transform duration-200 ${canInteract && card ? 'hover:scale-200 hover:z-10 cursor-pointer' : 'hover:scale-110'}`}>
         {card ? <Card card={card} {...props} /> : <div className="w-full h-full"></div>}
       </div>
     );
   };
 
-
   return (
-    // Main screen layout: TopBar, Content (Grid + Logs), ActionBar
     <div className="fixed inset-0 w-screen h-screen overflow-hidden bg-gray-100 grid grid-rows-[auto_1fr_auto] gap-2">
       {/* TopBar */}
       <div className="bg-white border-b-4 border-blue-200 shadow-lg">
@@ -196,12 +250,14 @@ const GameScreen: React.FC = () => {
           gameId={gameId}
           turn={state.turn}
           phase={state.phase}
+          // Use the defined localPlayer/remotePlayer
           currentPlayerPower={localPlayer.power}
           opponentPlayerPower={remotePlayer.power}
           actionsRemaining={actionsRemaining}
           marketCount={state.market.length}
           selectedKnowledgeId={selectedKnowledgeId}
-          onCancelSelection={cancelSelection}
+          onCancelSelection={isSpectator ? undefined : cancelSelection}
+          isSpectator={isSpectator}
         />
       </div>
 
@@ -213,7 +269,6 @@ const GameScreen: React.FC = () => {
       )}
 
       {/* Main content area: Grid + Logs */}
-      {/* Use grid layout with 2 columns: main game area and logs */}
       <div className="grid grid-cols-[1fr_300px] gap-4 px-4 overflow-hidden">
 
         {/* Left Column: Game Grid */}
@@ -222,25 +277,25 @@ const GameScreen: React.FC = () => {
           <div className="grid grid-cols-8 grid-rows-4 gap-2 w-full h-full max-w-screen-lg mx-auto">
             {/* Row 1: Market deck, Remote creatures, Remote hand */}
             <div className="col-start-1 row-start-1">{renderCardSlot(marketDeck, 'marketdeck', 'market-deck')}</div>
-            {[0,1,2].map(i => <div key={'oc'+i} style={{gridColumnStart: 2+i, gridRowStart: 1}}>{renderCardSlot(remoteCreatures[i], 'oc'+i, 'opp-creature')}</div>)}
-            {[0,1,2,3].map(i => <div key={'oh'+i} style={{gridColumnStart: 5+i, gridRowStart: 1}}>{renderCardSlot(remoteHand[i], 'oh'+i, 'opp-hand')}</div>)}
+            {[0, 1, 2].map(i => <div key={'oc' + i} style={{ gridColumnStart: 2 + i, gridRowStart: 1 }}>{renderCardSlot(remoteCreatures[i], 'oc' + i, 'opp-creature')}</div>)}
+            {[0, 1, 2, 3].map(i => <div key={'oh' + i} style={{ gridColumnStart: 5 + i, gridRowStart: 1 }}>{renderCardSlot(remoteHand[i], 'oh' + i, 'opp-hand')}</div>)}
             {/* Row 2: Market card 1, Remote knowledges */}
             <div className="col-start-1 row-start-2">{renderCardSlot(marketCards[0], 'market1', 'market')}</div>
-            {[0,1,2].map(i => <div key={'ok'+i} style={{gridColumnStart: 2+i, gridRowStart: 2}}>{renderCardSlot(remoteKnowledges[i], 'ok'+i, 'opp-knowledge')}</div>)}
-            {[0,1,2,3].map(i => <div key={'eh2'+i} style={{gridColumnStart: 5+i, gridRowStart: 2}}>{renderCardSlot(null, 'eh2'+i, 'empty')}</div>)}
+            {[0, 1, 2].map(i => <div key={'ok' + i} style={{ gridColumnStart: 2 + i, gridRowStart: 2 }}>{renderCardSlot(remoteKnowledges[i], 'ok' + i, 'opp-knowledge')}</div>)}
+            {[0, 1, 2, 3].map(i => <div key={'eh2' + i} style={{ gridColumnStart: 5 + i, gridRowStart: 2 }}>{renderCardSlot(null, 'eh2' + i, 'empty')}</div>)}
             {/* Row 3: Market card 2, Local knowledges */}
             <div className="col-start-1 row-start-3">{renderCardSlot(marketCards[1], 'market2', 'market')}</div>
-            {[0,1,2].map(i => <div key={'pk'+i} style={{gridColumnStart: 2+i, gridRowStart: 3}}>{renderCardSlot(localKnowledges[i], 'pk'+i, 'player-knowledge')}</div>)}
-            {[0,1,2,3].map(i => <div key={'eh3'+i} style={{gridColumnStart: 5+i, gridRowStart: 3}}>{renderCardSlot(null, 'eh3'+i, 'empty')}</div>)}
+            {[0, 1, 2].map(i => <div key={'pk' + i} style={{ gridColumnStart: 2 + i, gridRowStart: 3 }}>{renderCardSlot(localKnowledges[i], 'pk' + i, 'player-knowledge')}</div>)}
+            {[0, 1, 2, 3].map(i => <div key={'eh3' + i} style={{ gridColumnStart: 5 + i, gridRowStart: 3 }}>{renderCardSlot(null, 'eh3' + i, 'empty')}</div>)}
             {/* Row 4: Market card 3, Local creatures, Local hand */}
             <div className="col-start-1 row-start-4">{renderCardSlot(marketCards[2], 'market3', 'market')}</div>
-            {[0,1,2].map(i => <div key={'pc'+i} style={{gridColumnStart: 2+i, gridRowStart: 4}}>{renderCardSlot(localCreatures[i], 'pc'+i, 'player-creature')}</div>)}
-            {[0,1,2,3].map(i => <div key={'ph'+i} style={{gridColumnStart: 5+i, gridRowStart: 4}}>{renderCardSlot(localHand[i], 'ph'+i, 'player-hand')}</div>)}
+            {[0, 1, 2].map(i => <div key={'pc' + i} style={{ gridColumnStart: 2 + i, gridRowStart: 4 }}>{renderCardSlot(localCreatures[i], 'pc' + i, 'player-creature')}</div>)}
+            {[0, 1, 2, 3].map(i => <div key={'ph' + i} style={{ gridColumnStart: 5 + i, gridRowStart: 4 }}>{renderCardSlot(localHand[i], 'ph' + i, 'player-hand')}</div>)}
           </div>
         </div>
 
         {/* Right Column: Logs Component Area */}
-        <div className="h-full overflow-hidden"> {/* Container to constrain height */}
+        <div className="h-full overflow-hidden">
           <Logs logs={state.log} />
         </div>
       </div>
@@ -248,13 +303,14 @@ const GameScreen: React.FC = () => {
       {/* ActionBar */}
       <div className="bg-white border-t-4 border-blue-200 shadow-lg">
         <ActionBar
-          isMyTurn={isMyTurn}
+          isMyTurn={!isSpectator && isMyTurn}
           phase={state.phase}
           winner={state.winner}
           actionsTaken={state.actionsTakenThisTurn}
-          onEndTurn={handleEndTurn}
-          turnTimer={turnTimer} // Pass timer state
-          actionsPerTurn={ACTIONS_PER_TURN} // Pass constant
+          onEndTurn={isSpectator ? undefined : handleEndTurn}
+          turnTimer={turnTimer}
+          actionsPerTurn={ACTIONS_PER_TURN}
+          isSpectator={isSpectator}
         />
       </div>
     </div>

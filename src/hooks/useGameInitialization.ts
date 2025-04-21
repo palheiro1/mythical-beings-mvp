@@ -62,6 +62,7 @@ export function useGameInitialization(
     };
 
     const setupGame = async () => {
+      console.log(`[setupGame] Starting setup for game: ${gameId}, player: ${currentPlayerId}`);
       try {
         let gameState = await getGameState(gameId);
         let isNewGameInitialization = false; // Flag to track if we initialized
@@ -88,6 +89,7 @@ export function useGameInitialization(
 
         // Set the local state first
         dispatch({ type: 'SET_GAME_STATE', payload: gameState });
+        console.log(`[setupGame] Dispatched SET_GAME_STATE.`);
 
         // If we just initialized the state, update it in the database
         if (isNewGameInitialization && gameState) {
@@ -102,12 +104,15 @@ export function useGameInitialization(
             }
         }
 
+        console.log(`[setupGame] Setting loading to false.`);
         setLoading(false);
         subscription = subscribeToGameState(gameId, handleRealtimeUpdate);
+        console.log(`[setupGame] Subscribed to realtime updates.`);
 
       } catch (err) {
         console.error('Error setting up game:', err);
         setError(`Failed to fetch or initialize game state: ${err instanceof Error ? err.message : String(err)}`);
+        console.log(`[setupGame] Setting loading to false due to error.`);
         setLoading(false);
       }
     };
@@ -119,7 +124,7 @@ export function useGameInitialization(
         unsubscribeFromGameState(subscription);
       }
     };
-  }, [gameId, currentPlayerId, setError, dispatch]); // Added dispatch dependency
+  }, [gameId, currentPlayerId, setError, dispatch]);
 
   return [state, dispatch, loading, gameId];
 }
