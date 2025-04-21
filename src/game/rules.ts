@@ -191,18 +191,19 @@ export function executeKnowledgePhase(state: GameState): GameState {
   // 1. Rotate Knowledge Cards and Apply Effects
   // Corrected CombatBuffers initialization
   const combatBuffers: CombatBuffers = { damage: [0, 0], defense: [0, 0] };
+  const knowledgeToDiscard: { playerIndex: number; slotIndex: number; card: Knowledge }[] = [];
 
   for (let playerIndex = 0; playerIndex < newState.players.length; playerIndex++) {
     const player = newState.players[playerIndex];
-    const opponent = newState.players[(playerIndex + 1) % 2]; // Opponent reference for effects
+    // const opponent = newState.players[(playerIndex + 1) % 2]; // Opponent reference for effects
 
     player.field.forEach((slot, slotIndex) => {
       if (slot.knowledge) {
         const currentRotation = slot.knowledge.rotation ?? 0;
-        // Corrected rotation check: Use 270 degrees as max rotation before discard
-        const isFinalRotation = currentRotation >= 270;
+        const isFinalRotation = currentRotation >= 270; // Check if rotation is 270 or more
 
         if (!isFinalRotation) {
+          // Rotate the card and apply effects
           const nextRotation = currentRotation + 90;
           slot.knowledge.rotation = nextRotation;
           // REMOVED: Log for knowledge rotation
@@ -222,23 +223,40 @@ export function executeKnowledgePhase(state: GameState): GameState {
              });
           }
         } else {
-          // Knowledge is fully rotated, discard it
-          const discardedKnowledge = { ...slot.knowledge }; // Copy before nulling
-          newState.discardPile.push(discardedKnowledge);
-          const creatureName = player.creatures.find(c => c.id === slot.creatureId)?.name || `Creature ${slot.creatureId}`;
-          newState.log.push(`${discardedKnowledge.name} on ${creatureName} (Player ${playerIndex + 1}) was fully rotated and discarded.`);
-
-          // Apply KNOWLEDGE_LEAVE passive trigger
-          newState = applyPassiveAbilities(newState, 'KNOWLEDGE_LEAVE', {
-              playerId: player.id,
-              creatureId: slot.creatureId,
-              knowledgeCard: discardedKnowledge // Pass the discarded card info
-          });
-          slot.knowledge = null; // Remove from field
+          // Mark knowledge for discard AFTER processing all rotations/effects
+          knowledgeToDiscard.push({ playerIndex, slotIndex, card: { ...slot.knowledge } });
+          // Don't nullify here yet, let passives trigger first if needed based on the card *being* there
         }
       }
     });
   }
+
+  // 1b. Process Discards and Trigger Passives
+  knowledgeToDiscard.forEach(({ playerIndex, slotIndex, card }) => {
+      const player = newState.players[playerIndex];
+      const creatureName = player.creatures.find(c => c.id === player.field[slotIndex].creatureId)?.name || `Creature ${player.field[slotIndex].creatureId}`;
+      
+      newState.discardPile.push(card);
+      newState.log.push(`${card.name} on ${creatureName} (Player ${playerIndex + 1}) was fully rotated and discarded.`);
+
+      // Apply KNOWLEDGE_LEAVE passive trigger *before* nullifying
+      newState = applyPassiveAbilities(newState, 'KNOWLEDGE_LEAVE', {
+          playerId: player.id,
+          creatureId: player.field[slotIndex].creatureId,
+          knowledgeCard: card // Pass the actual card being discarded
+      });
+
+      // Now, actually remove the knowledge from the field in the potentially modified newState
+      // Ensure we are modifying the correct player and slot in the *current* newState
+      const targetPlayer = newState.players[playerIndex];
+      if (targetPlayer && targetPlayer.field[slotIndex]) {
+          targetPlayer.field[slotIndex].knowledge = null;
+          console.log(`[executeKnowledgePhase] Set knowledge to null for Player ${playerIndex + 1}, Slot ${slotIndex}`);
+      } else {
+          console.error(`[executeKnowledgePhase] Error: Could not find player/slot to nullify knowledge for discard. PlayerIndex: ${playerIndex}, SlotIndex: ${slotIndex}`);
+      }
+  });
+
 
   // 2. Apply Combat Damage from Buffers
   // Assuming applyCombatDamage is defined elsewhere in this file or imported correctly

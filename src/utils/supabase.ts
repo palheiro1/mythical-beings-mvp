@@ -152,7 +152,7 @@ export async function logMove(gameId: string, playerId: string, action: string, 
       .insert([{ 
         game_id: gameId, 
         player_id: playerId, 
-        action_type: action, 
+        action: action, // Changed from action_type
         payload: payload 
       }]);
     if (error) throw error;
