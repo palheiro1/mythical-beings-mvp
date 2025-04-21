@@ -15,7 +15,6 @@ const Market: React.FC<MarketProps> = ({ cards, onCardClick }) => {
           key={card.id} 
           card={card} 
           onClick={onCardClick} 
-          size="small" // Use small cards in market
         />
       ))}
       {cards.length === 0 && <p className="text-xs text-gray-400 italic">Market is empty</p>}

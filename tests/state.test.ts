@@ -12,7 +12,7 @@ const mockCreatureP1 = [mockCreature1];
 const mockCreatureP2 = [mockCreature2];
 // Add element property to mock knowledge
 const mockKnowledge1: Knowledge = { id: 'k1', name: 'K1', type: 'spell', cost: 1, effect: '', image: '', element: 'neutral' };
-const mockKnowledge2: Knowledge = { id: 'k2', name: 'K2', type: 'ally', cost: 2, effect: '', image: '', element: 'water' }; // Give one an element for testing Kappa
+const mockKnowledge2: Knowledge = { id: 'k2', name: 'K2', type: 'ally', cost: 2, effect: '', image: '', element: 'water' };
 const mockKnowledge3: Knowledge = { id: 'k3', name: 'K3', type: 'spell', cost: 1, effect: '', image: '', element: 'air' };
 
 // Mock the rules, actions, and passives modules

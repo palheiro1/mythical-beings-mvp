@@ -22,7 +22,7 @@ const MarketColumn: React.FC<MarketColumnProps> = ({
             {/* Deck */}
             {/* Container defines size and aspect ratio */}
             <div className="relative w-[80%] max-w-[100px] aspect-[2/3] flex-shrink-0">
-                <Card card={{ id: 'marketdeck', name: 'Deck', image: '/images/spells/back.jpg', type: 'spell', cost: 0, effect: '' }} showBack /> {/* Removed size */}
+                <Card card={{ id: 'marketdeck', name: 'Deck', image: '/images/spells/back.jpg', type: 'spell', cost: 0, effect: '', element: 'neutral' }} showBack /> {/* Removed size */}
                 <span className="absolute -right-1 -bottom-1 bg-black/70 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">{deckCount}</span>
             </div>
 

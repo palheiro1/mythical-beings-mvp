@@ -32,7 +32,7 @@ const HandsColumn: React.FC<HandsColumnProps> = ({
                     {opponentPlayerHand.length === 0 ? (
                          // Container defines size
                          <div className="h-[85%] aspect-[2/3]">
-                            <Card card={{ id: 'opp-back', name: 'Back', image: '/images/spells/back.jpg', type: 'spell', cost: 0, effect: '' }} showBack />
+                            <Card card={{ id: 'opp-back', name: 'Back', image: '/images/spells/back.jpg', type: 'spell', cost: 0, effect: '', element: 'neutral' }} showBack />
                          </div>
                     ) : (
                         opponentPlayerHand.slice(0, maxVisibleCards).map((card, idx) => (
@@ -75,7 +75,7 @@ const HandsColumn: React.FC<HandsColumnProps> = ({
                     {currentPlayerHand.length === 0 ? (
                         // Container defines size
                         <div className="h-[85%] aspect-[2/3]">
-                            <Card card={{ id: 'player-back', name: 'Back', image: '/images/spells/back.jpg', type: 'spell', cost: 0, effect: '' }} showBack />
+                            <Card card={{ id: 'player-back', name: 'Back', image: '/images/spells/back.jpg', type: 'spell', cost: 0, effect: '', element: 'neutral' }} showBack />
                         </div>
                     ) : (
                         currentPlayerHand.slice(0, maxVisibleCards).map((card, idx) => (

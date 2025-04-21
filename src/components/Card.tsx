@@ -16,7 +16,6 @@ const Card: React.FC<CardProps> = ({ card, onClick, isSelected, rotation = 0, sh
     }
   };
 
-  const cardType = 'element' in card ? 'Creature' : 'Knowledge';
   const imagePath = showBack ? '/images/spells/back.jpg' : card.image;
 
   // Calculate rotation style to apply to inner content only
