@@ -4,6 +4,9 @@ import { GameState, GameAction, Creature, Knowledge } from '../src/game/types'; 
 import { initializeGame } from '../src/game/state'; // Import initializeGame for setup
 
 // Mock data for testing
+const mockPlayer1Id = 'mock-uuid-p1';
+const mockPlayer2Id = 'mock-uuid-p2';
+
 const mockCreature1: Creature = { id: 'c1', name: 'Creature 1', element: 'air', passiveAbility: '', baseWisdom: 0, image: '', currentWisdom: 2 };
 const mockCreature2: Creature = { id: 'c2', name: 'Creature 2', element: 'water', passiveAbility: '', baseWisdom: 0, image: '', currentWisdom: 1 };
 const mockCreature3: Creature = { id: 'c3', name: 'Creature 3', element: 'earth', passiveAbility: '', baseWisdom: 0, image: '', currentWisdom: 3 };
@@ -15,7 +18,7 @@ let baseGameState: GameState;
 
 beforeEach(() => {
   // Use initializeGame to get a consistent starting state, then modify as needed
-  baseGameState = initializeGame('testGame', 'p1', 'p2', [mockCreature1, mockCreature2], [mockCreature3]);
+  baseGameState = initializeGame('testGame', mockPlayer1Id, mockPlayer2Id, [mockCreature1, mockCreature2], [mockCreature3]);
   // Override parts of the initialized state for specific test scenarios
   baseGameState.players[0].hand = [mockKnowledge1, mockKnowledge2];
   baseGameState.players[0].creatures[0].currentWisdom = 2; // Ensure creature 1 has enough wisdom for k2
@@ -34,73 +37,73 @@ beforeEach(() => {
 
 describe('isValidAction', () => {
   it('should return true for a valid ROTATE_CREATURE action', () => {
-    const action: GameAction = { type: 'ROTATE_CREATURE', payload: { playerId: 'p1', creatureId: 'c1' } };
+    const action: GameAction = { type: 'ROTATE_CREATURE', payload: { playerId: mockPlayer1Id, creatureId: 'c1' } };
     expect(isValidAction(baseGameState, action)).toBe(true);
   });
 
   it('should return false for ROTATE_CREATURE if not players turn', () => { // Fixed typo in description
-    const action: GameAction = { type: 'ROTATE_CREATURE', payload: { playerId: 'p2', creatureId: 'c3' } };
+    const action: GameAction = { type: 'ROTATE_CREATURE', payload: { playerId: mockPlayer2Id, creatureId: 'c3' } };
     expect(isValidAction(baseGameState, action)).toBe(false);
   });
 
     it('should return false for ROTATE_CREATURE if creature does not exist', () => {
-    const action: GameAction = { type: 'ROTATE_CREATURE', payload: { playerId: 'p1', creatureId: 'c99' } };
+    const action: GameAction = { type: 'ROTATE_CREATURE', payload: { playerId: mockPlayer1Id, creatureId: 'c99' } };
     expect(isValidAction(baseGameState, action)).toBe(false);
   });
 
   it('should return true for a valid DRAW_KNOWLEDGE action', () => {
-    const action: GameAction = { type: 'DRAW_KNOWLEDGE', payload: { playerId: 'p1', knowledgeId: 'k3' } }; // k3 is in market
+    const action: GameAction = { type: 'DRAW_KNOWLEDGE', payload: { playerId: mockPlayer1Id, knowledgeId: 'k3' } }; // k3 is in market
     expect(isValidAction(baseGameState, action)).toBe(true);
   });
 
   it('should return false for DRAW_KNOWLEDGE if hand is full', () => {
     baseGameState.players[0].hand = [mockKnowledge1, mockKnowledge2, mockKnowledge3, {id: 'k4', name: 'K4', type: 'spell', cost: 1, effect: '', image: '', element: 'neutral'}, {id: 'k5', name: 'K5', type: 'spell', cost: 1, effect: '', image: '', element: 'neutral'}]; // Hand size 5
-    const action: GameAction = { type: 'DRAW_KNOWLEDGE', payload: { playerId: 'p1', knowledgeId: 'k3' } };
+    const action: GameAction = { type: 'DRAW_KNOWLEDGE', payload: { playerId: mockPlayer1Id, knowledgeId: 'k3' } };
     expect(isValidAction(baseGameState, action)).toBe(false);
   });
 
     it('should return false for DRAW_KNOWLEDGE if card not in market', () => {
-    const action: GameAction = { type: 'DRAW_KNOWLEDGE', payload: { playerId: 'p1', knowledgeId: 'k99' } };
+    const action: GameAction = { type: 'DRAW_KNOWLEDGE', payload: { playerId: mockPlayer1Id, knowledgeId: 'k99' } };
     expect(isValidAction(baseGameState, action)).toBe(false);
   });
 
   it('should return true for a valid SUMMON_KNOWLEDGE action', () => {
-    const action: GameAction = { type: 'SUMMON_KNOWLEDGE', payload: { playerId: 'p1', knowledgeId: 'k2', creatureId: 'c1' } }; // k2 cost 2, c1 wisdom 2
+    const action: GameAction = { type: 'SUMMON_KNOWLEDGE', payload: { playerId: mockPlayer1Id, knowledgeId: 'k2', creatureId: 'c1' } }; // k2 cost 2, c1 wisdom 2
     expect(isValidAction(baseGameState, action)).toBe(true);
   });
 
   it('should return false for SUMMON_KNOWLEDGE if insufficient wisdom', () => {
-    const action: GameAction = { type: 'SUMMON_KNOWLEDGE', payload: { playerId: 'p1', knowledgeId: 'k2', creatureId: 'c2' } }; // k2 cost 2, c2 wisdom 1
+    const action: GameAction = { type: 'SUMMON_KNOWLEDGE', payload: { playerId: mockPlayer1Id, knowledgeId: 'k2', creatureId: 'c2' } }; // k2 cost 2, c2 wisdom 1
     expect(isValidAction(baseGameState, action)).toBe(false);
   });
 
     it('should return false for SUMMON_KNOWLEDGE if knowledge not in hand', () => {
-    const action: GameAction = { type: 'SUMMON_KNOWLEDGE', payload: { playerId: 'p1', knowledgeId: 'k3', creatureId: 'c1' } }; // k3 not in p1 hand
+    const action: GameAction = { type: 'SUMMON_KNOWLEDGE', payload: { playerId: mockPlayer1Id, knowledgeId: 'k3', creatureId: 'c1' } }; // k3 not in p1 hand
     expect(isValidAction(baseGameState, action)).toBe(false);
   });
 
     it('should return false for SUMMON_KNOWLEDGE if creature already has knowledge', () => {
     baseGameState.players[0].field[0].knowledge = mockKnowledge1; // Attach knowledge to c1's field slot
-    const action: GameAction = { type: 'SUMMON_KNOWLEDGE', payload: { playerId: 'p1', knowledgeId: 'k2', creatureId: 'c1' } };
+    const action: GameAction = { type: 'SUMMON_KNOWLEDGE', payload: { playerId: mockPlayer1Id, knowledgeId: 'k2', creatureId: 'c1' } };
     expect(isValidAction(baseGameState, action)).toBe(false);
   });
 
   it('should return true for END_TURN action', () => {
-    const action: GameAction = { type: 'END_TURN', payload: { playerId: 'p1' } };
+    const action: GameAction = { type: 'END_TURN', payload: { playerId: mockPlayer1Id } };
     expect(isValidAction(baseGameState, action)).toBe(true);
   });
 
   it('should return false for any action if not in action phase', () => {
     baseGameState.phase = 'knowledge';
-    const action: GameAction = { type: 'ROTATE_CREATURE', payload: { playerId: 'p1', creatureId: 'c1' } };
+    const action: GameAction = { type: 'ROTATE_CREATURE', payload: { playerId: mockPlayer1Id, creatureId: 'c1' } };
     expect(isValidAction(baseGameState, action)).toBe(false);
   });
 
   it('should return false for actions (not END_TURN) if actionsTakenThisTurn >= ACTIONS_PER_TURN', () => {
     baseGameState.actionsTakenThisTurn = 2;
-    const action: GameAction = { type: 'ROTATE_CREATURE', payload: { playerId: 'p1', creatureId: 'c1' } };
+    const action: GameAction = { type: 'ROTATE_CREATURE', payload: { playerId: mockPlayer1Id, creatureId: 'c1' } };
     expect(isValidAction(baseGameState, action)).toBe(false);
-    const endTurnAction: GameAction = { type: 'END_TURN', payload: { playerId: 'p1' } };
+    const endTurnAction: GameAction = { type: 'END_TURN', payload: { playerId: mockPlayer1Id } };
     expect(isValidAction(baseGameState, endTurnAction)).toBe(true); // Can still end turn
   });
 
@@ -132,16 +135,16 @@ describe('isValidAction', () => {
 describe('checkWinCondition', () => {
   it('should return player 1 ID if player 2 power is 0 or less', () => {
     baseGameState.players[1].power = 0;
-    expect(checkWinCondition(baseGameState)).toBe('p1');
+    expect(checkWinCondition(baseGameState)).toBe(mockPlayer1Id);
     baseGameState.players[1].power = -5;
-    expect(checkWinCondition(baseGameState)).toBe('p1');
+    expect(checkWinCondition(baseGameState)).toBe(mockPlayer1Id);
   });
 
   it('should return player 2 ID if player 1 power is 0 or less', () => {
     baseGameState.players[0].power = 0;
-    expect(checkWinCondition(baseGameState)).toBe('p2');
+    expect(checkWinCondition(baseGameState)).toBe(mockPlayer2Id);
     baseGameState.players[0].power = -10;
-    expect(checkWinCondition(baseGameState)).toBe('p2');
+    expect(checkWinCondition(baseGameState)).toBe(mockPlayer2Id);
   });
 
   it('should return null if neither player power is 0 or less', () => {

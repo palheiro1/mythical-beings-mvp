@@ -1,15 +1,14 @@
 import React from 'react';
-import Button from '../Button'; // Assuming Button component exists
 
 interface ActionBarProps {
   isMyTurn: boolean;
   phase: string;
   winner: string | null;
   actionsTaken: number;
-  onEndTurn?: () => void; // Make optional for spectators
-  turnTimer: number;
-  actionsPerTurn: number;
-  isSpectator: boolean; // Added spectator prop
+  actionsPerTurn: number; // Ensure this is passed down
+  onEndTurn?: () => void; // Make optional if spectator or not turn
+  turnTimer: number; // Example prop
+  isSpectator: boolean;
 }
 
 const ActionBar: React.FC<ActionBarProps> = ({
@@ -17,61 +16,64 @@ const ActionBar: React.FC<ActionBarProps> = ({
   phase,
   winner,
   actionsTaken,
+  actionsPerTurn, // Destructure actionsPerTurn
   onEndTurn,
   turnTimer,
-  actionsPerTurn,
-  isSpectator, // Use spectator prop
+  isSpectator,
 }) => {
-  // Log props on every render
-  console.log('[ActionBar] Rendering. Props:', { isMyTurn, phase, winner, actionsTaken, isSpectator });
 
-  const actionsRemaining = actionsPerTurn - actionsTaken;
-  const canAct = isMyTurn && phase === 'action' && winner === null;
+  // Calculate actions left, ensuring values are numbers
+  const validActionsTaken = typeof actionsTaken === 'number' ? actionsTaken : 0;
+  const validActionsPerTurn = typeof actionsPerTurn === 'number' ? actionsPerTurn : 3; // Default to 3 if invalid
+  const actionsLeft = validActionsPerTurn - validActionsTaken;
 
-  // Determine display message
-  let turnMessage = 'Waiting for opponent...';
-  if (isSpectator) {
-    turnMessage = 'Spectating';
-  } else if (winner) {
-    turnMessage = winner === 'draw' ? 'Game Over: Draw!' : `Game Over: ${winner} wins!`;
-  } else if (isMyTurn) {
-    if (phase === 'knowledge') {
-      turnMessage = 'Your Turn: Knowledge Phase';
-    } else if (phase === 'action') {
-      turnMessage = `Your Turn: Action Phase (${actionsRemaining} actions left)`;
-    } else {
-      turnMessage = `Your Turn: ${phase.toUpperCase()} Phase`;
+  console.log('[ActionBar] Rendering. Props:', { isMyTurn, phase, winner, actionsTaken, actionsPerTurn, isSpectator }); // Log props including actionsPerTurn
+
+  const getPhaseMessage = () => {
+    if (winner) return `Game Over! Winner: ${winner}`; // Simplified winner message
+    if (isSpectator) return "Spectating";
+    if (!isMyTurn) return "Opponent's Turn";
+
+    switch (phase) {
+      case 'knowledge':
+        return "Your Turn: Knowledge Phase";
+      case 'action':
+        // Use the calculated actionsLeft
+        const actionsText = isNaN(actionsLeft) ? '...' : actionsLeft; // Display '...' if NaN persists
+        return `Your Turn: Action Phase (${actionsText} actions left)`;
+      case 'upkeep':
+        return "Your Turn: Upkeep Phase";
+      default:
+        return `Your Turn: ${phase}`;
     }
-  }
+  };
+
+  const canEndTurn = isMyTurn && onEndTurn && !winner; // && phase !== 'knowledge'; // Allow ending turn anytime?
 
   return (
-    <div className="flex items-center justify-between p-4 bg-gray-800 text-white h-20">
-      {/* Left Side: Turn Status & Timer */}
-      <div className="flex flex-col items-start">
-        <span className="text-lg font-semibold">{turnMessage}</span>
-        {canAct && ( // Show timer only if it's the player's action phase
-          <span className="text-sm text-gray-400">Time remaining: {turnTimer}s</span>
-        )}
+    <div className="flex items-center justify-between p-3 bg-gray-800/90 text-white h-16 border-t border-gray-700">
+      <div className="flex items-center space-x-4">
+        {/* Placeholder for potential future elements like timers or logs */}
+        {/* <span className="text-lg font-mono">⏳ {turnTimer}s</span> */}
       </div>
 
-      {/* Right Side: End Turn Button (only if player and can act) */}
-      {!isSpectator && canAct && onEndTurn && (
-        <Button
+      <div className="text-center">
+        <span className="text-lg font-semibold">{getPhaseMessage()}</span>
+      </div>
+
+      <div className="flex items-center space-x-4">
+        <button
           onClick={onEndTurn}
-          disabled={actionsRemaining > 0} // Disable if actions remain (optional, depends on rules)
-          className={`px-6 py-3 rounded-md font-semibold transition-colors duration-200 ${
-            actionsRemaining > 0
-              ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
-              : 'bg-red-600 hover:bg-red-700 text-white'
+          disabled={!canEndTurn}
+          className={`px-6 py-2 rounded font-semibold transition-colors duration-200 ${
+            canEndTurn
+              ? 'bg-green-600 hover:bg-green-700 text-white'
+              : 'bg-gray-600 text-gray-400 cursor-not-allowed'
           }`}
         >
           End Turn
-        </Button>
-      )}
-       {/* Show simple message if spectator */}
-       {isSpectator && (
-         <div className="text-gray-400 italic">Read-only view</div>
-       )}
+        </button>
+      </div>
     </div>
   );
 };

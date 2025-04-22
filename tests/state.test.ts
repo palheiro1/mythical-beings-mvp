@@ -87,19 +87,22 @@ vi.mock('../src/game/passives', async (importOriginal) => {
 describe('initializeGame', () => {
   let initialState: GameState;
 
+  const mockPlayer1Id = 'mock-uuid-p1';
+  const mockPlayer2Id = 'mock-uuid-p2';
+
   beforeEach(() => {
     // Reset mocks before each test
     vi.clearAllMocks();
     // Mock executeKnowledgePhase to prevent infinite loops during initialization testing
     vi.mocked(rules.executeKnowledgePhase).mockImplementation((state) => ({ ...state, phase: 'action', actionsTakenThisTurn: 0, log: [...state.log, 'Mock Initial Knowledge Phase'] }));
-    initialState = initializeGame('game1', 'p1', 'p2', mockCreatureP1, mockCreatureP2);
+    initialState = initializeGame('game1', mockPlayer1Id, mockPlayer2Id, mockCreatureP1, mockCreatureP2);
   });
 
   it('should create a game state with correct initial values', () => {
     expect(initialState.gameId).toBe('game1');
     expect(initialState.players).toHaveLength(2);
-    expect(initialState.players[0].id).toBe('p1');
-    expect(initialState.players[1].id).toBe('p2');
+    expect(initialState.players[0].id).toBe(mockPlayer1Id);
+    expect(initialState.players[1].id).toBe(mockPlayer2Id);
     expect(initialState.players[0].power).toBe(20);
     expect(initialState.players[1].power).toBe(20);
     expect(initialState.players[0].creatures[0].id).toBe('c1');
@@ -147,6 +150,9 @@ describe('initializeGame', () => {
 describe('gameReducer', () => {
   let currentState: GameState;
 
+  const mockPlayer1Id = 'mock-uuid-p1';
+  const mockPlayer2Id = 'mock-uuid-p2';
+
   beforeEach(() => {
     // Reset mocks and get a fresh state
     vi.clearAllMocks();
@@ -154,7 +160,7 @@ describe('gameReducer', () => {
     vi.mocked(rules.executeKnowledgePhase).mockImplementation((state) => ({ ...state, phase: 'action', actionsTakenThisTurn: 0, log: [...state.log, 'Mock Knowledge Phase Executed'] }));
     vi.mocked(rules.checkWinCondition).mockReturnValue(null); // Default to no winner
 
-    currentState = initializeGame('game1', 'p1', 'p2', mockCreatureP1, mockCreatureP2);
+    currentState = initializeGame('game1', mockPlayer1Id, mockPlayer2Id, mockCreatureP1, mockCreatureP2);
     currentState.phase = 'action'; // Ensure action phase for tests
     currentState.actionsTakenThisTurn = 0;
     currentState.currentPlayerIndex = 0;
@@ -184,46 +190,46 @@ describe('gameReducer', () => {
 
   it('should return current state if action is invalid', () => {
     vi.mocked(rules.isValidAction).mockReturnValue(false);
-    const action: GameAction = { type: 'ROTATE_CREATURE', payload: { playerId: 'p1', creatureId: 'c1' } };
+    const action: GameAction = { type: 'ROTATE_CREATURE', payload: { playerId: mockPlayer1Id, creatureId: 'c1' } };
     const reducedState = gameReducer(currentState, action);
     // Only check that the log contains the invalid action message
     expect(reducedState.log.at(-1)).toContain('Invalid action attempted');
   });
 
   it('should call rotateCreature action handler for ROTATE_CREATURE', () => {
-    const action: GameAction = { type: 'ROTATE_CREATURE', payload: { playerId: 'p1', creatureId: 'c1' } };
+    const action: GameAction = { type: 'ROTATE_CREATURE', payload: { playerId: mockPlayer1Id, creatureId: 'c1' } };
     gameReducer(currentState, action);
     expect(actions.rotateCreature).toHaveBeenCalledWith(currentState, action.payload);
   });
 
   it('should call drawKnowledge action handler for DRAW_KNOWLEDGE', () => {
-    const action: GameAction = { type: 'DRAW_KNOWLEDGE', payload: { playerId: 'p1', knowledgeId: 'k1' } };
+    const action: GameAction = { type: 'DRAW_KNOWLEDGE', payload: { playerId: mockPlayer1Id, knowledgeId: 'k1' } };
     gameReducer(currentState, action);
     expect(actions.drawKnowledge).toHaveBeenCalledWith(currentState, action.payload);
   });
 
   it('should call summonKnowledge action handler for SUMMON_KNOWLEDGE', () => {
-    const action: GameAction = { type: 'SUMMON_KNOWLEDGE', payload: { playerId: 'p1', knowledgeId: 'k1', creatureId: 'c1' } };
+    const action: GameAction = { type: 'SUMMON_KNOWLEDGE', payload: { playerId: mockPlayer1Id, knowledgeId: 'k1', creatureId: 'c1' } };
     gameReducer(currentState, action);
     expect(actions.summonKnowledge).toHaveBeenCalledWith(currentState, action.payload);
   });
 
   it('should increment actionsTakenThisTurn for valid actions (not END_TURN)', () => {
-    const action: GameAction = { type: 'ROTATE_CREATURE', payload: { playerId: 'p1', creatureId: 'c1' } };
+    const action: GameAction = { type: 'ROTATE_CREATURE', payload: { playerId: mockPlayer1Id, creatureId: 'c1' } };
     const nextState = gameReducer(currentState, action);
     expect(nextState.actionsTakenThisTurn).toBe(1);
   });
 
     it('should log when max actions are taken', () => {
         currentState.actionsTakenThisTurn = 1; // One action already taken
-        const action: GameAction = { type: 'ROTATE_CREATURE', payload: { playerId: 'p1', creatureId: 'c1' } };
+        const action: GameAction = { type: 'ROTATE_CREATURE', payload: { playerId: mockPlayer1Id, creatureId: 'c1' } };
         const nextState = gameReducer(currentState, action);
         expect(nextState.actionsTakenThisTurn).toBe(2);
         expect(nextState.log.at(-1)).toContain('Player 1 has taken 2 actions.');
     });
 
   it('should handle END_TURN: switch player, reset actions, execute knowledge phase', () => {
-    const action: GameAction = { type: 'END_TURN', payload: { playerId: 'p1' } };
+    const action: GameAction = { type: 'END_TURN', payload: { playerId: mockPlayer1Id } };
     vi.mocked(rules.executeKnowledgePhase).mockClear(); // Reset count before the action
     const nextState = gameReducer(currentState, action);
     expect(nextState.currentPlayerIndex).toBe(1); // Switched to player 2
@@ -237,7 +243,7 @@ describe('gameReducer', () => {
 
   it('should handle END_TURN: increment turn when player 2 ends turn', () => {
     currentState.currentPlayerIndex = 1; // Player 2's turn
-    const action: GameAction = { type: 'END_TURN', payload: { playerId: 'p2' } };
+    const action: GameAction = { type: 'END_TURN', payload: { playerId: mockPlayer2Id } };
     vi.mocked(rules.executeKnowledgePhase).mockClear(); // Reset count before the action
     const nextState = gameReducer(currentState, action);
     expect(nextState.currentPlayerIndex).toBe(0); // Switched to player 1
@@ -249,22 +255,22 @@ describe('gameReducer', () => {
   });
 
   it('should check for win condition after every valid action', () => {
-    const action: GameAction = { type: 'ROTATE_CREATURE', payload: { playerId: 'p1', creatureId: 'c1' } };
+    const action: GameAction = { type: 'ROTATE_CREATURE', payload: { playerId: mockPlayer1Id, creatureId: 'c1' } };
     gameReducer(currentState, action);
     expect(rules.checkWinCondition).toHaveBeenCalledTimes(1);
 
-    const endTurnAction: GameAction = { type: 'END_TURN', payload: { playerId: 'p1' } };
+    const endTurnAction: GameAction = { type: 'END_TURN', payload: { playerId: mockPlayer1Id } };
     gameReducer(currentState, endTurnAction);
     // checkWinCondition is called *after* the action is processed, including END_TURN's state changes
     expect(rules.checkWinCondition).toHaveBeenCalledTimes(2);
   });
 
   it('should set winner and phase to "end" if win condition is met', () => {
-    vi.mocked(rules.checkWinCondition).mockReturnValue('p1'); // Simulate player 1 winning
-    const action: GameAction = { type: 'ROTATE_CREATURE', payload: { playerId: 'p1', creatureId: 'c1' } };
+    vi.mocked(rules.checkWinCondition).mockReturnValue(mockPlayer1Id); // Simulate player 1 winning
+    const action: GameAction = { type: 'ROTATE_CREATURE', payload: { playerId: mockPlayer1Id, creatureId: 'c1' } };
     const finalState = gameReducer(currentState, action);
 
-    expect(finalState.winner).toBe('p1');
+    expect(finalState.winner).toBe(mockPlayer1Id);
     expect(finalState.phase).toBe('end');
     expect(finalState.log.at(-1)).toContain('Game Over! Player 1 wins!');
   });
@@ -279,8 +285,8 @@ describe('gameReducer', () => {
 
     it('should call applyPassiveAbilities with AFTER_PLAYER_DRAW on DRAW_KNOWLEDGE by current player', () => {
         currentState.market = [mockKnowledge1, mockKnowledge2, mockKnowledge3]; // Ensure card is in market
-        const action: GameAction = { type: 'DRAW_KNOWLEDGE', payload: { playerId: 'p1', knowledgeId: 'k1' } };
-        const expectedEventData = { playerId: 'p1', knowledgeId: 'k1', knowledgeCard: mockKnowledge1 };
+        const action: GameAction = { type: 'DRAW_KNOWLEDGE', payload: { playerId: mockPlayer1Id, knowledgeId: 'k1' } };
+        const expectedEventData = { playerId: mockPlayer1Id, knowledgeId: 'k1', knowledgeCard: mockKnowledge1 };
 
         gameReducer(currentState, action);
 
@@ -295,14 +301,14 @@ describe('gameReducer', () => {
         // Note: This scenario shouldn't normally happen if isValidAction works correctly,
         // but we test the reducer logic assuming it could be called.
         currentState.market = [mockKnowledge1, mockKnowledge2, mockKnowledge3];
-        const action: GameAction = { type: 'DRAW_KNOWLEDGE', payload: { playerId: 'p2', knowledgeId: 'k1' } }; // p2 draws on p1's turn
-        const expectedEventData = { playerId: 'p2', knowledgeId: 'k1', knowledgeCard: mockKnowledge1 };
+        const action: GameAction = { type: 'DRAW_KNOWLEDGE', payload: { playerId: mockPlayer2Id, knowledgeId: 'k1' } }; // p2 draws on p1's turn
+        const expectedEventData = { playerId: mockPlayer2Id, knowledgeId: 'k1', knowledgeCard: mockKnowledge1 };
 
         // Temporarily allow action by non-current player for this specific test
         // Safely check payload structure before accessing playerId
         vi.mocked(rules.isValidAction).mockImplementation((_state, act) => {
             if (act.payload && 'playerId' in act.payload) {
-                return act.payload.playerId === 'p2';
+                return act.payload.playerId === mockPlayer2Id;
             }
             return false;
         });
@@ -321,8 +327,8 @@ describe('gameReducer', () => {
         currentState.players[0].hand = [mockKnowledge1]; // Player 1 has the card
         currentState.players[0].creatures = [mockCreature1];
         currentState.players[0].field = [{ creatureId: 'c1', knowledge: null }];
-        const action: GameAction = { type: 'SUMMON_KNOWLEDGE', payload: { playerId: 'p1', knowledgeId: 'k1', creatureId: 'c1' } };
-        const expectedEventData = { playerId: 'p1', knowledgeId: 'k1', creatureId: 'c1', knowledgeCard: mockKnowledge1 };
+        const action: GameAction = { type: 'SUMMON_KNOWLEDGE', payload: { playerId: mockPlayer1Id, knowledgeId: 'k1', creatureId: 'c1' } };
+        const expectedEventData = { playerId: mockPlayer1Id, knowledgeId: 'k1', creatureId: 'c1', knowledgeCard: mockKnowledge1 };
 
         gameReducer(currentState, action);
 
@@ -347,14 +353,14 @@ describe('gameReducer', () => {
         currentState.players[1].hand = [mockKnowledge1]; // Player 2 has the card
         currentState.players[1].creatures = [mockCreature2];
         currentState.players[1].field = [{ creatureId: 'c2', knowledge: null }];
-        const action: GameAction = { type: 'SUMMON_KNOWLEDGE', payload: { playerId: 'p2', knowledgeId: 'k1', creatureId: 'c2' } }; // p2 summons on p1's turn
-        const expectedEventData = { playerId: 'p2', knowledgeId: 'k1', creatureId: 'c2', knowledgeCard: mockKnowledge1 };
+        const action: GameAction = { type: 'SUMMON_KNOWLEDGE', payload: { playerId: mockPlayer2Id, knowledgeId: 'k1', creatureId: 'c2' } }; // p2 summons on p1's turn
+        const expectedEventData = { playerId: mockPlayer2Id, knowledgeId: 'k1', creatureId: 'c2', knowledgeCard: mockKnowledge1 };
 
         // Temporarily allow action by non-current player
         // Safely check payload structure before accessing playerId
         vi.mocked(rules.isValidAction).mockImplementation((_state, act) => {
             if (act.payload && 'playerId' in act.payload) {
-                return act.payload.playerId === 'p2';
+                return act.payload.playerId === mockPlayer2Id;
             }
             return false;
         });
@@ -379,8 +385,8 @@ describe('gameReducer', () => {
     });
 
     it('should call applyPassiveAbilities with TURN_START on END_TURN', () => {
-        const action: GameAction = { type: 'END_TURN', payload: { playerId: 'p1' } };
-        const expectedEventData = { playerId: 'p2' }; // Expecting data for the player whose turn is starting
+        const action: GameAction = { type: 'END_TURN', payload: { playerId: mockPlayer1Id } };
+        const expectedEventData = { playerId: mockPlayer2Id }; // Expecting data for the player whose turn is starting
 
         gameReducer(currentState, action);
 
@@ -399,7 +405,7 @@ describe('gameReducer', () => {
   });
 
   it('should handle END_TURN: switch player, reset actions, execute knowledge phase', () => {
-    const action: GameAction = { type: 'END_TURN', payload: { playerId: 'p1' } };
+    const action: GameAction = { type: 'END_TURN', payload: { playerId: mockPlayer1Id } };
     vi.mocked(rules.executeKnowledgePhase).mockClear(); // Reset count before the action
     const nextState = gameReducer(currentState, action);
     expect(nextState.currentPlayerIndex).toBe(1); // Switched to player 2
@@ -413,7 +419,7 @@ describe('gameReducer', () => {
 
   it('should handle END_TURN: increment turn when player 2 ends turn', () => {
     currentState.currentPlayerIndex = 1; // Player 2's turn
-    const action: GameAction = { type: 'END_TURN', payload: { playerId: 'p2' } };
+    const action: GameAction = { type: 'END_TURN', payload: { playerId: mockPlayer2Id } };
     vi.mocked(rules.executeKnowledgePhase).mockClear(); // Reset count before the action
     const nextState = gameReducer(currentState, action);
     expect(nextState.currentPlayerIndex).toBe(0); // Switched to player 1
@@ -425,22 +431,22 @@ describe('gameReducer', () => {
   });
 
   it('should check for win condition after every valid action', () => {
-    const action: GameAction = { type: 'ROTATE_CREATURE', payload: { playerId: 'p1', creatureId: 'c1' } };
+    const action: GameAction = { type: 'ROTATE_CREATURE', payload: { playerId: mockPlayer1Id, creatureId: 'c1' } };
     gameReducer(currentState, action);
     expect(rules.checkWinCondition).toHaveBeenCalledTimes(1);
 
-    const endTurnAction: GameAction = { type: 'END_TURN', payload: { playerId: 'p1' } };
+    const endTurnAction: GameAction = { type: 'END_TURN', payload: { playerId: mockPlayer1Id } };
     gameReducer(currentState, endTurnAction);
     // checkWinCondition is called *after* the action is processed, including END_TURN's state changes
     expect(rules.checkWinCondition).toHaveBeenCalledTimes(2);
   });
 
   it('should set winner and phase to "end" if win condition is met', () => {
-    vi.mocked(rules.checkWinCondition).mockReturnValue('p1'); // Simulate player 1 winning
-    const action: GameAction = { type: 'ROTATE_CREATURE', payload: { playerId: 'p1', creatureId: 'c1' } };
+    vi.mocked(rules.checkWinCondition).mockReturnValue(mockPlayer1Id); // Simulate player 1 winning
+    const action: GameAction = { type: 'ROTATE_CREATURE', payload: { playerId: mockPlayer1Id, creatureId: 'c1' } };
     const finalState = gameReducer(currentState, action);
 
-    expect(finalState.winner).toBe('p1');
+    expect(finalState.winner).toBe(mockPlayer1Id);
     expect(finalState.phase).toBe('end');
     expect(finalState.log.at(-1)).toContain('Game Over! Player 1 wins!');
   });

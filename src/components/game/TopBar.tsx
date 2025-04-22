@@ -1,5 +1,4 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom'; // Import if using navigation
 
 // Define ProfileInfo type again or import
 interface ProfileInfo {
@@ -33,11 +32,6 @@ const TopBar: React.FC<TopBarProps> = ({
     <div className="flex items-center justify-between p-3 bg-gray-900/80 backdrop-blur-sm text-white shadow-md h-16">
       {/* Player 1 Info */}
       <div className="flex items-center space-x-3">
-        <img
-          src={player1Profile.avatar_url || defaultAvatar}
-          alt={player1Profile.username || 'Player 1'}
-          className="w-10 h-10 rounded-full border-2 border-blue-500 object-cover"
-        />
         <div className="flex flex-col">
            <span className="font-semibold text-sm truncate max-w-[150px]">{player1Profile.username || 'Player 1'}</span>
            <span className="text-xs text-blue-300">Mana: {player1Mana}</span>
@@ -56,11 +50,6 @@ const TopBar: React.FC<TopBarProps> = ({
              <span className="font-semibold text-sm truncate max-w-[150px]">{player2Profile.username || 'Player 2'}</span>
              <span className="text-xs text-red-300">Mana: {player2Mana}</span>
          </div>
-        <img
-          src={player2Profile.avatar_url || defaultAvatar}
-          alt={player2Profile.username || 'Player 2'}
-          className="w-10 h-10 rounded-full border-2 border-red-500 object-cover"
-        />
       </div>
 
        {/* Return to Lobby Button */}

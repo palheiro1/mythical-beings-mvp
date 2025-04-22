@@ -7,6 +7,40 @@ const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYm
 
 export const supabase: SupabaseClient = createClient(supabaseUrl, supabaseAnonKey);
 
+// Type for match details - adjust based on your actual table structure
+interface MatchDetails {
+    player1_id: string;
+    player2_id: string;
+}
+
+/**
+ * Fetches the player IDs and details associated with a specific game.
+ * Assumes a 'games' table exists with 'id' (matching gameId), 'player1_id', and 'player2_id'.
+ * @param gameId The ID of the game.
+ * @returns An object with player1_id and player2_id, or null if not found or error.
+ */
+export async function getGameDetails(gameId: string): Promise<MatchDetails | null> {
+    console.log(`[Supabase] Fetching game details for game ${gameId}...`);
+    const { data, error } = await supabase
+        .from('games')
+        .select('*')
+        .eq('id', gameId)
+        .single();
+
+    if (error) {
+        console.error(`[Supabase] Error fetching game details for game ${gameId}:`, error);
+        return null;
+    }
+
+    if (!data) {
+        console.warn(`[Supabase] No game details found for game ${gameId}.`);
+        return null;
+    }
+
+    console.log(`[Supabase] Successfully fetched game details for game ${gameId}:`, data);
+    return data as MatchDetails;
+}
+
 // --- Basic Supabase Functions ---
 
 /**
@@ -115,22 +149,38 @@ export async function getAvailableGames(): Promise<any[] | null> {
  * @returns The latest GameState object or null on error.
  */
 export async function getGameState(gameId: string): Promise<GameState | null> {
-   try {
+  console.log(`[getGameState] Fetching state for game ${gameId}...`);
+  if (!gameId || typeof gameId !== 'string') { // Add check for valid gameId
+      console.error('[getGameState] Invalid gameId provided:', gameId);
+      return null;
+  }
+  try {
     const { data, error } = await supabase
-      .from('games') 
+      .from('games')
       .select('state')
       .eq('id', gameId)
-      .single();
+      .single(); // Use single() as gameId should be unique
 
-    if (error && error.code !== 'PGRST116') { // Ignore 'PGRST116' (No rows found)
-        throw error;
+    if (error) {
+      if (error.code === 'PGRST116') { // PostgREST error code for "Resource not found"
+          console.log(`[getGameState] No existing game state found for ${gameId}.`);
+          return null; // No state found is not necessarily an error here
+      }
+      console.error(`[getGameState] Error fetching game state for ${gameId}:`, error);
+      throw error; // Re-throw other errors
     }
-    const fetchedState = data?.state as GameState || null;
-    console.log('[getGameState] Fetched state phase:', fetchedState?.phase);
-    return fetchedState;
-  } catch (error) {
-    console.error('Error fetching game state:', error);
-    return null;
+
+    if (data && data.state && typeof data.state === 'object') {
+        console.log(`[getGameState] Fetched state phase: ${ (data.state as GameState).phase}`);
+        // You might want to add validation here to ensure data.state matches GameState structure
+        return data.state as GameState;
+    } else {
+        console.warn(`[getGameState] No state data found or invalid format for ${gameId}. Data:`, data);
+        return null;
+    }
+  } catch (err) {
+      console.error(`[getGameState] Unexpected error fetching state for ${gameId}:`, err);
+      return null; // Return null on unexpected errors
   }
 }
 
@@ -141,37 +191,49 @@ export async function getGameState(gameId: string): Promise<GameState | null> {
  * @param newState The new GameState object.
  * @returns The result of the update operation.
  */
-export async function updateGameState(gameId: string, newState: GameState): Promise<any | null> {
-  try {
+export async function updateGameState(gameId: string, newState: GameState): Promise<boolean> {
     console.log(`[updateGameState] Attempting to save state for turn ${newState.turn}, phase: ${newState.phase}`);
-
-    // Determine status ONLY if there is a winner
-    let updatePayload: any = {
-        state: newState,
-        updated_at: new Date().toISOString()
-    };
-
-    let statusLog = 'unchanged'; // For logging
-    if (newState.winner) {
-        updatePayload.status = 'finished';
-        statusLog = 'finished';
+    if (!gameId || typeof gameId !== 'string') { // *** Add check for valid gameId ***
+        console.error('[updateGameState] Invalid gameId provided:', gameId);
+        return false;
     }
-    // No 'else' needed - status remains 'waiting' or 'active' otherwise
+     if (!newState || typeof newState !== 'object') {
+        console.error('[updateGameState] Invalid newState provided:', newState);
+        return false;
+    }
 
-    const { data, error } = await supabase
-      .from('games')
-      .update(updatePayload) // Use the dynamically built payload
-      .eq('id', gameId)
-      .select()
-      .single();
+    try {
+        const { data, error } = await supabase
+            .from('games')
+            .update({
+                state: newState,
+                updated_at: new Date().toISOString(), // Explicitly set updated_at
+             })
+            .eq('id', gameId) // *** Use the validated gameId string ***
+            .select('id') // Select something small to confirm success
+            .single(); // Ensure only one row is updated
 
-    if (error) throw error;
-    console.log(`[updateGameState] Successfully saved state for turn ${newState.turn}, phase: ${newState.phase}, status: ${statusLog}`);
-    return data;
-  } catch (error) {
-    console.error('Error updating game state:', error);
-    return null;
-  }
+        if (error) {
+            console.error(`[updateGameState] Error updating game state for ${gameId}:`, error);
+            // Log details that might help debug (like invalid state structure)
+            if (error.message.includes('invalid input syntax')) {
+                 console.error("[updateGameState] Potential issue: State object might not match DB column type.", newState);
+            }
+            return false;
+        }
+
+        if (data) {
+             console.log(`[updateGameState] Successfully updated state for game ${gameId}.`);
+             return true;
+        } else {
+             console.warn(`[updateGameState] Update call succeeded but returned no data for ${gameId}.`);
+             return false; // Or true depending on whether no data is acceptable
+        }
+
+    } catch (err) {
+         console.error(`[updateGameState] Unexpected error updating state for ${gameId}:`, err);
+         return false;
+    }
 }
 
 /**

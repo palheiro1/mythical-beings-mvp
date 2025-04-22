@@ -1,11 +1,10 @@
-import React, { useEffect, useReducer, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { usePlayerIdentification } from '../hooks/usePlayerIdentification';
 import { useGameInitialization } from '../hooks/useGameInitialization';
 import { useGameActions } from '../hooks/useGameActions';
 import { GameState, PlayerState } from '../game/types';
-import { gameReducer } from '../game/state';
 import TopBar from '../components/game/TopBar';
 import ActionBar from '../components/game/ActionBar';
 import TableArea from '../components/game/TableArea';
@@ -18,18 +17,15 @@ interface ProfileInfo {
     avatar_url: string | null;
 }
 
-const defaultGameState: GameState = {
+const initialLoadingState: GameState = {
     gameId: '',
-    players: [
-        { id: 'p1_placeholder', power: 0, creatures: [], hand: [], field: [], selectedCreatures: [] },
-        { id: 'p2_placeholder', power: 0, creatures: [], hand: [], field: [], selectedCreatures: [] }
-    ],
+    players: [],
     knowledgeDeck: [],
     market: [],
     discardPile: [],
     currentPlayerIndex: 0,
     turn: 0,
-    phase: 'knowledge',
+    phase: 'loading',
     actionsTakenThisTurn: 0,
     actionsPerTurn: 3,
     winner: null,
@@ -37,18 +33,19 @@ const defaultGameState: GameState = {
 };
 
 const GameScreen: React.FC = () => {
-  const { gameId } = useParams<{ gameId: string }>();
   const navigate = useNavigate();
   const { loading: authLoading } = useAuth();
   const [currentPlayerId, , , , idLoading] = usePlayerIdentification();
-  const [localState, dispatch] = useReducer(gameReducer, defaultGameState);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const [gameState, dispatch, gameLoading, gameId] = useGameInitialization(currentPlayerId, setError);
+
+  const currentGameState = gameState ?? initialLoadingState;
+
   const [isMyTurn, setIsMyTurn] = useState(false);
   const [playerProfiles, setPlayerProfiles] = useState<{ [key: string]: ProfileInfo }>({});
+  const [profilesLoading, setProfilesLoading] = useState(true);
   const [selectedKnowledgeId, setSelectedKnowledgeId] = useState<string | null>(null);
-
-  useGameInitialization(gameId || null, setError);
 
   const { 
       handleRotateCreature,
@@ -56,15 +53,16 @@ const GameScreen: React.FC = () => {
       handleHandCardClick, 
       handleCreatureClickForSummon,
       handleEndTurn,
-  } = useGameActions(localState, gameId || null, dispatch, currentPlayerId || null, selectedKnowledgeId);
+  } = useGameActions(currentGameState, gameId || null, dispatch, currentPlayerId || null, selectedKnowledgeId);
 
   useEffect(() => {
     const fetchProfiles = async (playerIds: [string, string]) => {
         console.log('[GameScreen] Starting profile fetch for:', playerIds);
+        setProfilesLoading(true);
         const fetchedProfiles: { [key: string]: ProfileInfo } = {};
         try {
             await Promise.all(playerIds.map(async (playerId) => {
-                if (!playerId) return; // Should not happen if check below is correct
+                if (!playerId) return;
                 const profile = await getProfile(playerId);
                 fetchedProfiles[playerId] = {
                     username: profile?.username || `Player (${playerId.substring(0, 6)})`,
@@ -73,10 +71,8 @@ const GameScreen: React.FC = () => {
             }));
             setPlayerProfiles(fetchedProfiles);
             console.log('[GameScreen] Fetched player profiles:', fetchedProfiles);
-            setLoading(false); // Set loading false *after* successful fetch
         } catch (profileError) {
             console.error("Error fetching player profiles:", profileError);
-            // Set default profiles even on error
             playerIds.forEach(playerId => {
                  if (playerId && !fetchedProfiles[playerId]) {
                      fetchedProfiles[playerId] = { username: `Player (${playerId.substring(0, 6)})`, avatar_url: null };
@@ -84,71 +80,61 @@ const GameScreen: React.FC = () => {
             });
             setPlayerProfiles(fetchedProfiles);
             setError('Failed to load player profiles.');
-            setLoading(false); // Set loading false *after* fetch error
+        } finally {
+            setProfilesLoading(false);
         }
     };
 
-    // Check if player data is valid and not placeholders
-    const p1Id = localState.players?.[0]?.id;
-    const p2Id = localState.players?.[1]?.id;
-    const arePlayersValid = p1Id && p2Id && p1Id !== 'p1_placeholder' && p2Id !== 'p2_placeholder';
+    const p1Id = currentGameState.players?.[0]?.id;
+    const p2Id = currentGameState.players?.[1]?.id;
+    const arePlayersValid = p1Id && p2Id;
 
-    if (arePlayersValid) {
-        // Only fetch if profiles haven't been fetched yet for these players
-        // (Simple check: assume if p1 profile exists, both were fetched)
+    if (!gameLoading && arePlayersValid) {
         if (!playerProfiles[p1Id]) {
-             console.log('[GameScreen] Player IDs are valid, initiating profile fetch.');
-             // Ensure loading is true if it wasn't already (e.g., if initial state load was fast)
-             if (!loading) setLoading(true);
+             console.log('[GameScreen] Game loaded and players valid, initiating profile fetch.');
              fetchProfiles([p1Id, p2Id]);
         } else {
-             // Profiles already fetched, ensure loading is false if it wasn't already
-             if (loading) {
-                 console.log('[GameScreen] Profiles already fetched, ensuring loading is false.');
-                 setLoading(false);
+             if (profilesLoading) {
+                 console.log('[GameScreen] Profiles already fetched, ensuring profilesLoading is false.');
+                 setProfilesLoading(false);
              }
         }
+    } else if (!gameLoading && !arePlayersValid) {
+        console.warn('[GameScreen] Game loaded but player IDs are invalid.');
+        setError('Game state has invalid player data.');
+        setProfilesLoading(false);
     } else {
-        // Players are not valid yet, ensure loading is true
-        if (!loading) {
-             console.log('[GameScreen] Player IDs not valid yet, ensuring loading is true.');
-             setLoading(true);
-        }
+        if (!profilesLoading) setProfilesLoading(true);
     }
-    // Only depend on player IDs changing
-  }, [localState.players]);
+  }, [gameLoading, currentGameState.players, playerProfiles]);
 
   useEffect(() => {
-    console.log('[GameScreen] State/PlayerID update:', { phase: localState.phase, currentPlayerIndex: localState.currentPlayerIndex, currentPlayerId, p1: localState.players[0]?.id, p2: localState.players[1]?.id });
-    if (!currentPlayerId || localState.players.length < 2 || localState.players[0].id === 'p1_placeholder') {
+    console.log('[GameScreen] State/PlayerID update check:', { phase: currentGameState.phase, currentPlayerIndex: currentGameState.currentPlayerIndex, currentPlayerId, p1: currentGameState.players[0]?.id, p2: currentGameState.players[1]?.id });
+    if (!currentPlayerId || currentGameState.players.length < 2) {
         setIsMyTurn(false);
         console.log('[GameScreen] Setting as spectator/waiting (no user ID or game not fully initialized)');
         return;
     }
 
-    const playerIndex = localState.players[0].id === currentPlayerId ? 0 : (localState.players[1].id === currentPlayerId ? 1 : -1);
+    const playerIndex = currentGameState.players[0].id === currentPlayerId ? 0 : (currentGameState.players[1].id === currentPlayerId ? 1 : -1);
 
     if (playerIndex === -1) {
         setIsMyTurn(false);
         console.log('[GameScreen] Setting as spectator (user ID not in game)');
     } else {
-        const turnCheck = localState.currentPlayerIndex === playerIndex && localState.winner === null;
+        const turnCheck = currentGameState.currentPlayerIndex === playerIndex && currentGameState.winner === null;
         setIsMyTurn(turnCheck);
         console.log(`[GameScreen] Setting as Player ${playerIndex + 1}. Is my turn: ${turnCheck}`);
     }
 
-    if (selectedKnowledgeId) {
-        setSelectedKnowledgeId(null);
-    }
-
-    if (isMyTurn && localState.phase === 'action' && localState.actionsTakenThisTurn >= localState.actionsPerTurn && handleEndTurn) {
+    if (isMyTurn && currentGameState.phase === 'action' && currentGameState.actionsTakenThisTurn >= currentGameState.actionsPerTurn && handleEndTurn) {
         console.log('[GameScreen] Actions depleted, automatically ending turn.');
         handleEndTurn();
     }
-  }, [localState.currentPlayerIndex, localState.phase, localState.winner, localState.actionsTakenThisTurn, localState.actionsPerTurn, currentPlayerId, localState.players, handleEndTurn, selectedKnowledgeId]);
+  }, [currentGameState.currentPlayerIndex, currentGameState.phase, currentGameState.winner, currentGameState.actionsTakenThisTurn, currentGameState.actionsPerTurn, currentPlayerId, currentGameState.players, handleEndTurn, isMyTurn]);
 
-  if (authLoading || idLoading || loading) {
-    console.log('[Render] Showing Loading Game...');
+  if (authLoading || idLoading || gameLoading || profilesLoading) {
+    console.log(`[Render] Showing Loading Game... (auth: ${authLoading}, id: ${idLoading}, game: ${gameLoading}, profiles: ${profilesLoading})`);
     return <div className="flex justify-center items-center h-screen bg-gray-900 text-white">Loading Game...</div>;
   }
 
@@ -156,18 +142,21 @@ const GameScreen: React.FC = () => {
     return <div className="flex justify-center items-center h-screen bg-gray-900 text-red-500">Error: {error} <button onClick={() => navigate('/lobby')} className="ml-2 underline">Back to Lobby</button></div>;
   }
 
-  if (localState.players.length < 2 || localState.players[0].id === 'p1_placeholder') {
-     return <div className="flex justify-center items-center h-screen bg-gray-900 text-gray-400">Initializing game state...</div>;
+  if (!gameState || gameState.players.length < 2) {
+     console.warn('[Render] Loading flags false, but game state still invalid.', gameState);
+     return <div className="flex justify-center items-center h-screen bg-gray-900 text-gray-400">Initializing game state... (Waiting for data)</div>;
   }
 
-  const playerIndex = localState.players[0].id === currentPlayerId ? 0 : (localState.players[1].id === currentPlayerId ? 1 : -1);
+  const playerIndex = currentGameState.players[0].id === currentPlayerId ? 0 : (currentGameState.players[1].id === currentPlayerId ? 1 : -1);
   const opponentIndex = playerIndex === 0 ? 1 : 0;
 
-  const player: PlayerState | undefined = playerIndex !== -1 ? localState.players[playerIndex] : undefined;
-  const opponent: PlayerState | undefined = localState.players.length > opponentIndex ? localState.players[opponentIndex] : undefined;
+  const player: PlayerState | undefined = playerIndex !== -1 ? currentGameState.players[playerIndex] : undefined;
+  const opponent: PlayerState | undefined = currentGameState.players.length > opponentIndex ? currentGameState.players[opponentIndex] : undefined;
 
-  const playerProfile = playerProfiles[localState.players[playerIndex !== -1 ? playerIndex : 0]?.id || ''] || { username: `Player ${playerIndex !== -1 ? playerIndex + 1 : '?'}`, avatar_url: null };
-  const opponentProfile = playerProfiles[localState.players[opponentIndex]?.id || ''] || { username: `Player ${opponentIndex + 1}`, avatar_url: null };
+  const playerProfileId = player?.id || '';
+  const opponentProfileId = opponent?.id || '';
+  const playerProfile = playerProfiles[playerProfileId] || { username: `Player ${playerIndex !== -1 ? playerIndex + 1 : '?'}`, avatar_url: null };
+  const opponentProfile = playerProfiles[opponentProfileId] || { username: `Player ${opponentIndex + 1}`, avatar_url: null };
 
   const handleMarketClick = (knowledgeId: string) => {
       if (handleDrawKnowledge) {
@@ -205,10 +194,10 @@ const GameScreen: React.FC = () => {
       <TopBar
         player1Profile={playerIndex === 0 ? playerProfile : opponentProfile}
         player2Profile={playerIndex === 1 ? playerProfile : opponentProfile}
-        player1Mana={localState.players[0]?.power || 0}
-        player2Mana={localState.players[1]?.power || 0}
-        turn={localState.turn}
-        phase={localState.phase}
+        player1Mana={currentGameState.players[0]?.power || 0}
+        player2Mana={currentGameState.players[1]?.power || 0}
+        turn={currentGameState.turn}
+        phase={currentGameState.phase}
         onLobbyReturn={() => navigate('/lobby')}
       />
 
@@ -219,7 +208,7 @@ const GameScreen: React.FC = () => {
               currentPlayerHand={player.hand}
               opponentPlayerHand={opponent.hand}
               isMyTurn={isMyTurn}
-              phase={localState.phase}
+              phase={currentGameState.phase}
               selectedKnowledgeId={selectedKnowledgeId}
               onHandCardClick={handleHandClick}
             />
@@ -233,7 +222,7 @@ const GameScreen: React.FC = () => {
               currentPlayer={player}
               opponentPlayer={opponent}
               isMyTurn={isMyTurn}
-              phase={localState.phase}
+              phase={currentGameState.phase}
               selectedKnowledgeId={selectedKnowledgeId}
               onCreatureClickForSummon={handleCreatureClick} 
               onRotateCreature={handleCreatureClick}
@@ -244,10 +233,10 @@ const GameScreen: React.FC = () => {
 
         <div className="w-1/5 h-full">
            <MarketColumn
-             marketCards={localState.market}
-             deckCount={localState.knowledgeDeck.length}
+             marketCards={currentGameState.market}
+             deckCount={currentGameState.knowledgeDeck.length}
              isMyTurn={isMyTurn}
-             phase={localState.phase}
+             phase={currentGameState.phase}
              onDrawKnowledge={handleMarketClick}
            />
         </div>
@@ -255,12 +244,12 @@ const GameScreen: React.FC = () => {
 
       <ActionBar
         isMyTurn={isMyTurn}
-        phase={localState.phase}
-        winner={localState.winner}
-        actionsTaken={localState.actionsTakenThisTurn}
+        phase={currentGameState.phase}
+        winner={currentGameState.winner}
+        actionsTaken={currentGameState.actionsTakenThisTurn}
         onEndTurn={isMyTurn ? handleEndTurn : undefined}
         turnTimer={90}
-        actionsPerTurn={localState.actionsPerTurn}
+        actionsPerTurn={currentGameState.actionsPerTurn}
         isSpectator={playerIndex === -1}
       />
     </div>
