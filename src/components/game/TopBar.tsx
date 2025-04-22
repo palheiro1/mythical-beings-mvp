@@ -1,80 +1,78 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom'; // Import if using navigation
+
+// Define ProfileInfo type again or import
+interface ProfileInfo {
+    username: string | null;
+    avatar_url: string | null;
+}
 
 interface TopBarProps {
-    gameId: string | undefined;
-    turn: number;
-    phase: 'knowledge' | 'action' | 'end';
-    currentPlayerPower: number;
-    opponentPlayerPower: number;
-    actionsRemaining: number;
-    marketCount: number;
-    selectedKnowledgeId: string | null;
-    onCancelSelection: () => void;
+  player1Profile: ProfileInfo;
+  player2Profile: ProfileInfo;
+  player1Mana: number;
+  player2Mana: number;
+  turn: number;
+  phase: string;
+  onLobbyReturn: () => void; // Callback to return to lobby
 }
 
 const TopBar: React.FC<TopBarProps> = ({
-    gameId,
-    turn,
-    phase,
-    currentPlayerPower,
-    opponentPlayerPower,
-    actionsRemaining,
-    marketCount,
-    selectedKnowledgeId,
-    onCancelSelection
+  player1Profile,
+  player2Profile,
+  player1Mana,
+  player2Mana,
+  turn,
+  phase,
+  onLobbyReturn
 }) => {
-    const phaseIcons = {
-        knowledge: '🧠',
-        action: '⚔️',
-        end: '🏁'
-    };
 
-    return (
-        <div className="flex-shrink-0 px-8 py-12 bg-white text-gray-900 text-xl font-semibold shadow-md w-full">
-            {/* Inner container for centering content */}
-            <div className="w-full max-w-screen-xl mx-auto flex justify-between items-center">
-                {/* Left Side: Game Info */}
-                <div className="flex items-center gap-10">
-                    <span className="font-bold text-4xl text-purple-700 drop-shadow-sm">Game: {gameId || '???'}</span>
-                    <span className="flex items-center gap-3" title="Turn Number">
-                        <span className="text-4xl">⏳</span>
-                        <span className="font-semibold text-2xl">{turn}</span>
-                    </span>
-                    <span className="flex items-center gap-3" title="Current Phase">
-                        <span className="text-4xl">{phaseIcons[phase]}</span>
-                        <span className="uppercase font-bold text-2xl text-yellow-600">{phase}</span>
-                    </span>
-                </div>
-                <div className="flex items-center gap-10">
-                    <span className="flex items-center gap-3 text-green-700" title="Your Power">
-                        <span className="text-4xl">💪</span>
-                        <span className="font-semibold text-2xl">{currentPlayerPower}</span>
-                    </span>
-                    <span className="flex items-center gap-3 text-red-700" title="Opponent's Power">
-                        <span className="text-4xl">👻</span>
-                        <span className="font-semibold text-2xl">{opponentPlayerPower}</span>
-                    </span>
-                    <span className="flex items-center gap-3 text-yellow-700" title="Actions Remaining">
-                        <span className="text-4xl">⚡</span>
-                        <span className="font-semibold text-2xl">{actionsRemaining}/2</span>
-                    </span>
-                    <span className="flex items-center gap-3 text-blue-700" title="Cards in Market">
-                        <span className="text-4xl">🛒</span>
-                        <span className="font-semibold text-2xl">{marketCount}</span>
-                    </span>
-                    {selectedKnowledgeId && (
-                        <button
-                            onClick={onCancelSelection}
-                            className="px-6 py-4 rounded-md bg-yellow-400 hover:bg-yellow-300 text-black text-xl font-bold transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
-                            title="Cancel Selection"
-                        >
-                            Oops! Cancel
-                        </button>
-                    )}
-                </div>
-            </div>
+  const defaultAvatar = '/images/assets/cardback1.jpg'; // Path to a default avatar/card back
+
+  return (
+    <div className="flex items-center justify-between p-3 bg-gray-900/80 backdrop-blur-sm text-white shadow-md h-16">
+      {/* Player 1 Info */}
+      <div className="flex items-center space-x-3">
+        <img
+          src={player1Profile.avatar_url || defaultAvatar}
+          alt={player1Profile.username || 'Player 1'}
+          className="w-10 h-10 rounded-full border-2 border-blue-500 object-cover"
+        />
+        <div className="flex flex-col">
+           <span className="font-semibold text-sm truncate max-w-[150px]">{player1Profile.username || 'Player 1'}</span>
+           <span className="text-xs text-blue-300">Mana: {player1Mana}</span>
         </div>
-    );
+      </div>
+
+      {/* Game Info */}
+      <div className="text-center">
+        <div className="text-lg font-bold">Turn {turn}</div>
+        <div className="text-sm text-yellow-300">{phase.toUpperCase()} Phase</div>
+      </div>
+
+      {/* Player 2 Info */}
+      <div className="flex items-center space-x-3">
+         <div className="flex flex-col items-end text-right">
+             <span className="font-semibold text-sm truncate max-w-[150px]">{player2Profile.username || 'Player 2'}</span>
+             <span className="text-xs text-red-300">Mana: {player2Mana}</span>
+         </div>
+        <img
+          src={player2Profile.avatar_url || defaultAvatar}
+          alt={player2Profile.username || 'Player 2'}
+          className="w-10 h-10 rounded-full border-2 border-red-500 object-cover"
+        />
+      </div>
+
+       {/* Return to Lobby Button */}
+       <button
+           onClick={onLobbyReturn}
+           className="ml-4 bg-gray-600 hover:bg-gray-700 text-white text-xs font-semibold py-1 px-3 rounded-md transition-colors duration-200"
+           title="Return to Lobby"
+       >
+           Lobby
+       </button>
+    </div>
+  );
 };
 
 export default TopBar;

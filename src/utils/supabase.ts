@@ -64,7 +64,7 @@ export async function joinGame(gameId: string, player2Id: string): Promise<any |
       .from('games')
       .update({
           player2_id: player2Id,
-          status: 'starting', // Or 'ready', depending on flow
+          status: 'active', // <-- Set status to active when player 2 joins
           updated_at: new Date().toISOString()
       })
       .eq('id', gameId)
@@ -79,7 +79,7 @@ export async function joinGame(gameId: string, player2Id: string): Promise<any |
         }
         throw error;
     }
-    console.log(`[joinGame] Player ${player2Id} successfully joined game ${gameId}.`);
+    console.log(`[joinGame] Player ${player2Id} successfully joined game ${gameId}. Status set to active.`); // Updated log
     return data;
   } catch (error) {
     console.error('Error joining game:', error);
@@ -144,28 +144,29 @@ export async function getGameState(gameId: string): Promise<GameState | null> {
 export async function updateGameState(gameId: string, newState: GameState): Promise<any | null> {
   try {
     console.log(`[updateGameState] Attempting to save state for turn ${newState.turn}, phase: ${newState.phase}`);
-    // Determine status based on newState
-    let newStatus = 'active'; // Default status during gameplay
+
+    // Determine status ONLY if there is a winner
+    let updatePayload: any = {
+        state: newState,
+        updated_at: new Date().toISOString()
+    };
+
+    let statusLog = 'unchanged'; // For logging
     if (newState.winner) {
-        newStatus = 'finished';
-    } else if (newState.turn === 1 && newState.phase === 'knowledge') {
-        // Could potentially still be 'starting' if just initialized
-        // Let's assume it becomes 'active' once the first real turn starts
+        updatePayload.status = 'finished';
+        statusLog = 'finished';
     }
+    // No 'else' needed - status remains 'waiting' or 'active' otherwise
 
     const { data, error } = await supabase
       .from('games')
-      .update({
-          state: newState,
-          status: newStatus, // Update status along with state
-          updated_at: new Date().toISOString()
-      })
+      .update(updatePayload) // Use the dynamically built payload
       .eq('id', gameId)
       .select()
       .single();
 
     if (error) throw error;
-    console.log(`[updateGameState] Successfully saved state for turn ${newState.turn}, phase: ${newState.phase}, status: ${newStatus}`);
+    console.log(`[updateGameState] Successfully saved state for turn ${newState.turn}, phase: ${newState.phase}, status: ${statusLog}`);
     return data;
   } catch (error) {
     console.error('Error updating game state:', error);
@@ -194,6 +195,97 @@ export async function logMove(gameId: string, playerId: string, action: string, 
     if (error) throw error;
   } catch (error) {
     console.error('Error logging move:', error);
+  }
+}
+
+// --- Profile Functions ---
+
+/**
+ * Fetches a user profile from the 'profiles' table.
+ * @param userId The ID of the user whose profile to fetch.
+ * @returns The profile data or null if not found or on error.
+ */
+export async function getProfile(userId: string): Promise<any | null> {
+  try {
+    const { data, error, status } = await supabase
+      .from('profiles')
+      .select(`username, avatar_url, updated_at`)
+      .eq('id', userId)
+      .single();
+
+    if (error && status !== 406) { // 406: No rows found, not necessarily an error here
+      throw error;
+    }
+
+    console.log(`[getProfile] Fetched profile for ${userId}:`, data);
+    return data;
+  } catch (error) {
+    console.error('Error fetching profile:', error);
+    return null;
+  }
+}
+
+/**
+ * Updates a user profile in the 'profiles' table.
+ * @param userId The ID of the user whose profile to update.
+ * @param updates An object containing the fields to update (e.g., { username, avatar_url }).
+ * @returns The updated profile data or null on error.
+ */
+export async function updateProfile(userId: string, updates: { username?: string; avatar_url?: string }): Promise<any | null> {
+  try {
+    const profileUpdates = {
+      ...updates,
+      id: userId, // Ensure the ID is included for upsert
+      updated_at: new Date().toISOString(),
+    };
+
+    const { data, error } = await supabase
+        .from('profiles')
+        .upsert(profileUpdates)
+        .select()
+        .single();
+
+    if (error) throw error;
+
+    console.log(`[updateProfile] Updated profile for ${userId}:`, data);
+    return data;
+  } catch (error) {
+    console.error('Error updating profile:', error);
+    return null;
+  }
+}
+
+/**
+ * Uploads an avatar image to Supabase Storage.
+ * @param userId The ID of the user uploading the avatar.
+ * @param file The avatar image file.
+ * @returns The public URL of the uploaded avatar or null on error.
+ */
+export async function uploadAvatar(userId: string, file: File): Promise<string | null> {
+  try {
+    const fileExt = file.name.split('.').pop();
+    const filePath = `${userId}/${Date.now()}.${fileExt}`; // Use timestamp for uniqueness
+
+    // Upload file
+    const { error: uploadError } = await supabase.storage
+      .from('avatars') // Ensure this matches your bucket name
+      .upload(filePath, file);
+
+    if (uploadError) throw uploadError;
+
+    // Get public URL (assuming public bucket)
+    const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(filePath);
+
+    if (!urlData || !urlData.publicUrl) {
+        throw new Error("Could not get public URL for uploaded avatar.");
+    }
+
+    console.log(`[uploadAvatar] Avatar uploaded for ${userId}. Public URL: ${urlData.publicUrl}`);
+    return urlData.publicUrl;
+
+  } catch (error) {
+    console.error('Error uploading avatar:', error);
+    return null;
   }
 }
 

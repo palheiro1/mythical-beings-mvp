@@ -1,36 +1,42 @@
 import { useState, useEffect } from 'react';
+import { useAuth } from '../context/AuthContext'; // Import useAuth
 
 /**
- * Hook to determine the current player's ID.
- * TODO: Replace mock logic with actual authentication/session management.
- * @returns The current player's ID or null if not determined.
+ * Hook to determine the current player's ID based on the authenticated user.
+ * @returns The current player's ID or null if not authenticated or loading.
  */
-export function usePlayerIdentification(): [string | null, React.Dispatch<React.SetStateAction<string | null>>, string | null, React.Dispatch<React.SetStateAction<string | null>>] {
+export function usePlayerIdentification(): [
+  string | null, // currentPlayerId
+  React.Dispatch<React.SetStateAction<string | null>>, // setCurrentPlayerId (less likely needed externally now)
+  string | null, // error
+  React.Dispatch<React.SetStateAction<string | null>>, // setError
+  boolean // loading state from auth
+] {
+  const { user, loading: authLoading, session } = useAuth(); // Get user and loading state from context
   const [currentPlayerId, setCurrentPlayerId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Simulate fetching player ID or determining it based on URL/session
-    // For testing, alternate between p1 and p2 based on a query param or local storage
-    const urlParams = new URLSearchParams(window.location.search);
-    const mockPlayer = urlParams.get('player');
-
-    let assignedPlayer: string | null = null;
-
-    if (mockPlayer === 'p1' || mockPlayer === 'p2') {
-        assignedPlayer = mockPlayer;
+    console.log('[usePlayerIdentification] Auth state update:', { authLoading, user: user?.id, sessionExists: !!session });
+    if (!authLoading) {
+      if (user) {
+        setCurrentPlayerId(user.id);
+        setError(null);
+        console.log(`[usePlayerIdentification] Player ID set from authenticated user: ${user.id}`);
+      } else {
+        setCurrentPlayerId(null);
+        setError('User not logged in.');
+        console.log('[usePlayerIdentification] No authenticated user found.');
+      }
     } else {
-        // Default to 'p1' if no query param is set, removing the prompt
-        assignedPlayer = 'p1';
-        console.warn('No player query param found, defaulting to p1 for testing.');
+      // Still loading auth state
+      setCurrentPlayerId(null);
+      setError(null); // Clear error while loading
+      console.log('[usePlayerIdentification] Waiting for authentication status...');
     }
+    // Depend on user object and authLoading state
+  }, [user, authLoading, session]);
 
-    if (assignedPlayer) {
-        setCurrentPlayerId(assignedPlayer);
-        console.log(`Mock Player ID set to: ${assignedPlayer}`);
-    }
-
-  }, []); // Empty dependency array ensures this runs only once on mount
-
-  return [currentPlayerId, setCurrentPlayerId, error, setError];
+  // Return authLoading as the primary loading indicator for this hook
+  return [currentPlayerId, setCurrentPlayerId, error, setError, authLoading];
 }

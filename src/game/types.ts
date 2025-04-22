@@ -58,6 +58,7 @@ export interface GameState {
   currentPlayerIndex: 0 | 1; // Index of the current player in the players array
   phase: 'knowledge' | 'action' | 'end'; // Current game phase
   actionsTakenThisTurn: number; // Counter for actions in Action Phase
+  actionsPerTurn: number; // Max actions allowed per turn
   winner: string | null; // ID of the winning player, or null
   log: string[]; // History of game events/actions
 }

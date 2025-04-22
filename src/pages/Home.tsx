@@ -1,44 +1,45 @@
-import React, { useState } from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Auth } from '@supabase/auth-ui-react';
+import { ThemeSupa } from '@supabase/auth-ui-shared';
+import { supabase } from '../utils/supabase';
+import { useAuth } from '../context/AuthContext';
 
 const Home: React.FC = () => {
-  const [connected, setConnected] = useState(false);
-  const [account, setAccount] = useState('');
   const navigate = useNavigate();
+  const { session, loading } = useAuth();
 
-  const handleConnect = () => {
-    // Simulate wallet connection
-    setConnected(true);
-    const mockAccount = '0x' + Math.random().toString(16).substring(2, 12);
-    setAccount(mockAccount);
-    // Navigate after a short delay
-    setTimeout(() => navigate('/lobby'), 1500);
-  };
+  useEffect(() => {
+    if (!loading && session) {
+      console.log('[Home] User already logged in, redirecting to /lobby');
+      navigate('/lobby');
+    }
+  }, [session, loading, navigate]);
+
+  if (loading) {
+    return <div className="text-center p-10">Loading...</div>;
+  }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-gray-800 to-purple-900 text-white p-4">
-      <div className="relative z-10 bg-black/50 backdrop-blur-sm p-10 rounded-lg shadow-xl max-w-md w-full flex flex-col items-center">
-        <div className="flex flex-col items-center justify-center text-center mb-8 w-full">
-          <h1 className="text-4xl font-bold text-white mb-3">Mythical Beings</h1>
-          <p className="text-white">Connect your wallet to enter the arena.</p>
-        </div>
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900 text-white p-4">
+      <img src="/images/assets/LogoXogoBrancoTransparenteEN.png" alt="Mythical Beings Logo" className="w-1/3 h-auto mb-8" />
+      <h1 className="text-4xl font-bold mb-2">Welcome to Mythical Beings</h1>
+      <p className="text-lg text-gray-300 mb-8">Log in or Sign up to join the battle!</p>
 
-        {!connected ? (
-          <button
-            onClick={handleConnect}
-            className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-semibold py-3 px-8 rounded-md transition duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-opacity-50"
-          >
-            Connect Wallet
-          </button>
-        ) : (
-          <div className="flex flex-col items-center gap-3 p-4 bg-gray-700/70 rounded-md w-full text-center">
-            <span className="text-white font-medium" style={{color: 'white'}}>Wallet Connected!</span>
-            <span className="text-sm text-white font-mono bg-gray-800/80 px-3 py-1 rounded w-full text-center" style={{color: 'white'}}>
-              {account}
-            </span>
-            <span className="text-sm text-white mt-2 animate-pulse" style={{color: 'white'}}>Redirecting to Lobby...</span>
-          </div>
-        )}
+      <div className="w-full max-w-sm bg-gray-800 p-8 rounded-lg shadow-xl flex flex-col items-center">
+        <Auth
+          supabaseClient={supabase}
+          appearance={{
+        theme: ThemeSupa,
+        style: {
+          input: { width: '16rem' }, // Adjust input width
+          button: { width: '16rem' }, // Adjust button width
+        },
+          }}
+          providers={[]}
+          theme="dark"
+          redirectTo={`${window.location.origin}/lobby`}
+        />
       </div>
     </div>
   );
