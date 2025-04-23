@@ -271,11 +271,19 @@ export function gameReducer(state: GameState | null, action: GameAction): GameSt
       intermediateState = applyPassiveAbilities(intermediateState, summonTrigger, eventDataSummon);
       break;
     }
+    // Add case for END_TURN
+    case 'END_TURN': {
+      console.log("[Reducer] Handling END_TURN action.");
+      // Don't increment actionsTaken for END_TURN
+      // Directly call the end turn sequence
+      return endTurnSequence(state);
+    }
     default:
       console.error("[Reducer] Unhandled valid action type in switch:", action);
       return state;
   }
 
+  // This part is now only reached for actions that consume an action point
   const currentActionsPerTurn = intermediateState.actionsPerTurn ?? ACTIONS_PER_TURN;
   const newActionsTaken = intermediateState.actionsTakenThisTurn + 1;
   intermediateState = {

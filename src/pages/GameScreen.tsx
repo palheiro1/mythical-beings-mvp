@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { usePlayerIdentification } from '../hooks/usePlayerIdentification';
 import { useGameInitialization } from '../hooks/useGameInitialization';
 import { useGameActions } from '../hooks/useGameActions';
+import { useTurnTimer } from '../hooks/useTurnTimer'; // Import the timer hook
 import { PlayerState } from '../game/types';
 import TopBar from '../components/game/TopBar';
 import ActionBar from '../components/game/ActionBar';
@@ -36,7 +37,20 @@ const GameScreen: React.FC = () => {
     handleDrawKnowledge,
     handleHandCardClick,
     handleCreatureClickForSummon,
+    handleEndTurn, // Get handleEndTurn from useGameActions
   } = useGameActions(gameState, gameId || null, dispatch, currentPlayerId || null, selectedKnowledgeId);
+
+  // --- Turn Timer --- 
+  const TURN_DURATION_SECONDS = 30;
+  const remainingTime = useTurnTimer({
+    isMyTurn,
+    phase: gameState?.phase ?? null,
+    turnDurationSeconds: TURN_DURATION_SECONDS,
+    onTimerEnd: handleEndTurn, // Call handleEndTurn when timer ends
+    gameTurn: gameState?.turn ?? 0,
+    currentPlayerIndex: gameState?.currentPlayerIndex ?? null,
+  });
+  // --- End Turn Timer ---
 
   useEffect(() => {
     const fetchProfiles = async (playerIds: [string, string]) => {
@@ -243,9 +257,10 @@ const GameScreen: React.FC = () => {
         phase={gameState.phase}
         winner={gameState.winner}
         actionsTaken={gameState.actionsTakenThisTurn}
-        turnTimer={90}
+        turnTimer={remainingTime} // Pass remainingTime to ActionBar
         actionsPerTurn={gameState.actionsPerTurn}
         isSpectator={playerIndex === -1}
+        onEndTurnClick={handleEndTurn} // Pass handleEndTurn for the button
       />
     </div>
   );

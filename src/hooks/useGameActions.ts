@@ -32,7 +32,8 @@ export function useGameActions(
             }
         }
 
-        if (isProcessing.current && action.type !== 'SET_GAME_STATE') {
+        // Allow END_TURN even if processing, otherwise block concurrent actions
+        if (isProcessing.current && action.type !== 'SET_GAME_STATE' && action.type !== 'END_TURN') {
             console.warn(`[handleAction] Action ${action.type} blocked, another action is already processing.`);
             return;
         }
@@ -87,7 +88,7 @@ export function useGameActions(
                 console.log(`[handleAction] Finished processing action ${action.type}. isProcessing reset.`);
             }
         }
-    }, [currentGameState, dispatch, currentPlayerId, gameId, isProcessing]);
+    }, [currentGameState, dispatch, currentPlayerId, gameId]);
 
     const handleRotateCreature = useCallback((creatureId: string) => {
         if (!currentPlayerId) return;
@@ -121,9 +122,9 @@ export function useGameActions(
         handleAction(action);
     }, [handleAction, currentPlayerId, selectedKnowledgeId]);
 
-    // Added end turn handler
     const handleEndTurn = useCallback(() => {
         if (!currentPlayerId) return;
+        console.log("[handleEndTurn] Triggered (could be manual or timer)");
         const action: GameAction = { type: 'END_TURN', payload: { playerId: currentPlayerId } };
         handleAction(action);
     }, [handleAction, currentPlayerId]);

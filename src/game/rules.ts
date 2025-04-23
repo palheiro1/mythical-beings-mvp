@@ -123,6 +123,12 @@ export function isValidAction(state: GameState, action: GameAction): ValidationR
       }
       return { isValid: true };
     }
+    // Add case for END_TURN
+    case 'END_TURN': {
+      // Basic checks (player turn, phase) are already done before the switch.
+      // Ending the turn is always valid if those pass.
+      return { isValid: true };
+    }
     default:
       const unknownAction: never = action; // This will cause a compile error if any GameAction type is missed
       const reason = `Unhandled action type: ${(unknownAction as any).type}`;
