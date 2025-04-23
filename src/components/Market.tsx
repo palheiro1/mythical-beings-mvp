@@ -10,9 +10,9 @@ interface MarketProps {
 const Market: React.FC<MarketProps> = ({ cards, onCardClick }) => {
   return (
     <div className="flex justify-center items-center space-x-1 md:space-x-2 p-1 bg-blue-900/30 rounded min-h-[7rem]"> {/* Adjusted min-height */}
-      {cards.map((card) => (
+      {cards.map((card, idx) => (
         <Card 
-          key={card.id} 
+          key={card.instanceId || `${card.id}-${idx}`} 
           card={card} 
           onClick={onCardClick} 
         />

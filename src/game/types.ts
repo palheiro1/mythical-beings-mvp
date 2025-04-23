@@ -35,6 +35,7 @@ export interface Knowledge extends BaseCard {
   effect: string; // Description of the effect when played/activated
   // Runtime properties (added during gameplay, not in JSON)
   rotation?: number; // 0, 90, 180, 270 degrees
+  instanceId?: string; // Unique per-instance ID for React keys
 }
 
 // Player state

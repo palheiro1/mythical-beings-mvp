@@ -4,6 +4,7 @@ import { rotateCreature, drawKnowledge, summonKnowledge } from './actions';
 import { applyPassiveAbilities } from './passives';
 import knowledgeData from '../assets/knowledges.json';
 import { getPlayerState } from './utils';
+import { v4 as uuidv4 } from 'uuid';
 
 // Constants
 const INITIAL_POWER = 20;
@@ -19,18 +20,39 @@ function shuffleArray<T>(array: T[]): T[] {
   return array;
 }
 
+// Helper: add per-instance IDs to all Knowledge cards
+function injectInstanceIds(state: GameState): GameState {
+  return {
+    ...state,
+    market: state.market.map(k => ({ ...k, instanceId: uuidv4() })),
+    knowledgeDeck: state.knowledgeDeck.map(k => ({ ...k, instanceId: uuidv4() })),
+    discardPile: state.discardPile.map(k => ({ ...k, instanceId: uuidv4() })),
+    players: state.players.map(p => ({
+      ...p,
+      hand: p.hand.map(k => ({ ...k, instanceId: uuidv4() })),
+      field: p.field.map(slot =>
+        slot.knowledge
+          ? { creatureId: slot.creatureId, knowledge: { ...slot.knowledge, instanceId: uuidv4() } }
+          : slot
+      ),
+    })) as [PlayerState, PlayerState],
+  };
+}
+
 /**
  * Initializes a new game state.
  * @param payload Data for initialization.
  * @returns The initial game state.
  */
-export function initializeGame(payload: {
-  gameId: string;
-  player1Id: string;
-  player2Id: string;
-  selectedCreaturesP1: Creature[];
-  selectedCreaturesP2: Creature[];
-}): GameState {
+export function initializeGame(
+  payload: {
+    gameId: string;
+    player1Id: string;
+    player2Id: string;
+    selectedCreaturesP1: Creature[];
+    selectedCreaturesP2: Creature[];
+  }
+): GameState {
   const { gameId, player1Id, player2Id, selectedCreaturesP1, selectedCreaturesP2 } = payload;
 
   const fullDeck: Knowledge[] = [];
@@ -87,6 +109,7 @@ export function initializeGame(payload: {
     log: [`Game ${gameId} initialized. Player 1 starts.`],
   };
 
+  // apply passives/phases
   initialState = applyPassiveAbilities(initialState, 'TURN_START', { playerId: initialState.players[0].id });
   initialState = executeKnowledgePhase(initialState);
 
@@ -95,8 +118,10 @@ export function initializeGame(payload: {
     initialState = { ...initialState, winner, phase: 'end' };
   }
 
-  console.log("[Reducer] INITIALIZE_GAME completed. Initial state:", initialState);
-  return initialState;
+  // inject unique keys on all cards before returning
+  const withIds = injectInstanceIds(initialState);
+  console.log("[Reducer] INITIALIZE_GAME completed. Initial state with IDs:", withIds);
+  return withIds;
 }
 
 // Helper function for end-of-turn sequence

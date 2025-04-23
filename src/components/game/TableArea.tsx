@@ -64,10 +64,17 @@ const TableArea: React.FC<TableAreaProps> = ({
             ))}
 
             {/* Row 2: Opponent Spells */}
-            {opponentPlayer.field.map((slot, idx) => renderSlot(slot.knowledge, slot.creatureId + idx, 180))}
+            {opponentPlayer.field.map((slot) => renderSlot(
+                slot.knowledge,
+                slot.knowledge ? slot.knowledge.instanceId! : `empty-op-${slot.creatureId}`,
+                180
+            ))}
 
             {/* Row 3: Player Spells */}
-            {currentPlayer.field.map((slot, idx) => renderSlot(slot.knowledge, slot.creatureId + idx + 10))}
+            {currentPlayer.field.map((slot) => renderSlot(
+                slot.knowledge,
+                slot.knowledge ? slot.knowledge.instanceId! : `empty-my-${slot.creatureId}`
+            ))}
 
             {/* Row 4: Player Beings */}
             {currentPlayer.creatures.map((creature) => renderSlot(

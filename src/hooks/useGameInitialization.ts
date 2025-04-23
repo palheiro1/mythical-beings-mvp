@@ -1,9 +1,29 @@
 import { useEffect, useReducer, useState, useRef } from 'react';
 import { useParams } from 'react-router-dom';
-import { getGameDetails, getGameState, subscribeToGameState, unsubscribeFromGameState, updateGameState, RealtimeChannel } from '../utils/supabase'; // Added RealtimeChannel import
-import { initializeGame, gameReducer as originalGameReducer } from '../game/state';
-import { GameState, GameAction, Creature } from '../game/types';
+import { getGameDetails, getGameState, subscribeToGameState, unsubscribeFromGameState, updateGameState, RealtimeChannel } from '../utils/supabase';
+import { GameState, GameAction, Knowledge, PlayerState, Creature } from '../game/types';
 import creatureData from '../assets/creatures.json';
+import { initializeGame, gameReducer as originalGameReducer } from '../game/state';
+import { v4 as uuidv4 } from 'uuid';
+
+// Assign a unique instanceId to each knowledge card for React keys
+function assignInstanceIds(state: GameState): GameState {
+  const mapCard = (c: Knowledge) => ({ ...c, instanceId: c.instanceId || uuidv4() });
+  return {
+    ...state,
+    market: state.market.map(mapCard),
+    knowledgeDeck: state.knowledgeDeck.map(mapCard),
+    discardPile: state.discardPile.map(mapCard),
+    players: state.players.map((p: PlayerState) => ({
+      ...p,
+      hand: p.hand.map(mapCard),
+      field: p.field.map(slot => slot.knowledge
+        ? { creatureId: slot.creatureId, knowledge: mapCard(slot.knowledge) }
+        : slot
+      ),
+    })) as [PlayerState, PlayerState],
+  };
+}
 
 // Define a type for the state that can be null initially
 type GameScreenState = GameState | null;
@@ -91,7 +111,7 @@ export function useGameInitialization(
       console.log(`[Realtime] Received state update for game ${gameId}. Phase: ${newState?.phase}`);
       // Optional: Add validation if needed
       // if (newState.players[0]?.id?.startsWith('p') || newState.players[1]?.id?.startsWith('p')) { ... }
-      dispatch({ type: 'SET_GAME_STATE', payload: newState });
+      dispatch({ type: 'SET_GAME_STATE', payload: assignInstanceIds(newState) });
       // Ensure loading is false if we receive an update (might happen if initial load failed but subscription worked)
       if (loading) {
           console.log("[Realtime] Setting loading to false after receiving update.");
@@ -167,7 +187,8 @@ export function useGameInitialization(
 
             // 4. Update DB immediately if P1 just initialized
             console.log(`[setupGame] Updating initial game state in Supabase for ${gameId} as Player 1...`);
-            const updateResult = await updateGameState(gameId, initializedState);
+            const stateWithIds = assignInstanceIds(initializedState!);
+            const updateResult = await updateGameState(gameId, stateWithIds);
             // Check mount status and gameId *again* before proceeding
             if (!isMounted || currentInitializedGameId.current !== gameId) {
                  console.log(`[setupGame] Aborting post-update: isMounted=${isMounted}, gameId mismatch.`);

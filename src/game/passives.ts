@@ -1,5 +1,6 @@
 import { GameState, PassiveTriggerType, PassiveEventData } from './types';
 import { getOpponentState, getPlayerState } from './utils';
+import { v4 as uuidv4 } from 'uuid';
 
 
 /**
@@ -57,8 +58,9 @@ export function applyPassiveAbilities(
              if (drawnCard) {
                player.hand.push(drawnCard);
                newState.log.push(`[Passive Effect] Adaro (Owner: ${pId}) draws ${drawnCard.name}. Hand size: ${player.hand.length}`);
+               // When refilling the market, always assign a new instanceId
                if (newState.knowledgeDeck.length > 0) {
-                 const refillCard = newState.knowledgeDeck.shift()!;
+                 const refillCard = { ...newState.knowledgeDeck.shift()!, instanceId: uuidv4() };
                  newState.market.push(refillCard);
                  newState.log.push(`[Passive Effect] Market refilled with ${refillCard.name}.`);
                }
@@ -128,8 +130,9 @@ export function applyPassiveAbilities(
               if (discardedCard) {
                   newState.discardPile.push(discardedCard);
                   newState.log.push(`[Passive Effect] ${discardedCard.name} discarded from Market.`);
+                  // When refilling the market, always assign a new instanceId
                   if (newState.knowledgeDeck.length > 0) {
-                      const refillCard = newState.knowledgeDeck.shift()!;
+                      const refillCard = { ...newState.knowledgeDeck.shift()!, instanceId: uuidv4() };
                       newState.market.push(refillCard);
                       newState.log.push(`[Passive Effect] Market refilled with ${refillCard.name}.`);
                   }
@@ -208,8 +211,9 @@ export function applyPassiveAbilities(
               if (drawnCard) {
                   player.hand.push(drawnCard);
                   newState.log.push(`[Passive Effect] Zhar-Ptitsa (Owner: ${pId}) draws ${drawnCard.name}. Hand size: ${player.hand.length}`);
+                  // When refilling the market, always assign a new instanceId
                   if (newState.knowledgeDeck.length > 0) {
-                      const refillCard = newState.knowledgeDeck.shift()!;
+                      const refillCard = { ...newState.knowledgeDeck.shift()!, instanceId: uuidv4() };
                       newState.market.push(refillCard);
                       newState.log.push(`[Passive Effect] Market refilled with ${refillCard.name}.`);
                   }

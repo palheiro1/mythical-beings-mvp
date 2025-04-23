@@ -28,13 +28,12 @@ const MarketColumn: React.FC<MarketColumnProps> = ({
 
             {/* Market Cards */}
             <div className="flex-grow w-full overflow-y-auto space-y-2 flex flex-col items-center">
-                {marketCards.map((card) => (
+                {marketCards.map((card, idx) => (
                      // Container defines size and aspect ratio
-                    <div key={card.id} className="w-[90%] max-w-[120px] aspect-[2/3] flex-shrink-0">
+                    <div key={card.instanceId || `${card.id}-${idx}`} className="w-[90%] max-w-[120px] aspect-[2/3] flex-shrink-0">
                         <Card
                             card={card}
                             onClick={isMyTurn && phase === 'action' ? () => onDrawKnowledge(card.id) : undefined}
-                            // Removed size
                         />
                     </div>
                 ))}
