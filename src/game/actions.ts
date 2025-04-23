@@ -117,9 +117,6 @@ export function summonKnowledge(state: GameState, payload: { playerId: string; k
    if (knowledgeCard.element === 'earth' && player.creatures.some(c => c.id === 'dudugera' && player.field.some(f => f.creatureId === 'dudugera'))) {
        effectiveCost = Math.max(1, effectiveCost - 1);
    }
-  // Deduct effective cost
-  creature.currentWisdom = (creature.currentWisdom ?? creature.baseWisdom) - effectiveCost;
-
 
   player.creatures = [
     ...player.creatures.slice(0, creatureIndex),
