@@ -10,28 +10,23 @@ import { GameState, PlayerState } from './types';
 export function rotateCreature(state: GameState, payload: { playerId: string; creatureId: string }): GameState {
   const { playerId, creatureId } = payload;
   const playerIndex = state.players.findIndex(p => p.id === playerId);
-  if (playerIndex === -1) return state; // Should not happen if validated
+  if (playerIndex === -1) return state;
 
   const updatedPlayers = [...state.players];
   const player = { ...updatedPlayers[playerIndex] };
   const creatureIndex = player.creatures.findIndex(c => c.id === creatureId);
-  if (creatureIndex === -1) return state; // Should not happen if validated
+  if (creatureIndex === -1) return state;
 
   const creature = { ...player.creatures[creatureIndex] };
-  
-  // Check if the creature has already been rotated 3 times (270 degrees)
+
   const currentRotation = creature.rotation ?? 0;
   if (currentRotation >= 270) {
-    // Already at max rotation, don't rotate further
-    return state;
+    return state; // Already at max rotation
   }
-  
-  // Robust wisdom calculation
+
   const baseWisdom = typeof creature.baseWisdom === 'number' ? creature.baseWisdom : 0;
   const prevWisdom = typeof creature.currentWisdom === 'number' ? creature.currentWisdom : baseWisdom;
   creature.currentWisdom = prevWisdom + 1;
-  
-  // Update rotation by 90 degrees counterclockwise (add 90 degrees)
   creature.rotation = currentRotation + 90;
 
   player.creatures = [
@@ -45,8 +40,7 @@ export function rotateCreature(state: GameState, payload: { playerId: string; cr
   return {
     ...state,
     players: updatedPlayers as [PlayerState, PlayerState],
-    // Remove rotate log: do not log rotate actions
-    log: state.log
+    log: [...state.log, `Player ${playerIndex + 1} rotated ${creature.name}.`] // Added log for rotation
   };
 }
 
@@ -63,7 +57,7 @@ export function drawKnowledge(state: GameState, payload: { playerId: string; kno
   if (playerIndex === -1) return state;
 
   const cardToDraw = state.market.find(k => k.id === knowledgeId);
-  if (!cardToDraw) return state; // Should not happen if validated
+  if (!cardToDraw) return state;
 
   const updatedPlayers = [...state.players];
   const player = { ...updatedPlayers[playerIndex] };
@@ -71,12 +65,10 @@ export function drawKnowledge(state: GameState, payload: { playerId: string; kno
   player.hand = [...player.hand, cardToDraw];
   updatedPlayers[playerIndex] = player;
 
-  // Remove card from market and refill from deck
   let updatedMarket = state.market.filter(k => k.id !== knowledgeId);
   let updatedDeck = [...state.knowledgeDeck];
-  // Refill the market if the deck has cards
   if (updatedDeck.length > 0) {
-    const nextCard = updatedDeck.shift(); // Take the top card
+    const nextCard = updatedDeck.shift();
     if (nextCard) {
       updatedMarket.push(nextCard);
     }
@@ -107,29 +99,36 @@ export function summonKnowledge(state: GameState, payload: { playerId: string; k
   const player = { ...updatedPlayers[playerIndex] };
 
   const knowledgeCardIndex = player.hand.findIndex(k => k.id === knowledgeId);
-  if (knowledgeCardIndex === -1) return state; // Should not happen if validated
+  if (knowledgeCardIndex === -1) return state;
   const knowledgeCard = player.hand[knowledgeCardIndex];
 
   const creatureIndex = player.creatures.findIndex(c => c.id === creatureId);
-  if (creatureIndex === -1) return state; // Should not happen if validated
+  if (creatureIndex === -1) return state;
   const creature = { ...player.creatures[creatureIndex] };
 
-  // Deduct cost and update creature wisdom
-  creature.currentWisdom = (creature.currentWisdom ?? creature.baseWisdom) - knowledgeCard.cost;
+  // Calculate effective cost considering passives (this might need adjustment based on when passives are applied)
+  let effectiveCost = knowledgeCard.cost;
+   // Example: Apply cost reductions (ensure passives are applied *before* this action if they modify cost)
+   if (knowledgeCard.element === 'water' && player.creatures.some(c => c.id === 'kappa' && player.field.some(f => f.creatureId === 'kappa'))) {
+       effectiveCost = Math.max(1, effectiveCost - 1);
+   }
+   if (knowledgeCard.element === 'earth' && player.creatures.some(c => c.id === 'dudugera' && player.field.some(f => f.creatureId === 'dudugera'))) {
+       effectiveCost = Math.max(1, effectiveCost - 1);
+   }
+  // Deduct effective cost
+  creature.currentWisdom = (creature.currentWisdom ?? creature.baseWisdom) - effectiveCost;
 
-  // Update creature in player's creature list
+
   player.creatures = [
     ...player.creatures.slice(0, creatureIndex),
     creature,
     ...player.creatures.slice(creatureIndex + 1),
   ];
 
-  // Remove card from hand
   player.hand = player.hand.filter(k => k.id !== knowledgeId);
 
-  // Add card to the creature's field slot, setting initial rotation
   const fieldSlotIndex = player.field.findIndex(f => f.creatureId === creatureId);
-  if (fieldSlotIndex === -1) return state; // Should not happen, field should be initialized
+  if (fieldSlotIndex === -1) return state;
 
   player.field = [
     ...player.field.slice(0, fieldSlotIndex),

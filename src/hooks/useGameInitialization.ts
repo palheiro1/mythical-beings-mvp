@@ -1,6 +1,6 @@
-import { useEffect, useReducer, useState, useRef } from 'react'; // Import useRef
+import { useEffect, useReducer, useState, useRef } from 'react';
 import { useParams } from 'react-router-dom';
-import { getGameDetails, getGameState, subscribeToGameState, unsubscribeFromGameState, updateGameState } from '../utils/supabase';
+import { getGameDetails, getGameState, subscribeToGameState, unsubscribeFromGameState, updateGameState, RealtimeChannel } from '../utils/supabase'; // Added RealtimeChannel import
 import { initializeGame, gameReducer as originalGameReducer } from '../game/state';
 import { GameState, GameAction, Creature } from '../game/types';
 import creatureData from '../assets/creatures.json';
@@ -73,15 +73,21 @@ export function useGameInitialization(
     currentInitializedGameId.current = gameId; // Track the game being initialized
     setLoading(true); // Explicitly set loading true at the start
     setError(null);
-    let subscription: any = null;
+    let subscription: RealtimeChannel | null = null; // Use RealtimeChannel type
     let isMounted = true;
 
-    const handleRealtimeUpdate = (newState: GameState) => {
+    const handleRealtimeUpdate = (newState: GameState | null) => { // Allow null updates
       // Check mount status and if the update is for the gameId currently being managed by this effect instance
       if (!isMounted || currentInitializedGameId.current !== gameId) {
           console.log(`[Realtime] Ignoring update: isMounted=${isMounted}, gameId mismatch (current: ${currentInitializedGameId.current}, update: ${gameId})`);
           return;
       }
+       if (!newState) {
+           console.warn(`[Realtime] Received null state update for game ${gameId}.`);
+           // Optionally handle this - maybe show an error or revert to loading?
+           // For now, we'll just ignore it and keep the current state.
+           return;
+       }
       console.log(`[Realtime] Received state update for game ${gameId}. Phase: ${newState?.phase}`);
       // Optional: Add validation if needed
       // if (newState.players[0]?.id?.startsWith('p') || newState.players[1]?.id?.startsWith('p')) { ... }
@@ -105,12 +111,22 @@ export function useGameInitialization(
             return;
         }
         if (!gameDetails) {
-            throw new Error(`Game details not found for game ID: ${gameId}.`);
+            // If details are missing, the game likely doesn't exist or isn't ready.
+            throw new Error(`Game details not found for game ID: ${gameId}. It might not exist or hasn't been fully created.`);
         }
         const player1Id = gameDetails.player1_id;
         const player2Id = gameDetails.player2_id;
-        if (!player1Id || !player2Id) {
-            throw new Error(`Game ${gameId} is missing valid player IDs.`);
+
+        if (!player2Id) {
+            // If second player hasn't joined yet, retry after a delay
+            console.log(`[setupGame] Player 2 not joined yet for game ${gameId}. Retrying in 2s...`);
+            setTimeout(() => {
+                if (isMounted && currentInitializedGameId.current === gameId) {
+                    setupGame();
+                }
+            }, 2000);
+            // keep loading and wait
+            return;
         }
         console.log(`[setupGame] Fetched game details. P1: ${player1Id}, P2: ${player2Id}`);
 
@@ -121,66 +137,105 @@ export function useGameInitialization(
              isInitializing.current = false;
              return;
         }
+
+        // 3. Initialize state LOCALLY if null and current player is P1
         let isNewGameInitialization = false;
+        let initializedState: GameState | null = null; // Variable to hold newly initialized state
 
         if (!gameState) {
-          console.log(`[setupGame] Game state for ${gameId} not found. Initializing...`);
-          isNewGameInitialization = true;
+          if (currentPlayerId === player1Id) {
+            console.log(`[setupGame] Game state for ${gameId} not found. Initializing as Player 1...`);
+            isNewGameInitialization = true;
 
-          // Use mock creatures - replace later
-          const mockCreaturesP1: Creature[] = creatureData.slice(0, 3) as Creature[];
-          const mockCreaturesP2: Creature[] = creatureData.slice(3, 6) as Creature[];
-          if (mockCreaturesP1.length < 3 || mockCreaturesP2.length < 3) {
-              throw new Error("Not enough mock creature data.");
-          }
+            // TODO: Replace mock creatures with actual selected creatures from NFTSelection/Lobby state
+            // Ensure JSON import is an array
+            const allCreatures: Creature[] = Array.isArray(creatureData) ? creatureData : (creatureData as any).default;
+            const mockCreaturesP1 = allCreatures.slice(0, 3);
+            const mockCreaturesP2 = allCreatures.slice(3, 6);
+            if (mockCreaturesP1.length < 3 || mockCreaturesP2.length < 3) {
+                throw new Error("Not enough mock creature data.");
+            }
 
-          gameState = initializeGame(gameId, player1Id, player2Id, mockCreaturesP1, mockCreaturesP2);
-          console.log(`[setupGame] Game ${gameId} initialized locally. Phase: ${gameState.phase}`);
+            initializedState = initializeGame({
+                gameId,
+                player1Id,
+                player2Id,
+                selectedCreaturesP1: mockCreaturesP1,
+                selectedCreaturesP2: mockCreaturesP2,
+            });
+            console.log(`[setupGame] Game ${gameId} initialized locally by Player 1. Phase: ${initializedState.phase}`);
 
-        } else {
-          console.log(`[setupGame] Game ${gameId} state found. Phase: ${gameState.phase}`);
-          // Optional: Validate fetched state player IDs
-          if (gameState.players[0].id !== player1Id || gameState.players[1].id !== player2Id) {
-              console.warn(`[setupGame] Mismatch between game_states player IDs and games table IDs.`);
-          }
-        }
-
-        // 3. Set local state and loading status
-        // Check mount status and gameId *again* before dispatching
-        if (isMounted && currentInitializedGameId.current === gameId) {
-            dispatch({ type: 'SET_GAME_STATE', payload: gameState });
-            console.log(`[setupGame] Dispatched SET_GAME_STATE. Setting loading to false.`);
-            setLoading(false); // Set loading false *after* dispatching initial state
-        } else {
-            console.log(`[setupGame] Aborting dispatch: isMounted=${isMounted}, gameId mismatch.`);
-            isInitializing.current = false; // Reset flag if we abort
-            return;
-        }
-
-        // 4. Update DB if we just initialized
-        if (isNewGameInitialization && gameState) {
-            console.log(`[setupGame] Updating initial game state in Supabase for ${gameId}...`);
-            const updateResult = await updateGameState(gameId, gameState);
-             // Check mount status and gameId *again* before proceeding
-             if (!isMounted || currentInitializedGameId.current !== gameId) {
+            // 4. Update DB immediately if P1 just initialized
+            console.log(`[setupGame] Updating initial game state in Supabase for ${gameId} as Player 1...`);
+            const updateResult = await updateGameState(gameId, initializedState);
+            // Check mount status and gameId *again* before proceeding
+            if (!isMounted || currentInitializedGameId.current !== gameId) {
                  console.log(`[setupGame] Aborting post-update: isMounted=${isMounted}, gameId mismatch.`);
                  isInitializing.current = false;
                  return;
-             }
+            }
             if (!updateResult) {
                 console.error(`[setupGame] Failed to update initial game state in Supabase for ${gameId}.`);
-                // setError("Failed to save initial game state."); // Optional: Inform user
+                // Check mount status before setting error
+                if (isMounted && currentInitializedGameId.current === gameId) {
+                    setError("Failed to save initial game state."); // Inform user
+                }
+                // Don't proceed to dispatch if DB update failed
+                initializedState = null; // Prevent dispatching the failed state
             } else {
                 console.log(`[setupGame] Successfully updated initial game state in Supabase.`);
+                // Proceed to dispatch this initializedState below
             }
+          } else {
+            // Player 2: State is null, but wait for Player 1 to initialize it.
+            console.log(`[setupGame] Game state for ${gameId} not found. Waiting for Player 1 to initialize...`);
+            // Keep loading=true, state=null. The subscription or next fetch should get the state.
+            // No return needed here, let it proceed to subscription setup. Loading remains true.
+          }
+        } else {
+          // Game state WAS found initially
+          console.log(`[setupGame] Game ${gameId} state found. Phase: ${gameState.phase}`);
+          if (gameState.players[0].id !== player1Id || gameState.players[1].id !== player2Id) {
+              console.warn(`[setupGame] Mismatch between game_states player IDs and games table IDs.`);
+              // Potentially throw an error or try to recover
+          }
+          // Use the fetched state
+          initializedState = gameState;
         }
 
-        // 5. Subscribe to real-time updates
+        // 5. Set local state and loading status (only if state is available)
+        // Check mount status and gameId *again* before dispatching
+        if (isMounted && currentInitializedGameId.current === gameId) {
+            if (initializedState) {
+                dispatch({ type: 'SET_GAME_STATE', payload: initializedState });
+                console.log(`[setupGame] Dispatched ${isNewGameInitialization ? 'new' : 'existing'} SET_GAME_STATE. Setting loading to false.`);
+                setLoading(false); // Set loading false *after* dispatching state
+            } else if (currentPlayerId !== player1Id && !gameState) {
+                // Player 2 is still waiting, do nothing here, loading remains true
+                console.log(`[setupGame] Player 2 still waiting for initial state, keeping loading=true.`);
+            } else {
+                // State is unexpectedly null (e.g., P1 init failed DB save)
+                console.error(`[setupGame] State is null after initialization/fetch attempt for ${gameId}.`);
+                setError("Error: Game not found or unable to load initial state. Ensure initialization happened after NFT selection.");
+                setLoading(false);
+            }
+        } else {
+             console.log(`[setupGame] Aborting dispatch: isMounted=${isMounted}, gameId mismatch.`);
+             isInitializing.current = false; // Reset flag if we abort
+             return;
+        }
+
+        // 6. Subscribe to real-time updates (Both players do this, even if P2 is still waiting for initial state)
         // Check mount status and gameId *again* before subscribing
         if (isMounted && currentInitializedGameId.current === gameId) {
-            console.log(`[setupGame] Setting up real-time subscription for ${gameId}.`);
-            subscription = subscribeToGameState(gameId, handleRealtimeUpdate);
-            console.log(`[setupGame] Subscribed to realtime updates for ${gameId}.`);
+            // Avoid subscribing if already subscribed (e.g., due to HMR without full unmount)
+            if (!subscription) {
+                console.log(`[setupGame] Setting up real-time subscription for ${gameId}.`);
+                subscription = subscribeToGameState(gameId, handleRealtimeUpdate);
+                console.log(`[setupGame] Subscribed to realtime updates for ${gameId}.`);
+            } else {
+                 console.log(`[setupGame] Subscription already exists for ${gameId}. Skipping subscribe call.`);
+            }
         } else {
              console.log(`[setupGame] Aborting subscription: isMounted=${isMounted}, gameId mismatch.`);
         }
@@ -191,12 +246,14 @@ export function useGameInitialization(
         if (isMounted && currentInitializedGameId.current === gameId) {
             setError(`Failed to setup game: ${err instanceof Error ? err.message : String(err)}`);
             setLoading(false); // Ensure loading is false on error
+        } else {
+             console.log(`[setupGame] Error occurred, but component unmounted or gameId changed. Ignoring error.`);
         }
       } finally {
           // Only mark as not initializing if this effect instance was for the current gameId
           if (currentInitializedGameId.current === gameId) {
               isInitializing.current = false;
-              console.log(`[setupGame] Finished setup for game: ${gameId}. isInitializing set to false.`);
+              console.log(`[setupGame] Finished setup attempt for game: ${gameId}. isInitializing set to false.`);
           } else {
               console.log(`[setupGame] Finished setup for a different gameId (${currentInitializedGameId.current}). Not changing isInitializing.`);
           }
@@ -213,6 +270,7 @@ export function useGameInitialization(
       if (subscription && currentInitializedGameId.current === gameId) {
         unsubscribeFromGameState(subscription);
         console.log(`[useGameInit] Unsubscribed from realtime updates for ${gameId}.`);
+        subscription = null; // Clear subscription variable
       } else {
           console.log(`[useGameInit] No unsubscription needed (no subscription object or gameId mismatch).`);
       }

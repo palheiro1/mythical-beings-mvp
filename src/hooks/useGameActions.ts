@@ -1,5 +1,5 @@
 import { useCallback, useRef } from 'react';
-import { GameState, GameAction, ActionType, PlayerAction } from '../game/types';
+import { GameState, GameAction } from '../game/types';
 import { gameReducer } from '../game/state';
 import { updateGameState } from '../utils/supabase';
 import { isValidAction } from '../game/rules';
@@ -19,65 +19,86 @@ export function useGameActions(
 } {
     const isProcessing = useRef(false);
 
-    const handleAction = useCallback(async (action: PlayerAction) => {
-        if (!currentGameState || !currentPlayerId || !gameId) {
-            console.error("[handleAction] Cannot process action: Missing game state, player ID, or game ID.", { currentGameState, currentPlayerId, gameId });
+    const handleAction = useCallback(async (action: GameAction) => {
+        if (action.type !== 'SET_GAME_STATE' && (!currentGameState || !currentPlayerId || !gameId)) {
+            console.error("[handleAction] Cannot process action: Missing game state, player ID, or game ID.", { currentGameState, currentPlayerId, gameId, actionType: action.type });
             return;
         }
 
-        if (isProcessing.current) {
+        if (action.type !== 'SET_GAME_STATE' && action.type !== 'INITIALIZE_GAME') {
+            if (!action.payload || !('playerId' in action.payload)) {
+                console.error("[handleAction] Action is missing player payload:", action);
+                return;
+            }
+        }
+
+        if (isProcessing.current && action.type !== 'SET_GAME_STATE') {
             console.warn(`[handleAction] Action ${action.type} blocked, another action is already processing.`);
             return;
         }
 
         console.log(`[handleAction] Received action: ${action.type}`, action.payload);
-        isProcessing.current = true;
+        if (action.type !== 'SET_GAME_STATE') {
+            isProcessing.current = true;
+        }
 
         try {
-            console.log(`[handleAction] Validating action ${action.type}...`);
-            const validationResult = isValidAction(currentGameState, action, currentPlayerId);
-            if (!validationResult.isValid) {
-                console.warn(`[handleAction] Action ${action.type} is invalid: ${validationResult.reason}`);
-                return;
-            }
-            console.log(`[handleAction] Action ${action.type} is valid.`);
-
-            console.log(`[handleAction] Calculating next state for action ${action.type}...`);
-            const nextState = gameReducer(currentGameState, action);
-            console.log(`[handleAction] Reducer finished. Next state phase: ${nextState?.phase}, Player: ${nextState?.currentPlayerIndex}`);
-
-            if (!nextState) {
-                throw new Error("Reducer returned null state.");
+            if (action.type !== 'SET_GAME_STATE' && action.type !== 'INITIALIZE_GAME') {
+                if (!currentGameState) {
+                    throw new Error("Cannot validate action without current game state.");
+                }
+                console.log(`[handleAction] Validating action ${action.type}...`);
+                const validationResult = isValidAction(currentGameState, action);
+                if (!validationResult.isValid) {
+                    console.warn(`[handleAction] Action ${action.type} is invalid: ${validationResult.reason || 'No reason provided'}`);
+                    if (action.type !== 'SET_GAME_STATE') isProcessing.current = false;
+                    return;
+                }
+                console.log(`[handleAction] Action ${action.type} is valid.`);
             }
 
-            console.log(`[handleAction] Persisting state BEFORE dispatch for action ${action.type}. Phase: ${nextState.phase}, Player: ${nextState.currentPlayerIndex}`);
-            const updateSuccessful = await updateGameState(gameId, nextState);
+            if (action.type !== 'SET_GAME_STATE') {
+                if (!currentGameState) throw new Error("Cannot reduce action without current game state.");
+                console.log(`[handleAction] Calculating next state locally for action ${action.type}...`);
+                const nextState = gameReducer(currentGameState, action);
 
-            if (!updateSuccessful) {
-                console.error(`[handleAction] Failed to persist state update to Supabase for action ${action.type}.`);
+                if (!nextState) {
+                    throw new Error("Reducer returned null state unexpectedly.");
+                }
+                console.log(`[handleAction] Local reducer finished. Next phase: ${nextState.phase}, Player: ${nextState.currentPlayerIndex}, Actions: ${nextState.actionsTakenThisTurn}`);
+
+                console.log(`[handleAction] Persisting updated state to Supabase for action ${action.type}.`);
+                const updateSuccessful = await updateGameState(gameId!, nextState);
+
+                if (!updateSuccessful) {
+                    console.error(`[handleAction] Failed to persist state update to Supabase for action ${action.type}. Local state might be ahead.`);
+                } else {
+                    console.log(`[handleAction] State successfully persisted for action ${action.type}.`);
+                }
             } else {
-                console.log(`[handleAction] State successfully persisted for action ${action.type}.`);
+                console.log(`[handleAction] Dispatching received SET_GAME_STATE.`);
+                dispatch(action);
             }
-
-            console.log(`[handleAction] Dispatching local state update for action ${action.type}.`);
-            dispatch(action);
-
         } catch (error) {
             console.error(`[handleAction] Error processing action ${action.type}:`, error);
         } finally {
-            isProcessing.current = false;
-            console.log(`[handleAction] Finished processing action ${action.type}. isProcessing reset.`);
+            if (action.type !== 'SET_GAME_STATE') {
+                isProcessing.current = false;
+                console.log(`[handleAction] Finished processing action ${action.type}. isProcessing reset.`);
+            }
         }
-    }, [currentGameState, dispatch, currentPlayerId, gameId]);
+    }, [currentGameState, dispatch, currentPlayerId, gameId, isProcessing]);
 
     const handleRotateCreature = useCallback((creatureId: string) => {
         if (!currentPlayerId) return;
-        handleAction({ type: 'ROTATE_CREATURE', payload: { playerId: currentPlayerId, creatureId } });
+        const action: GameAction = { type: 'ROTATE_CREATURE', payload: { playerId: currentPlayerId, creatureId } };
+        handleAction(action);
     }, [handleAction, currentPlayerId]);
 
     const handleDrawKnowledge = useCallback((knowledgeId: string) => {
         if (!currentPlayerId) return;
-        handleAction({ type: 'DRAW_KNOWLEDGE', payload: { playerId: currentPlayerId, knowledgeId } });
+        const action: GameAction = { type: 'DRAW_KNOWLEDGE', payload: { playerId: currentPlayerId, knowledgeId } };
+        handleAction(action);
     }, [handleAction, currentPlayerId]);
 
     const handleHandCardClick = useCallback((knowledgeId: string) => {
@@ -89,19 +110,22 @@ export function useGameActions(
             console.warn("[Action] Cannot summon: Missing player ID or selected knowledge card.");
             return;
         }
-        handleAction({
-            type: 'SUMMON_CREATURE',
+        const action: GameAction = {
+            type: 'SUMMON_KNOWLEDGE',
             payload: {
                 playerId: currentPlayerId,
-                knowledgeCardId: selectedKnowledgeId,
-                targetCreatureId: targetCreatureId,
+                knowledgeId: selectedKnowledgeId,
+                creatureId: targetCreatureId,
             }
-        });
+        };
+        handleAction(action);
     }, [handleAction, currentPlayerId, selectedKnowledgeId]);
 
+    // Added end turn handler
     const handleEndTurn = useCallback(() => {
         if (!currentPlayerId) return;
-        handleAction({ type: 'END_TURN', payload: { playerId: currentPlayerId } });
+        const action: GameAction = { type: 'END_TURN', payload: { playerId: currentPlayerId } };
+        handleAction(action);
     }, [handleAction, currentPlayerId]);
 
     return {
