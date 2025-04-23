@@ -1,4 +1,5 @@
 import { GameState, PlayerState } from './types';
+import { getCreatureWisdom } from './utils';
 
 /**
  * Rotates a creature, increasing its wisdom.
@@ -24,10 +25,11 @@ export function rotateCreature(state: GameState, payload: { playerId: string; cr
     return state; // Already at max rotation
   }
 
-  const baseWisdom = typeof creature.baseWisdom === 'number' ? creature.baseWisdom : 0;
-  const prevWisdom = typeof creature.currentWisdom === 'number' ? creature.currentWisdom : baseWisdom;
-  creature.currentWisdom = prevWisdom + 1;
-  creature.rotation = currentRotation + 90;
+  // Rotate creature
+  const newRotation = currentRotation + 90;
+  creature.rotation = newRotation;
+  // Set wisdom according to wisdomCycle and rotation
+  creature.currentWisdom = getCreatureWisdom({ ...creature, rotation: newRotation });
 
   player.creatures = [
     ...player.creatures.slice(0, creatureIndex),
@@ -40,7 +42,7 @@ export function rotateCreature(state: GameState, payload: { playerId: string; cr
   return {
     ...state,
     players: updatedPlayers as [PlayerState, PlayerState],
-    log: [...state.log, `Player ${playerIndex + 1} rotated ${creature.name}.`] // Added log for rotation
+    log: [...state.log, `Player ${playerIndex + 1} rotated ${creature.name}.`]
   };
 }
 

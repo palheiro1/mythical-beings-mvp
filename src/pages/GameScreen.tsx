@@ -4,12 +4,13 @@ import { useAuth } from '../context/AuthContext';
 import { usePlayerIdentification } from '../hooks/usePlayerIdentification';
 import { useGameInitialization } from '../hooks/useGameInitialization';
 import { useGameActions } from '../hooks/useGameActions';
-import { GameState, PlayerState, Creature } from '../game/types';
+import { PlayerState } from '../game/types';
 import TopBar from '../components/game/TopBar';
 import ActionBar from '../components/game/ActionBar';
 import TableArea from '../components/game/TableArea';
 import HandsColumn from '../components/game/HandsColumn';
 import MarketColumn from '../components/game/MarketColumn';
+import Logs from '../components/game/Logs'; // Import the Logs component
 import { getProfile } from '../utils/supabase';
 
 interface ProfileInfo {
@@ -19,8 +20,8 @@ interface ProfileInfo {
 
 const GameScreen: React.FC = () => {
   const navigate = useNavigate();
-  const { user, loading: authLoading } = useAuth();
-  const [currentPlayerId, isHost, playerEnsName, playerAvatar, idLoading] = usePlayerIdentification();
+  const { loading: authLoading } = useAuth();
+  const [currentPlayerId, , , , idLoading] = usePlayerIdentification();
   const [error, setError] = useState<string | null>(null);
 
   const [gameState, dispatch, gameLoading, gameId] = useGameInitialization(currentPlayerId, setError);
@@ -35,7 +36,6 @@ const GameScreen: React.FC = () => {
     handleDrawKnowledge,
     handleHandCardClick,
     handleCreatureClickForSummon,
-    handleEndTurn,
   } = useGameActions(gameState, gameId || null, dispatch, currentPlayerId || null, selectedKnowledgeId);
 
   useEffect(() => {
@@ -185,8 +185,10 @@ const GameScreen: React.FC = () => {
         onLobbyReturn={() => navigate('/lobby')}
       />
 
+      {/* Main Content Area - Now 4 columns */}
       <div className="flex-grow flex flex-row overflow-hidden p-2 gap-2">
-        <div className="w-1/5 h-full">
+        {/* Hands Column - Adjusted width */}
+        <div className="w-1/6 h-full">
           {player && opponent ? (
             <HandsColumn
               currentPlayerHand={player.hand}
@@ -201,7 +203,8 @@ const GameScreen: React.FC = () => {
           )}
         </div>
 
-        <div className="w-3/5 h-full">
+        {/* Table Area - Adjusted width */}
+        <div className="w-3/6 h-full"> {/* Adjusted from 3/5 */}
           {player && opponent ? (
             <TableArea
               currentPlayer={player}
@@ -217,7 +220,8 @@ const GameScreen: React.FC = () => {
           )}
         </div>
 
-        <div className="w-1/5 h-full">
+        {/* Market Column - Adjusted width */}
+        <div className="w-1/6 h-full"> {/* Adjusted from 1/5 */}
           <MarketColumn
             marketCards={gameState.market}
             deckCount={gameState.knowledgeDeck.length}
@@ -226,8 +230,14 @@ const GameScreen: React.FC = () => {
             onDrawKnowledge={handleMarketClick}
           />
         </div>
+
+        {/* Logs Column - New dedicated column */}
+        <div className="w-1/6 h-full"> {/* New column for logs */}
+           <Logs logs={gameState.log} />
+        </div>
       </div>
 
+      {/* Action Bar */}
       <ActionBar
         isMyTurn={isMyTurn}
         phase={gameState.phase}
