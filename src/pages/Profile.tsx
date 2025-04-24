@@ -130,68 +130,62 @@ const ProfilePage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white p-8">
-      <h1 className="text-3xl font-bold mb-6 text-center">Your Profile</h1>
-
-      {message && <div className="mb-4 text-center text-yellow-300">{message}</div>}
-
-      <div className="max-w-md mx-auto bg-gray-800 p-6 rounded-lg shadow-lg">
-        <div className="text-center mb-6">
-          <img
-            src={avatarUrl || `https://via.placeholder.com/150?text=${username?.charAt(0)?.toUpperCase() || '?'}`}
-            alt="Avatar"
-            className="w-32 h-32 rounded-full mx-auto mb-4 border-4 border-purple-500 object-cover"
-          />
-          <label htmlFor="avatar-upload" className="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold py-2 px-4 rounded-md transition-colors duration-200">
-            {uploading ? 'Uploading...' : 'Change Avatar'}
-          </label>
-          <input
-            id="avatar-upload"
-            type="file"
-            accept="image/*"
-            onChange={handleAvatarUpload}
-            disabled={uploading}
-            className="hidden"
-          />
+    <div className="min-h-screen bg-gray-100 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+      <div className="w-full max-w-sm sm:max-w-md bg-white shadow-lg rounded-lg overflow-hidden">
+        <div className="flex items-center px-6 py-4 bg-gradient-to-r from-purple-600 to-indigo-500">
+          <div className="flex-shrink-0">
+            <img
+              className="block h-4 w-4 rounded-full border-2 border-white object-cover"
+              src={avatarUrl || `/api/placeholder-avatar?text=${username.charAt(0).toUpperCase()}`}
+              alt="Avatar"
+            />
+          </div>
+          <div className="ml-4 flex-1 min-w-0">
+            <h2 className="text-xl font-semibold text-white truncate">{username || 'Unnamed User'}</h2>
+            <p className="text-sm text-purple-200 truncate">{user.email}</p>
+          </div>
         </div>
-
-        <form onSubmit={handleUpdateProfile}>
-          <div className="mb-4">
-            <label htmlFor="email" className="block text-sm font-medium text-gray-400 mb-1">Email</label>
-            <input
-              id="email"
-              type="text"
-              value={user.email || ''}
-              disabled
-              className="w-full p-2 rounded bg-gray-700 border border-gray-600 text-gray-300 cursor-not-allowed"
-            />
-          </div>
-          <div className="mb-4">
-            <label htmlFor="username" className="block text-sm font-medium text-gray-400 mb-1">Username</label>
-            <input
-              id="username"
-              type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              required
-              className="w-full p-2 rounded bg-gray-700 border border-gray-600 focus:border-purple-500 focus:ring focus:ring-purple-500 focus:ring-opacity-50"
-            />
-          </div>
-          <button
-            type="submit"
-            disabled={loading || uploading}
-            className={`w-full py-2 px-4 rounded-md text-white font-semibold transition-colors duration-200 ${loading || uploading ? 'bg-gray-600 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'}`}
-          >
-            {loading ? 'Saving...' : 'Update Profile'}
-          </button>
-        </form>
-
-        <button
-            onClick={signOut}
-            className="w-full mt-6 py-2 px-4 rounded-md bg-red-600 hover:bg-red-700 text-white font-semibold transition-colors duration-200"
-          >
-            Sign Out
-        </button>
+        <div className="px-6 py-4">
+          {message && <div className="mb-4 text-center text-red-500">{message}</div>}
+          <form onSubmit={handleUpdateProfile} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Username</label>
+              <input
+                type="text"
+                value={username}
+                onChange={e => setUsername(e.target.value)}
+                required
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Avatar</label>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleAvatarUpload}
+                disabled={uploading}
+                className="mt-1 block w-full text-sm text-gray-500 file:py-2 file:px-4 file:border file:border-gray-300 file:rounded-md file:text-sm file:font-semibold file:bg-indigo-100 file:text-indigo-700 hover:file:bg-indigo-200"
+              />
+            </div>
+            <div className="flex justify-between items-center">
+              <button
+                type="submit"
+                disabled={loading || uploading}
+                className="bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
+              >
+                {loading ? 'Saving...' : 'Save Changes'}
+              </button>
+              <button
+                type="button"
+                onClick={signOut}
+                className="text-red-600 hover:text-red-800 font-medium"
+              >
+                Sign Out
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
   );
