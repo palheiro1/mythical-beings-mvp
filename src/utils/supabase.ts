@@ -18,7 +18,7 @@ interface MatchDetails {
     updated_at: string;
     player1_id: string;
     player2_id: string | null;
-    status: 'waiting' | 'active' | 'finished' | 'cancelled'; // Assuming these are possible statuses
+    status: 'waiting' | 'selecting' | 'active' | 'finished' | 'cancelled'; // Added 'selecting'
     bet_amount: number;
     state: GameState | null; // State might also be included
     winner_id?: string | null; // Optional winner field
