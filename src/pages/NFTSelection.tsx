@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+// Import useParams
+import { useNavigate, useParams } from 'react-router-dom';
 import Card from '../components/Card'; // Import the Card component
 import { Creature } from '../game/types'; // Import the Creature type
 
@@ -21,6 +22,8 @@ const NFTSelection: React.FC = () => {
   const [waiting, setWaiting] = useState(false);
   const [lost, setLost] = useState(false);
   const navigate = useNavigate();
+  // Get gameId from URL parameters
+  const { gameId } = useParams<{ gameId: string }>();
 
   // Timer logic
   useEffect(() => {
@@ -37,14 +40,15 @@ const NFTSelection: React.FC = () => {
 
   // Navigation logic (when waiting for opponent)
   useEffect(() => {
-    if (waiting) {
+    if (waiting && gameId) { // Ensure gameId is available
       const timeoutId = setTimeout(() => {
-        // Simulate opponent ready, navigate to game
-        navigate('/game/test-game'); // Replace test-game with actual game ID
+        // Use the dynamic gameId from useParams
+        console.log(`[NFTSelection] Navigating to game: ${gameId}`);
+        navigate(`/game/${gameId}`); // Use the actual game ID
       }, 2000); // Simulate opponent taking 2 seconds
       return () => clearTimeout(timeoutId);
     }
-  }, [waiting, navigate]);
+  }, [waiting, navigate, gameId]);
 
   const toggleSelect = (id: string) => {
     if (lost || waiting) return; // Cannot select if lost or waiting
@@ -78,6 +82,8 @@ const NFTSelection: React.FC = () => {
         {/* Header */} 
         <div className="flex justify-between items-center mb-6 pb-4 border-b border-gray-700">
           <h1 className="text-2xl font-bold text-yellow-400">Select Your Team (Choose 3)</h1>
+          {/* Display Game ID for debugging/info */}
+          <p className="text-xs text-gray-500">Game ID: {gameId || 'Loading...'}</p>
           <div className={`text-3xl font-bold px-4 py-1 rounded ${timer <= 10 ? 'text-red-500 animate-pulse' : 'text-white'}`}>
             {timer}s
           </div>

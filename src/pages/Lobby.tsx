@@ -101,21 +101,22 @@ const Lobby: React.FC = () => {
     try {
       const joinedGame = await joinGame(gameId, currentPlayerId);
       if (joinedGame) {
-        console.log(`[Lobby] Successfully joined game ${gameId}. Navigating...`);
-        navigate(`/game/${gameId}`);
+        console.log(`[Lobby] Successfully joined game ${gameId}. Navigating to NFT Selection...`);
+        navigate(`/nft-selection/${gameId}`); // Navigate to NFT Selection
       } else {
+        // Check if already in game (might have joined but navigation failed before)
         const gameData = await supabase.from('games').select('player1_id, player2_id, status').eq('id', gameId).single();
         if (gameData.data && (gameData.data.player1_id === currentPlayerId || gameData.data.player2_id === currentPlayerId)) {
-          console.log(`[Lobby] User is already in game ${gameId}. Navigating...`);
-          navigate(`/game/${gameId}`);
+          console.log(`[Lobby] User is already in game ${gameId}. Navigating to NFT Selection...`);
+          navigate(`/nft-selection/${gameId}`); // Navigate to NFT Selection
         } else if (gameData.data && gameData.data.status !== 'waiting') {
           setNotification('Failed to join: Game is already full or in progress.');
           setTimeout(() => setNotification(null), 4000);
-          fetchGamesAndProfiles();
+          fetchGamesAndProfiles(); // Refresh list
         } else {
           setNotification('Failed to join game. It might no longer be available.');
           setTimeout(() => setNotification(null), 4000);
-          fetchGamesAndProfiles();
+          fetchGamesAndProfiles(); // Refresh list
         }
       }
     } catch (error) {
@@ -140,8 +141,8 @@ const Lobby: React.FC = () => {
 
       if (createdGameData) {
         setShowCreateModal(false);
-        setNotification('Game created successfully! Joining...');
-        navigate(`/game/${newGameId}`);
+        setNotification('Game created successfully! Proceeding to NFT Selection...');
+        navigate(`/nft-selection/${newGameId}`); // Navigate to NFT Selection
       } else {
         setNotification('Failed to create game. The game ID might already exist or another error occurred.');
         setTimeout(() => setNotification(null), 4000);
