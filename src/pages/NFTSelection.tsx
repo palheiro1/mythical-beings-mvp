@@ -91,19 +91,18 @@ const NFTSelection: React.FC = () => {
             <div
               key={card.id}
               style={{ width: CARD_WIDTH_DESKTOP, height: getCardHeight(CARD_WIDTH_DESKTOP) }}
-              // Apply hover effects and margin to this wrapper div
               className={`relative group transform transition-transform duration-300 ease-in-out m-1
-                ${lost || waiting ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}
-                hover:scale-[2.0] hover:z-20`}
+                ${lost || waiting ? 'cursor-not-allowed' : ''}`}
             >
               <Card
                 card={card} // Pass the card data
                 onClick={() => toggleSelect(card.id)} // Pass the click handler
                 isSelected={selected.includes(card.id)} // Pass selection state
+                isDisabled={lost || waiting} // Pass disabled state to Card
               />
               {/* Keep the checkmark overlay outside the Card component if needed */}
               {selected.includes(card.id) && (
-                <div className="absolute top-2 right-2 bg-yellow-400 text-black rounded-full p-1 leading-none z-10"> {/* Ensure checkmark is above card */} 
+                <div className="absolute top-2 right-2 bg-yellow-400 text-black rounded-full p-1 leading-none z-10"> {/* Ensure checkmark is above card */}
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                   </svg>
@@ -125,13 +124,13 @@ const NFTSelection: React.FC = () => {
                   <div
                     key={`selected-${card.id}`}
                     style={{ width: '100px', height: getCardHeight('100px') }} // Example: Smaller size
-                    className="relative shadow-md rounded-[10px] overflow-hidden border-2 border-gray-600 cursor-pointer" // Added cursor-pointer
-                    onClick={() => toggleSelect(card.id)} // Add onClick to deselect
+                    className="relative shadow-md rounded-[10px] overflow-hidden border-2 border-gray-600"
                   >
                     <Card
                       card={card}
-                      // onClick is handled by the wrapper div now
+                      onClick={() => toggleSelect(card.id)} // Add onClick to Card to deselect
                       isSelected={true} // Visually indicate it's selected (uses yellow border)
+                      isDisabled={lost || waiting} // Pass disabled state
                     />
                   </div>
                 ))}

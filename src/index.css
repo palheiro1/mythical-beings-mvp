@@ -2,45 +2,27 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Reset styles for consistent appearance */
+/* Basic reset for consistent box model */
 *,
 *::before,
 *::after {
   box-sizing: border-box;
 }
 
-/* Ensure html, body, and root take full height */
+/* Clean base styles */
 html,
 body {
-  height: 100%;
+  height: auto;
+  width: auto;
   margin: 0;
   padding: 0;
   color-scheme: dark; /* Force dark mode */
-  color: white !important; /* Ensure text is white by default */
+  background: linear-gradient(to bottom right, #111827, #312e81, #4c1d95); /* Added from index.html */
 }
 
-/* Override any light mode preferences */
+/* Simple dark mode override */
 @media (prefers-color-scheme: light) {
   :root {
-    color: white !important;
-    background-color: transparent !important;
+    color-scheme: dark;
   }
-  
-  h1, h2, h3, h4, h5, h6, p, span, div, a, button {
-    color: inherit !important;
-  }
-}
-
-#root {
-  height: 100%; /* Make root fill the body */
-  width: 100%;
-}
-
-/* Reset heading styles that might conflict with Tailwind */
-h1, h2, h3, h4, h5, h6 {
-  font-size: revert;
-  font-weight: revert;
-  margin: revert;
-  line-height: inherit;
-  color: white !important;
 }

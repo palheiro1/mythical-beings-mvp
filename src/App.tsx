@@ -6,7 +6,6 @@ import NFTSelection from './pages/NFTSelection';
 import ProfilePage from './pages/Profile';
 import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
-import './App.css';
 
 function App() {
   return (

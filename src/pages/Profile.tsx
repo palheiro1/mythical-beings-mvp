@@ -131,24 +131,25 @@ const ProfilePage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-100 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="w-full max-w-sm sm:max-w-md bg-white shadow-lg rounded-lg overflow-hidden">
-        <div className="flex items-center px-6 py-4 bg-gradient-to-r from-purple-600 to-indigo-500">
-          <div className="flex-shrink-0">
-            <img
-              className="block h-4 w-4 rounded-full border-2 border-white object-cover"
-              src={avatarUrl || `/api/placeholder-avatar?text=${username.charAt(0).toUpperCase()}`}
-              alt="Avatar"
-            />
-          </div>
-          <div className="ml-4 flex-1 min-w-0">
+      <div className="w-full max-w-[300px] bg-white shadow-lg rounded-lg overflow-visible">
+        <div className="flex flex-col items-center px-6 py-4 bg-gradient-to-r from-purple-600 to-indigo-500 text-center space-y-4">
+          {/* Small avatar like TopBar */}
+          <img
+            src={avatarUrl || `/api/placeholder-avatar?text=${username.charAt(0).toUpperCase()}`}
+            alt="Avatar"
+            width={100}
+            height={100}
+            className="rounded-full border-2 border-white object-cover mx-auto"
+          />
+          <div>
             <h2 className="text-xl font-semibold text-white truncate">{username || 'Unnamed User'}</h2>
             <p className="text-sm text-purple-200 truncate">{user.email}</p>
           </div>
         </div>
-        <div className="px-6 py-4">
+        <div className="px-6 py-4 flex flex-col items-start">
           {message && <div className="mb-4 text-center text-red-500">{message}</div>}
-          <form onSubmit={handleUpdateProfile} className="space-y-4">
-            <div>
+          <form onSubmit={handleUpdateProfile} className="space-y-4 flex flex-col items-start">
+            <div className="w-64">
               <label className="block text-sm font-medium text-gray-700">Username</label>
               <input
                 type="text"
@@ -158,7 +159,7 @@ const ProfilePage: React.FC = () => {
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
               />
             </div>
-            <div>
+            <div className="w-64">
               <label className="block text-sm font-medium text-gray-700">Avatar</label>
               <input
                 type="file"
@@ -168,7 +169,7 @@ const ProfilePage: React.FC = () => {
                 className="mt-1 block w-full text-sm text-gray-500 file:py-2 file:px-4 file:border file:border-gray-300 file:rounded-md file:text-sm file:font-semibold file:bg-indigo-100 file:text-indigo-700 hover:file:bg-indigo-200"
               />
             </div>
-            <div className="flex justify-between items-center">
+            <div className="flex justify-start space-x-4">
               <button
                 type="submit"
                 disabled={loading || uploading}
@@ -176,6 +177,7 @@ const ProfilePage: React.FC = () => {
               >
                 {loading ? 'Saving...' : 'Save Changes'}
               </button>
+              <br />
               <button
                 type="button"
                 onClick={signOut}

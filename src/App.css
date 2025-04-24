@@ -1,16 +1,12 @@
+/* Common root styles */
 #root {
-  margin: 0;
-  padding: 15px;
-  min-height: 100vh;
   width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
 }
 
 /* Remove constraints for the game screen */
 .game-page #root {
-  max-width: 100%;
-  margin: 0;
-  padding: 0;
-  height: 100vh;
-  width: 100vw;
   overflow: hidden;
 }

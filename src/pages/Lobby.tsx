@@ -14,7 +14,7 @@ interface GameWithUsername extends AvailableGame { // Extend AvailableGame
 
 const Lobby: React.FC = () => {
   const navigate = useNavigate();
-  const { loading: authLoading } = useAuth();
+  const { loading: authLoading, signOut } = useAuth();
   const [currentPlayerId, , playerError, , idLoading] = usePlayerIdentification();
   const [availableGames, setAvailableGames] = useState<GameWithUsername[]>([]);
   const [loadingGames, setLoadingGames] = useState(true);
@@ -23,6 +23,8 @@ const Lobby: React.FC = () => {
   const [betAmount, setBetAmount] = useState(0);
   const [notification, setNotification] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
+  // User profile state for avatar and username
+  const [userProfile, setUserProfile] = useState<{ username: string | null; avatar_url: string | null }>({ username: null, avatar_url: null });
 
   const isLoading = authLoading || idLoading || loadingGames;
 
@@ -78,6 +80,16 @@ const Lobby: React.FC = () => {
       return () => clearTimeout(timer);
     }
   }, [playerError]);
+
+  useEffect(() => {
+    if (currentPlayerId) {
+      getProfile(currentPlayerId)
+        .then(profile => {
+          setUserProfile({ username: profile?.username || null, avatar_url: profile?.avatar_url || null });
+        })
+        .catch(console.error);
+    }
+  }, [currentPlayerId]);
 
   const handleJoinGame = async (gameId: string) => {
     if (!currentPlayerId) {
@@ -158,29 +170,61 @@ const Lobby: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-purple-900 text-white p-6 md:p-8">
-      <header className="max-w-7xl mx-auto mb-12 flex justify-between items-center">
-        <h1 className="text-4xl md:text-5xl font-extrabold text-white drop-shadow-lg">Mythical Beings Lobby</h1>
-        {currentPlayerId && (
-          <button
-            onClick={() => navigate('/profile')}
-            className="bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-4 rounded-md transition-colors duration-200"
-          >
-            My Profile
-          </button>
-        )}
-        {!currentPlayerId && (
-          <button
-            onClick={() => navigate('/')}
-            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-md transition-colors duration-200"
-          >
-            Login
-          </button>
-        )}
+    <div className="min-h-screen bg-gray-900 bg-cover bg-center text-white p-6 md:p-8 relative overflow-hidden">
+      {/* Efecto de neones */}
+      <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 to-cyan-400/10 pointer-events-none" />
+      
+      <header className="max-w-7xl mx-auto mb-12 flex flex-col sm:flex-row justify-between items-center space-y-6 sm:space-y-0">
+        <div className="flex items-center space-x-4">
+          <h1 className="text-4xl md:text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-cyan-300">
+            Mythical Arena
+          </h1>
+          <div className="h-12 w-12 bg-purple-500 rounded-full animate-pulse" />
+        </div>
+        <div className="flex items-center space-x-4 ml-auto">
+          {currentPlayerId && userProfile.username && (
+            <>
+              <img
+                width={50}
+                height={50}
+                src={
+                  userProfile.avatar_url
+                    ? userProfile.avatar_url
+                    : `/api/placeholder-avatar?text=${userProfile.username.charAt(0).toUpperCase()}`
+                }
+                alt="User Avatar"
+                className="h-10 w-10 rounded-full object-cover border-2 border-white"
+              />
+              <span className="text-white font-medium">{userProfile.username}</span>
+              <div className="flex space-x-2">
+                <button
+                  onClick={() => navigate('/profile')}
+                  className="bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-4 rounded-md transition-colors duration-200"
+                >
+                  My Profile
+                </button>
+                <button
+                  onClick={signOut}
+                  className="bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded-md transition-colors duration-200"
+                >
+                  Sign Out
+                </button>
+              </div>
+            </>
+          )}
+          {!currentPlayerId && (
+            <button
+              onClick={() => navigate('/')}
+              className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-md transition-colors duration-200"
+            >
+              Login
+            </button>
+          )}
+        </div>
       </header>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-10 max-w-7xl mx-auto">
-        <div className="bg-gray-800/70 backdrop-blur-md p-6 rounded-xl shadow-xl flex flex-col gap-4">
+        <div className="bg-gray-800 bg-opacity-70 p-6 rounded-xl shadow-xl flex flex-col gap-4">
           <h2 className="text-2xl font-semibold mb-3 text-center text-gray-100 flex items-center justify-center gap-2">
             <span className="text-purple-400 text-2xl">👥</span>
             Players Online
@@ -188,7 +232,7 @@ const Lobby: React.FC = () => {
           <div className="text-center text-gray-400 py-4">Player list temporarily unavailable</div>
         </div>
 
-        <div className="bg-gray-800/70 backdrop-blur-md p-6 rounded-xl shadow-xl flex flex-col gap-4">
+        <div className="bg-gray-800 bg-opacity-70 p-6 rounded-xl shadow-xl flex flex-col gap-4">
           <h2 className="text-2xl font-semibold mb-3 text-center text-gray-100 flex items-center justify-center gap-2">
             <span className="text-yellow-400 text-2xl">🎮</span>
             Available Games
@@ -227,12 +271,12 @@ const Lobby: React.FC = () => {
           </div>
         </div>
 
-        <div className="bg-gray-800/70 backdrop-blur-md p-6 rounded-xl shadow-xl flex flex-col items-center gap-5">
+        <div className="bg-gray-800 bg-opacity-70 p-6 rounded-xl shadow-xl flex flex-col items-center gap-5">
           <h2 className="text-2xl font-semibold mb-3 text-center text-gray-100">Actions</h2>
           {currentPlayerId ? (
             <button
               onClick={() => setShowCreateModal(true)}
-              className="bg-green-600 hover:bg-green-700 text-white text-lg font-semibold py-3 px-6 rounded-md transition-colors duration-200 w-full"
+              className="bg-green-600 hover:bg-green-700 text-white text-lg font-semibold py-3 px-6 rounded-md transition-colors duration-200 w-full max-w-[200px]"
             >
               Create Game
             </button>
@@ -243,46 +287,47 @@ const Lobby: React.FC = () => {
       </div>
 
       {showCreateModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-gray-800 p-6 rounded-lg shadow-lg w-full max-w-md">
-            <h2 className="text-xl font-semibold text-center mb-4">Create New Game</h2>
-            <div className="flex flex-col gap-4">
-              <label htmlFor="bet-amount" className="block text-sm font-medium text-gray-400 mb-1">Bet Amount (0 for Free)</label>
-              <div className="flex items-center bg-gray-700 rounded-md border border-gray-600">
-                <input
-                  id="bet-amount"
-                  type="number"
-                  min="0"
-                  value={betAmount}
-                  onChange={(e) => setBetAmount(Math.max(0, Number(e.target.value)))}
-                  className="flex-grow p-3 rounded-l-md bg-transparent text-white focus:outline-none"
-                  placeholder="Enter bet amount"
-                />
-                <img src="/images/assets/gem.png" alt="GEM" className="h-6 w-6 mx-3" />
-              </div>
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-40"></div>
+      )}
+      {showCreateModal && (
+        <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-gray-800 p-6 rounded-lg shadow-lg max-w-md z-50">
+          <h2 className="text-xl font-semibold text-center mb-4">Create New Game</h2>
+          <div className="flex flex-col gap-4">
+            <label htmlFor="bet-amount" className="block text-sm font-medium text-gray-400 mb-1">Bet Amount (0 for Free)</label>
+            <div className="flex items-center bg-gray-700 rounded-md border border-gray-600">
+              <input
+                id="bet-amount"
+                type="number"
+                min="0"
+                value={betAmount}
+                onChange={(e) => setBetAmount(Math.max(0, Number(e.target.value)))}
+                className="flex-grow p-3 rounded-l-md bg-transparent text-white focus:outline-none"
+                placeholder="Enter bet amount"
+              />
+              <img src="/images/assets/gem.png" alt="GEM" className="h-6 w-6 mx-3" />
+            </div>
 
-              <div className="flex gap-4 mt-4">
-                <button
-                  onClick={handleCreateGame}
-                  disabled={isCreating}
-                  className={`flex-1 py-3 px-6 rounded-md text-white font-semibold ${isCreating ? 'bg-gray-600 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700 transition-colors duration-200'}`}
-                >
-                  {isCreating ? 'Creating...' : 'Confirm & Create'}
-                </button>
-                <button
-                  onClick={() => setShowCreateModal(false)}
-                  className="flex-1 py-3 px-6 rounded-md bg-red-600 hover:bg-red-700 text-white font-semibold transition-colors duration-200"
-                >
-                  Cancel
-                </button>
-              </div>
+            <div className="flex gap-4 mt-4">
+              <button
+                onClick={handleCreateGame}
+                disabled={isCreating}
+                className={`flex-1 py-3 px-6 rounded-md text-white font-semibold ${isCreating ? 'bg-gray-600 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700 transition-colors duration-200'}`}
+              >
+                {isCreating ? 'Creating...' : 'Confirm & Create'}
+              </button>
+              <button
+                onClick={() => setShowCreateModal(false)}
+                className="flex-1 py-3 px-6 rounded-md bg-red-600 hover:bg-red-700 text-white font-semibold transition-colors duration-200"
+              >
+                Cancel
+              </button>
             </div>
           </div>
         </div>
       )}
 
       {notification && (
-        <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-black/80 text-white px-4 py-2 rounded-full text-sm shadow-lg z-50">
+        <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-black bg-opacity-80 text-white px-4 py-2 rounded-full text-sm shadow-lg z-50">
           {notification}
         </div>
       )}

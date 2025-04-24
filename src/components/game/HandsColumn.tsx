@@ -32,13 +32,13 @@ const HandsColumn: React.FC<HandsColumnProps> = ({
                     {opponentPlayerHand.length === 0 ? (
                          // Container defines size
                          <div className="h-[85%] aspect-[2/3]">
-                            <Card card={{ id: 'opp-back', name: 'Back', image: '/images/spells/back.jpg', type: 'spell', cost: 0, effect: '', element: 'neutral' }} showBack />
+                            <Card card={{ id: 'opp-back', name: 'Back', image: '/images/spells/back.jpg', type: 'spell', cost: 0, effect: '', element: 'neutral' }} showBack isDisabled />
                          </div>
                     ) : (
                         opponentPlayerHand.slice(0, maxVisibleCards).map((card, idx) => (
-                            // Container defines size
-                            <div key={card.id + idx + '-opp'} className="h-[85%] aspect-[2/3] transition-all hover:scale-105">
-                                <Card card={card} showBack />
+                            // Container defines size - REMOVED hover:scale-105
+                            <div key={card.id + idx + '-opp'} className="h-[85%] aspect-[2/3] transition-all">
+                                <Card card={card} showBack isDisabled />
                             </div>
                         ))
                     )}
@@ -75,21 +75,26 @@ const HandsColumn: React.FC<HandsColumnProps> = ({
                     {currentPlayerHand.length === 0 ? (
                         // Container defines size
                         <div className="h-[85%] aspect-[2/3]">
-                            <Card card={{ id: 'player-back', name: 'Back', image: '/images/spells/back.jpg', type: 'spell', cost: 0, effect: '', element: 'neutral' }} showBack />
+                            <Card card={{ id: 'player-back', name: 'Back', image: '/images/spells/back.jpg', type: 'spell', cost: 0, effect: '', element: 'neutral' }} showBack isDisabled />
                         </div>
                     ) : (
-                        currentPlayerHand.slice(0, maxVisibleCards).map((card, idx) => (
-                            // Container defines size with hover effect
-                            <div 
-                                key={card.id + idx + '-player'} 
-                                className={`h-[85%] aspect-[2/3] transition-all ${
-                                    isMyTurn && phase === 'action' ? 'hover:scale-110 cursor-pointer' : ''
-                                } ${selectedKnowledgeId === card.id ? 'ring-2 ring-yellow-400 scale-105' : ''}`}
-                                onClick={isMyTurn && phase === 'action' ? () => onHandCardClick(card.id) : undefined}
-                            >
-                                <Card card={card} isSelected={selectedKnowledgeId === card.id} />
-                            </div>
-                        ))
+                        currentPlayerHand.slice(0, maxVisibleCards).map((card, idx) => {
+                            const isDisabled = !isMyTurn || phase !== 'action';
+                            return (
+                                // Container defines size with hover effect - REMOVED hover:scale-110 and cursor-pointer
+                                <div
+                                    key={card.id + idx + '-player'}
+                                    className={`h-[85%] aspect-[2/3] transition-all ${selectedKnowledgeId === card.id ? 'ring-2 ring-yellow-400 scale-105' : ''}`}
+                                    onClick={!isDisabled ? () => onHandCardClick(card.id) : undefined}
+                                >
+                                    <Card
+                                        card={card}
+                                        isSelected={selectedKnowledgeId === card.id}
+                                        isDisabled={isDisabled} // Pass isDisabled to Card
+                                    />
+                                </div>
+                            );
+                        })
                     )}
                     {currentPlayerHand.length > maxVisibleCards && (
                         <span className="text-xs text-white bg-black/50 px-2 py-1 rounded-full">+{currentPlayerHand.length - maxVisibleCards}</span>
