@@ -239,13 +239,10 @@ const Lobby: React.FC = () => {
           </h2>
           <div className="space-y-4">
             {availableGames.map((game) => (
-              <div key={game.id} className="bg-gray-700 p-4 rounded-lg flex justify-between items-center shadow-md">
+              <div key={game.id} className="bg-gray-700 p-4 rounded-lg flex justify-center items-center shadow-md">
                 <div>
                   <p className="text-lg font-semibold">{game.creatorUsername || 'Unknown Creator'}</p>
                   <p className="text-sm text-gray-400">Bet: {game.bet_amount} GEM</p>
-                  <p className="text-xs text-gray-500">ID: {game.id.substring(0, 8)}...</p>
-                </div>
-                <div className="text-right">
                   <p className={`text-sm font-medium ${game.status === 'waiting' ? 'text-yellow-400' : 'text-green-400'}`}>
                     {game.status === 'waiting' ? 'Waiting for opponent' : 'Active'}
                   </p>
@@ -257,6 +254,9 @@ const Lobby: React.FC = () => {
                       Join Game
                     </button>
                   )}
+                </div>
+                <div className="text-right">
+
                   {game.status === 'active' && game.player1_id === currentPlayerId && (
                     <button
                       onClick={() => navigate(`/game/${game.id}`)}

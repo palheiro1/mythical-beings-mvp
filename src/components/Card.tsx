@@ -17,7 +17,7 @@ const BASE_CARD_WIDTH_PX = 100; // Example base width in pixels
 const BASE_CARD_HEIGHT_PX = BASE_CARD_WIDTH_PX * (3.5 / 2.5); // Assuming standard card aspect ratio
 
 const Card: React.FC<CardProps> = ({ card, onClick, isSelected, rotation = 0, showBack = false, isDisabled = false }) => {
-  const [isHovering, setIsHovering] = useState(false);
+  // No isHovering state needed if it's only used for zoom logic
   const [isZoomed, setIsZoomed] = useState(false);
   const [zoomPosition, setZoomPosition] = useState({ top: '50%', left: '50%', transform: 'translate(-50%, -50%)' });
   const hoverTimer = useRef<NodeJS.Timeout | null>(null);
@@ -25,8 +25,7 @@ const Card: React.FC<CardProps> = ({ card, onClick, isSelected, rotation = 0, sh
 
   const handleMouseEnter = () => {
     // Hover/zoom is independent of isDisabled
-    setIsHovering(true);
-    if (hoverTimer.current) clearTimeout(hoverTimer.current); // Clear any existing timer
+    if (hoverTimer.current) clearTimeout(hoverTimer.current); // Clear any existing timer before starting a new one
     hoverTimer.current = setTimeout(() => {
       if (cardRef.current) {
         const rect = cardRef.current.getBoundingClientRect();
@@ -64,17 +63,27 @@ const Card: React.FC<CardProps> = ({ card, onClick, isSelected, rotation = 0, sh
           transform: 'translate(-50%, -50%)', // Center the zoomed card at the calculated position
         });
       }
-      setIsZoomed(true);
+      setIsZoomed(true); // Show the zoom
     }, 800); // 0.8 second delay
   };
 
-  const handleMouseLeave = () => {
+  // Handler for leaving the original card area
+  const handleMouseLeaveOriginalCard = () => {
+    // Clear the timer ONLY. This prevents the zoom from showing if the mouse leaves quickly.
+    // It does NOT hide the zoom if it's already visible.
     if (hoverTimer.current) {
       clearTimeout(hoverTimer.current);
       hoverTimer.current = null;
     }
-    setIsHovering(false);
-    setIsZoomed(false);
+  };
+
+  // Handler specifically for closing the zoom (used by overlay and backdrop)
+  const handleCloseZoom = () => {
+    if (hoverTimer.current) { // Clear timer just in case it's somehow still active
+      clearTimeout(hoverTimer.current);
+      hoverTimer.current = null;
+    }
+    setIsZoomed(false); // Hide the zoom
   };
 
   const handleClick = () => {
@@ -111,12 +120,11 @@ const Card: React.FC<CardProps> = ({ card, onClick, isSelected, rotation = 0, sh
           bg-gray-700 rounded-[10px] shadow-md overflow-hidden
           transition-transform duration-300 ease-in-out
           ${onClick && !isDisabled ? 'cursor-pointer' : 'cursor-default'}
-          ${isDisabled ? 'opacity-60' : ''}
           ${isSelected ? 'border-yellow-400 border-2 ring-2 ring-yellow-400' : 'border-2 border-gray-500'}
           z-10 /* Keep base card at z-10 */
         `}
         onMouseEnter={handleMouseEnter}
-        onMouseLeave={handleMouseLeave}
+        onMouseLeave={handleMouseLeaveOriginalCard} // Use the specific handler for leaving the original card
         onClick={handleClick}
       >
         {/* Using a wrapper div for card content that rotates */}
@@ -140,16 +148,16 @@ const Card: React.FC<CardProps> = ({ card, onClick, isSelected, rotation = 0, sh
       {isZoomed && (
         <div
           className="fixed top-0 left-0 w-full h-full bg-black bg-opacity-50 z-40" // Backdrop
-          onClick={handleMouseLeave} // Close zoom on backdrop click
+          onClick={handleCloseZoom} // Use the closing handler
         >
           <div
-            className="fixed bg-gray-700 rounded-[10px] shadow-xl overflow-hidden border-4 border-yellow-500 z-50"
+            className="fixed bg-gray-700 rounded-[10px] shadow-xl overflow-hidden border-4 border-yellow-500 z-50 pointer-events-auto" // Added pointer-events-auto to ensure leave event fires
             style={{
               ...zoomPosition,
               width: `${BASE_CARD_WIDTH_PX * ZOOM_SCALE}px`,
               height: `${BASE_CARD_HEIGHT_PX * ZOOM_SCALE}px`,
             }}
-            onMouseLeave={handleMouseLeave} // Also close if mouse leaves the zoomed card itself
+            onMouseLeave={handleCloseZoom} // Use the closing handler here too
           >
             {/* Inner content doesn't need rotation here as the base card shows rotation state */}
             <div className="w-full h-full flex flex-col">
