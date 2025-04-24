@@ -2,9 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { usePlayerIdentification } from '../hooks/usePlayerIdentification';
-import { supabase } from '../utils/supabase';
+import { supabase, getAvailableGames, createGame, joinGame, getProfile } from '../utils/supabase';
 import { AvailableGame } from '../game/types'; // Import the new type
-import { getAvailableGames, createGame, getProfile, joinGame } from '../utils/supabase';
 import { v4 as uuidv4 } from 'uuid';
 
 // Define the combined type for games with creator's username
@@ -98,31 +97,69 @@ const Lobby: React.FC = () => {
       return;
     }
     console.log(`[Lobby] Player ${currentPlayerId} attempting to join game: ${gameId}`);
+    setNotification(`Joining game ${gameId}...`); // Provide immediate feedback
+
     try {
       const joinedGame = await joinGame(gameId, currentPlayerId);
+
       if (joinedGame) {
-        console.log(`[Lobby] Successfully joined game ${gameId}. Navigating to NFT Selection...`);
-        navigate(`/nft-selection/${gameId}`); // Navigate to NFT Selection
+        console.log(`[Lobby] Successfully joined game ${gameId}. Triggering card dealing...`);
+        setNotification('Game joined! Dealing cards...'); // Update feedback
+
+        const { error: functionError } = await supabase.functions.invoke('deal-cards', {
+          body: { gameId },
+        });
+
+        if (functionError) {
+          console.error('[Lobby] Error calling deal-cards function:', functionError);
+          let errorMsg = 'Joined game, but failed to deal cards.';
+          if (functionError.message.includes('already dealt') || functionError.message.includes('status')) {
+            errorMsg = 'Game setup issue. Cards might already be dealt or status incorrect.';
+          } else if (functionError.message.includes('Not enough creatures')) {
+            errorMsg = 'Game configuration error: Not enough creatures defined.';
+          }
+          setNotification(`${errorMsg} Please try rejoining or contact support.`);
+          setTimeout(() => setNotification(null), 6000);
+        } else {
+          console.log('[Lobby] deal-cards function invoked successfully. Navigating to NFT Selection...');
+          setNotification('Cards dealt! Starting selection...');
+          navigate(`/nft-selection/${gameId}`);
+        }
       } else {
-        // Check if already in game (might have joined but navigation failed before)
-        const gameData = await supabase.from('games').select('player1_id, player2_id, status').eq('id', gameId).single();
-        if (gameData.data && (gameData.data.player1_id === currentPlayerId || gameData.data.player2_id === currentPlayerId)) {
-          console.log(`[Lobby] User is already in game ${gameId}. Navigating to NFT Selection...`);
-          navigate(`/nft-selection/${gameId}`); // Navigate to NFT Selection
-        } else if (gameData.data && gameData.data.status !== 'waiting') {
+        const { data: gameData, error: fetchError } = await supabase.from('games').select('player1_id, player2_id, status, player1_dealt_hand').eq('id', gameId).single();
+
+        if (fetchError) throw fetchError;
+
+        if (gameData && (gameData.player1_id === currentPlayerId || gameData.player2_id === currentPlayerId)) {
+          console.log(`[Lobby] User is already in game ${gameId}. Checking status...`);
+          if (gameData.status === 'selecting' || gameData.status === 'active' || (gameData.player1_dealt_hand && gameData.player1_dealt_hand.length > 0)) {
+            console.log(`[Lobby] Game status is '${gameData.status}'. Navigating to NFT Selection...`);
+            navigate(`/nft-selection/${gameId}`);
+          } else if (gameData.status === 'waiting' && gameData.player2_id === currentPlayerId) {
+            setNotification('You seem to be in the game, but setup might be incomplete. Trying to initiate setup...');
+            setTimeout(() => setNotification(null), 4000);
+            await supabase.functions.invoke('deal-cards', { body: { gameId } });
+            navigate(`/nft-selection/${gameId}`);
+          } else {
+            setNotification('Already in game, but current status is unclear. Refreshing...');
+            setTimeout(() => setNotification(null), 4000);
+            fetchGamesAndProfiles();
+          }
+        } else if (gameData && gameData.status !== 'waiting') {
           setNotification('Failed to join: Game is already full or in progress.');
           setTimeout(() => setNotification(null), 4000);
-          fetchGamesAndProfiles(); // Refresh list
+          fetchGamesAndProfiles();
         } else {
           setNotification('Failed to join game. It might no longer be available.');
           setTimeout(() => setNotification(null), 4000);
-          fetchGamesAndProfiles(); // Refresh list
+          fetchGamesAndProfiles();
         }
       }
     } catch (error) {
       console.error(`[Lobby] Error joining game ${gameId}:`, error);
       setNotification(`Error joining game: ${error instanceof Error ? error.message : 'Unknown error'}`);
       setTimeout(() => setNotification(null), 4000);
+      fetchGamesAndProfiles();
     }
   };
 
@@ -142,7 +179,7 @@ const Lobby: React.FC = () => {
       if (createdGameData) {
         setShowCreateModal(false);
         setNotification('Game created successfully! Proceeding to NFT Selection...');
-        navigate(`/nft-selection/${newGameId}`); // Navigate to NFT Selection
+        navigate(`/nft-selection/${newGameId}`);
       } else {
         setNotification('Failed to create game. The game ID might already exist or another error occurred.');
         setTimeout(() => setNotification(null), 4000);
