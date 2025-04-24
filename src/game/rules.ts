@@ -1,7 +1,6 @@
 import { knowledgeEffects } from './effects';
 import { GameState, GameAction, CombatBuffers, Knowledge } from './types';
 import { applyPassiveAbilities } from './passives';
-import { getPlayerState } from './utils';
 
 // Constants
 const MAX_HAND_SIZE = 5;

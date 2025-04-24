@@ -1,5 +1,8 @@
-import { createClient, SupabaseClient, RealtimeChannel } from '@supabase/supabase-js';
+import { createClient, SupabaseClient, RealtimeChannel as SupabaseRealtimeChannel } from '@supabase/supabase-js'; // Renamed import
 import { GameState } from '../game/types'; // Assuming types.ts is in ../game/
+
+// Re-export the type for use in other modules
+export type RealtimeChannel = SupabaseRealtimeChannel;
 
 // Replace with your actual Supabase URL and Anon Key
 const supabaseUrl = 'https://layijhifboyouicxsunq.supabase.co';
@@ -8,9 +11,17 @@ const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYm
 export const supabase: SupabaseClient = createClient(supabaseUrl, supabaseAnonKey);
 
 // Type for match details - adjust based on your actual table structure
+// Added status and other potential fields based on select('*')
 interface MatchDetails {
+    id: string;
+    created_at: string;
+    updated_at: string;
     player1_id: string;
-    player2_id: string;
+    player2_id: string | null;
+    status: 'waiting' | 'active' | 'finished' | 'cancelled'; // Assuming these are possible statuses
+    bet_amount: number;
+    state: GameState | null; // State might also be included
+    winner_id?: string | null; // Optional winner field
 }
 
 /**

@@ -2,20 +2,20 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { usePlayerIdentification } from '../hooks/usePlayerIdentification';
-import { supabase } from '../utils/supabase'; // Added import for supabase
-import { AvailableGame } from '../game/types'; // Corrected import path for AvailableGame
+import { supabase } from '../utils/supabase';
+import { AvailableGame } from '../game/types'; // Import the new type
 import { getAvailableGames, createGame, getProfile, joinGame } from '../utils/supabase';
 import { v4 as uuidv4 } from 'uuid';
 
-// Define a type for the game including the creator's username
-interface GameWithUsername extends AvailableGame {
-  creatorUsername?: string;
+// Define the combined type for games with creator's username
+interface GameWithUsername extends AvailableGame { // Extend AvailableGame
+  creatorUsername: string | null;
 }
 
 const Lobby: React.FC = () => {
   const navigate = useNavigate();
-  const { loading: authLoading } = useAuth(); // Removed unused 'user'
-  const [currentPlayerId, , playerError, , idLoading] = usePlayerIdentification(); // Removed unused 'setPlayerError'
+  const { loading: authLoading } = useAuth();
+  const [currentPlayerId, , playerError, , idLoading] = usePlayerIdentification();
   const [availableGames, setAvailableGames] = useState<GameWithUsername[]>([]);
   const [loadingGames, setLoadingGames] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -39,7 +39,7 @@ const Lobby: React.FC = () => {
 
         const gamesWithUsernames: GameWithUsername[] = await Promise.all(
           fetchedGames.map(async (game) => {
-            let creatorUsername = '...';
+            let creatorUsername = null;
             if (game.player1_id) {
               const profile = await getProfile(game.player1_id);
               creatorUsername = profile?.username || game.player1_id.substring(0, 8);
@@ -193,49 +193,38 @@ const Lobby: React.FC = () => {
             <span className="text-yellow-400 text-2xl">🎮</span>
             Available Games
           </h2>
-          <ul className="space-y-3 max-h-96 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-700/50">
-            {availableGames.length > 0 ? (
-              availableGames.map((game) => (
-                <li
-                  key={game.id}
-                  className="bg-gray-700/50 p-4 rounded-lg hover:bg-gray-700 transition-colors duration-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3"
-                >
-                  <div className="flex-grow">
-                    <div className="flex items-center text-sm text-gray-400 gap-2 flex-wrap">
-                      <span>Creator: {game.creatorUsername || '...'}</span>
-                      <span className="text-gray-500 hidden sm:inline">|</span>
-                      <span className="flex items-center">
-                        Bet: {game.bet_amount === 0 ? 'Free' : <>{game.bet_amount} <img src="/images/assets/gem.png" alt="GEM" className="h-4 w-4 inline-block align-middle ml-1" /></>}
-                      </span>
-                      <span className="text-gray-500 hidden sm:inline">|</span>
-                      <span className={`font-semibold ${game.status === 'waiting' ? 'text-green-400' : 'text-yellow-400'}`}>
-                        {game.status.toUpperCase()}
-                      </span>
-                    </div>
-                  </div>
-                  {game.status === 'waiting' && game.player1_id !== currentPlayerId ? (
+          <div className="space-y-4">
+            {availableGames.map((game) => (
+              <div key={game.id} className="bg-gray-700 p-4 rounded-lg flex justify-between items-center shadow-md">
+                <div>
+                  <p className="text-lg font-semibold">{game.creatorUsername || 'Unknown Creator'}</p>
+                  <p className="text-sm text-gray-400">Bet: {game.bet_amount} GEM</p>
+                  <p className="text-xs text-gray-500">ID: {game.id.substring(0, 8)}...</p>
+                </div>
+                <div className="text-right">
+                  <p className={`text-sm font-medium ${game.status === 'waiting' ? 'text-yellow-400' : 'text-green-400'}`}>
+                    {game.status === 'waiting' ? 'Waiting for opponent' : 'Active'}
+                  </p>
+                  {game.status === 'waiting' && game.player1_id !== currentPlayerId && (
                     <button
                       onClick={() => handleJoinGame(game.id)}
-                      className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold py-2 px-4 rounded-md transition-colors duration-200 sm:w-auto mt-2 sm:mt-0"
+                      className="mt-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold py-1 px-3 rounded-md transition-colors duration-200"
                     >
                       Join Game
                     </button>
-                  ) : (
-                    (game.status === 'active' || (game.status === 'waiting' && game.player1_id === currentPlayerId)) ? (
-                      <button
-                        onClick={() => navigate(`/game/${game.id}`)}
-                        className="bg-gray-600 hover:bg-gray-700 text-white text-sm font-semibold py-2 px-4 rounded-md transition-colors duration-200 sm:w-auto mt-2 sm:mt-0"
-                      >
-                        {game.player1_id === currentPlayerId ? 'Rejoin' : 'Spectate'}
-                      </button>
-                    ) : null
                   )}
-                </li>
-              ))
-            ) : (
-              <li className="text-center text-gray-400 py-4">No games available</li>
-            )}
-          </ul>
+                  {game.status === 'active' && game.player1_id === currentPlayerId && (
+                    <button
+                      onClick={() => navigate(`/game/${game.id}`)}
+                      className="mt-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold py-1 px-3 rounded-md transition-colors duration-200"
+                    >
+                      Rejoin Game
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
 
         <div className="bg-gray-800/70 backdrop-blur-md p-6 rounded-xl shadow-xl flex flex-col items-center gap-5">

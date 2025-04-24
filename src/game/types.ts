@@ -64,6 +64,15 @@ export interface GameState {
   log: string[]; // History of game events/actions
 }
 
+// Type for games listed in the lobby
+export interface AvailableGame {
+  id: string;
+  player1_id: string;
+  bet_amount: number;
+  created_at: string;
+  status: 'waiting' | 'active' | 'finished' | 'cancelled'; // Match possible statuses
+}
+
 // Action types for game updates
 export type GameAction =
   | { type: 'ROTATE_CREATURE'; payload: { playerId: string; creatureId: string } }

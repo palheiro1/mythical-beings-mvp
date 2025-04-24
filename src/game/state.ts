@@ -135,7 +135,8 @@ function endTurnSequence(state: GameState): GameState {
     return { ...newState, winner, phase: 'end' };
   }
 
-  const nextPlayerIndex = (newState.currentPlayerIndex + 1) % 2;
+  // Explicitly cast the result to 0 | 1
+  const nextPlayerIndex = ((newState.currentPlayerIndex + 1) % 2) as 0 | 1;
   const nextTurn = newState.currentPlayerIndex === 1 ? newState.turn + 1 : newState.turn;
 
   newState = {

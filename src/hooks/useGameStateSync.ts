@@ -9,13 +9,11 @@ import { RealtimeChannel } from '@supabase/supabase-js';
  * Assumes the game state should already be initialized in the database.
  *
  * @param gameId The ID of the game to sync with.
- * @param currentUserId The ID of the current user (optional, for logging/context).
  * @param setError Callback to set an error message in the parent component.
  * @returns A tuple: [gameState, dispatch, isLoading]
  */
 export function useGameStateSync(
     gameId: string | null,
-    currentUserId: string | null, // Keep for context if needed, but not essential for sync logic
     setError: (error: string | null) => void
 ): [GameState | null, React.Dispatch<GameAction>, boolean] {
 

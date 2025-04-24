@@ -3,17 +3,9 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../utils/supabase'; // Assuming supabase client is exported from here
 
-interface Profile {
-  id: string;
-  username: string | null;
-  avatar_url: string | null;
-  updated_at: string | null;
-}
-
 const ProfilePage: React.FC = () => {
   const { user, loading: authLoading, signOut } = useAuth();
   const [loading, setLoading] = useState(true);
-  const [profile, setProfile] = useState<Profile | null>(null);
   const [username, setUsername] = useState('');
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -36,7 +28,6 @@ const ProfilePage: React.FC = () => {
           }
 
           if (data) {
-            setProfile(data);
             setUsername(data.username || '');
             setAvatarUrl(data.avatar_url);
             console.log('[ProfilePage] Profile fetched:', data);
@@ -78,8 +69,6 @@ const ProfilePage: React.FC = () => {
       const { error } = await supabase.from('profiles').upsert(updates);
       if (error) throw error;
       setMessage('Profile updated successfully!');
-      // Re-fetch profile to show updated data (or update local state directly)
-      setProfile(prev => prev ? { ...prev, username, updated_at: updates.updated_at } : null);
     } catch (error) {
       console.error('Error updating profile:', error);
       setMessage(`Error updating profile: ${error instanceof Error ? error.message : 'Unknown error'}`);

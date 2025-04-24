@@ -26,8 +26,6 @@ const TopBar: React.FC<TopBarProps> = ({
   onLobbyReturn
 }) => {
 
-  const defaultAvatar = '/images/assets/cardback1.jpg'; // Path to a default avatar/card back
-
   return (
     <div className="flex items-center justify-between p-3 bg-gray-900/80 backdrop-blur-sm text-white shadow-md h-16">
       {/* Player 1 Info */}

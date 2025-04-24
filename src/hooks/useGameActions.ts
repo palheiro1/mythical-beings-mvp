@@ -52,7 +52,7 @@ export function useGameActions(
                 const validationResult = isValidAction(currentGameState, action);
                 if (!validationResult.isValid) {
                     console.warn(`[handleAction] Action ${action.type} is invalid: ${validationResult.reason || 'No reason provided'}`);
-                    if (action.type !== 'SET_GAME_STATE') isProcessing.current = false;
+                    isProcessing.current = false; // Reset processing state if action is invalid
                     return;
                 }
                 console.log(`[handleAction] Action ${action.type} is valid.`);
