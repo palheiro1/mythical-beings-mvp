@@ -3,9 +3,7 @@ import { isValidAction, executeKnowledgePhase, checkWinCondition } from './rules
 import { rotateCreature, drawKnowledge, summonKnowledge } from './actions';
 import { applyPassiveAbilities } from './passives';
 import knowledgeData from '../assets/knowledges.json';
-// --- Import creature data ---
 import creatureData from '../assets/creatures.json';
-// --- End import ---
 import { getPlayerState } from './utils';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -13,12 +11,9 @@ import { v4 as uuidv4 } from 'uuid';
 const INITIAL_POWER = 20;
 const MARKET_SIZE = 5;
 const ACTIONS_PER_TURN = 2;
-
-// --- Define ALL_CREATURES constant ---
 const ALL_CREATURES: Creature[] = creatureData as Creature[];
-// --- End define ---
 
-// Helper function to shuffle an array (Fisher-Yates algorithm)
+// Helper functions
 function shuffleArray<T>(array: T[]): T[] {
   for (let i = array.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -27,26 +22,26 @@ function shuffleArray<T>(array: T[]): T[] {
   return array;
 }
 
-// Helper: add per-instance IDs to all Knowledge cards
-function injectInstanceIds(state: GameState): GameState {
+// Export for testing purposes
+export function injectInstanceIds(state: GameState): GameState {
+  const ensureInstanceId = (card: Knowledge) => ({ ...card, instanceId: card.instanceId || uuidv4() });
   return {
     ...state,
-    market: state.market.map(k => ({ ...k, instanceId: uuidv4() })),
-    knowledgeDeck: state.knowledgeDeck.map(k => ({ ...k, instanceId: uuidv4() })),
-    discardPile: state.discardPile.map(k => ({ ...k, instanceId: uuidv4() })),
+    market: state.market.map(ensureInstanceId),
+    knowledgeDeck: state.knowledgeDeck.map(ensureInstanceId),
+    discardPile: state.discardPile.map(ensureInstanceId),
     players: state.players.map(p => ({
       ...p,
-      hand: p.hand.map(k => ({ ...k, instanceId: uuidv4() })),
+      hand: p.hand.map(ensureInstanceId),
       field: p.field.map(slot =>
         slot.knowledge
-          ? { creatureId: slot.creatureId, knowledge: { ...slot.knowledge, instanceId: uuidv4() } }
+          ? { creatureId: slot.creatureId, knowledge: ensureInstanceId(slot.knowledge) }
           : slot
       ),
     })) as [PlayerState, PlayerState],
   };
 }
 
-// Define the payload type for initializeGame explicitly
 export type InitializeGamePayload = {
   gameId: string;
   player1Id: string;
@@ -55,29 +50,30 @@ export type InitializeGamePayload = {
   player2SelectedIds: string[];
 };
 
-/**
- * Initializes a new game state.
- * @param payload Data for initialization, including selected creature IDs.
- * @returns The initial game state.
- */
-export function initializeGame(
-  payload: InitializeGamePayload // Use the defined type
-): GameState {
+const lookupCreatures = (ids: string[], allCreatures: Creature[]): Creature[] => {
+  const foundCreatures = ids.map(id => allCreatures.find(c => c.id === id)).filter((c): c is Creature => !!c);
+  if (foundCreatures.length !== ids.length) {
+    console.error("Could not find all selected creatures! IDs:", ids, "Found:", foundCreatures);
+    throw new Error(`Failed to initialize game: Could not find all selected creatures for IDs: ${ids.join(', ')}`);
+  }
+  // Re-add deep clone to ensure creature data is independent
+  return JSON.parse(JSON.stringify(foundCreatures));
+};
+
+const initialPlayerState = (id: string, creatures: Creature[]): PlayerState => ({
+  id,
+  power: INITIAL_POWER,
+  creatures: creatures.map(c => ({ ...c, currentWisdom: c.baseWisdom, rotation: 0 })),
+  hand: [],
+  field: creatures.map(c => ({ creatureId: c.id, knowledge: null })),
+  selectedCreatures: creatures,
+});
+
+export function initializeGame(payload: InitializeGamePayload): GameState {
   const { gameId, player1Id, player2Id, player1SelectedIds, player2SelectedIds } = payload;
 
-  // --- Look up selected creatures from ALL_CREATURES ---
-  const lookupCreatures = (ids: string[]): Creature[] => {
-    const foundCreatures = ids.map(id => ALL_CREATURES.find(c => c.id === id)).filter((c): c is Creature => !!c);
-    if (foundCreatures.length !== ids.length) {
-      console.error("Could not find all selected creatures! IDs:", ids, "Found:", foundCreatures);
-      throw new Error(`Failed to initialize game: Could not find all selected creatures for IDs: ${ids.join(', ')}`);
-    }
-    return foundCreatures;
-  };
-
-  const selectedCreaturesP1 = lookupCreatures(player1SelectedIds);
-  const selectedCreaturesP2 = lookupCreatures(player2SelectedIds);
-  // --- End lookup ---
+  const selectedCreaturesP1 = lookupCreatures(player1SelectedIds, ALL_CREATURES);
+  const selectedCreaturesP2 = lookupCreatures(player2SelectedIds, ALL_CREATURES);
 
   const fullDeck: Knowledge[] = [];
   (knowledgeData as any[]).forEach((card: Knowledge) => {
@@ -96,25 +92,16 @@ export function initializeGame(
         break;
       default:
         copies = 1;
-        break; // Added missing break
+        break;
     }
     for (let i = 0; i < copies; i++) {
-      fullDeck.push({ ...card });
+      fullDeck.push({ ...card, instanceId: uuidv4() });
     }
   });
 
   const shuffledDeck = shuffleArray(fullDeck);
   const initialMarket = shuffledDeck.slice(0, MARKET_SIZE);
   const remainingDeck = shuffledDeck.slice(MARKET_SIZE);
-
-  const initialPlayerState = (id: string, creatures: Creature[]): PlayerState => ({
-    id,
-    power: INITIAL_POWER,
-    creatures: creatures.map(c => ({ ...c, currentWisdom: c.baseWisdom, rotation: 0 })),
-    hand: [],
-    field: creatures.map(c => ({ creatureId: c.id, knowledge: null })),
-    selectedCreatures: creatures, // Keep selected creatures info if needed later
-  });
 
   let initialState: GameState = {
     gameId,
@@ -132,37 +119,35 @@ export function initializeGame(
     actionsPerTurn: ACTIONS_PER_TURN,
     winner: null,
     log: [`Game ${gameId} initialized. Player 1 starts.`],
+    blockedSlots: { 0: [], 1: [] }, // Initialize blockedSlots
   };
 
-  // apply passives/phases
   initialState = applyPassiveAbilities(initialState, 'TURN_START', { playerId: initialState.players[0].id });
   initialState = executeKnowledgePhase(initialState);
 
   const winner = checkWinCondition(initialState);
   if (winner) {
-    initialState = { ...initialState, winner, phase: 'end' };
+    initialState = { ...initialState, winner, phase: 'end', log: [...initialState.log, `Player ${winner} wins!`] };
   }
 
-  // inject unique keys on all cards before returning
-  const withIds = injectInstanceIds(initialState);
-  console.log("[Reducer] INITIALIZE_GAME completed. Initial state with IDs:", withIds);
-  return withIds;
+  const finalState = injectInstanceIds(initialState);
+  console.log("[Reducer] INITIALIZE_GAME completed. Initial state:", finalState);
+  return finalState;
 }
 
-// Helper function for end-of-turn sequence
 function endTurnSequence(state: GameState): GameState {
-  console.log(`[Reducer] Starting endTurnSequence for Player ${state.currentPlayerIndex + 1}`);
-  let newState = { ...state };
+  console.log(`[Reducer] Starting endTurnSequence for Player ${state.players[state.currentPlayerIndex].id}`);
+  let newState = JSON.parse(JSON.stringify(state)) as GameState;
 
   let winner = checkWinCondition(newState);
   if (winner) {
-    console.log(`[Reducer] Win condition met during endTurnSequence. Winner: ${winner}`);
-    return { ...newState, winner, phase: 'end' };
+    console.log(`[Reducer] Win condition met at start of endTurnSequence. Winner: ${winner}`);
+    return { ...newState, winner, phase: 'end', log: [...newState.log, `Player ${winner} wins!`] };
   }
 
-  // Explicitly cast the result to 0 | 1
   const nextPlayerIndex = ((newState.currentPlayerIndex + 1) % 2) as 0 | 1;
   const nextTurn = newState.currentPlayerIndex === 1 ? newState.turn + 1 : newState.turn;
+  const nextPlayerId = newState.players[nextPlayerIndex].id;
 
   newState = {
     ...newState,
@@ -170,37 +155,32 @@ function endTurnSequence(state: GameState): GameState {
     turn: nextTurn,
     phase: 'knowledge',
     actionsTakenThisTurn: 0,
-    log: [...newState.log, `--- Turn ${nextTurn} (Player ${nextPlayerIndex + 1}) ---`],
+    log: [...newState.log, `--- Turn ${nextTurn} (Player ${nextPlayerId}) ---`],
   };
-  console.log(`[Reducer] Transitioning to Turn ${nextTurn}, Player ${nextPlayerIndex + 1}. Phase: knowledge`);
+  console.log(`[Reducer] Transitioning to Turn ${nextTurn}, Player ${nextPlayerId}. Phase: knowledge`);
 
-  console.log(`[Reducer] Applying TURN_START passives for Player ${nextPlayerIndex + 1}`);
-  newState = applyPassiveAbilities(newState, 'TURN_START', { playerId: newState.players[nextPlayerIndex].id });
+  console.log(`[Reducer] Applying TURN_START passives for Player ${nextPlayerId}`);
+  newState = applyPassiveAbilities(newState, 'TURN_START', { playerId: nextPlayerId });
 
-  console.log(`[Reducer] Executing knowledge phase for Player ${nextPlayerIndex + 1}`);
+  console.log(`[Reducer] Executing knowledge phase for Player ${nextPlayerId}`);
   newState = executeKnowledgePhase(newState);
 
   winner = checkWinCondition(newState);
   if (winner) {
-    console.log(`[Reducer] Win condition met after knowledge phase. Winner: ${winner}`);
-    return { ...newState, winner: winner, phase: 'end' };
+    console.log(`[Reducer] Win condition met after knowledge phase for Player ${nextPlayerId}. Winner: ${winner}`);
+    return { ...newState, winner: winner, phase: 'end', log: [...newState.log, `Player ${winner} wins!`] };
   }
+
+  newState.phase = 'action';
+  newState.actionsTakenThisTurn = 0;
+  newState.log = [...newState.log, `Turn ${newState.turn}: Action Phase started.`];
 
   console.log(`[Reducer] endTurnSequence complete. New phase: ${newState.phase}`);
   return newState;
 }
 
-/**
- * Game state reducer function.
- * Takes the current state and an action, returns the new state.
- * @param state The current game state.
- * @param action The action to process.
- * @returns The new game state.
- */
 export function gameReducer(state: GameState | null, action: GameAction): GameState | null {
   if (!state) {
-    // INITIALIZE_GAME is handled by useGameInitialization hook, not the reducer directly.
-    // Reducer should only start with a state set by SET_GAME_STATE.
     if (action.type === 'SET_GAME_STATE' && action.payload) {
       console.log("[Reducer] Received SET_GAME_STATE on null state.");
       const newState = action.payload as GameState;
@@ -225,13 +205,8 @@ export function gameReducer(state: GameState | null, action: GameAction): GameSt
       return null;
     }
     const newState = action.payload as GameState;
-    const actionsTaken = typeof newState.actionsTakenThisTurn === 'number' && !isNaN(newState.actionsTakenThisTurn)
-      ? newState.actionsTakenThisTurn
-      : 0;
-    const actionsPer = typeof newState.actionsPerTurn === 'number' && !isNaN(newState.actionsPerTurn)
-      ? newState.actionsPerTurn
-      : ACTIONS_PER_TURN;
-
+    const actionsTaken = typeof newState.actionsTakenThisTurn === 'number' && !isNaN(newState.actionsTakenThisTurn) ? newState.actionsTakenThisTurn : 0;
+    const actionsPer = typeof newState.actionsPerTurn === 'number' && !isNaN(newState.actionsPerTurn) ? newState.actionsPerTurn : ACTIONS_PER_TURN;
     console.log(`[Reducer] SET_GAME_STATE - Processed actionsTaken: ${actionsTaken}, actionsPerTurn: ${actionsPer}`);
     return {
       ...newState,
@@ -241,121 +216,137 @@ export function gameReducer(state: GameState | null, action: GameAction): GameSt
     };
   }
 
-  const validation = isValidAction(state, action);
-  if (!validation.isValid) {
-    console.warn(`[Reducer] Invalid action received: ${action.type} - ${validation.reason}`);
-    return state;
+  let nextState = state;
+  let actionConsumed = false;
+
+  if (action.type === 'END_TURN') {
+    const validation = isValidAction(state, action);
+    if (!validation.isValid) {
+      console.warn(`[Reducer] Invalid action: ${action.type} - ${validation.reason}`);
+      return state;
+    }
+    console.log("[Reducer] Handling END_TURN action.");
+    return endTurnSequence(state);
   }
 
-  // Type guard to ensure payload exists and has playerId for player-specific actions
   if (!action.payload || typeof action.payload !== 'object' || !('playerId' in action.payload)) {
-    // Handle END_TURN specifically as it doesn't need a playerId in payload
-    if (action.type === 'END_TURN') {
-      console.log("[Reducer] Handling END_TURN action.");
-      return endTurnSequence(state);
-    }
-    // Log error for other actions missing payload or playerId
     console.error("[Reducer] Action requires a payload with playerId:", action);
     return state;
   }
 
-  let intermediateState: GameState;
-  let shouldConsumeAction = true; // Flag to determine if the action costs an action point
+  const validation = isValidAction(state, action);
+  if (!validation.isValid) {
+    console.warn(`[Reducer] Invalid action: ${action.type} - ${validation.reason}`);
+    return state;
+  }
+
+  nextState = { ...state };
 
   switch (action.type) {
     case 'ROTATE_CREATURE':
-      intermediateState = rotateCreature(state, action.payload);
+      nextState = rotateCreature(nextState, action.payload);
+      actionConsumed = true;
       break;
+
     case 'DRAW_KNOWLEDGE': {
-      const cardToDraw = state.market.find(k => k.id === action.payload.knowledgeId);
-      intermediateState = drawKnowledge(state, action.payload);
+      if (!('instanceId' in action.payload) || !action.payload.instanceId) {
+        console.error("[Reducer] DRAW_KNOWLEDGE requires instanceId in payload:", action);
+        return state;
+      }
+      const cardToDraw = state.market.find(k => k.instanceId === action.payload.instanceId);
+      nextState = drawKnowledge(nextState, action.payload as { playerId: string; knowledgeId: string; instanceId: string });
       const eventDataDraw = {
         playerId: action.payload.playerId,
         knowledgeId: action.payload.knowledgeId,
+        instanceId: action.payload.instanceId,
         knowledgeCard: cardToDraw,
       };
       const drawTrigger = action.payload.playerId === state.players[state.currentPlayerIndex].id
         ? 'AFTER_PLAYER_DRAW'
         : 'AFTER_OPPONENT_DRAW';
       console.log(`[Reducer] Applying ${drawTrigger} passives.`);
-      intermediateState = applyPassiveAbilities(intermediateState, drawTrigger, eventDataDraw);
+      nextState = applyPassiveAbilities(nextState, drawTrigger, eventDataDraw);
+      actionConsumed = true;
       break;
     }
+
     case 'SUMMON_KNOWLEDGE': {
+      if (!('instanceId' in action.payload) || !action.payload.instanceId || !('creatureId' in action.payload)) {
+        console.error("[Reducer] SUMMON_KNOWLEDGE requires instanceId and creatureId in payload:", action);
+        return state;
+      }
       const playerSummoning = getPlayerState(state, action.payload.playerId);
-      const knowledgeToSummon = playerSummoning?.hand.find(k => k.id === action.payload.knowledgeId);
+      const knowledgeToSummon = playerSummoning?.hand.find(k => k.instanceId === action.payload.instanceId);
+      const targetCreature = playerSummoning?.creatures.find(c => c.id === action.payload.creatureId);
 
-      intermediateState = summonKnowledge(state, action.payload);
+      nextState = summonKnowledge(nextState, action.payload as { playerId: string; knowledgeId: string; instanceId: string; creatureId: string });
 
-      // Check for Dudugera passive: Free summon
-      const playerControlsDudugera = playerSummoning?.creatures.some(c => c.id === 'dudugera') &&
-                                     playerSummoning?.field.some(f => f.creatureId === 'dudugera');
-      // Check for Kappa passive: Free summon for aquatic Knowledges
-      const playerControlsKappa = playerSummoning?.creatures.some(c => c.id === 'kappa') &&
-                                  playerSummoning?.field.some(f => f.creatureId === 'kappa');
-      const isAquaticKnowledge = knowledgeToSummon?.element === 'water';
+      let isFreeSummon = false;
+      const playerAfterSummon = getPlayerState(nextState, action.payload.playerId);
 
-      if (playerControlsDudugera) {
-        shouldConsumeAction = false;
-        intermediateState.log.push(`[Passive Effect] Dudugera allows summoning ${knowledgeToSummon?.name || 'Knowledge'} without spending an action.`);
+      if (targetCreature?.id === 'dudugera' && playerAfterSummon?.creatures.some(c => c.id === 'dudugera')) {
+        isFreeSummon = true;
+        nextState.log = [...nextState.log, `[Passive Effect] Dudugera allows summoning ${knowledgeToSummon?.name || 'Knowledge'} onto itself without spending an action.`];
         console.log(`[Reducer] Dudugera passive active: SUMMON_KNOWLEDGE does not consume action.`);
-      } else if (playerControlsKappa && isAquaticKnowledge) {
-        shouldConsumeAction = false;
-        intermediateState.log.push(`[Passive Effect] Kappa allows summoning aquatic knowledge ${knowledgeToSummon?.name || 'Knowledge'} without spending an action.`);
+      } else if (knowledgeToSummon?.element === 'water' && playerAfterSummon?.creatures.some(c => c.id === 'kappa')) {
+        isFreeSummon = true;
+        nextState.log = [...nextState.log, `[Passive Effect] Kappa allows summoning aquatic knowledge ${knowledgeToSummon?.name || 'Knowledge'} without spending an action.`];
         console.log(`[Reducer] Kappa passive active: SUMMON_KNOWLEDGE does not consume action.`);
       }
+
+      actionConsumed = !isFreeSummon;
 
       const eventDataSummon = {
         playerId: action.payload.playerId,
         creatureId: action.payload.creatureId,
         knowledgeId: action.payload.knowledgeId,
+        instanceId: action.payload.instanceId,
         knowledgeCard: knowledgeToSummon,
       };
       const summonTrigger = action.payload.playerId === state.players[state.currentPlayerIndex].id
         ? 'AFTER_PLAYER_SUMMON'
         : 'AFTER_OPPONENT_SUMMON';
       console.log(`[Reducer] Applying ${summonTrigger} passives.`);
-      intermediateState = applyPassiveAbilities(intermediateState, summonTrigger, eventDataSummon);
+      nextState = applyPassiveAbilities(nextState, summonTrigger, eventDataSummon);
       break;
     }
-    // END_TURN is handled before the switch now
+
     default:
-      // This should ideally not be reached if validation and payload checks are correct
       console.error("[Reducer] Unhandled valid action type in switch:", action);
       return state;
   }
 
-  // Consume action point only if required
-  const currentActionsPerTurn = intermediateState.actionsPerTurn ?? ACTIONS_PER_TURN;
-  let newActionsTaken = intermediateState.actionsTakenThisTurn;
+  const currentActionsPerTurn = nextState.actionsPerTurn ?? ACTIONS_PER_TURN;
+  let newActionsTaken = nextState.actionsTakenThisTurn;
 
-  if (shouldConsumeAction) {
+  if (actionConsumed) {
     newActionsTaken++;
-    intermediateState = {
-      ...intermediateState,
+    nextState = {
+      ...nextState,
       actionsTakenThisTurn: newActionsTaken,
-      log: [...intermediateState.log, `Action ${action.type} completed. Actions: ${newActionsTaken}/${currentActionsPerTurn}`]
+      log: [...nextState.log, `Action ${action.type} completed. Actions: ${newActionsTaken}/${currentActionsPerTurn}`],
     };
     console.log(`[Reducer] Action ${action.type} processed. Actions taken: ${newActionsTaken}/${currentActionsPerTurn}`);
   } else {
-    // Log that the action didn't cost an action point if it was due to a passive
-    if (action.type === 'SUMMON_KNOWLEDGE') { // Be specific to avoid logging for non-action events if logic changes
-       intermediateState = { ...intermediateState }; // Ensure state object is updated if only log changes
-       // Log message already added when shouldConsumeAction was set to false
-       console.log(`[Reducer] Action ${action.type} processed (Free). Actions taken: ${newActionsTaken}/${currentActionsPerTurn}`);
-    }
+    console.log(`[Reducer] Action ${action.type} processed (Free). Actions taken: ${newActionsTaken}/${currentActionsPerTurn}`);
+    nextState = { ...nextState };
+    nextState.log = [...nextState.log, `Action ${action.type} completed (Free). Actions: ${newActionsTaken}/${currentActionsPerTurn}`];
   }
 
-  let winner = checkWinCondition(intermediateState);
+  let winner = checkWinCondition(nextState);
   if (winner) {
     console.log(`[Reducer] Win condition met after action ${action.type}. Winner: ${winner}`);
-    return { ...intermediateState, winner, phase: 'end' };
+    return { ...nextState, winner, phase: 'end', log: [...nextState.log, `Player ${winner} wins!`] };
   }
 
   if (newActionsTaken >= currentActionsPerTurn) {
     console.log(`[Reducer] Action limit reached (${newActionsTaken}/${currentActionsPerTurn}). Ending turn.`);
-    return endTurnSequence(intermediateState);
+    const stateBeforeEnd = {
+      ...nextState,
+      log: [...nextState.log, `Action limit reached (${newActionsTaken}/${currentActionsPerTurn}). Ending turn.`],
+    };
+    return endTurnSequence(stateBeforeEnd);
   }
 
-  return intermediateState;
+  return nextState;
 }

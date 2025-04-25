@@ -1,4 +1,7 @@
 import { GameState, PlayerState, Creature, Knowledge } from './types';
+// Import the JSON data
+import creaturesData from '../assets/creatures.json';
+import knowledgesData from '../assets/knowledges.json';
 
 // Helper function to get the state for a specific player
 export function getPlayerState(state: GameState, playerId: string): PlayerState | undefined {
@@ -21,6 +24,18 @@ export function findKnowledgeById(state: GameState, knowledgeId: string): Knowle
     if (card) return card;
     return state.knowledgeDeck.find(k => k.id === knowledgeId);
     // Note: This doesn't check hands or field, adjust if needed
+}
+
+// NEW: Helper function to find base creature data by ID
+export function findCreature(id: string): Creature | undefined {
+    // Type assertion needed because the imported JSON might not perfectly match the Creature type initially
+    return (creaturesData as Creature[]).find(c => c.id === id);
+}
+
+// NEW: Helper function to find base knowledge data by ID
+export function findKnowledge(id: string): Knowledge | undefined {
+    // Type assertion needed
+    return (knowledgesData as Knowledge[]).find(k => k.id === id);
 }
 
 // Helper function to find a creature anywhere in the game state by its instance ID (if applicable) or base ID

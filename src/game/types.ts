@@ -33,6 +33,7 @@ export interface Knowledge extends BaseCard {
   element: CreatureElement; // Add element property
   cost: number; // Wisdom cost to summon
   effect: string; // Description of the effect when played/activated
+  maxRotations?: number; // Maximum number of 90-degree rotations before discard
   // Runtime properties (added during gameplay, not in JSON)
   rotation?: number; // 0, 90, 180, 270 degrees
   instanceId?: string; // Unique per-instance ID for React keys
@@ -62,6 +63,7 @@ export interface GameState {
   actionsPerTurn: number; // Max actions allowed per turn
   winner: string | null; // ID of the winning player, or null
   log: string[]; // History of game events/actions
+  blockedSlots?: Record<number, number[]>; // Tracks which field slots are blocked for each player index
 }
 
 // Type for games listed in the lobby
@@ -76,8 +78,8 @@ export interface AvailableGame {
 // Action types for game updates
 export type GameAction =
   | { type: 'ROTATE_CREATURE'; payload: { playerId: string; creatureId: string } }
-  | { type: 'DRAW_KNOWLEDGE'; payload: { playerId: string; knowledgeId: string } }
-  | { type: 'SUMMON_KNOWLEDGE'; payload: { playerId: string; knowledgeId: string; creatureId: string } }
+  | { type: 'DRAW_KNOWLEDGE'; payload: { playerId: string; knowledgeId: string; instanceId: string } }
+  | { type: 'SUMMON_KNOWLEDGE'; payload: { playerId: string; knowledgeId: string; creatureId: string; instanceId: string } }
   | { type: 'END_TURN'; payload: { playerId: string } }
   | { type: 'INITIALIZE_GAME'; payload: { gameId: string; player1Id: string; player2Id: string; player1SelectedIds: string[]; player2SelectedIds: string[] } }
   | { type: 'SET_GAME_STATE'; payload: GameState | null }; // Allow null payload for setting/clearing state
