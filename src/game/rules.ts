@@ -117,6 +117,12 @@ export function isValidAction(state: GameState, action: GameAction): ValidationR
         effectiveCost = Math.max(1, effectiveCost - 1);
       }
 
+      // Aquatic3 persistent block: prevent summoning if slot is blocked
+      const blockedSlots = (state as any).blockedSlots;
+      if (blockedSlots && blockedSlots[playerIndex] && blockedSlots[playerIndex].includes(player.field.findIndex(f => f.creatureId === creatureId))) {
+        return { isValid: false, reason: `This slot is currently blocked by an opponent's aquatic3 effect.` };
+      }
+
       if (creatureWisdom < effectiveCost) {
         return { isValid: false, reason: `Insufficient wisdom (${creatureWisdom} < ${effectiveCost})` };
       }

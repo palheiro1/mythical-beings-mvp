@@ -83,6 +83,8 @@ const Leaderboard: React.FC = () => {
                       <div className="flex items-center">
                         <div className="flex-shrink-0 h-10 w-10">
                           <img
+                            width={32}
+                            height={32}
                             className="h-10 w-10 rounded-full object-cover border border-gray-600"
                             src={entry.avatar_url || `/api/placeholder-avatar?text=${entry.username?.charAt(0).toUpperCase() || '?'}`}
                             alt={entry.username || 'User Avatar'}

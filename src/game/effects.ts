@@ -119,80 +119,209 @@ export const knowledgeEffects: Record<string, KnowledgeEffectFn> = {
     };
   },
 
-  // Terrestrial 5: Damage per rotation
-  terrestrial5: ({ state, playerIndex, knowledge, rotation, buffers }) => {
+  // Terrestrial 5: Discard one opponent knowledge (MVP: auto-pick first, log TODO)
+  terrestrial5: ({ state, playerIndex, knowledge, buffers }) => {
     const opponentIndex = playerIndex === 0 ? 1 : 0;
-    const damage = [1,1,2,3][(rotation/90)%4] || 0;
-    if (damage > 0) buffers.damage[opponentIndex] += damage;
-    state.log.push(`${knowledge.name} deals ${damage} damage to Player ${opponentIndex + 1}.`);
-    return state;
+    let newState = JSON.parse(JSON.stringify(state)) as GameState;
+    const opponentField = newState.players[opponentIndex].field;
+    const knowledgesOnField = opponentField
+      .map((slot, idx) => ({ slot, idx }))
+      .filter(({ slot }) => slot.knowledge);
+    if (knowledgesOnField.length === 0) {
+      newState.log.push(`${knowledge.name}: Opponent has no knowledge cards to discard.`);
+      return newState;
+    } else if (knowledgesOnField.length === 1) {
+      const { slot, idx } = knowledgesOnField[0];
+      const discardedKnowledge = { ...slot.knowledge };
+      opponentField[idx].knowledge = null;
+      newState.discardPile.push(discardedKnowledge);
+      newState.log.push(`${knowledge.name}: Discarded opponent's knowledge ${discardedKnowledge.name}.`);
+      // Trigger KNOWLEDGE_LEAVE for the discarded card
+      newState = applyPassiveAbilities(newState, 'KNOWLEDGE_LEAVE', {
+        playerId: newState.players[opponentIndex].id,
+        creatureId: opponentField[idx].creatureId,
+        knowledgeCard: discardedKnowledge
+      });
+      return newState;
+    } else {
+      // MVP: Discard the first one, log that user choice is TODO
+      const { slot, idx } = knowledgesOnField[0];
+      const discardedKnowledge = { ...slot.knowledge };
+      opponentField[idx].knowledge = null;
+      newState.discardPile.push(discardedKnowledge);
+      newState.log.push(`${knowledge.name}: Discarded opponent's knowledge ${discardedKnowledge.name}. [TODO: Let user choose which knowledge to discard if multiple are valid]`);
+      // Trigger KNOWLEDGE_LEAVE for the discarded card
+      newState = applyPassiveAbilities(newState, 'KNOWLEDGE_LEAVE', {
+        playerId: newState.players[opponentIndex].id,
+        creatureId: opponentField[idx].creatureId,
+        knowledgeCard: discardedKnowledge
+      });
+      return newState;
+    }
   },
 
-  // Aquatic 1: Rotates knowledge (no combat)
-  aquatic1: ({ state, knowledge }) => {
-    state.log.push(`${knowledge.name}: Rotates a knowledge.`);
-    return state;
+  // Aquatic 1: Rotates one of your Knowledge cards immediately (MVP: auto-pick first, log TODO)
+  aquatic1: ({ state, playerIndex, fieldSlotIndex, knowledge, buffers }) => {
+    let newState = JSON.parse(JSON.stringify(state)) as GameState;
+    const playerField = newState.players[playerIndex].field;
+    // Find all other knowledge cards that can be rotated (not fully rotated, not the aquatic1 itself)
+    const rotatable = playerField
+      .map((slot, idx) => ({ slot, idx }))
+      .filter(({ slot, idx }) => slot.knowledge && idx !== fieldSlotIndex && (slot.knowledge.rotation ?? 0) < 270);
+    if (rotatable.length === 0) {
+      newState.log.push(`${knowledge.name}: No other knowledge cards to rotate.`);
+      return newState;
+    } else if (rotatable.length === 1) {
+      const { slot, idx } = rotatable[0];
+      const k = slot.knowledge!;
+      const newRotation = (k.rotation ?? 0) + 90;
+      k.rotation = newRotation;
+      newState.log.push(`${knowledge.name}: Rotated ${k.name} to ${newRotation}º and triggered its effect immediately.`);
+      // Apply the effect for the new rotation
+      const effectFn = knowledgeEffects[k.id];
+      if (effectFn) {
+        newState = effectFn({
+          state: newState,
+          playerIndex,
+          fieldSlotIndex: idx,
+          knowledge: k,
+          rotation: newRotation,
+          isFinalRotation: newRotation >= 270,
+          buffers
+        });
+      }
+      return newState;
+    } else {
+      // MVP: Rotate the first one, log that user choice is TODO
+      const { slot, idx } = rotatable[0];
+      const k = slot.knowledge!;
+      const newRotation = (k.rotation ?? 0) + 90;
+      k.rotation = newRotation;
+      newState.log.push(`${knowledge.name}: Rotated ${k.name} to ${newRotation}º and triggered its effect immediately. [TODO: Let user choose which knowledge to rotate if multiple are available]`);
+      // Apply the effect for the new rotation
+      const effectFn = knowledgeEffects[k.id];
+      if (effectFn) {
+        newState = effectFn({
+          state: newState,
+          playerIndex,
+          fieldSlotIndex: idx,
+          knowledge: k,
+          rotation: newRotation,
+          isFinalRotation: newRotation >= 270,
+          buffers
+        });
+      }
+      return newState;
+    }
   },
 
-  // Aquatic 2: Provide defense based on rotation
-  aquatic2: ({ state, playerIndex, knowledge, rotation, buffers }) => {
+  // Aquatic 2: Gain +1 defense when defending if the opposing Creature has no Knowledge cards
+  aquatic2: ({ state, playerIndex, fieldSlotIndex, knowledge, rotation, buffers }) => {
+    // Only provide defense if the opposing creature (same slot) has no knowledge
+    const opponentIndex = playerIndex === 0 ? 1 : 0;
+    const opponentFieldSlot = state.players[opponentIndex].field[fieldSlotIndex] || { knowledge: null };
     let defense = 0;
-    if (rotation === 0) defense = 1;
-    else if (rotation === 90) defense = 0;
-    else if (rotation === 180) defense = 1;
-    else if (rotation === 270) defense = 2;
-    if (defense > 0) {
+    if (!opponentFieldSlot.knowledge) {
+      defense = 1;
       buffers.defense[playerIndex] += defense;
-      state.log.push(`${knowledge.name} provides ${defense} defense to Player ${playerIndex + 1}.`);
+      state.log.push(`${knowledge.name}: Provides +1 defense to Player ${playerIndex + 1} (opposing creature has no knowledge).`);
+    } else {
+      state.log.push(`${knowledge.name}: No defense granted (opposing creature has knowledge).`);
     }
     return state;
   },
 
-  // Aquatic 3: Prevent opponent summon (no combat)
-  aquatic3: ({ state, knowledge }) => {
-    state.log.push(`${knowledge.name}: Opponent cannot summon knowledge.`);
-    return state;
-  },
-
-  // Aquatic 4: Rotational damage/defense
-  aquatic4: ({ state, playerIndex, knowledge, rotation, buffers }) => {
+  // Aquatic 3: Prevent opponent from summoning knowledge onto the opposing creature (persistent block)
+  aquatic3: ({ state, playerIndex, fieldSlotIndex, knowledge, rotation, isFinalRotation, buffers }) => {
+    // We'll use a persistent block in state: state.blockedSlots[opponentIndex] = [slot indices]
     const opponentIndex = playerIndex === 0 ? 1 : 0;
-    let dmg=0, def=0;
-    if (rotation===0) dmg=1;
-    else if (rotation===90) def=2;
-    else if (rotation===180) dmg=1;
-    else if (rotation===270) dmg=2;
-    if (dmg) buffers.damage[opponentIndex]+=dmg;
-    if (def) buffers.defense[playerIndex]+=def;
-    state.log.push(`${knowledge.name}: deals ${dmg} dmg, +${def} def.`);
-    return state;
+    let newState = { ...state } as GameState & { blockedSlots?: Record<number, number[]> };
+    if (!newState.blockedSlots) newState.blockedSlots = { 0: [], 1: [] };
+    // On rotation (not final), set the block
+    if (!isFinalRotation) {
+      if (!newState.blockedSlots[opponentIndex].includes(fieldSlotIndex)) {
+        newState.blockedSlots[opponentIndex] = [...newState.blockedSlots[opponentIndex], fieldSlotIndex];
+        newState.log.push(`${knowledge.name}: Opponent cannot summon knowledge onto the opposing creature (slot ${fieldSlotIndex}) while this card is in play.`);
+      }
+    } else {
+      // On final rotation/discard, remove the block
+      newState.blockedSlots[opponentIndex] = newState.blockedSlots[opponentIndex].filter(idx => idx !== fieldSlotIndex);
+      newState.log.push(`${knowledge.name}: Block on opponent's slot ${fieldSlotIndex} removed (aquatic3 left play).`);
+    }
+    return newState;
   },
 
-  // Aquatic 5: Rotational damage/defense
-  aquatic5: ({ state, knowledge, rotation, buffers }) => {
-    const opponentIndex = 0; // placeholder if needed
-    const isDamage = rotation === 90 || rotation === 270;
-    if (isDamage) buffers.damage[opponentIndex] += 2;
-    else buffers.defense[0] += 2;
-    state.log.push(`${knowledge.name}: ${isDamage ? 'Deals 2 damage' : 'Provides 2 defense'}.`);
-    return state;
+  // Aquatic 4: Apparition - Draw 1 card from the Market with no cost (MVP: auto-pick first, log TODO)
+  aquatic4: ({ state, playerIndex, knowledge, buffers }) => {
+    let newState = JSON.parse(JSON.stringify(state)) as GameState;
+    if (newState.market.length === 0) {
+      newState.log.push(`${knowledge.name}: Market is empty, no card drawn.`);
+      return newState;
+    }
+    // MVP: Draw the first card in the market
+    const drawnCard = newState.market.shift();
+    if (drawnCard) {
+      newState.players[playerIndex].hand.push(drawnCard);
+      newState.log.push(`${knowledge.name}: Drew ${drawnCard.name} from the market. [TODO: Let user choose which card to draw if multiple are available]`);
+      // Refill market if possible
+      if (newState.knowledgeDeck.length > 0) {
+        const refillCard = newState.knowledgeDeck.shift();
+        if (refillCard) newState.market.push(refillCard);
+      }
+    }
+    return newState;
   },
 
-  // Aerial 1: Rotational damage
+  // Aquatic 5: Final - Win 1 extra Action (fully implemented: grants extra action for next turn, only logs on final rotation)
+  aquatic5: ({ state, playerIndex, fieldSlotIndex, knowledge, rotation, isFinalRotation, buffers }) => {
+    let newState = { ...state };
+    if (isFinalRotation) {
+      if (!('extraActionsNextTurn' in newState)) {
+        (newState as any).extraActionsNextTurn = { 0: 0, 1: 0 };
+      }
+      (newState as any).extraActionsNextTurn[playerIndex] = ((newState as any).extraActionsNextTurn[playerIndex] || 0) + 1;
+      newState.log.push(`${knowledge.name}: Grants 1 extra action for next turn.`);
+    }
+    return newState;
+  },
+
+  // Aerial 1: Apparition - Gain +1 Power (on summon only)
   aerial1: ({ state, playerIndex, knowledge, rotation, buffers }) => {
-    const opponentIndex = playerIndex === 0 ? 1 : 0;
-    const dmg = (rotation===0||rotation===90)?1:0;
-    if (dmg) buffers.damage[opponentIndex]+=dmg;
-    state.log.push(`${knowledge.name}: Deals ${dmg} damage.`);
+    if (rotation === 0) {
+      // Apparition: on summon, grant +1 Power
+      state.players[playerIndex].power += 1;
+      state.log.push(`${knowledge.name}: Apparition effect - Player ${playerIndex + 1} gains +1 Power.`);
+    } else {
+      state.log.push(`${knowledge.name}: No effect (Apparition only triggers on summon).`);
+    }
     return state;
   },
 
-  // Aerial 3: Rotational damage
-  aerial3: ({ state, playerIndex, knowledge, rotation, buffers }) => {
-    const opponentIndex = playerIndex === 0 ? 1 : 0;
-    const dmg = (rotation===0||rotation===90)?1:(rotation===180?2:0);
-    if (dmg) buffers.damage[opponentIndex]+=dmg;
-    state.log.push(`${knowledge.name}: Deals ${dmg} damage.`);
+  // Aerial 2: +1 Power (1st rotation), +2 Power (2nd), +3 Power (3rd), no 4th rotation
+  aerial2: ({ state, playerIndex, knowledge, rotation, buffers }) => {
+    let powerGain = 0;
+    if (rotation === 0) powerGain = 1;
+    else if (rotation === 90) powerGain = 2;
+    else if (rotation === 180) powerGain = 3;
+    if (powerGain > 0) {
+      state.players[playerIndex].power += powerGain;
+      state.log.push(`${knowledge.name}: Rotation ${rotation}º - Player ${playerIndex + 1} gains +${powerGain} Power.`);
+    }
+    return state;
+  },
+
+  // Aerial 3: While in play, adds +1 to the Wisdom of all your Creatures
+  aerial3: ({ state, playerIndex, fieldSlotIndex, knowledge, rotation, isFinalRotation, buffers }) => {
+    // Only apply the wisdom bonus if not fully rotated
+    if (!isFinalRotation) {
+      const player = state.players[playerIndex];
+      // Apply +1 wisdom to all creatures for this phase (does not persist, so wisdom resets each phase)
+      player.creatures = player.creatures.map(creature => ({
+        ...creature,
+        currentWisdom: (typeof creature.currentWisdom === 'number' ? creature.currentWisdom : creature.baseWisdom) + 1,
+      }));
+      state.log.push(`${knowledge.name}: While in play, all your creatures gain +1 Wisdom.`);
+    }
     return state;
   },
 
@@ -206,13 +335,22 @@ export const knowledgeEffects: Record<string, KnowledgeEffectFn> = {
     return state;
   },
 
-  // Aerial 5: All opponent creatures rotate 90º clockwise (MVP: just log, real: update rotation)
-  aerial5: ({ state, knowledge, rotation, buffers }) => {
-    const opponentIndex = 0; // placeholder if needed
-    const isDamage = rotation === 90 || rotation === 270;
-    if (isDamage) buffers.damage[opponentIndex] += 2;
-    else buffers.defense[0] += 2;
-    state.log.push(`${knowledge.name}: ${isDamage ? 'Deals 2 damage' : 'Provides 2 defense'}.`);
+  // Aerial 5: All opponent creatures rotate 90º clockwise (lose wisdom)
+  aerial5: ({ state, playerIndex, knowledge, rotation, buffers }) => {
+    const opponentIndex = playerIndex === 0 ? 1 : 0;
+    const opponent = state.players[opponentIndex];
+    let rotatedCount = 0;
+    opponent.creatures = opponent.creatures.map(creature => {
+      const currentRotation = creature.rotation ?? 0;
+      if (currentRotation < 270) {
+        rotatedCount++;
+        const newRotation = currentRotation + 90;
+        // Wisdom will be recalculated elsewhere based on rotation
+        return { ...creature, rotation: newRotation };
+      }
+      return creature;
+    });
+    state.log.push(`${knowledge.name}: Rotated ${rotatedCount} of opponent's creatures 90º clockwise (they lose wisdom).`);
     return state;
   },
 };

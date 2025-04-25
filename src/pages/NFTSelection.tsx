@@ -22,12 +22,14 @@ const NFTSelection: React.FC = () => {
   const [dealtCreatures, setDealtCreatures] = useState<Creature[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isConfirming, setIsConfirming] = useState(false); // Prevent double confirm clicks
+  const [realtimeFailed, setRealtimeFailed] = useState(false); // Track realtime failure
 
   const navigate = useNavigate();
   const { gameId } = useParams<{ gameId: string }>();
   const [currentPlayerId, , playerError] = usePlayerIdentification();
   const realtimeChannelRef = useRef<RealtimeChannel | null>(null);
   const fetchIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const pollingRef = useRef<NodeJS.Timeout | null>(null); // Fallback polling
 
   // Timer logic
   useEffect(() => {
@@ -128,6 +130,44 @@ const NFTSelection: React.FC = () => {
     const widthValue = parseFloat(width);
     return `${widthValue / CARD_ASPECT_RATIO}px`;
   };
+
+  const pollForOpponentCompletion = async () => {
+    if (!gameId) return;
+    try {
+      const { data: gameData, error: fetchError } = await supabase
+        .from('games')
+        .select('player1_selection_complete, player2_selection_complete')
+        .eq('id', gameId)
+        .single();
+      if (fetchError) throw fetchError;
+      if (gameData?.player1_selection_complete && gameData?.player2_selection_complete) {
+        navigate(`/game/${gameId}`);
+      }
+    } catch (err) {
+      // Optionally log polling errors
+    }
+  };
+
+  const handleRetryRealtime = () => {
+    setError(null);
+    setRealtimeFailed(false);
+    setWaiting(true); // Triggers useEffect to resubscribe
+  };
+
+  useEffect(() => {
+    if (realtimeFailed && waiting && gameId) {
+      pollingRef.current = setInterval(pollForOpponentCompletion, 3000);
+    } else if (pollingRef.current) {
+      clearInterval(pollingRef.current);
+      pollingRef.current = null;
+    }
+    return () => {
+      if (pollingRef.current) {
+        clearInterval(pollingRef.current);
+        pollingRef.current = null;
+      }
+    };
+  }, [realtimeFailed, waiting, gameId]);
 
   useEffect(() => {
     if (!gameId || !currentPlayerId) {
@@ -231,6 +271,27 @@ const NFTSelection: React.FC = () => {
   }, [gameId, currentPlayerId, playerError]);
 
   useEffect(() => {
+    if (!waiting || !gameId) return;
+    let cancelled = false;
+    const checkImmediateCompletion = async () => {
+      try {
+        const { data: gameData, error: fetchError } = await supabase
+          .from('games')
+          .select('player1_selection_complete, player2_selection_complete')
+          .eq('id', gameId)
+          .single();
+        if (!cancelled && gameData?.player1_selection_complete && gameData?.player2_selection_complete) {
+          navigate(`/game/${gameId}`);
+        }
+      } catch (err) {
+        // Optionally log error
+      }
+    };
+    checkImmediateCompletion();
+    return () => { cancelled = true; };
+  }, [waiting, gameId, navigate]);
+
+  useEffect(() => {
     if (!waiting || !gameId) {
       return;
     }
@@ -262,7 +323,8 @@ const NFTSelection: React.FC = () => {
           console.log(`[NFTSelection] Successfully subscribed to game ${gameId} updates.`);
         } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
           console.error(`[NFTSelection] Realtime subscription error for game ${gameId}:`, status, err);
-          setError(`Failed to listen for opponent completion (${status}). Please refresh.`);
+          setError(`Failed to listen for opponent completion (${status}). Please refresh or retry.`);
+          setRealtimeFailed(true);
         }
       });
 
@@ -283,7 +345,19 @@ const NFTSelection: React.FC = () => {
     return <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">Loading your hand... (Waiting for cards to be dealt)</div>;
   }
   if (error && !lost) {
-     return <div className="min-h-screen bg-gray-900 text-red-500 flex items-center justify-center">Error: {error}</div>;
+    return (
+      <div className="min-h-screen bg-gray-900 text-red-500 flex flex-col items-center justify-center">
+        <div>Error: {error}</div>
+        {realtimeFailed && (
+          <button
+            className="mt-4 px-6 py-2 bg-yellow-400 text-black rounded font-bold hover:bg-yellow-300"
+            onClick={handleRetryRealtime}
+          >
+            Retry Connection
+          </button>
+        )}
+      </div>
+    );
   }
   if (!lost && dealtCreatures.length === 0) {
     return <div className="min-h-screen bg-gray-900 text-yellow-500 flex items-center justify-center">Could not load your hand. Please try refreshing.</div>;
