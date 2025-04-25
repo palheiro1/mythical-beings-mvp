@@ -99,7 +99,7 @@
     "id": "tulpar",
     "name": "Tulpar",
     "element": "air",
-    "passiveAbility": "When Tulpar summons an aeric Knowledge, rotate this creature 1 time (no Action cost).",
+    "passiveAbility": "When Tulpar summons an aeric Knowledge, you can rotate any Creature 1 time (no Action cost).",
     "image": "/images/beings/tulpar.jpg",
     "wisdomCycle": [0, 2, 3, 5]
   },

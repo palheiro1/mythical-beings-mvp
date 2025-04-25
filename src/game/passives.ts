@@ -159,9 +159,40 @@ export function applyPassiveAbilities(
           const summonedKnowledge = eventData.knowledgeCard;
           const summoningPlayerId = eventData.playerId;
           if (summonedKnowledge && summonedKnowledge.element === 'earth' && pId === summoningPlayerId) {
-              const oldPower = opponent.power;
-              opponent.power -= 1;
-              newState.log.push(`[Passive Effect] Pele (Owner: ${pId}) deals 1 damage to ${opponent.id} due to summoning ${summonedKnowledge.name}. Power: ${oldPower} -> ${opponent.power}`);
+              // Find opponent's knowledges with lower wisdom cost
+              const lowerCostSlots = opponent.field
+                .map((slot, idx) => ({ slot, idx }))
+                .filter(({ slot }) => slot.knowledge && slot.knowledge.cost < summonedKnowledge.cost);
+              if (lowerCostSlots.length === 0) {
+                  newState.log.push(`[Passive Effect] Pele (Owner: ${pId}) triggered, but opponent has no knowledge with lower wisdom cost than ${summonedKnowledge.name}.`);
+              } else if (lowerCostSlots.length === 1) {
+                  // Discard the only valid knowledge
+                  const { slot, idx } = lowerCostSlots[0];
+                  const discardedKnowledge = { ...slot.knowledge };
+                  opponent.field[idx].knowledge = null;
+                  newState.discardPile.push(discardedKnowledge);
+                  newState.log.push(`[Passive Effect] Pele (Owner: ${pId}) discards opponent's knowledge ${discardedKnowledge.name} (cost ${discardedKnowledge.cost}) due to summoning ${summonedKnowledge.name} (cost ${summonedKnowledge.cost}).`);
+                  // Trigger KNOWLEDGE_LEAVE for the discarded card
+                  newState = applyPassiveAbilities(newState, 'KNOWLEDGE_LEAVE', {
+                      playerId: opponent.id,
+                      creatureId: opponent.field[idx].creatureId,
+                      knowledgeCard: discardedKnowledge
+                  });
+              } else {
+                  // MVP: Discard the first one, log that user choice is TODO
+                  const { slot, idx } = lowerCostSlots[0];
+                  const discardedKnowledge = { ...slot.knowledge };
+                  opponent.field[idx].knowledge = null;
+                  newState.discardPile.push(discardedKnowledge);
+                  newState.log.push(`[Passive Effect] Pele (Owner: ${pId}) discards opponent's knowledge ${discardedKnowledge.name} (cost ${discardedKnowledge.cost}) due to summoning ${summonedKnowledge.name} (cost ${summonedKnowledge.cost}). [TODO: Let user choose which knowledge to discard if multiple are valid]`);
+                  // Trigger KNOWLEDGE_LEAVE for the discarded card
+                  newState = applyPassiveAbilities(newState, 'KNOWLEDGE_LEAVE', {
+                      playerId: opponent.id,
+                      creatureId: opponent.field[idx].creatureId,
+                      knowledgeCard: discardedKnowledge
+                  });
+              }
+              // Save opponent state
               const opponentIndex = newState.players.findIndex(p => p.id === opponent!.id);
               if (opponentIndex !== -1) newState.players[opponentIndex] = opponent;
           }
@@ -184,11 +215,24 @@ export function applyPassiveAbilities(
           const summonedKnowledge = eventData.knowledgeCard;
           const summoningPlayerId = eventData.playerId;
           if (summonedKnowledge && summonedKnowledge.element === 'air' && pId === summoningPlayerId) {
-              const oldPower = opponent.power;
-              opponent.power -= 1;
-              newState.log.push(`[Passive Effect] Tulpar (Owner: ${pId}) deals 1 damage to ${opponent.id} due to summoning ${summonedKnowledge.name}. Power: ${oldPower} -> ${opponent.power}`);
-              const opponentIndex = newState.players.findIndex(p => p.id === opponent!.id);
-              if (opponentIndex !== -1) newState.players[opponentIndex] = opponent;
+              // Find all player's creatures that are not fully rotated
+              const notFullyRotated = player.creatures.filter(c => (c.rotation ?? 0) < 270);
+              if (notFullyRotated.length === 0) {
+                  newState.log.push(`[Passive Effect] Tulpar (Owner: ${pId}) triggered, but all creatures are fully rotated.`);
+              } else if (notFullyRotated.length === 1) {
+                  // Rotate the only available creature
+                  const c = notFullyRotated[0];
+                  c.rotation = (c.rotation ?? 0) + 90;
+                  newState.log.push(`[Passive Effect] Tulpar (Owner: ${pId}) rotates ${c.name} 90º due to summoning ${summonedKnowledge.name}.`);
+              } else {
+                  // MVP: Rotate the first one, log that user choice is TODO
+                  const c = notFullyRotated[0];
+                  c.rotation = (c.rotation ?? 0) + 90;
+                  newState.log.push(`[Passive Effect] Tulpar (Owner: ${pId}) rotates ${c.name} 90º due to summoning ${summonedKnowledge.name}. [TODO: Let user choose which creature to rotate if multiple are available]`);
+              }
+              // Save player state
+              const playerIndex = newState.players.findIndex(p => p.id === pId);
+              if (playerIndex !== -1) newState.players[playerIndex] = player;
           }
       }
 

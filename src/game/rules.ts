@@ -146,6 +146,66 @@ function applyCombatDamage(state: GameState, buffers: CombatBuffers): GameState 
   let newState = JSON.parse(JSON.stringify(state)) as GameState;
   const [p1, p2] = newState.players;
 
+  // Trepulcahue passive: +1 defense for each knowledge if player controls Trepulcahue
+  for (let i = 0; i < newState.players.length; i++) {
+    const player = newState.players[i];
+    const hasTrepulcahue = player.creatures.some(c => c.id === 'trepulcahue');
+    if (hasTrepulcahue) {
+      const knowledgeCount = player.field.filter(slot => slot.knowledge).length;
+      if (knowledgeCount > 0) {
+        buffers.defense[i] += knowledgeCount;
+        newState.log.push(`Trepulcahue passive: Player ${i + 1} gains +${knowledgeCount} defense (one per knowledge).`);
+      }
+    }
+  }
+
+  // Zhar Ptitsa passive: Aeric Knowledges' damage cannot be blocked
+  for (let i = 0; i < newState.players.length; i++) {
+    const player = newState.players[i];
+    const opponentIndex = i === 0 ? 1 : 0;
+    const hasZharPtitsa = player.creatures.some(c => c.id === 'zhar-ptitsa');
+    if (hasZharPtitsa) {
+      // Calculate total aeric and non-aeric damage for this player
+      let aericDamage = 0;
+      let nonAericDamage = 0;
+      // Find all knowledge cards on field and their contributions
+      player.field.forEach((slot, slotIdx) => {
+        if (slot.knowledge) {
+          const k = slot.knowledge;
+          // Find the effect function for this knowledge
+          const effectFn = knowledgeEffects[k.id];
+          if (effectFn) {
+            // Simulate effect to get damage for this slot (ignore defense, just sum damage)
+            // We'll use a dummy buffer to capture the damage
+            const dummyBuffers: CombatBuffers = { damage: [0, 0], defense: [0, 0] };
+            effectFn({
+              state: newState,
+              playerIndex: i,
+              fieldSlotIndex: slotIdx,
+              knowledge: k,
+              rotation: k.rotation ?? 0,
+              isFinalRotation: false,
+              buffers: dummyBuffers
+            });
+            // Damage is always applied to opponentIndex
+            const dmg = dummyBuffers.damage[opponentIndex];
+            if (k.element === 'air') aericDamage += dmg;
+            else nonAericDamage += dmg;
+          }
+        }
+      });
+      // Now, apply defense only to non-aeric damage
+      const totalDefense = buffers.defense[opponentIndex];
+      const blockedNonAeric = Math.min(nonAericDamage, totalDefense);
+      const unblockedAeric = aericDamage;
+      const netDamage = unblockedAeric + Math.max(0, nonAericDamage - totalDefense);
+      // Overwrite the buffer for this round
+      buffers.damage[opponentIndex] = netDamage;
+      buffers.defense[opponentIndex] = 0; // All defense is considered used up
+      newState.log.push(`Zhar Ptitsa passive: Player ${i + 1}'s aeric Knowledges deal ${unblockedAeric} unblockable damage. Non-aeric damage: ${nonAericDamage}, blocked: ${blockedNonAeric}, total damage to Player ${opponentIndex + 1}: ${netDamage}.`);
+    }
+  }
+
   // Calculate net damage for each player
   const netDamageP1 = Math.max(0, buffers.damage[0] - buffers.defense[0]);
   const netDamageP2 = Math.max(0, buffers.damage[1] - buffers.defense[1]);
