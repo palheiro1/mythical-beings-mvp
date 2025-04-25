@@ -1,5 +1,6 @@
 import { GameState, PlayerState } from './types';
 import { getCreatureWisdom } from './utils';
+import { v4 as uuidv4 } from 'uuid';
 
 /**
  * Rotates a creature, increasing its wisdom.

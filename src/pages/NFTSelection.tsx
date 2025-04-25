@@ -185,13 +185,13 @@ const NFTSelection: React.FC = () => {
     const fetchHandData = async () => {
       console.log(`[NFTSelection] Attempt ${attempts + 1}: Fetching game data for ${gameId}`);
       try {
-        const { data: gameData, error: fetchError } = await supabase
+        const { data: gameData, error } = await supabase
           .from('games')
           .select('player1_id, player2_id, player1_dealt_hand, player2_dealt_hand, player1_selection_complete, player2_selection_complete, status')
           .eq('id', gameId)
           .single();
 
-        if (fetchError) throw fetchError;
+        if (error) throw error;
 
         if (!gameData) {
           throw new Error("Game not found.");
@@ -204,8 +204,16 @@ const NFTSelection: React.FC = () => {
           throw new Error("You are not part of this game.");
         }
 
-        const dealtHandIds: string[] | null = isPlayer1 ? gameData.player1_dealt_hand : gameData.player2_dealt_hand;
-        const selectionComplete: boolean | null = isPlayer1 ? gameData.player1_selection_complete : gameData.player2_selection_complete;
+        const dealtHandIds: string[] = isPlayer1 ? gameData.player1_dealt_hand : gameData.player2_dealt_hand;
+        const selectionComplete: boolean = isPlayer1 ? gameData.player1_selection_complete : gameData.player2_selection_complete;
+
+
+        if (!gameData) {
+          throw new Error("Game not found.");
+        }
+
+        const dealtHandIds: string[] = isPlayer1 ? gameData.player1_dealt_hand : gameData.player2_dealt_hand;
+        const selectionComplete: boolean = isPlayer1 ? gameData.player1_selection_complete : gameData.player2_selection_complete;
 
         if (!dealtHandIds || dealtHandIds.length === 0) {
           if (attempts < maxAttempts - 1) {

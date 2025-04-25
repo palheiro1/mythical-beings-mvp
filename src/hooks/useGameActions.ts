@@ -98,7 +98,17 @@ export function useGameActions(
 
     const handleDrawKnowledge = useCallback((knowledgeId: string) => {
         if (!currentPlayerId) return;
-        const action: GameAction = { type: 'DRAW_KNOWLEDGE', payload: { playerId: currentPlayerId, knowledgeId } };
+        if (!currentGameState) return;
+    const knowledgeCard = currentGameState.market.find(k => k.id === knowledgeId);
+    if (!knowledgeCard || !knowledgeCard.instanceId) return;
+    const action: GameAction = { 
+      type: 'DRAW_KNOWLEDGE', 
+      payload: { 
+        playerId: currentPlayerId, 
+        knowledgeId, 
+        instanceId: knowledgeCard.instanceId 
+      } 
+    };
         handleAction(action);
     }, [handleAction, currentPlayerId]);
 
@@ -117,6 +127,7 @@ export function useGameActions(
                 playerId: currentPlayerId,
                 knowledgeId: selectedKnowledgeId,
                 creatureId: targetCreatureId,
+                instanceId: selectedKnowledgeId // Assuming selectedKnowledgeId is the instanceId
             }
         };
         handleAction(action);

@@ -21,7 +21,7 @@ interface OnlineUserInfo {
 
 const Lobby: React.FC = () => {
   const navigate = useNavigate();
-  const { loading: authLoading, signOut } = useAuth();
+  const { loading: authLoading } = useAuth();
   const [currentPlayerId, , playerError, , idLoading] = usePlayerIdentification();
   const [availableGames, setAvailableGames] = useState<GameWithUsername[]>([]);
   const [loadingGames, setLoadingGames] = useState(true);

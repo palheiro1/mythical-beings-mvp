@@ -177,7 +177,7 @@ export function executeKnowledgePhase(state: GameState): GameState {
   }
   // Ensure pendingEffects is initialized if missing (due to clone)
   if (!newState.pendingEffects) {
-     newState.pendingEffects = { [newState.players[0].id]: [], [newState.players[1].id]: [] };
+     newState.pendingEffects = [];
   }
   // Ensure blockedSlots is initialized if missing (due to clone)
    if (!newState.blockedSlots) {
@@ -265,14 +265,13 @@ export function executeKnowledgePhase(state: GameState): GameState {
   let player2Defense = 0;
 
   // Aggregate effects for player 1
-  (newState.pendingEffects[newState.players[0].id] || []).forEach(effect => { // Use newState
+  newState.pendingEffects.forEach(effect => {
     if (effect.type === 'damage') player1Damage += effect.amount;
     if (effect.type === 'defense') player1Defense += effect.amount;
-    // NOTE: 'power' effects are handled directly in effects.ts, not aggregated here
   });
 
   // Aggregate effects for player 2
-  (newState.pendingEffects[newState.players[1].id] || []).forEach(effect => { // Use newState
+  newState.pendingEffects.forEach(effect => {
     if (effect.type === 'damage') player2Damage += effect.amount;
     if (effect.type === 'defense') player2Defense += effect.amount;
   });
@@ -291,7 +290,7 @@ export function executeKnowledgePhase(state: GameState): GameState {
   }
 
   // Clear pending effects for the next phase/turn
-  newState.pendingEffects = { [newState.players[0].id]: [], [newState.players[1].id]: [] };
+  newState.pendingEffects = [];
 
   newState.phase = 'action';
   newState.actionsTakenThisTurn = 0;

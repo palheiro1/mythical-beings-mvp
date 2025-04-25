@@ -9,7 +9,6 @@ import Leaderboard from './pages/Leaderboard';
 import WaitingScreen from './pages/WaitingScreen';
 import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
-import NavBar from './components/NavBar';
 
 function App() {
   return (

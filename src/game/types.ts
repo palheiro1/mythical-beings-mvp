@@ -64,6 +64,7 @@ export interface GameState {
   winner: string | null; // ID of the winning player, or null
   log: string[]; // History of game events/actions
   blockedSlots?: Record<number, number[]>; // Tracks which field slots are blocked for each player index
+  pendingEffects?: { type: 'damage' | 'defense'; amount: number }[]; // Change pendingEffects type
 }
 
 // Type for games listed in the lobby

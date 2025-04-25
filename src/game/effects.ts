@@ -96,11 +96,13 @@ export const knowledgeEffects: Record<string, KnowledgeEffectFn> = {
         eliminatedNames.push(leavingKnowledge.name);
         
         // Trigger KNOWLEDGE_LEAVE for the eliminated card
-        newState = applyPassiveAbilities(newState, 'KNOWLEDGE_LEAVE', {
-          playerId: opponentId, // The owner of the knowledge
-          knowledgeCard: leavingKnowledge,
-          creatureId: slot.creatureId
-        });
+        if (leavingKnowledge.type && leavingKnowledge.element !== undefined) {
+          newState = applyPassiveAbilities(newState, 'KNOWLEDGE_LEAVE', {
+            playerId: opponentId, // The owner of the knowledge
+            knowledgeCard: leavingKnowledge as Knowledge,
+            creatureId: slot.creatureId
+          });
+        }
 
         return { ...slot, knowledge: null }; // Remove the knowledge
       }
