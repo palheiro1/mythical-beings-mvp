@@ -3,12 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { usePlayerIdentification } from '../hooks/usePlayerIdentification';
 import { supabase, getAvailableGames, createGame, joinGame, getProfile } from '../utils/supabase';
-import { AvailableGame } from '../game/types'; // Import the new type
+import { AvailableGame } from '../game/types';
 import { v4 as uuidv4 } from 'uuid';
-import { RealtimeChannel, RealtimePresenceState } from '@supabase/supabase-js'; // Import Realtime types
+import { RealtimeChannel, RealtimePresenceState } from '@supabase/supabase-js';
+import NavBar from '../components/NavBar'; // Import NavBar
 
 // Define the combined type for games with creator's username
-interface GameWithUsername extends AvailableGame { // Extend AvailableGame
+interface GameWithUsername extends AvailableGame {
   creatorUsername: string | null;
 }
 
@@ -29,9 +30,7 @@ const Lobby: React.FC = () => {
   const [betAmount, setBetAmount] = useState(0);
   const [notification, setNotification] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
-  // User profile state for avatar and username
   const [userProfile, setUserProfile] = useState<OnlineUserInfo>({ username: null, avatar_url: null });
-  // State to store online users' profiles
   const [onlineUsers, setOnlineUsers] = useState<Record<string, OnlineUserInfo>>({});
   const presenceChannelRef = useRef<RealtimeChannel | null>(null);
 
@@ -100,7 +99,6 @@ const Lobby: React.FC = () => {
     }
   }, [currentPlayerId]);
 
-  // --- Realtime Game Subscription ---
   useEffect(() => {
     if (!supabase) return;
 
@@ -112,9 +110,8 @@ const Lobby: React.FC = () => {
         { event: 'INSERT', schema: 'public', table: 'games', filter: 'status=eq.waiting' },
         async (payload) => {
           console.log('[Lobby Realtime] New game detected:', payload.new);
-          const newGame = payload.new as AvailableGame; // Cast to AvailableGame
+          const newGame = payload.new as AvailableGame;
 
-          // Fetch creator profile
           let creatorUsername = null;
           if (newGame.player1_id) {
             try {
@@ -122,14 +119,13 @@ const Lobby: React.FC = () => {
               creatorUsername = profile?.username || newGame.player1_id.substring(0, 8);
             } catch (err) {
               console.error('[Lobby Realtime] Error fetching profile for new game creator:', err);
-              creatorUsername = newGame.player1_id.substring(0, 8); // Fallback
+              creatorUsername = newGame.player1_id.substring(0, 8);
             }
           }
 
           const gameWithUsername: GameWithUsername = { ...newGame, creatorUsername };
 
           setAvailableGames((currentGames) => {
-            // Avoid adding duplicates if already present (e.g., due to initial fetch)
             if (currentGames.some(game => game.id === gameWithUsername.id)) {
               return currentGames;
             }
@@ -145,8 +141,8 @@ const Lobby: React.FC = () => {
           const updatedGame = payload.new as AvailableGame;
           setAvailableGames((currentGames) =>
             currentGames.map((game) =>
-              game.id === updatedGame.id ? { ...game, ...updatedGame, creatorUsername: game.creatorUsername } : game // Keep existing username
-            ).filter(game => game.status === 'waiting') // Remove games that are no longer waiting
+              game.id === updatedGame.id ? { ...game, ...updatedGame, creatorUsername: game.creatorUsername } : game
+            ).filter(game => game.status === 'waiting')
           );
         }
       )
@@ -170,20 +166,16 @@ const Lobby: React.FC = () => {
         }
       });
 
-    // Cleanup function
     return () => {
       if (gamesChannel) {
         console.log('[Lobby Realtime] Unsubscribing from games channel.');
         supabase.removeChannel(gamesChannel);
       }
     };
-  }, [supabase]); // Depend only on supabase client
-  // --- End Realtime Game Subscription ---
+  }, [supabase]);
 
-  // --- Presence Tracking ---
   useEffect(() => {
     if (!supabase || !currentPlayerId || !userProfile.username) {
-      // Don't subscribe until we have supabase client, user ID, and username
       console.log('[Lobby Presence] Waiting for Supabase/User ID/Profile before subscribing.');
       return;
     }
@@ -192,13 +184,13 @@ const Lobby: React.FC = () => {
     const channel = supabase.channel('lobby-presence', {
       config: {
         presence: {
-          key: currentPlayerId, // Unique key for this user
+          key: currentPlayerId,
         },
       },
     });
 
     const fetchProfileForUser = async (userId: string) => {
-      if (!onlineUsers[userId]) { // Fetch only if not already fetched
+      if (!onlineUsers[userId]) {
         try {
           const profile = await getProfile(userId);
           setOnlineUsers(prev => ({
@@ -210,7 +202,6 @@ const Lobby: React.FC = () => {
           }));
         } catch (err) {
           console.error(`[Lobby Presence] Error fetching profile for ${userId}:`, err);
-          // Optionally set a default/error state for this user
           setOnlineUsers(prev => ({
             ...prev,
             [userId]: { username: `User (${userId.substring(0, 6)})`, avatar_url: null },
@@ -225,40 +216,35 @@ const Lobby: React.FC = () => {
         const newState: RealtimePresenceState = channel.presenceState();
         console.log('[Lobby Presence] Current presence state:', newState);
         const userIds = Object.keys(newState);
-        // Fetch profiles for all users currently present
         userIds.forEach(fetchProfileForUser);
-        // Update the onlineUsers state, removing users no longer present
         setOnlineUsers(currentUsers => {
           const updatedUsers: Record<string, OnlineUserInfo> = {};
           userIds.forEach(id => {
             if (currentUsers[id]) {
               updatedUsers[id] = currentUsers[id];
             }
-            // If not in currentUsers, fetchProfileForUser will handle adding it
           });
           return updatedUsers;
         });
       })
       .on('presence', { event: 'join' }, ({ key, newPresences }) => {
         console.log('[Lobby Presence] Join event:', { key, newPresences });
-        fetchProfileForUser(key); // Fetch profile for the user who joined
+        fetchProfileForUser(key);
       })
       .on('presence', { event: 'leave' }, ({ key, leftPresences }) => {
         console.log('[Lobby Presence] Leave event:', { key, leftPresences });
         setOnlineUsers(prev => {
           const updated = { ...prev };
-          delete updated[key]; // Remove user who left
+          delete updated[key];
           return updated;
         });
       })
       .subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
           console.log('[Lobby Presence] Successfully subscribed to presence channel.');
-          // Track the current user's presence
           await channel.track({
             user_id: currentPlayerId,
-            username: userProfile.username, // Include username if available
-            // Add other relevant info if needed
+            username: userProfile.username,
           });
           console.log('[Lobby Presence] User tracked.');
         } else if (status === 'CLOSED') {
@@ -271,7 +257,6 @@ const Lobby: React.FC = () => {
 
     presenceChannelRef.current = channel;
 
-    // Cleanup on unmount
     return () => {
       if (presenceChannelRef.current) {
         console.log('[Lobby Presence] Unsubscribing and removing channel.');
@@ -280,9 +265,7 @@ const Lobby: React.FC = () => {
         presenceChannelRef.current = null;
       }
     };
-  // Depend on supabase, currentPlayerId, and userProfile.username to ensure tracking happens with correct info
   }, [supabase, currentPlayerId, userProfile.username]);
-  // --- End Presence Tracking ---
 
   const handleJoinGame = async (gameId: string) => {
     if (!currentPlayerId) {
@@ -291,14 +274,14 @@ const Lobby: React.FC = () => {
       return;
     }
     console.log(`[Lobby] Player ${currentPlayerId} attempting to join game: ${gameId}`);
-    setNotification(`Joining game ${gameId}...`); // Provide immediate feedback
+    setNotification(`Joining game ${gameId}...`);
 
     try {
       const joinedGame = await joinGame(gameId, currentPlayerId);
 
       if (joinedGame) {
         console.log(`[Lobby] Successfully joined game ${gameId}. Triggering card dealing...`);
-        setNotification('Game joined! Dealing cards...'); // Update feedback
+        setNotification('Game joined! Dealing cards...');
 
         const { error: functionError } = await supabase.functions.invoke('deal-cards', {
           body: { gameId },
@@ -389,151 +372,92 @@ const Lobby: React.FC = () => {
 
   console.log('[Lobby] Preparing to return JSX...', { isLoading, error });
 
-  if (isLoading) {
-    return <div className="text-center text-gray-400 py-10">Loading Lobby...</div>;
-  }
-
-  if (playerError && !currentPlayerId) {
-    return <div className="text-center text-red-400 py-10">Error: {playerError}. Please refresh or check URL parameters if testing.</div>;
-  }
-
-  if (error) {
-    return <div className="text-center text-red-400 py-10">Error loading games: {error}</div>;
-  }
-
   return (
-    <div className="min-h-screen bg-gray-900 bg-cover bg-center text-white p-6 md:p-8 relative overflow-hidden">
-      {/* Efecto de neones */}
-      <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 to-cyan-400/10 pointer-events-none" />
-      
-      <header className="max-w-7xl mx-auto mb-12 flex flex-col sm:flex-row justify-between items-center space-y-6 sm:space-y-0">
-        <div className="flex items-center space-x-4">
-          <h1 className="text-4xl md:text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-cyan-300">
-            Mythical Arena
-          </h1>
-          <div className="h-12 w-12 bg-purple-500 rounded-full animate-pulse" />
-        </div>
-        <div className="flex items-center space-x-4 ml-auto">
-          {currentPlayerId && userProfile.username && (
-            <>
-              <img
-                width={50}
-                height={50}
-                src={
-                  userProfile.avatar_url
-                    ? userProfile.avatar_url
-                    : `/api/placeholder-avatar?text=${userProfile.username.charAt(0).toUpperCase()}`
-                }
-                alt="User Avatar"
-                className="h-10 w-10 rounded-full object-cover border-2 border-white"
-              />
-              <span className="text-white font-medium">{userProfile.username}</span>
-              <div className="flex space-x-2">
-                <button
-                  onClick={() => navigate('/profile')}
-                  className="bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-4 rounded-md transition-colors duration-200"
-                >
-                  My Profile
-                </button>
-                <button
-                  onClick={signOut}
-                  className="bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded-md transition-colors duration-200"
-                >
-                  Sign Out
-                </button>
+    <div className="min-h-screen bg-gray-900 text-white relative overflow-hidden">
+      <NavBar />
+      <div className="max-w-7xl mx-auto px-6 md:px-8 py-8">
+        <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 to-cyan-400/10 pointer-events-none -z-10" />
+
+        {isLoading ? (
+          <div className="text-center text-gray-400 py-10">Loading Lobby...</div>
+        ) : playerError && !currentPlayerId ? (
+          <div className="text-center text-red-400 py-10">Error: {playerError}. Please refresh or check URL parameters if testing.</div>
+        ) : error ? (
+          <div className="text-center text-red-400 py-10">Error loading games: {error}</div>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+            <div className="bg-gray-800 bg-opacity-70 p-6 rounded-xl shadow-xl flex flex-col gap-4">
+              <h2 className="text-2xl font-semibold mb-3 text-center text-gray-100 flex items-center justify-center gap-2">
+                <span className="text-purple-400 text-2xl">👥</span>
+                Players Online ({Object.keys(onlineUsers).length})
+              </h2>
+              <div className="space-y-3 overflow-y-auto max-h-60 pr-2">
+                {Object.entries(onlineUsers).length > 0 ? (
+                  Object.entries(onlineUsers).map(([userId, profile]) => (
+                    <div key={userId} className="flex items-center space-x-3 p-2 bg-gray-700 rounded-md">
+                      <img
+                        width={32}
+                        height={32}
+                        src={profile.avatar_url || `/api/placeholder-avatar?text=${profile.username?.charAt(0).toUpperCase() || '?'}`}
+                        alt={profile.username || 'User Avatar'}
+                        className="h-8 w-8 rounded-full object-cover border border-gray-500"
+                      />
+                      <span className="text-sm font-medium text-gray-200 truncate">{profile.username || `User (${userId.substring(0, 6)})`}</span>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center text-gray-400 py-4">No other players currently online.</div>
+                )}
               </div>
-            </>
-          )}
-          {!currentPlayerId && (
-            <button
-              onClick={() => navigate('/')}
-              className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-md transition-colors duration-200"
-            >
-              Login
-            </button>
-          )}
-        </div>
-      </header>
+            </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-10 max-w-7xl mx-auto">
-        <div className="bg-gray-800 bg-opacity-70 p-6 rounded-xl shadow-xl flex flex-col gap-4">
-          <h2 className="text-2xl font-semibold mb-3 text-center text-gray-100 flex items-center justify-center gap-2">
-            <span className="text-purple-400 text-2xl">👥</span>
-            Players Online ({Object.keys(onlineUsers).length}) {/* Display count */}
-          </h2>
-          {/* Replace placeholder with actual user list */}
-          <div className="space-y-3 overflow-y-auto max-h-60 pr-2"> {/* Added scroll */}
-            {Object.entries(onlineUsers).length > 0 ? (
-              Object.entries(onlineUsers).map(([userId, profile]) => (
-                <div key={userId} className="flex items-center space-x-3 p-2 bg-gray-700 rounded-md">
-                  <img
-                    width={50}
-                    height={50}
-                    src={profile.avatar_url || `/api/placeholder-avatar?text=${profile.username?.charAt(0).toUpperCase() || '?'}`}
-                    alt={profile.username || 'User Avatar'}
-                    className="h-8 w-8 rounded-full object-cover border border-gray-500"
-                  />
-                  <span className="text-sm font-medium text-gray-200 truncate">{profile.username || `User (${userId.substring(0, 6)})`}</span>
-                </div>
-              ))
-            ) : (
-              <div className="text-center text-gray-400 py-4">No other players currently online.</div>
-            )}
-          </div>
-        </div>
-
-        <div className="bg-gray-800 bg-opacity-70 p-6 rounded-xl shadow-xl flex flex-col gap-4">
-          <h2 className="text-2xl font-semibold mb-3 text-center text-gray-100 flex items-center justify-center gap-2">
-            <span className="text-yellow-400 text-2xl">🎮</span>
-            Available Games
-          </h2>
-          <div className="space-y-4">
-            {availableGames.map((game) => (
-              <div key={game.id} className="bg-gray-700 p-4 rounded-lg flex justify-center items-center shadow-md">
-                <div>
-                  <p className="text-lg font-semibold">{game.creatorUsername || 'Unknown Creator'}</p>
-                  <p className="text-sm text-gray-400">Bet: {game.bet_amount} GEM</p>
-                  <p className={`text-sm font-medium ${game.status === 'waiting' ? 'text-yellow-400' : 'text-green-400'}`}>
-                    {game.status === 'waiting' ? 'Waiting for opponent' : 'Active'}
-                  </p>
-                  {game.status === 'waiting' && game.player1_id !== currentPlayerId && (
-                    <button
-                      onClick={() => handleJoinGame(game.id)}
-                      className="mt-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold py-1 px-3 rounded-md transition-colors duration-200"
-                    >
-                      Join Game
-                    </button>
-                  )}
-                </div>
-                <div className="text-right">
-
-                  {game.status === 'active' && game.player1_id === currentPlayerId && (
-                    <button
-                      onClick={() => navigate(`/game/${game.id}`)}
-                      className="mt-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold py-1 px-3 rounded-md transition-colors duration-200"
-                    >
-                      Rejoin Game
-                    </button>
-                  )}
-                </div>
+            <div className="bg-gray-800 bg-opacity-70 p-6 rounded-xl shadow-xl flex flex-col gap-4">
+              <h2 className="text-2xl font-semibold mb-3 text-center text-gray-100 flex items-center justify-center gap-2">
+                <span className="text-yellow-400 text-2xl">🎮</span>
+                Available Games
+              </h2>
+              <div className="space-y-4 overflow-y-auto max-h-[400px] pr-2">
+                {availableGames.length > 0 ? availableGames.map((game) => (
+                  <div key={game.id} className="bg-gray-700 p-4 rounded-lg flex justify-between items-center shadow-md">
+                    <div>
+                      <p className="text-lg font-semibold">{game.creatorUsername || 'Unknown Creator'}</p>
+                      <p className="text-sm text-gray-400">Bet: {game.bet_amount} GEM</p>
+                      <p className={`text-sm font-medium ${game.status === 'waiting' ? 'text-yellow-400' : 'text-green-400'}`}>
+                        {game.status === 'waiting' ? 'Waiting...' : game.status.charAt(0).toUpperCase() + game.status.slice(1)}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      {game.status === 'waiting' && game.player1_id !== currentPlayerId && (
+                        <button
+                          onClick={() => handleJoinGame(game.id)}
+                          className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold py-1 px-3 rounded-md transition-colors duration-200"
+                        >
+                          Join Game
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )) : (
+                  <div className="text-center text-gray-400 py-4">No available games right now.</div>
+                )}
               </div>
-            ))}
-          </div>
-        </div>
+            </div>
 
-        <div className="bg-gray-800 bg-opacity-70 p-6 rounded-xl shadow-xl flex flex-col items-center gap-5">
-          <h2 className="text-2xl font-semibold mb-3 text-center text-gray-100">Actions</h2>
-          {currentPlayerId ? (
-            <button
-              onClick={() => setShowCreateModal(true)}
-              className="bg-green-600 hover:bg-green-700 text-white text-lg font-semibold py-3 px-6 rounded-md transition-colors duration-200 w-full max-w-[200px]"
-            >
-              Create Game
-            </button>
-          ) : (
-            <p className="text-gray-400 text-center">Log in to create a game.</p>
-          )}
-        </div>
+            <div className="bg-gray-800 bg-opacity-70 p-6 rounded-xl shadow-xl flex flex-col items-center gap-5">
+              <h2 className="text-2xl font-semibold mb-3 text-center text-gray-100">Actions</h2>
+              {currentPlayerId ? (
+                <button
+                  onClick={() => setShowCreateModal(true)}
+                  className="bg-green-600 hover:bg-green-700 text-white text-lg font-semibold py-3 px-6 rounded-md transition-colors duration-200 w-full max-w-[200px]"
+                >
+                  Create Game
+                </button>
+              ) : (
+                <p className="text-gray-400 text-center">Log in to create a game.</p>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       {showCreateModal && (

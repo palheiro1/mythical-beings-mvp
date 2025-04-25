@@ -143,14 +143,14 @@ export function applyPassiveAbilities(
       }
 
       // Lisovik
-      else if (creature.id === 'lisovik' && trigger === 'KNOWLEDGE_LEAVE' && eventData.playerId === pId && eventData.creatureId === creature.id) {
+      else if (creature.id === 'lisovik' && trigger === 'KNOWLEDGE_LEAVE' && eventData.playerId === pId) {
           const leavingKnowledge = eventData.knowledgeCard;
           if (leavingKnowledge && leavingKnowledge.element === 'earth') {
-              const oldPower = player.power;
-              player.power += 1;
-              newState.log.push(`[Passive Effect] Lisovik (Owner: ${pId}) grants +1 Power due to ${leavingKnowledge.name} leaving. Power: ${oldPower} -> ${player.power}`);
-              const currentPlayerIndex = newState.players.findIndex(p => p.id === pId);
-              if (currentPlayerIndex !== -1) newState.players[currentPlayerIndex] = player;
+              const oldPower = opponent.power;
+              opponent.power -= 1;
+              newState.log.push(`[Passive Effect] Lisovik (Owner: ${pId}) deals 1 damage to ${opponent.id} due to terrestrial knowledge (${leavingKnowledge.name}) leaving play. Power: ${oldPower} -> ${opponent.power}`);
+              const opponentIndex = newState.players.findIndex(p => p.id === opponent!.id);
+              if (opponentIndex !== -1) newState.players[opponentIndex] = opponent;
           }
       }
 

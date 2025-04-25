@@ -260,6 +260,7 @@ export function gameReducer(state: GameState | null, action: GameAction): GameSt
   }
 
   let intermediateState: GameState;
+  let shouldConsumeAction = true; // Flag to determine if the action costs an action point
 
   switch (action.type) {
     case 'ROTATE_CREATURE':
@@ -286,6 +287,24 @@ export function gameReducer(state: GameState | null, action: GameAction): GameSt
 
       intermediateState = summonKnowledge(state, action.payload);
 
+      // Check for Dudugera passive: Free summon
+      const playerControlsDudugera = playerSummoning?.creatures.some(c => c.id === 'dudugera') &&
+                                     playerSummoning?.field.some(f => f.creatureId === 'dudugera');
+      // Check for Kappa passive: Free summon for aquatic Knowledges
+      const playerControlsKappa = playerSummoning?.creatures.some(c => c.id === 'kappa') &&
+                                  playerSummoning?.field.some(f => f.creatureId === 'kappa');
+      const isAquaticKnowledge = knowledgeToSummon?.element === 'water';
+
+      if (playerControlsDudugera) {
+        shouldConsumeAction = false;
+        intermediateState.log.push(`[Passive Effect] Dudugera allows summoning ${knowledgeToSummon?.name || 'Knowledge'} without spending an action.`);
+        console.log(`[Reducer] Dudugera passive active: SUMMON_KNOWLEDGE does not consume action.`);
+      } else if (playerControlsKappa && isAquaticKnowledge) {
+        shouldConsumeAction = false;
+        intermediateState.log.push(`[Passive Effect] Kappa allows summoning aquatic knowledge ${knowledgeToSummon?.name || 'Knowledge'} without spending an action.`);
+        console.log(`[Reducer] Kappa passive active: SUMMON_KNOWLEDGE does not consume action.`);
+      }
+
       const eventDataSummon = {
         playerId: action.payload.playerId,
         creatureId: action.payload.creatureId,
@@ -306,15 +325,26 @@ export function gameReducer(state: GameState | null, action: GameAction): GameSt
       return state;
   }
 
-  // This part is now only reached for actions that consume an action point
+  // Consume action point only if required
   const currentActionsPerTurn = intermediateState.actionsPerTurn ?? ACTIONS_PER_TURN;
-  const newActionsTaken = intermediateState.actionsTakenThisTurn + 1;
-  intermediateState = {
-    ...intermediateState,
-    actionsTakenThisTurn: newActionsTaken,
-    log: [...intermediateState.log, `Action ${action.type} completed. Actions: ${newActionsTaken}/${currentActionsPerTurn}`]
-  };
-  console.log(`[Reducer] Action ${action.type} processed. Actions taken: ${newActionsTaken}/${currentActionsPerTurn}`);
+  let newActionsTaken = intermediateState.actionsTakenThisTurn;
+
+  if (shouldConsumeAction) {
+    newActionsTaken++;
+    intermediateState = {
+      ...intermediateState,
+      actionsTakenThisTurn: newActionsTaken,
+      log: [...intermediateState.log, `Action ${action.type} completed. Actions: ${newActionsTaken}/${currentActionsPerTurn}`]
+    };
+    console.log(`[Reducer] Action ${action.type} processed. Actions taken: ${newActionsTaken}/${currentActionsPerTurn}`);
+  } else {
+    // Log that the action didn't cost an action point if it was due to a passive
+    if (action.type === 'SUMMON_KNOWLEDGE') { // Be specific to avoid logging for non-action events if logic changes
+       intermediateState = { ...intermediateState }; // Ensure state object is updated if only log changes
+       // Log message already added when shouldConsumeAction was set to false
+       console.log(`[Reducer] Action ${action.type} processed (Free). Actions taken: ${newActionsTaken}/${currentActionsPerTurn}`);
+    }
+  }
 
   let winner = checkWinCondition(intermediateState);
   if (winner) {
