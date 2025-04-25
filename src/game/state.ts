@@ -199,11 +199,9 @@ function endTurnSequence(state: GameState): GameState {
  */
 export function gameReducer(state: GameState | null, action: GameAction): GameState | null {
   if (!state) {
-    if (action.type === 'INITIALIZE_GAME') {
-      console.log("[Reducer] Received INITIALIZE_GAME on null state.");
-      // Ensure the payload matches the expected type
-      return initializeGame(action.payload as InitializeGamePayload);
-    } else if (action.type === 'SET_GAME_STATE' && action.payload) {
+    // INITIALIZE_GAME is handled by useGameInitialization hook, not the reducer directly.
+    // Reducer should only start with a state set by SET_GAME_STATE.
+    if (action.type === 'SET_GAME_STATE' && action.payload) {
       console.log("[Reducer] Received SET_GAME_STATE on null state.");
       const newState = action.payload as GameState;
       return {
@@ -213,7 +211,7 @@ export function gameReducer(state: GameState | null, action: GameAction): GameSt
         log: newState.log ?? [],
       };
     } else {
-      console.error("[Reducer] Received action on null state:", action.type);
+      console.error("[Reducer] Received action on null state (expected SET_GAME_STATE with payload):", action.type);
       return null;
     }
   }
@@ -241,11 +239,6 @@ export function gameReducer(state: GameState | null, action: GameAction): GameSt
       actionsPerTurn: actionsPer,
       log: newState.log ?? [],
     };
-  }
-  if (action.type === 'INITIALIZE_GAME') {
-    console.warn("[Reducer] Received INITIALIZE_GAME on non-null state. Re-initializing.");
-    // Ensure the payload matches the expected type
-    return initializeGame(action.payload as InitializeGamePayload);
   }
 
   const validation = isValidAction(state, action);

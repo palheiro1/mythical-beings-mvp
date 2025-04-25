@@ -89,13 +89,22 @@ describe('initializeGame', () => {
 
   const mockPlayer1Id = 'mock-uuid-p1';
   const mockPlayer2Id = 'mock-uuid-p2';
+  const mockCreatureP1Ids = mockCreatureP1.map(c => c.id); // Get IDs
+  const mockCreatureP2Ids = mockCreatureP2.map(c => c.id); // Get IDs
 
   beforeEach(() => {
     // Reset mocks before each test
     vi.clearAllMocks();
     // Mock executeKnowledgePhase to prevent infinite loops during initialization testing
     vi.mocked(rules.executeKnowledgePhase).mockImplementation((state) => ({ ...state, phase: 'action', actionsTakenThisTurn: 0, log: [...state.log, 'Mock Initial Knowledge Phase'] }));
-    initialState = initializeGame('game1', mockPlayer1Id, mockPlayer2Id, mockCreatureP1, mockCreatureP2);
+    // Use IDs for initialization
+    initialState = initializeGame({
+        gameId: 'game1',
+        player1Id: mockPlayer1Id,
+        player2Id: mockPlayer2Id,
+        player1SelectedIds: mockCreatureP1Ids,
+        player2SelectedIds: mockCreatureP2Ids
+    });
   });
 
   it('should create a game state with correct initial values', () => {
@@ -152,6 +161,8 @@ describe('gameReducer', () => {
 
   const mockPlayer1Id = 'mock-uuid-p1';
   const mockPlayer2Id = 'mock-uuid-p2';
+  const mockCreatureP1Ids = mockCreatureP1.map(c => c.id); // Get IDs
+  const mockCreatureP2Ids = mockCreatureP2.map(c => c.id); // Get IDs
 
   beforeEach(() => {
     // Reset mocks and get a fresh state
@@ -160,7 +171,14 @@ describe('gameReducer', () => {
     vi.mocked(rules.executeKnowledgePhase).mockImplementation((state) => ({ ...state, phase: 'action', actionsTakenThisTurn: 0, log: [...state.log, 'Mock Knowledge Phase Executed'] }));
     vi.mocked(rules.checkWinCondition).mockReturnValue(null); // Default to no winner
 
-    currentState = initializeGame('game1', mockPlayer1Id, mockPlayer2Id, mockCreatureP1, mockCreatureP2);
+    // Use IDs for initialization
+    currentState = initializeGame({
+        gameId: 'game1',
+        player1Id: mockPlayer1Id,
+        player2Id: mockPlayer2Id,
+        player1SelectedIds: mockCreatureP1Ids,
+        player2SelectedIds: mockCreatureP2Ids
+    });
     currentState.phase = 'action'; // Ensure action phase for tests
     currentState.actionsTakenThisTurn = 0;
     currentState.currentPlayerIndex = 0;
@@ -174,18 +192,20 @@ describe('gameReducer', () => {
   });
 
   it('should handle INITIALIZE_GAME', () => {
-    const action: GameAction = { type: 'INITIALIZE_GAME', payload: { gameId: 'newGame', player1Id: 'pA', player2Id: 'pB', selectedCreaturesP1: [], selectedCreaturesP2: [] } };
+    const mockP1Ids = ['c1', 'c2', 'c3'];
+    const mockP2Ids = ['c4', 'c5', 'c6'];
+    const action: GameAction = { type: 'INITIALIZE_GAME', payload: { gameId: 'newGame', player1Id: 'pA', player2Id: 'pB', player1SelectedIds: mockP1Ids, player2SelectedIds: mockP2Ids } };
     // We need to mock initializeGame if we want to test the reducer calling it,
     // but here we test that the reducer *returns* the result of initializeGame.
     // Let's assume initializeGame works as tested above.
-    const expectedState = initializeGame('newGame', 'pA', 'pB', [], []);
-    const reducedState = gameReducer(currentState, action); // currentState is irrelevant here
+    const expectedState = initializeGame({ gameId: 'newGame', player1Id: 'pA', player2Id: 'pB', player1SelectedIds: mockP1Ids, player2SelectedIds: mockP2Ids });
+    const reducedState = gameReducer(null, action); // Pass null as initial state for INITIALIZE_GAME test
     // Only check key properties, not deep equality
-    expect(reducedState.gameId).toBe(expectedState.gameId);
-    expect(reducedState.players.length).toBe(2);
-    expect(reducedState.phase).toBe(expectedState.phase);
-    expect(reducedState.market.length).toBe(expectedState.market.length);
-    expect(reducedState.knowledgeDeck.length).toBe(expectedState.knowledgeDeck.length);
+    expect(reducedState?.gameId).toBe(expectedState.gameId);
+    expect(reducedState?.players.length).toBe(2);
+    expect(reducedState?.phase).toBe(expectedState.phase);
+    expect(reducedState?.market.length).toBe(expectedState.market.length);
+    expect(reducedState?.knowledgeDeck.length).toBe(expectedState.knowledgeDeck.length);
   });
 
   it('should return current state if action is invalid', () => {
