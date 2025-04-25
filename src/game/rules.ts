@@ -51,7 +51,7 @@ export function isValidAction(state: GameState, action: GameAction): ValidationR
     return { isValid: false, reason }; // Not action phase
   }
   const currentActionsPerTurn = state.actionsPerTurn ?? ACTIONS_PER_TURN;
-  if (state.actionsTakenThisTurn >= currentActionsPerTurn) {
+  if (state.actionsTakenThisTurn >= currentActionsPerTurn && action.type !== 'END_TURN') {
     const reason = `No actions left (Taken: ${state.actionsTakenThisTurn}/${currentActionsPerTurn})`;
     console.log(`[isValidAction] Failed: ${reason}`);
     return { isValid: false, reason }; // No actions left
