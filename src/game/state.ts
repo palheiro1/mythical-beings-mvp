@@ -3,6 +3,9 @@ import { isValidAction, executeKnowledgePhase, checkWinCondition } from './rules
 import { rotateCreature, drawKnowledge, summonKnowledge } from './actions';
 import { applyPassiveAbilities } from './passives';
 import knowledgeData from '../assets/knowledges.json';
+// --- Import creature data ---
+import creatureData from '../assets/creatures.json';
+// --- End import ---
 import { getPlayerState } from './utils';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -10,6 +13,10 @@ import { v4 as uuidv4 } from 'uuid';
 const INITIAL_POWER = 20;
 const MARKET_SIZE = 5;
 const ACTIONS_PER_TURN = 2;
+
+// --- Define ALL_CREATURES constant ---
+const ALL_CREATURES: Creature[] = creatureData as Creature[];
+// --- End define ---
 
 // Helper function to shuffle an array (Fisher-Yates algorithm)
 function shuffleArray<T>(array: T[]): T[] {
@@ -39,21 +46,38 @@ function injectInstanceIds(state: GameState): GameState {
   };
 }
 
+// Define the payload type for initializeGame explicitly
+export type InitializeGamePayload = {
+  gameId: string;
+  player1Id: string;
+  player2Id: string;
+  player1SelectedIds: string[];
+  player2SelectedIds: string[];
+};
+
 /**
  * Initializes a new game state.
- * @param payload Data for initialization.
+ * @param payload Data for initialization, including selected creature IDs.
  * @returns The initial game state.
  */
 export function initializeGame(
-  payload: {
-    gameId: string;
-    player1Id: string;
-    player2Id: string;
-    selectedCreaturesP1: Creature[];
-    selectedCreaturesP2: Creature[];
-  }
+  payload: InitializeGamePayload // Use the defined type
 ): GameState {
-  const { gameId, player1Id, player2Id, selectedCreaturesP1, selectedCreaturesP2 } = payload;
+  const { gameId, player1Id, player2Id, player1SelectedIds, player2SelectedIds } = payload;
+
+  // --- Look up selected creatures from ALL_CREATURES ---
+  const lookupCreatures = (ids: string[]): Creature[] => {
+    const foundCreatures = ids.map(id => ALL_CREATURES.find(c => c.id === id)).filter((c): c is Creature => !!c);
+    if (foundCreatures.length !== ids.length) {
+      console.error("Could not find all selected creatures! IDs:", ids, "Found:", foundCreatures);
+      throw new Error(`Failed to initialize game: Could not find all selected creatures for IDs: ${ids.join(', ')}`);
+    }
+    return foundCreatures;
+  };
+
+  const selectedCreaturesP1 = lookupCreatures(player1SelectedIds);
+  const selectedCreaturesP2 = lookupCreatures(player2SelectedIds);
+  // --- End lookup ---
 
   const fullDeck: Knowledge[] = [];
   (knowledgeData as any[]).forEach((card: Knowledge) => {
@@ -72,6 +96,7 @@ export function initializeGame(
         break;
       default:
         copies = 1;
+        break; // Added missing break
     }
     for (let i = 0; i < copies; i++) {
       fullDeck.push({ ...card });
@@ -88,7 +113,7 @@ export function initializeGame(
     creatures: creatures.map(c => ({ ...c, currentWisdom: c.baseWisdom, rotation: 0 })),
     hand: [],
     field: creatures.map(c => ({ creatureId: c.id, knowledge: null })),
-    selectedCreatures: creatures,
+    selectedCreatures: creatures, // Keep selected creatures info if needed later
   });
 
   let initialState: GameState = {
@@ -176,7 +201,8 @@ export function gameReducer(state: GameState | null, action: GameAction): GameSt
   if (!state) {
     if (action.type === 'INITIALIZE_GAME') {
       console.log("[Reducer] Received INITIALIZE_GAME on null state.");
-      return initializeGame(action.payload);
+      // Ensure the payload matches the expected type
+      return initializeGame(action.payload as InitializeGamePayload);
     } else if (action.type === 'SET_GAME_STATE' && action.payload) {
       console.log("[Reducer] Received SET_GAME_STATE on null state.");
       const newState = action.payload as GameState;
@@ -218,7 +244,8 @@ export function gameReducer(state: GameState | null, action: GameAction): GameSt
   }
   if (action.type === 'INITIALIZE_GAME') {
     console.warn("[Reducer] Received INITIALIZE_GAME on non-null state. Re-initializing.");
-    return initializeGame(action.payload);
+    // Ensure the payload matches the expected type
+    return initializeGame(action.payload as InitializeGamePayload);
   }
 
   const validation = isValidAction(state, action);
@@ -227,8 +254,15 @@ export function gameReducer(state: GameState | null, action: GameAction): GameSt
     return state;
   }
 
-  if (!action.payload || !('playerId' in action.payload)) {
-    console.error("[Reducer] Non-player action reached player processing stage:", action);
+  // Type guard to ensure payload exists and has playerId for player-specific actions
+  if (!action.payload || typeof action.payload !== 'object' || !('playerId' in action.payload)) {
+    // Handle END_TURN specifically as it doesn't need a playerId in payload
+    if (action.type === 'END_TURN') {
+      console.log("[Reducer] Handling END_TURN action.");
+      return endTurnSequence(state);
+    }
+    // Log error for other actions missing payload or playerId
+    console.error("[Reducer] Action requires a payload with playerId:", action);
     return state;
   }
 
@@ -272,14 +306,9 @@ export function gameReducer(state: GameState | null, action: GameAction): GameSt
       intermediateState = applyPassiveAbilities(intermediateState, summonTrigger, eventDataSummon);
       break;
     }
-    // Add case for END_TURN
-    case 'END_TURN': {
-      console.log("[Reducer] Handling END_TURN action.");
-      // Don't increment actionsTaken for END_TURN
-      // Directly call the end turn sequence
-      return endTurnSequence(state);
-    }
+    // END_TURN is handled before the switch now
     default:
+      // This should ideally not be reached if validation and payload checks are correct
       console.error("[Reducer] Unhandled valid action type in switch:", action);
       return state;
   }

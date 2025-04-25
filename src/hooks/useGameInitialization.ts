@@ -1,8 +1,9 @@
 import { useEffect, useReducer, useState, useRef } from 'react';
 import { useParams } from 'react-router-dom';
-import { getGameDetails, getGameState, subscribeToGameState, unsubscribeFromGameState, updateGameState, RealtimeChannel } from '../utils/supabase';
-import { GameState, GameAction, Knowledge, PlayerState, Creature } from '../game/types';
-import creatureData from '../assets/creatures.json';
+// Remove getGameDetails, add supabase
+import { getGameState, subscribeToGameState, unsubscribeFromGameState, updateGameState, RealtimeChannel, supabase } from '../utils/supabase';
+// Remove unused Creature import
+import { GameState, GameAction, Knowledge, PlayerState } from '../game/types';
 import { initializeGame, gameReducer as originalGameReducer } from '../game/state';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -122,8 +123,15 @@ export function useGameInitialization(
     const setupGame = async () => {
       console.log(`[setupGame] Starting setup logic for game: ${gameId}, player: ${currentPlayerId}`);
       try {
-        // 1. Fetch game details
-        const gameDetails = await getGameDetails(gameId);
+        // 1. Fetch game details (including selected creatures)
+        const { data: gameDetails, error: detailsError } = await supabase
+          .from('games')
+          .select('player1_id, player2_id, player1_selected_creatures, player2_selected_creatures') // Fetch selected creatures
+          .eq('id', gameId)
+          .single();
+
+        if (detailsError) throw detailsError;
+
         // Check mount status and if the gameId hasn't changed since the effect started
         if (!isMounted || currentInitializedGameId.current !== gameId) {
             console.log(`[setupGame] Aborting fetch details: isMounted=${isMounted}, gameId mismatch.`);
@@ -136,6 +144,10 @@ export function useGameInitialization(
         }
         const player1Id = gameDetails.player1_id;
         const player2Id = gameDetails.player2_id;
+        // --- Get selected creature IDs ---
+        const player1SelectedIds = gameDetails.player1_selected_creatures;
+        const player2SelectedIds = gameDetails.player2_selected_creatures;
+        // --- End get selected creature IDs ---
 
         if (!player2Id) {
             // If second player hasn't joined yet, retry after a delay
@@ -167,22 +179,19 @@ export function useGameInitialization(
             console.log(`[setupGame] Game state for ${gameId} not found. Initializing as Player 1...`);
             isNewGameInitialization = true;
 
-            // TODO: Replace mock creatures with actual selected creatures from NFTSelection/Lobby state
-            // Ensure JSON import is an array
-            const allCreatures: Creature[] = Array.isArray(creatureData) ? creatureData : (creatureData as any).default;
-            const mockCreaturesP1 = allCreatures.slice(0, 3);
-            const mockCreaturesP2 = allCreatures.slice(3, 6);
-            if (mockCreaturesP1.length < 3 || mockCreaturesP2.length < 3) {
-                throw new Error("Not enough mock creature data.");
+            // --- Use selected creature IDs for initialization ---
+            if (!player1SelectedIds || !player2SelectedIds || player1SelectedIds.length !== 3 || player2SelectedIds.length !== 3) {
+              throw new Error("Selected creature data is missing or incomplete in the database.");
             }
 
             initializedState = initializeGame({
                 gameId,
                 player1Id,
                 player2Id,
-                selectedCreaturesP1: mockCreaturesP1,
-                selectedCreaturesP2: mockCreaturesP2,
+                player1SelectedIds: player1SelectedIds, // Pass IDs
+                player2SelectedIds: player2SelectedIds, // Pass IDs
             });
+            // --- End use selected creature IDs ---
             console.log(`[setupGame] Game ${gameId} initialized locally by Player 1. Phase: ${initializedState.phase}`);
 
             // 4. Update DB immediately if P1 just initialized
