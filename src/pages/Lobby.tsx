@@ -1,14 +1,21 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { usePlayerIdentification } from '../hooks/usePlayerIdentification';
 import { supabase, getAvailableGames, createGame, joinGame, getProfile } from '../utils/supabase';
 import { AvailableGame } from '../game/types'; // Import the new type
 import { v4 as uuidv4 } from 'uuid';
+import { RealtimeChannel, RealtimePresenceState } from '@supabase/supabase-js'; // Import Realtime types
 
 // Define the combined type for games with creator's username
 interface GameWithUsername extends AvailableGame { // Extend AvailableGame
   creatorUsername: string | null;
+}
+
+// Define type for online user profile info
+interface OnlineUserInfo {
+  username: string | null;
+  avatar_url: string | null;
 }
 
 const Lobby: React.FC = () => {
@@ -23,7 +30,10 @@ const Lobby: React.FC = () => {
   const [notification, setNotification] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   // User profile state for avatar and username
-  const [userProfile, setUserProfile] = useState<{ username: string | null; avatar_url: string | null }>({ username: null, avatar_url: null });
+  const [userProfile, setUserProfile] = useState<OnlineUserInfo>({ username: null, avatar_url: null });
+  // State to store online users' profiles
+  const [onlineUsers, setOnlineUsers] = useState<Record<string, OnlineUserInfo>>({});
+  const presenceChannelRef = useRef<RealtimeChannel | null>(null);
 
   const isLoading = authLoading || idLoading || loadingGames;
 
@@ -89,6 +99,190 @@ const Lobby: React.FC = () => {
         .catch(console.error);
     }
   }, [currentPlayerId]);
+
+  // --- Realtime Game Subscription ---
+  useEffect(() => {
+    if (!supabase) return;
+
+    console.log('[Lobby Realtime] Setting up games subscription.');
+    const gamesChannel = supabase
+      .channel('public:games')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'games', filter: 'status=eq.waiting' },
+        async (payload) => {
+          console.log('[Lobby Realtime] New game detected:', payload.new);
+          const newGame = payload.new as AvailableGame; // Cast to AvailableGame
+
+          // Fetch creator profile
+          let creatorUsername = null;
+          if (newGame.player1_id) {
+            try {
+              const profile = await getProfile(newGame.player1_id);
+              creatorUsername = profile?.username || newGame.player1_id.substring(0, 8);
+            } catch (err) {
+              console.error('[Lobby Realtime] Error fetching profile for new game creator:', err);
+              creatorUsername = newGame.player1_id.substring(0, 8); // Fallback
+            }
+          }
+
+          const gameWithUsername: GameWithUsername = { ...newGame, creatorUsername };
+
+          setAvailableGames((currentGames) => {
+            // Avoid adding duplicates if already present (e.g., due to initial fetch)
+            if (currentGames.some(game => game.id === gameWithUsername.id)) {
+              return currentGames;
+            }
+            return [...currentGames, gameWithUsername];
+          });
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'games' },
+        (payload) => {
+          console.log('[Lobby Realtime] Game update detected:', payload.new);
+          const updatedGame = payload.new as AvailableGame;
+          setAvailableGames((currentGames) =>
+            currentGames.map((game) =>
+              game.id === updatedGame.id ? { ...game, ...updatedGame, creatorUsername: game.creatorUsername } : game // Keep existing username
+            ).filter(game => game.status === 'waiting') // Remove games that are no longer waiting
+          );
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'DELETE', schema: 'public', table: 'games' },
+        (payload) => {
+          console.log('[Lobby Realtime] Game delete detected:', payload.old);
+          const deletedGameId = payload.old.id;
+          setAvailableGames((currentGames) =>
+            currentGames.filter((game) => game.id !== deletedGameId)
+          );
+        }
+      )
+      .subscribe((status, err) => {
+        if (status === 'SUBSCRIBED') {
+          console.log('[Lobby Realtime] Successfully subscribed to games channel.');
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          console.error('[Lobby Realtime] Subscription error:', err);
+          setError('Realtime connection error for game list.');
+        }
+      });
+
+    // Cleanup function
+    return () => {
+      if (gamesChannel) {
+        console.log('[Lobby Realtime] Unsubscribing from games channel.');
+        supabase.removeChannel(gamesChannel);
+      }
+    };
+  }, [supabase]); // Depend only on supabase client
+  // --- End Realtime Game Subscription ---
+
+  // --- Presence Tracking ---
+  useEffect(() => {
+    if (!supabase || !currentPlayerId || !userProfile.username) {
+      // Don't subscribe until we have supabase client, user ID, and username
+      console.log('[Lobby Presence] Waiting for Supabase/User ID/Profile before subscribing.');
+      return;
+    }
+
+    console.log('[Lobby Presence] Setting up presence channel.');
+    const channel = supabase.channel('lobby-presence', {
+      config: {
+        presence: {
+          key: currentPlayerId, // Unique key for this user
+        },
+      },
+    });
+
+    const fetchProfileForUser = async (userId: string) => {
+      if (!onlineUsers[userId]) { // Fetch only if not already fetched
+        try {
+          const profile = await getProfile(userId);
+          setOnlineUsers(prev => ({
+            ...prev,
+            [userId]: {
+              username: profile?.username || `User (${userId.substring(0, 6)})`,
+              avatar_url: profile?.avatar_url || null,
+            },
+          }));
+        } catch (err) {
+          console.error(`[Lobby Presence] Error fetching profile for ${userId}:`, err);
+          // Optionally set a default/error state for this user
+          setOnlineUsers(prev => ({
+            ...prev,
+            [userId]: { username: `User (${userId.substring(0, 6)})`, avatar_url: null },
+          }));
+        }
+      }
+    };
+
+    channel
+      .on('presence', { event: 'sync' }, () => {
+        console.log('[Lobby Presence] Sync event received.');
+        const newState: RealtimePresenceState = channel.presenceState();
+        console.log('[Lobby Presence] Current presence state:', newState);
+        const userIds = Object.keys(newState);
+        // Fetch profiles for all users currently present
+        userIds.forEach(fetchProfileForUser);
+        // Update the onlineUsers state, removing users no longer present
+        setOnlineUsers(currentUsers => {
+          const updatedUsers: Record<string, OnlineUserInfo> = {};
+          userIds.forEach(id => {
+            if (currentUsers[id]) {
+              updatedUsers[id] = currentUsers[id];
+            }
+            // If not in currentUsers, fetchProfileForUser will handle adding it
+          });
+          return updatedUsers;
+        });
+      })
+      .on('presence', { event: 'join' }, ({ key, newPresences }) => {
+        console.log('[Lobby Presence] Join event:', { key, newPresences });
+        fetchProfileForUser(key); // Fetch profile for the user who joined
+      })
+      .on('presence', { event: 'leave' }, ({ key, leftPresences }) => {
+        console.log('[Lobby Presence] Leave event:', { key, leftPresences });
+        setOnlineUsers(prev => {
+          const updated = { ...prev };
+          delete updated[key]; // Remove user who left
+          return updated;
+        });
+      })
+      .subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') {
+          console.log('[Lobby Presence] Successfully subscribed to presence channel.');
+          // Track the current user's presence
+          await channel.track({
+            user_id: currentPlayerId,
+            username: userProfile.username, // Include username if available
+            // Add other relevant info if needed
+          });
+          console.log('[Lobby Presence] User tracked.');
+        } else if (status === 'CLOSED') {
+          console.log('[Lobby Presence] Channel closed.');
+        } else {
+          console.error('[Lobby Presence] Subscription error/status:', status);
+          setError('Realtime connection error for online players.');
+        }
+      });
+
+    presenceChannelRef.current = channel;
+
+    // Cleanup on unmount
+    return () => {
+      if (presenceChannelRef.current) {
+        console.log('[Lobby Presence] Unsubscribing and removing channel.');
+        presenceChannelRef.current.untrack();
+        supabase.removeChannel(presenceChannelRef.current);
+        presenceChannelRef.current = null;
+      }
+    };
+  // Depend on supabase, currentPlayerId, and userProfile.username to ensure tracking happens with correct info
+  }, [supabase, currentPlayerId, userProfile.username]);
+  // --- End Presence Tracking ---
 
   const handleJoinGame = async (gameId: string) => {
     if (!currentPlayerId) {
@@ -265,9 +459,27 @@ const Lobby: React.FC = () => {
         <div className="bg-gray-800 bg-opacity-70 p-6 rounded-xl shadow-xl flex flex-col gap-4">
           <h2 className="text-2xl font-semibold mb-3 text-center text-gray-100 flex items-center justify-center gap-2">
             <span className="text-purple-400 text-2xl">👥</span>
-            Players Online
+            Players Online ({Object.keys(onlineUsers).length}) {/* Display count */}
           </h2>
-          <div className="text-center text-gray-400 py-4">Player list temporarily unavailable</div>
+          {/* Replace placeholder with actual user list */}
+          <div className="space-y-3 overflow-y-auto max-h-60 pr-2"> {/* Added scroll */}
+            {Object.entries(onlineUsers).length > 0 ? (
+              Object.entries(onlineUsers).map(([userId, profile]) => (
+                <div key={userId} className="flex items-center space-x-3 p-2 bg-gray-700 rounded-md">
+                  <img
+                    width={50}
+                    height={50}
+                    src={profile.avatar_url || `/api/placeholder-avatar?text=${profile.username?.charAt(0).toUpperCase() || '?'}`}
+                    alt={profile.username || 'User Avatar'}
+                    className="h-8 w-8 rounded-full object-cover border border-gray-500"
+                  />
+                  <span className="text-sm font-medium text-gray-200 truncate">{profile.username || `User (${userId.substring(0, 6)})`}</span>
+                </div>
+              ))
+            ) : (
+              <div className="text-center text-gray-400 py-4">No other players currently online.</div>
+            )}
+          </div>
         </div>
 
         <div className="bg-gray-800 bg-opacity-70 p-6 rounded-xl shadow-xl flex flex-col gap-4">
