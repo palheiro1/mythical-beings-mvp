@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-// Removed CombatBuffers from import as it's unused in this file after fixes
-import { GameState, Knowledge, KnowledgeType, CreatureElement } from './types';
+// Removed unused imports: KnowledgeType, CreatureElement
+import { GameState, Knowledge } from './types';
 import { applyPassiveAbilities } from './passives'; // Import applyPassiveAbilities
 
 // Effect function signature
@@ -210,11 +210,10 @@ export const knowledgeEffects: Record<string, KnowledgeEffectFn> = {
   aquatic2: ({ state, playerIndex, fieldSlotIndex }) => {
     const opponentIndex = playerIndex === 0 ? 1 : 0;
     const opponentFieldSlot = state.players[opponentIndex].field[fieldSlotIndex];
-    let defense = 0;
+    // Removed unused 'defense' variable
     if (opponentFieldSlot && opponentFieldSlot.knowledge) {
       state.log.push(`Aquatic2: No defense granted (opposing creature has knowledge).`);
     } else {
-      defense = 1;
       state.log.push(`Aquatic2: Provides +1 defense to Player ${playerIndex + 1} (opposing creature has no knowledge).`);
     }
     return state;
@@ -306,7 +305,6 @@ export const knowledgeEffects: Record<string, KnowledgeEffectFn> = {
 
   // Aerial 4: Rotational damage & self-power
   aerial4: ({ state, playerIndex, rotation }) => {
-    const opponentIndex = playerIndex === 0 ? 1 : 0;
     const dmg = (rotation === 0 ? 1 : (rotation === 90 || rotation === 180 ? 2 : 0));
     state.players[playerIndex].power += dmg;
     state.log.push(`Aerial4: Deals ${dmg} damage & grants ${dmg} power.`);

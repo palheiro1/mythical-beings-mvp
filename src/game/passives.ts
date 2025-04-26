@@ -1,4 +1,4 @@
-import { GameState, PassiveTriggerType, PassiveEventData, Knowledge, KnowledgeType, CreatureElement } from './types';
+import { GameState, PassiveTriggerType, PassiveEventData, Knowledge } from './types';
 import { v4 as uuidv4 } from 'uuid';
 
 /**

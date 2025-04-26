@@ -1,5 +1,6 @@
 import { knowledgeEffects } from './effects';
-import { GameState, GameAction, CombatBuffers, Knowledge } from './types';
+// Removed unused CombatBuffers import
+import { GameState, GameAction, Knowledge } from './types';
 import { applyPassiveAbilities } from './passives';
 
 // Constants
@@ -186,7 +187,6 @@ export function executeKnowledgePhase(state: GameState): GameState {
 
 
   // 1. Rotate Knowledge Cards and Apply Effects
-  const combatBuffers: CombatBuffers = { damage: [0, 0], defense: [0, 0] };
   const knowledgeToDiscard: { playerIndex: number; slotIndex: number; card: Knowledge }[] = [];
 
   for (let playerIndex = 0; playerIndex < newState.players.length; playerIndex++) {
@@ -210,8 +210,7 @@ export function executeKnowledgePhase(state: GameState): GameState {
             fieldSlotIndex: slotIndex,
             knowledge: slot.knowledge,
             rotation: nextRotation,
-            isFinalRotation: willBeDiscarded, // Pass whether it will be discarded
-            buffers: combatBuffers
+            isFinalRotation: willBeDiscarded // Pass whether it will be discarded
           });
         }
 

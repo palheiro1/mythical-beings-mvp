@@ -134,12 +134,14 @@ const NFTSelection: React.FC = () => {
   const pollForOpponentCompletion = async () => {
     if (!gameId) return;
     try {
-      const { data: gameData, error: fetchError } = await supabase
+      // Prefix unused fetchError with underscore
+      const { data: gameData, error: _fetchError } = await supabase
         .from('games')
         .select('player1_selection_complete, player2_selection_complete')
         .eq('id', gameId)
         .single();
-      if (fetchError) throw fetchError;
+      // Use _fetchError here if needed for error handling
+      if (_fetchError) throw _fetchError;
       if (gameData?.player1_selection_complete && gameData?.player2_selection_complete) {
         navigate(`/game/${gameId}`);
       }
