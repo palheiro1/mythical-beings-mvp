@@ -1,8 +1,8 @@
 {
-  "files": [],
   "references": [
     { "path": "./tsconfig.app.json" },
     { "path": "./tsconfig.node.json" }
   ],
-  "exclude": ["node_modules", "tests"]
+  "exclude": ["node_modules", "tests", "dist"],
+  "files": [] // Explicitly tell the root config not to compile files directly
 }

@@ -1,5 +1,6 @@
 {
   "compilerOptions": {
+    "composite": true, // Added for project references
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
     "target": "ES2020",
     "useDefineForClassFields": true,
@@ -8,21 +9,24 @@
     "skipLibCheck": true,
 
     /* Bundler mode */
-    "moduleResolution": "bundler",
-    "allowImportingTsExtensions": true,
+    "moduleResolution": "NodeNext", // Changed from "bundler"
     "resolveJsonModule": true, // Added from TODO
     "isolatedModules": true,
     "moduleDetection": "force",
-    "noEmit": true,
     "jsx": "react-jsx",
+
+    /* Output */
+    "declaration": true, // Explicitly enable declaration files
+    "declarationMap": true, // Optional: Generate source maps for declarations
+    "outDir": "dist", // Specify output directory
+    "rootDir": "src", // Specify root directory of source files
 
     /* Linting */
     "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
-    "noUncheckedSideEffectImports": true,
     "forceConsistentCasingInFileNames": true // Added from TODO
   },
-  "include": ["src"]
+  "include": ["src", "src/**/*.json"] // Keep include as is, rootDir handles the base
 }
