@@ -119,11 +119,17 @@ export function summonKnowledge(state: GameState, payload: { playerId: string; k
   player.hand = player.hand.filter(k => k.instanceId !== instanceId);
 
   const fieldSlotIndex = player.field.findIndex(f => f.creatureId === creatureId);
-  if (fieldSlotIndex === -1) return state;
+  if (fieldSlotIndex === -1) {
+    console.warn(`[Action] Field slot not found for creatureId ${creatureId} during SUMMON_KNOWLEDGE.`);
+    return state; // Return state if slot not found
+  }
+
+  // Ensure the knowledge card has rotation set to 0 when summoned
+  const knowledgeToPlace = { ...knowledgeCard, rotation: 0 };
 
   player.field = [
     ...player.field.slice(0, fieldSlotIndex),
-    { creatureId: creatureId, knowledge: { ...knowledgeCard, rotation: 0 } },
+    { creatureId: creatureId, knowledge: knowledgeToPlace }, // Assign the knowledge card
     ...player.field.slice(fieldSlotIndex + 1),
   ];
 

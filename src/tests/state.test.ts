@@ -183,9 +183,9 @@ describe('gameReducer basic actions', () => {
       type: "SUMMON_KNOWLEDGE",
       payload: {
         playerId: player1Id,
-        knowledgeId: knowledgeToSummon.instanceId, // Use the instanceId
+        knowledgeId: knowledgeToSummon.id, // Use the base ID
         creatureId: dudugeraData.id,
-        instanceId: knowledgeToSummon.instanceId, // Add instanceId to payload
+        instanceId: knowledgeToSummon.instanceId, // Keep instanceId for finding the card
       },
     };
     const stateAfterSummon = gameReducer(state, summonAction);
@@ -315,7 +315,7 @@ describe('gameReducer - Passive Abilities', () => {
           type: 'SUMMON_KNOWLEDGE',
           payload: {
               playerId: 'player1',
-              knowledgeId: airKnowledge.instanceId, // Use the instanceId
+              knowledgeId: airKnowledge.id, // Corrected: Use the base ID
               creatureId: japinunusId,
               instanceId: airKnowledge.instanceId, // Add instanceId to payload
           },
@@ -326,7 +326,7 @@ describe('gameReducer - Passive Abilities', () => {
       expect(newState).not.toBeNull();
       if (!newState) throw new Error("Reducer returned null");
 
-      expect(newState.log.some(l => l.includes('[Passive Effect] Japinunus (Owner: player1) grants +1 Power'))).toBe(true);
+      expect(newState.log.some(l => l.includes(`[Passive Effect] Japinunus (Owner: ${player1Id}) grants +1 Power due to summoning ${airKnowledge.name}`))).toBe(true);
       expect(newState.players[0].power).toBe(state.players[0].power + 1);
   });
 });
