@@ -1,7 +1,7 @@
-import { knowledgeEffects } from './effects';
+import { knowledgeEffects } from './effects.js';
 // Removed unused CombatBuffers import
 import { GameState, GameAction, Knowledge } from './types';
-import { applyPassiveAbilities } from './passives';
+import { applyPassiveAbilities } from './passives.js';
 
 // Constants
 const MAX_HAND_SIZE = 5;

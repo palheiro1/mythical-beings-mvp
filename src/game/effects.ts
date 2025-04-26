@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 // Removed unused imports: KnowledgeType, CreatureElement
 import { GameState, Knowledge } from './types';
-import { applyPassiveAbilities } from './passives'; // Import applyPassiveAbilities
+import { applyPassiveAbilities } from './passives.js'; // Import applyPassiveAbilities
 
 // Effect function signature
 export type KnowledgeEffectFn = (params: {

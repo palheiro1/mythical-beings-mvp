@@ -1,10 +1,10 @@
 import { GameState, GameAction, PlayerState, Knowledge, Creature } from './types';
-import { isValidAction, executeKnowledgePhase, checkWinCondition } from './rules';
-import { rotateCreature, drawKnowledge, summonKnowledge } from './actions';
-import { applyPassiveAbilities } from './passives';
+import { isValidAction, executeKnowledgePhase, checkWinCondition } from './rules.js';
+import { rotateCreature, drawKnowledge, summonKnowledge } from './actions.js';
+import { applyPassiveAbilities } from './passives.js';
 import knowledgeData from '../assets/knowledges.json';
 import creatureData from '../assets/creatures.json';
-import { getPlayerState } from './utils';
+import { getPlayerState } from './utils.js';
 import { v4 as uuidv4 } from 'uuid';
 
 // Constants

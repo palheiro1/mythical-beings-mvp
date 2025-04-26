@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { isValidAction, checkWinCondition, executeKnowledgePhase } from '../src/game/rules';
-import { GameState, GameAction, PlayerState, Creature, Knowledge } from '../src/game/types';
-import { initializeGame } from '../src/game/state';
+import { isValidAction, checkWinCondition, executeKnowledgePhase } from '../src/game/rules.js';
+import { GameState, GameAction, PlayerState, Creature, Knowledge } from '../src/game/types.js';
+import { initializeGame } from '../src/game/state.js';
 import creatureData from '../src/assets/creatures.json';
 import knowledgeData from '../src/assets/knowledges.json';
 import { v4 as uuidv4 } from 'uuid';

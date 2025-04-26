@@ -5,11 +5,11 @@ vi.mock('uuid', () => ({
 }));
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import { initializeGame, gameReducer, injectInstanceIds } from '../src/game/state';
+import { initializeGame, gameReducer, injectInstanceIds } from '../src/game/state.js';
 import { GameState, GameAction, PlayerState, Creature, Knowledge } from '../src/game/types';
-import * as rules from '../src/game/rules'; // Import all from rules
-import * as actions from '../src/game/actions'; // Import all from actions
-import * as passives from '../src/game/passives'; // Import passives module
+import * as rules from '../src/game/rules.js'; // Import all from rules
+import * as actions from '../src/game/actions.js'; // Import all from actions
+import * as passives from '../src/game/passives.js'; // Import passives module
 import creatureData from '../src/assets/creatures.json';
 import knowledgeData from '../src/assets/knowledges.json';
 import { v4 as uuidv4 } from 'uuid'; // Import AFTER the mock
