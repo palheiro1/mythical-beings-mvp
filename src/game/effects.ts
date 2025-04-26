@@ -210,7 +210,6 @@ export const knowledgeEffects: Record<string, KnowledgeEffectFn> = {
   aquatic2: ({ state, playerIndex, fieldSlotIndex }) => {
     const opponentIndex = playerIndex === 0 ? 1 : 0;
     const opponentFieldSlot = state.players[opponentIndex].field[fieldSlotIndex];
-    // Removed unused 'defense' variable
     if (opponentFieldSlot && opponentFieldSlot.knowledge) {
       state.log.push(`Aquatic2: No defense granted (opposing creature has knowledge).`);
     } else {

@@ -277,16 +277,21 @@ const NFTSelection: React.FC = () => {
     let cancelled = false;
     const checkImmediateCompletion = async () => {
       try {
-        const { data: gameData, error: fetchError } = await supabase
+        // Prefix unused fetchError with underscore
+        const { data: gameData, error: _fetchError } = await supabase
           .from('games')
           .select('player1_selection_complete, player2_selection_complete')
           .eq('id', gameId)
           .single();
+        // Use _fetchError here if needed for error handling
+        if (_fetchError) console.warn("[NFTSelection] Error during immediate completion check:", _fetchError.message); // Example usage
+
         if (!cancelled && gameData?.player1_selection_complete && gameData?.player2_selection_complete) {
           navigate(`/game/${gameId}`);
         }
       } catch (err) {
         // Optionally log error
+        console.warn("[NFTSelection] Exception during immediate completion check:", err);
       }
     };
     checkImmediateCompletion();
