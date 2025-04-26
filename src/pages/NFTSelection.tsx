@@ -77,13 +77,13 @@ const NFTSelection: React.FC = () => {
     try {
       console.log(`[NFTSelection] Confirming selection for player ${currentPlayerId} in game ${gameId}`);
 
-      const { data: gameData, error: fetchError } = await supabase
+      const { data: gameData, error: _fetchError } = await supabase
         .from('games')
         .select('player1_id, player2_id')
         .eq('id', gameId)
         .single();
 
-      if (fetchError) throw fetchError;
+      if (_fetchError) throw _fetchError;
       if (!gameData) throw new Error("Game not found during confirmation.");
 
       const isPlayer1 = gameData.player1_id === currentPlayerId;
@@ -202,14 +202,6 @@ const NFTSelection: React.FC = () => {
 
         if (!isPlayer1 && !isPlayer2) {
           throw new Error("You are not part of this game.");
-        }
-
-        const dealtHandIds: string[] = isPlayer1 ? gameData.player1_dealt_hand : gameData.player2_dealt_hand;
-        const selectionComplete: boolean = isPlayer1 ? gameData.player1_selection_complete : gameData.player2_selection_complete;
-
-
-        if (!gameData) {
-          throw new Error("Game not found.");
         }
 
         const dealtHandIds: string[] = isPlayer1 ? gameData.player1_dealt_hand : gameData.player2_dealt_hand;

@@ -1,5 +1,4 @@
-import { GameState, PassiveTriggerType, PassiveEventData, PlayerState } from './types'; // Import PlayerState
-import { getOpponentPlayerIndex, getPlayerIndex } from './utils'; // Use index getters
+import { GameState, PassiveTriggerType, PassiveEventData, Knowledge, KnowledgeType, CreatureElement } from './types';
 import { v4 as uuidv4 } from 'uuid';
 
 /**
@@ -153,7 +152,20 @@ export function applyPassiveAbilities(
               } else {
                   // MVP: Discard the first one found
                   const { slot, idx } = lowerCostSlots[0];
-                  const discardedKnowledge = { ...slot.knowledge }; // Copy before nullifying
+                  // Ensure the knowledge object passed to passives is complete
+                  const discardedKnowledge: Knowledge = {
+                      ...slot.knowledge!, // Use non-null assertion
+                      // Ensure required fields have defaults if potentially missing from spread
+                      type: slot.knowledge!.type ?? 'spell',
+                      element: slot.knowledge!.element ?? 'neutral',
+                      cost: slot.knowledge!.cost ?? 0,
+                      effect: slot.knowledge!.effect ?? '',
+                      maxRotations: slot.knowledge!.maxRotations ?? 4,
+                      id: slot.knowledge!.id ?? 'unknown',
+                      name: slot.knowledge!.name ?? 'Unknown Knowledge',
+                      instanceId: slot.knowledge!.instanceId ?? 'unknown-instance',
+                      rotation: slot.knowledge!.rotation ?? 0,
+                  };
                   opponent.field[idx].knowledge = null; // Modify opponent directly in newState
                   newState.discardPile.push(discardedKnowledge);
                   newState.log.push(`[Passive Effect] Pele (Owner: ${player.id}) discards opponent's knowledge ${discardedKnowledge.name} (cost ${discardedKnowledge.cost}) due to summoning ${summonedKnowledge.name} (cost ${summonedKnowledge.cost}). [TODO: Let user choose if multiple]`);
@@ -163,7 +175,7 @@ export function applyPassiveAbilities(
                   newState = applyPassiveAbilities(newState, 'KNOWLEDGE_LEAVE', {
                       playerId: opponent.id,
                       creatureId: opponent.field[idx].creatureId, // Use the creatureId from the field slot
-                      knowledgeCard: discardedKnowledge
+                      knowledgeCard: discardedKnowledge // Pass validated object
                   });
               }
           }
@@ -239,11 +251,13 @@ export function applyPassiveAbilities(
 }
 
 // Helper to get opponent index (avoids direct dependency if utils are complex)
+// Keep these local helpers as the import from utils was causing issues
 function getOpponentPlayerIndex(state: GameState, playerId: string): number {
     return state.players.findIndex(p => p.id !== playerId);
 }
 
 // Helper to get player index
+// Keep these local helpers
 function getPlayerIndex(state: GameState, playerId: string): number {
     return state.players.findIndex(p => p.id === playerId);
 }
