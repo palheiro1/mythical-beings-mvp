@@ -19,6 +19,19 @@ This checklist will guide the step-by-step creation and restructure of a robust,
 
 ## 3. Passive Abilities
 - [ ] List all creature passives from `passives.ts`
+  - [ ] Caapora: `TURN_START` - If opponent has > cards in hand, deal 1 damage to opponent.
+  - [ ] Adaro: `AFTER_PLAYER_SUMMON` (on self) - If summoned knowledge is water, draw 1 card from market (free).
+  - [ ] Kyzy: `AFTER_PLAYER_SUMMON` or `AFTER_OPPONENT_SUMMON` - If opponent summoned earth knowledge, force summoner to discard 1 card.
+  - [ ] Japinunus: `AFTER_PLAYER_SUMMON` or `AFTER_OPPONENT_SUMMON` - If owner summoned air knowledge, owner gains +1 Power.
+  - [ ] Kappa: (Handled elsewhere) - Summoning aquatic knowledge is a free action.
+  - [ ] Dudugera: (Handled elsewhere) - Summoning knowledge onto Dudugera is a free action.
+  - [ ] Inkanyamba: `AFTER_PLAYER_DRAW` - Discard 1 card from market.
+  - [ ] Lisovik: `KNOWLEDGE_LEAVE` (owner's knowledge) - If leaving knowledge is earth, deal 1 damage to opponent.
+  - [ ] Pele: `AFTER_PLAYER_SUMMON` or `AFTER_OPPONENT_SUMMON` - If owner summoned earth knowledge, discard 1 opponent knowledge with lower cost.
+  - [ ] Tsenehale: `KNOWLEDGE_LEAVE` (on self) - If leaving knowledge is air, owner gains +1 Power.
+  - [ ] Tulpar: `AFTER_PLAYER_SUMMON` or `AFTER_OPPONENT_SUMMON` - If owner summoned air knowledge, rotate one of owner's creatures 90º.
+  - [ ] Trepulcahue: `TURN_START` - If owner has > cards in hand than opponent, deal 1 damage to opponent.
+  - [ ] Zhar-Ptitsa: `TURN_START` - Draw 1 card from market (free).
 - [✅] Dudugera: Test trigger conditions (summon) - Covered in `tests/state.test.ts`
 - [✅] Dudugera: Test effect on game state (wisdom gain) - Covered in `tests/state.test.ts`
 - [✅] Dudugera: Test log output - Covered in `tests/state.test.ts`
