@@ -19,10 +19,10 @@ This checklist will guide the step-by-step creation and restructure of a robust,
 
 ## 3. Passive Abilities
 - [ ] List all creature passives from `passives.ts`
-  - [ ] Caapora: `TURN_START` - If opponent has > cards in hand, deal 1 damage to opponent.
-  - [ ] Adaro: `AFTER_PLAYER_SUMMON` (on self) - If summoned knowledge is water, draw 1 card from market (free).
-  - [ ] Kyzy: `AFTER_PLAYER_SUMMON` or `AFTER_OPPONENT_SUMMON` - If opponent summoned earth knowledge, force summoner to discard 1 card.
-  - [ ] Japinunus: `AFTER_PLAYER_SUMMON` or `AFTER_OPPONENT_SUMMON` - If owner summoned air knowledge, owner gains +1 Power.
+  - [✅] Caapora: `TURN_START` - If opponent has > cards in hand, deal 1 damage to opponent.
+  - [✅] Adaro: `AFTER_PLAYER_SUMMON` (on self) - If summoned knowledge is water, draw 1 card from market (free).
+  - [✅] Kyzy: `AFTER_SUMMON` (Any) - If earth knowledge summoned, force OPPONENT of Kyzy's owner to discard 1 card.
+  - [✅] Japinunus: `AFTER_SUMMON` (Owner) - If owner summoned air knowledge, owner gains +1 Power.
   - [ ] Kappa: (Handled elsewhere) - Summoning aquatic knowledge is a free action.
   - [ ] Dudugera: (Handled elsewhere) - Summoning knowledge onto Dudugera is a free action.
   - [ ] Inkanyamba: `AFTER_PLAYER_DRAW` - Discard 1 card from market.

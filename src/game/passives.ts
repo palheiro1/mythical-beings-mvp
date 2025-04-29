@@ -63,41 +63,53 @@ export function applyPassiveAbilities(
         }
       }
 
-      // Kyzy
+      // Kyzy: AFTER_PLAYER_SUMMON or AFTER_OPPONENT_SUMMON - If ANY player summons earth knowledge, force the OPPONENT of Kyzy's owner to discard 1 card.
       else if (creature.id === 'kyzy' && (trigger === 'AFTER_PLAYER_SUMMON' || trigger === 'AFTER_OPPONENT_SUMMON')) {
         const summonedKnowledge = eventData.knowledgeCard;
-        const summoningPlayerId = eventData.playerId;
-        const opponentOfSummonerIdx = getOpponentPlayerIndex(newState, summoningPlayerId);
-        const opponentOfSummoner = opponentOfSummonerIdx !== -1 ? newState.players[opponentOfSummonerIdx] : null;
 
-        // Check if *this* Kyzy's owner (player) is the opponent of the summoner
-        if (summonedKnowledge && summonedKnowledge.element === 'earth' && opponentOfSummoner && opponentOfSummoner.id === player.id) {
-          newState.log.push(`[Passive Effect] Kyzy (Owner: ${player.id}) forces discard from ${summoningPlayerId} (summoner).`);
-          const summonerIdx = getPlayerIndex(newState, summoningPlayerId);
-          if (summonerIdx !== -1) {
-            const summoner = newState.players[summonerIdx];
-            if (summoner.hand.length > 0) {
-              const discardedCard = summoner.hand.pop(); // Discard last card from summoner
-              if (discardedCard) {
-                newState.discardPile.push(discardedCard);
-                newState.log.push(`[Passive Effect] ${summoner.id} discarded ${discardedCard.name}.`);
-              }
+        // NEW LOGIC: Check if the summoned knowledge is earth
+        if (summonedKnowledge && summonedKnowledge.element === 'earth') {
+          // Identify the opponent of Kyzy's owner ('player')
+          const opponentOfOwnerIdx = getOpponentPlayerIndex(newState, player.id);
+          if (opponentOfOwnerIdx === -1) return; // Should not happen in a 2-player game
+
+          const opponentOfOwner = newState.players[opponentOfOwnerIdx];
+          // Find a card in the opponent's hand to discard.
+          // If the opponent was the one summoning, don't discard the card they just summoned.
+          const cardToDiscard = opponentOfOwner.hand.find(card => card.instanceId !== summonedKnowledge.instanceId);
+
+          if (cardToDiscard) {
+            newState.log.push(`[Passive Effect] Kyzy (Owner: ${player.id}) forces discard from opponent ${opponentOfOwner.id}.`);
+            // Modify opponent's hand directly in newState
+            opponentOfOwner.hand = opponentOfOwner.hand.filter(card => card.instanceId !== cardToDiscard.instanceId);
+            newState.discardPile.push(cardToDiscard);
+            newState.log.push(`[Passive Effect] ${opponentOfOwner.id} discarded ${cardToDiscard.name} due to Kyzy passive.`);
+          } else {
+            // Check if the opponent's only card was the one they just summoned
+            const onlyCardWasSummoned = opponentOfOwner.hand.length === 1 && opponentOfOwner.hand[0].instanceId === summonedKnowledge.instanceId;
+            if (opponentOfOwner.hand.length === 0 || onlyCardWasSummoned) {
+              newState.log.push(`[Passive Effect] Kyzy triggered discard, but opponent ${opponentOfOwner.id} had no other cards to discard.`);
             } else {
-              newState.log.push(`[Passive Effect] ${summoner.id} had no cards to discard.`);
+              // This case should ideally not be reached if the find logic is correct, but added for safety.
+              // It implies the opponent had cards, but none could be chosen (e.g., only the summoned card was left).
+              newState.log.push(`[Passive Effect] Kyzy triggered discard, but opponent ${opponentOfOwner.id} had no valid cards to discard.`);
             }
           }
         }
       }
 
-      // Japinunus
+      // Japinunus: AFTER_PLAYER_SUMMON or AFTER_OPPONENT_SUMMON - If owner summoned air knowledge, owner gains +1 Power.
       else if (creature.id === 'japinunus' && (trigger === 'AFTER_PLAYER_SUMMON' || trigger === 'AFTER_OPPONENT_SUMMON')) {
         const summonedKnowledge = eventData.knowledgeCard;
         const summoningPlayerId = eventData.playerId;
-        // Check if the owner of this Japinunus (player) is the one who summoned
-        if (summonedKnowledge && summonedKnowledge.element === 'air' && player.id === summoningPlayerId) {
-          const oldPower = player.power;
+
+        // Check if the summoner is the owner of this Japinunus AND the knowledge is air
+        if (player.id === summoningPlayerId && summonedKnowledge && summonedKnowledge.element === 'air') {
+          const initialPower = player.power; // Get power before modification
           player.power += 1; // Modify player directly in newState
-          newState.log.push(`[Passive Effect] Japinunus (Owner: ${player.id}) grants +1 Power due to summoning ${summonedKnowledge.name}. Power: ${oldPower} -> ${player.power}`);
+          // Add the missing log messages
+          newState.log.push(`[Passive Effect] Japinunus (Owner: ${player.id}) grants +1 Power to owner.`);
+          newState.log.push(`Power: ${initialPower} -> ${player.power}`);
         }
       }
 
