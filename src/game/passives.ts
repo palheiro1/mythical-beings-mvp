@@ -117,22 +117,22 @@ export function applyPassiveAbilities(
 
       // Dudugera - Logic handled in isValidAction / reducer
 
-      // Inkanyamba
-      else if (creature.id === 'inkanyamba' && trigger === 'AFTER_PLAYER_DRAW' && eventData.playerId === player.id) {
-        newState.log.push(`[Passive Effect] Inkanyamba (Owner: ${player.id}) triggers market discard.`);
-        if (newState.market.length > 0) {
-          const discardedCard = newState.market.shift();
-          if (discardedCard) {
-            newState.discardPile.push(discardedCard);
-            newState.log.push(`[Passive Effect] ${discardedCard.name} discarded from Market.`);
-            if (newState.knowledgeDeck.length > 0) {
-              const refillCard = { ...newState.knowledgeDeck.shift()!, instanceId: uuidv4() };
-              newState.market.push(refillCard);
-              newState.log.push(`[Passive Effect] Market refilled with ${refillCard.name}.`);
-            }
+      // Inkanyamba: AFTER_PLAYER_DRAW - Discard 1 card from market.
+      else if (creature.id === 'inkanyamba' && trigger === 'AFTER_PLAYER_DRAW') {
+        const drawingPlayerId = eventData.playerId;
+        // Check if the drawing player is the owner of this Inkanyamba
+        if (player.id === drawingPlayerId && newState.market.length > 0) {
+          const cardToDiscard = newState.market[0]; // Discard the first card
+          newState.market = newState.market.slice(1);
+          newState.discardPile.push(cardToDiscard);
+          // Add the missing log message
+          newState.log.push(`[Passive Effect] Inkanyamba (Owner: ${player.id}) discards ${cardToDiscard.name} from Market.`);
+          // Refill market if deck has cards
+          if (newState.knowledgeDeck.length > 0) {
+            const refillCard = newState.knowledgeDeck[0];
+            newState.knowledgeDeck = newState.knowledgeDeck.slice(1);
+            newState.market.push(refillCard);
           }
-        } else {
-          newState.log.push(`[Passive Effect] Inkanyamba triggered, but Market is empty.`);
         }
       }
 

@@ -5,16 +5,16 @@ This checklist will guide the step-by-step creation and restructure of a robust,
 ## 1. Core Game Logic
 - [✅] Test game initialization (basic parameters) - Covered in `tests/state.test.ts`
 - [ ] Test game initialization (edge cases)
-- [✅] Test turn transitions (knowledge phase -> action phase) - Covered in `tests/rules.test.ts`
+- [✅] Test turn transitions (knowledge phase -> action phase) - Covered in `tests/rules.ts`
 - [✅] Test turn transitions (action phase -> end turn -> knowledge phase)
-- [✅] Test win conditions (basic scenarios) - Covered in `tests/rules.test.ts`
+- [✅] Test win conditions (basic scenarios) - Covered in `tests/rules.ts`
 - [ ] Test win conditions (edge cases, e.g., simultaneous)
-- [✅] Test action-per-turn limits and resets - Covered in `tests/rules.test.ts`
+- [✅] Test action-per-turn limits and resets - Covered in `tests/rules.ts`
 
 ## 2. Action Validation
-- [✅] Test all valid actions (rotate, draw, summon, end turn) - Covered in `tests/rules.test.ts`
-- [✅] Test all invalid actions (wrong phase, wrong player, invalid payload) - Covered in `tests/rules.test.ts`
-- [✅] Test edge cases (full hand, insufficient wisdom, creature occupied) - Covered in `tests/rules.test.ts`
+- [✅] Test all valid actions (rotate, draw, summon, end turn) - Covered in `tests/rules.ts`
+- [✅] Test all invalid actions (wrong phase, wrong player, invalid payload) - Covered in `tests/rules.ts`
+- [✅] Test edge cases (full hand, insufficient wisdom, creature occupied) - Covered in `tests/rules.ts`
 - [ ] Test edge cases (empty market, empty deck, blocked slots)
 
 ## 3. Passive Abilities
