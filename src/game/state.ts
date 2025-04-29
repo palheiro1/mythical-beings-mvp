@@ -5,7 +5,6 @@ import { applyPassiveAbilities } from './passives.js';
 import knowledgeData from '../assets/knowledges.json';
 import creatureData from '../assets/creatures.json';
 import { getPlayerState } from './utils.js';
-import { v4 as uuidv4 } from 'uuid';
 
 // Constants
 const INITIAL_POWER = 20;
@@ -22,20 +21,47 @@ function shuffleArray<T>(array: T[]): T[] {
   return array;
 }
 
+// Helper function for debugging duplicate IDs
+function checkForDuplicateIds(state: GameState, stepName: string): void {
+  const ids = new Set<string>();
+  let duplicateFound = false;
+  const check = (card: Knowledge | null | undefined, location: string) => {
+    if (card?.instanceId) {
+      if (ids.has(card.instanceId)) {
+        console.error(`DUPLICATE ID DETECTED at step "${stepName}" in ${location}: ${card.instanceId}`, card);
+        duplicateFound = true;
+      }
+      ids.add(card.instanceId);
+    }
+  };
+  state.market.forEach(c => check(c, 'market'));
+  state.knowledgeDeck.forEach(c => check(c, 'knowledgeDeck'));
+  state.players.forEach((p, idx) => p.hand.forEach(c => check(c, `player ${idx+1} hand`)));
+  state.players.forEach((p, idx) => p.field.forEach(s => check(s.knowledge, `player ${idx+1} field`)));
+  state.discardPile.forEach(c => check(c, 'discardPile'));
+
+  if (duplicateFound) {
+    console.error(`---> Duplicate instanceId found during step: ${stepName}`);
+  } else {
+     console.log(`---> No duplicate instanceIds found after step: ${stepName}`);
+  }
+}
+
 // Export for testing purposes
 export function injectInstanceIds(state: GameState): GameState {
-  const ensureInstanceId = (card: Knowledge) => ({ ...card, instanceId: card.instanceId || uuidv4() });
+  // Always assign a new unique instanceId to every knowledge card
+  const assignNewInstanceId = (card: Knowledge) => ({ ...card, instanceId: crypto.randomUUID() });
   return {
     ...state,
-    market: state.market.map(ensureInstanceId),
-    knowledgeDeck: state.knowledgeDeck.map(ensureInstanceId),
-    discardPile: state.discardPile.map(ensureInstanceId),
+    market: state.market.map(assignNewInstanceId),
+    knowledgeDeck: state.knowledgeDeck.map(assignNewInstanceId),
+    discardPile: state.discardPile.map(assignNewInstanceId),
     players: state.players.map(p => ({
       ...p,
-      hand: p.hand.map(ensureInstanceId),
+      hand: p.hand.map(assignNewInstanceId),
       field: p.field.map(slot =>
         slot.knowledge
-          ? { creatureId: slot.creatureId, knowledge: ensureInstanceId(slot.knowledge) }
+          ? { creatureId: slot.creatureId, knowledge: assignNewInstanceId(slot.knowledge) }
           : slot
       ),
     })) as [PlayerState, PlayerState],
@@ -95,7 +121,7 @@ export function initializeGame(payload: InitializeGamePayload): GameState {
         break;
     }
     for (let i = 0; i < copies; i++) {
-      fullDeck.push({ ...card, instanceId: uuidv4() });
+      fullDeck.push({ ...card, instanceId: crypto.randomUUID() });
     }
   });
 
@@ -121,9 +147,13 @@ export function initializeGame(payload: InitializeGamePayload): GameState {
     log: [`Game ${gameId} initialized. Player 1 starts.`],
     blockedSlots: { 0: [], 1: [] }, // Initialize blockedSlots
   };
+  checkForDuplicateIds(initialState, "After initial deal"); // Check 1
 
   initialState = applyPassiveAbilities(initialState, 'TURN_START', { playerId: initialState.players[0].id });
+  checkForDuplicateIds(initialState, "After applyPassiveAbilities"); // Check 2
+
   initialState = executeKnowledgePhase(initialState);
+  checkForDuplicateIds(initialState, "After executeKnowledgePhase"); // Check 3
 
   const winner = checkWinCondition(initialState);
   if (winner) {
@@ -131,6 +161,8 @@ export function initializeGame(payload: InitializeGamePayload): GameState {
   }
 
   const finalState = injectInstanceIds(initialState);
+  checkForDuplicateIds(finalState, "After injectInstanceIds"); // Check 4
+
   console.log("[Reducer] INITIALIZE_GAME completed. Initial state:", finalState);
   return finalState;
 }
