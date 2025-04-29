@@ -8,7 +8,7 @@ interface HandsColumnProps {
     isMyTurn: boolean;
     phase: 'knowledge' | 'action' | 'end';
     selectedKnowledgeId: string | null;
-    onHandCardClick: (knowledgeId: string) => void;
+    onHandCardClick: (instanceId: string) => void; // Change signature to expect instanceId
 }
 
 const HandsColumn: React.FC<HandsColumnProps> = ({
@@ -80,16 +80,21 @@ const HandsColumn: React.FC<HandsColumnProps> = ({
                     ) : (
                         currentPlayerHand.slice(0, maxVisibleCards).map((card, idx) => {
                             const isDisabled = !isMyTurn || phase !== 'action';
+                            // Ensure card.instanceId exists before using it
+                            const instanceId = card.instanceId || `fallback-instance-${card.id}-${idx}`;
+                            if (!card.instanceId) {
+                                console.warn(`Card in hand missing instanceId: ${card.name} (${card.id})`);
+                            }
                             return (
                                 // Container defines size with hover effect - REMOVED hover:scale-110 and cursor-pointer
                                 <div
-                                    key={card.id + idx + '-player'}
-                                    className={`h-[85%] aspect-[2/3] transition-all ${selectedKnowledgeId === card.id ? 'ring-2 ring-yellow-400 scale-105' : ''}`}
-                                    onClick={!isDisabled ? () => onHandCardClick(card.id) : undefined}
+                                    key={instanceId} // Use instanceId for key
+                                    className={`h-[85%] aspect-[2/3] transition-all ${selectedKnowledgeId === instanceId ? 'ring-2 ring-yellow-400 scale-105' : ''}`} // Compare with instanceId
+                                    onClick={!isDisabled ? () => onHandCardClick(instanceId) : undefined} // Pass instanceId
                                 >
                                     <Card
                                         card={card}
-                                        isSelected={selectedKnowledgeId === card.id}
+                                        isSelected={selectedKnowledgeId === instanceId} // Compare with instanceId
                                         isDisabled={isDisabled} // Pass isDisabled to Card
                                     />
                                 </div>

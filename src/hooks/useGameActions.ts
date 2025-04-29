@@ -1,5 +1,5 @@
 import { useCallback, useRef } from 'react';
-import { GameState, GameAction } from '../game/types';
+import { GameState, GameAction, Knowledge } from '../game/types'; // Import Knowledge type
 import { gameReducer } from '../game/state';
 import { updateGameState } from '../utils/supabase';
 import { isValidAction } from '../game/rules';
@@ -99,16 +99,16 @@ export function useGameActions(
     const handleDrawKnowledge = useCallback((knowledgeId: string) => {
         if (!currentPlayerId) return;
         if (!currentGameState) return;
-    const knowledgeCard = currentGameState.market.find(k => k.id === knowledgeId);
-    if (!knowledgeCard || !knowledgeCard.instanceId) return;
-    const action: GameAction = { 
-      type: 'DRAW_KNOWLEDGE', 
-      payload: { 
-        playerId: currentPlayerId, 
-        knowledgeId, 
-        instanceId: knowledgeCard.instanceId 
-      } 
-    };
+        const knowledgeCard = currentGameState.market.find(k => k.id === knowledgeId);
+        if (!knowledgeCard || !knowledgeCard.instanceId) return;
+        const action: GameAction = { 
+            type: 'DRAW_KNOWLEDGE', 
+            payload: { 
+                playerId: currentPlayerId, 
+                knowledgeId, 
+                instanceId: knowledgeCard.instanceId 
+            } 
+        };
         handleAction(action);
     }, [handleAction, currentPlayerId]);
 
@@ -117,21 +117,38 @@ export function useGameActions(
     }, []);
 
     const handleCreatureClickForSummon = useCallback((targetCreatureId: string) => {
-        if (!currentPlayerId || !selectedKnowledgeId) {
-            console.warn("[Action] Cannot summon: Missing player ID or selected knowledge card.");
+        if (!currentPlayerId || !selectedKnowledgeId || !currentGameState) { // Add check for currentGameState
+            console.warn("[Action] Cannot summon: Missing player ID, selected knowledge card, or game state.");
             return;
         }
+
+        // Find the player state
+        const playerState = currentGameState.players.find(p => p.id === currentPlayerId);
+        if (!playerState) {
+            console.error("[Action] Cannot summon: Player state not found.");
+            return;
+        }
+
+        // Find the selected card in the player's hand using the instanceId
+        const selectedCard = playerState.hand.find(card => card.instanceId === selectedKnowledgeId);
+
+        if (!selectedCard) {
+            console.error(`[Action] Cannot summon: Selected card with instanceId ${selectedKnowledgeId} not found in hand.`);
+            // It's possible selectedKnowledgeId state is stale, consider clearing it here
+            return;
+        }
+
         const action: GameAction = {
             type: 'SUMMON_KNOWLEDGE',
             payload: {
                 playerId: currentPlayerId,
-                knowledgeId: selectedKnowledgeId,
+                knowledgeId: selectedCard.id, // Use the base ID from the found card
                 creatureId: targetCreatureId,
-                instanceId: selectedKnowledgeId // Assuming selectedKnowledgeId is the instanceId
+                instanceId: selectedKnowledgeId // Keep using the instanceId here
             }
         };
         handleAction(action);
-    }, [handleAction, currentPlayerId, selectedKnowledgeId]);
+    }, [handleAction, currentPlayerId, selectedKnowledgeId, currentGameState]); // Add currentGameState dependency
 
     const handleEndTurn = useCallback(() => {
         if (!currentPlayerId) return;
