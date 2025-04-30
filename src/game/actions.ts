@@ -1,7 +1,17 @@
 import { GameState, Knowledge, PlayerState, SummonKnowledgePayload } from './types';
 import { getCreatureWisdom, getPlayerState, getOpponentState } from './utils.js';
 import { v4 as uuidv4 } from 'uuid';
-import { applyPassiveAbilities } from './passives'; // Make sure this is imported
+// Remove applyPassiveAbilities import if no longer used here
+
+// Define a return type that includes info about leaving knowledge
+export type SummonKnowledgeResult = {
+  newState: GameState;
+  leavingKnowledgeInfo: {
+    playerId: string;
+    creatureId: string;
+    knowledgeCard: Knowledge;
+  } | null;
+};
 
 /**
  * Rotates a creature, increasing its wisdom.
@@ -96,51 +106,42 @@ export function drawKnowledge(state: GameState, payload: { playerId: string; kno
  * Assumes the action is valid.
  * @param state The current game state.
  * @param payload Data for the action (playerId, knowledgeId, instanceId, creatureId).
- * @returns The updated game state.
+ * @returns The updated game state and info about any knowledge that left.
  */
-export function summonKnowledge(state: GameState, payload: SummonKnowledgePayload): GameState {
+export function summonKnowledge(state: GameState, payload: SummonKnowledgePayload): SummonKnowledgeResult {
   const { playerId, knowledgeId, instanceId, creatureId } = payload;
   const newState = JSON.parse(JSON.stringify(state)) as GameState;
   const player = getPlayerState(newState, playerId);
-  const opponent = getOpponentState(newState, playerId); // Needed for Lisovik target
 
-  if (!player) return newState; // Should not happen if validation passed
-
+  // Basic validation (should ideally be covered by isValidAction, but good safety net)
+  if (!player) return { newState, leavingKnowledgeInfo: null };
   const knowledgeIndex = player.hand.findIndex(k => k.instanceId === instanceId);
   if (knowledgeIndex === -1) {
     console.error(`[Action] summonKnowledge: Knowledge ${instanceId} not found in hand of player ${playerId}`);
-    return newState; // Card not found
+    return { newState, leavingKnowledgeInfo: null };
   }
   const knowledgeToSummon = player.hand[knowledgeIndex];
-
   const fieldIndex = player.field.findIndex(f => f.creatureId === creatureId);
   if (fieldIndex === -1) {
     console.error(`[Action] summonKnowledge: Creature slot ${creatureId} not found for player ${playerId}`);
-    return newState; // Creature slot not found
+    return { newState, leavingKnowledgeInfo: null };
   }
 
   let leavingKnowledge: Knowledge | null = null;
+  let leavingKnowledgeInfo: SummonKnowledgeResult['leavingKnowledgeInfo'] = null;
 
-  // --- Handle Knowledge Replacement and KNOWLEDGE_LEAVE Trigger ---
+  // --- Handle Knowledge Replacement ---
   if (player.field[fieldIndex].knowledge) {
     leavingKnowledge = player.field[fieldIndex].knowledge;
     console.log(`[Action] summonKnowledge: Replacing ${leavingKnowledge?.name} (${leavingKnowledge?.instanceId}) on ${creatureId}`);
     newState.discardPile.push(leavingKnowledge!); // Add replaced card to discard
-
-    // Trigger KNOWLEDGE_LEAVE passive
-    const eventDataLeave = {
-      playerId: playerId, // The player whose knowledge is leaving
+    // Prepare info for KNOWLEDGE_LEAVE trigger in reducer
+    leavingKnowledgeInfo = {
+      playerId: playerId,
       creatureId: creatureId,
-      knowledgeCard: leavingKnowledge,
+      knowledgeCard: leavingKnowledge!,
     };
-    console.log(`[Action] summonKnowledge: Applying KNOWLEDGE_LEAVE passives.`);
-    // Pass the modified newState into applyPassiveAbilities
-    const stateAfterLeavePassive = applyPassiveAbilities(newState, 'KNOWLEDGE_LEAVE', eventDataLeave);
-    // Update newState with the result of the passive application
-    Object.assign(newState, stateAfterLeavePassive);
-    // Re-fetch player/opponent references in case passives modified them
-    // player = getPlayerState(newState, playerId);
-    // opponent = getOpponentState(newState, playerId);
+    // DO NOT trigger KNOWLEDGE_LEAVE passive here
   }
   // --- End Replacement Logic ---
 
@@ -151,5 +152,6 @@ export function summonKnowledge(state: GameState, payload: SummonKnowledgePayloa
 
   newState.log = [...newState.log, `${playerId} summoned ${knowledgeToSummon.name} onto ${creatureId}${leavingKnowledge ? ` (replacing ${leavingKnowledge.name})` : ''}.`];
 
-  return newState;
+  // Return the modified state and the info about any knowledge that left
+  return { newState, leavingKnowledgeInfo };
 }

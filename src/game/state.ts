@@ -1,6 +1,6 @@
 import { GameState, GameAction, PlayerState, Knowledge, Creature } from './types';
 import { isValidAction, executeKnowledgePhase, checkWinCondition } from './rules.js';
-import { rotateCreature, drawKnowledge, summonKnowledge } from './actions.js';
+import { rotateCreature, drawKnowledge, summonKnowledge, SummonKnowledgePayload } from './actions.js';
 import { applyPassiveAbilities } from './passives.js';
 import knowledgeData from '../assets/knowledges.json';
 import creatureData from '../assets/creatures.json';
@@ -212,6 +212,7 @@ function endTurnSequence(state: GameState): GameState {
 }
 
 export function gameReducer(state: GameState | null, action: GameAction): GameState | null {
+
   if (!state) {
     if (action.type === 'SET_GAME_STATE' && action.payload) {
       console.log("[Reducer] Received SET_GAME_STATE on null state.");
@@ -230,25 +231,7 @@ export function gameReducer(state: GameState | null, action: GameAction): GameSt
 
   console.log(`[Reducer] Action: ${action.type}`, action.payload);
 
-  if (action.type === 'SET_GAME_STATE') {
-    console.log('[Reducer] SET_GAME_STATE received payload:', action.payload);
-    if (!action.payload) {
-      console.warn('[Reducer] SET_GAME_STATE received null payload. Resetting state might require re-initialization.');
-      return null;
-    }
-    const newState = action.payload as GameState;
-    const actionsTaken = typeof newState.actionsTakenThisTurn === 'number' && !isNaN(newState.actionsTakenThisTurn) ? newState.actionsTakenThisTurn : 0;
-    const actionsPer = typeof newState.actionsPerTurn === 'number' && !isNaN(newState.actionsPerTurn) ? newState.actionsPerTurn : ACTIONS_PER_TURN;
-    console.log(`[Reducer] SET_GAME_STATE - Processed actionsTaken: ${actionsTaken}, actionsPerTurn: ${actionsPer}`);
-    return {
-      ...newState,
-      actionsTakenThisTurn: actionsTaken,
-      actionsPerTurn: actionsPer,
-      log: newState.log ?? [],
-    };
-  }
-
-  let nextState = state;
+  let intermediateState = state!;
   let actionConsumed = false;
 
   if (action.type === 'END_TURN') {
@@ -258,7 +241,7 @@ export function gameReducer(state: GameState | null, action: GameAction): GameSt
       return state;
     }
     console.log("[Reducer] Handling END_TURN action.");
-    return endTurnSequence(state);
+    return endTurnSequence(intermediateState);
   }
 
   if (!action.payload || typeof action.payload !== 'object' || !('playerId' in action.payload)) {
@@ -266,17 +249,15 @@ export function gameReducer(state: GameState | null, action: GameAction): GameSt
     return state;
   }
 
-  const validation = isValidAction(state, action);
+  const validation = isValidAction(intermediateState, action);
   if (!validation.isValid) {
     console.warn(`[Reducer] Invalid action: ${action.type} - ${validation.reason}`);
     return state;
   }
 
-  nextState = { ...state };
-
   switch (action.type) {
     case 'ROTATE_CREATURE':
-      nextState = rotateCreature(nextState, action.payload);
+      intermediateState = rotateCreature(intermediateState, action.payload);
       actionConsumed = true;
       break;
 
@@ -285,8 +266,8 @@ export function gameReducer(state: GameState | null, action: GameAction): GameSt
         console.error("[Reducer] DRAW_KNOWLEDGE requires instanceId in payload:", action);
         return state;
       }
-      const cardToDraw = state.market.find(k => k.instanceId === action.payload.instanceId);
-      nextState = drawKnowledge(nextState, action.payload as { playerId: string; knowledgeId: string; instanceId: string });
+      const cardToDraw = intermediateState.market.find(k => k.instanceId === action.payload.instanceId);
+      intermediateState = drawKnowledge(intermediateState, action.payload as { playerId: string; knowledgeId: string; instanceId: string });
       const eventDataDraw = {
         playerId: action.payload.playerId,
         knowledgeId: action.payload.knowledgeId,
@@ -297,32 +278,38 @@ export function gameReducer(state: GameState | null, action: GameAction): GameSt
         ? 'AFTER_PLAYER_DRAW'
         : 'AFTER_OPPONENT_DRAW';
       console.log(`[Reducer] Applying ${drawTrigger} passives.`);
-      nextState = applyPassiveAbilities(nextState, drawTrigger, eventDataDraw);
+      intermediateState = applyPassiveAbilities(intermediateState, drawTrigger, eventDataDraw);
       actionConsumed = true;
       break;
     }
 
     case 'SUMMON_KNOWLEDGE': {
-      if (!('instanceId' in action.payload) || !action.payload.instanceId || !('creatureId' in action.payload)) {
-        console.error("[Reducer] SUMMON_KNOWLEDGE requires instanceId and creatureId in payload:", action);
-        return state;
-      }
-      const playerSummoning = getPlayerState(state, action.payload.playerId);
+      const playerSummoning = getPlayerState(intermediateState, action.payload.playerId);
       const knowledgeToSummon = playerSummoning?.hand.find(k => k.instanceId === action.payload.instanceId);
       const targetCreature = playerSummoning?.creatures.find(c => c.id === action.payload.creatureId);
 
-      nextState = summonKnowledge(nextState, action.payload as { playerId: string; knowledgeId: string; instanceId: string; creatureId: string });
+      console.log(`[Reducer Debug] Calling summonKnowledge for ${action.payload.instanceId} onto ${action.payload.creatureId}`);
+      const { newState: stateAfterSummon, leavingKnowledgeInfo } = summonKnowledge(intermediateState, action.payload as SummonKnowledgePayload);
+      intermediateState = stateAfterSummon;
+
+      if (leavingKnowledgeInfo) {
+        console.log(`[Reducer Debug] Found leavingKnowledgeInfo. Applying KNOWLEDGE_LEAVE passives.`);
+        intermediateState = applyPassiveAbilities(intermediateState, 'KNOWLEDGE_LEAVE', leavingKnowledgeInfo);
+        console.log(`[Reducer Debug] State log after KNOWLEDGE_LEAVE passives:`, intermediateState.log);
+      } else {
+        console.log(`[Reducer Debug] No leavingKnowledgeInfo found. Skipping KNOWLEDGE_LEAVE passives.`);
+      }
 
       let isFreeSummon = false;
-      const playerAfterSummon = getPlayerState(nextState, action.payload.playerId);
+      const playerAfterLeavePassives = getPlayerState(intermediateState, action.payload.playerId);
 
-      if (targetCreature?.id === 'dudugera' && playerAfterSummon?.creatures.some(c => c.id === 'dudugera')) {
+      if (targetCreature?.id === 'dudugera' && playerAfterLeavePassives?.creatures.some(c => c.id === 'dudugera')) {
         isFreeSummon = true;
-        nextState.log = [...nextState.log, `[Passive Effect] Dudugera allows summoning ${knowledgeToSummon?.name || 'Knowledge'} onto itself without spending an action.`];
+        intermediateState.log = [...intermediateState.log, `[Passive Effect] Dudugera allows summoning ${knowledgeToSummon?.name || 'Knowledge'} onto itself without spending an action.`];
         console.log(`[Reducer] Dudugera passive active: SUMMON_KNOWLEDGE does not consume action.`);
-      } else if (knowledgeToSummon?.element === 'water' && playerAfterSummon?.creatures.some(c => c.id === 'kappa')) {
+      } else if (knowledgeToSummon?.element === 'water' && playerAfterLeavePassives?.creatures.some(c => c.id === 'kappa')) {
         isFreeSummon = true;
-        nextState.log = [...nextState.log, `[Passive Effect] Kappa allows summoning aquatic knowledge ${knowledgeToSummon?.name || 'Knowledge'} without spending an action.`];
+        intermediateState.log = [...intermediateState.log, `[Passive Effect] Kappa allows summoning aquatic knowledge ${knowledgeToSummon?.name || 'Knowledge'} without spending an action.`];
         console.log(`[Reducer] Kappa passive active: SUMMON_KNOWLEDGE does not consume action.`);
       }
 
@@ -339,7 +326,7 @@ export function gameReducer(state: GameState | null, action: GameAction): GameSt
         ? 'AFTER_PLAYER_SUMMON'
         : 'AFTER_OPPONENT_SUMMON';
       console.log(`[Reducer] Applying ${summonTrigger} passives.`);
-      nextState = applyPassiveAbilities(nextState, summonTrigger, eventDataSummon);
+      intermediateState = applyPassiveAbilities(intermediateState, summonTrigger, eventDataSummon);
       break;
     }
 
@@ -348,37 +335,37 @@ export function gameReducer(state: GameState | null, action: GameAction): GameSt
       return state;
   }
 
-  const currentActionsPerTurn = nextState.actionsPerTurn ?? ACTIONS_PER_TURN;
-  let newActionsTaken = nextState.actionsTakenThisTurn;
+  const currentActionsPerTurn = intermediateState.actionsPerTurn ?? ACTIONS_PER_TURN;
+  let newActionsTaken = intermediateState.actionsTakenThisTurn;
+  let finalState = intermediateState;
 
   if (actionConsumed) {
     newActionsTaken++;
-    nextState = {
-      ...nextState,
+    finalState = {
+      ...intermediateState,
       actionsTakenThisTurn: newActionsTaken,
-      log: [...nextState.log, `Action ${action.type} completed. Actions: ${newActionsTaken}/${currentActionsPerTurn}`],
+      log: [...intermediateState.log, `Action ${action.type} completed. Actions: ${newActionsTaken}/${currentActionsPerTurn}`],
     };
     console.log(`[Reducer] Action ${action.type} processed. Actions taken: ${newActionsTaken}/${currentActionsPerTurn}`);
   } else {
+    finalState.log = [...intermediateState.log, `Action ${action.type} completed (Free). Actions: ${newActionsTaken}/${currentActionsPerTurn}`];
     console.log(`[Reducer] Action ${action.type} processed (Free). Actions taken: ${newActionsTaken}/${currentActionsPerTurn}`);
-    nextState = { ...nextState };
-    nextState.log = [...nextState.log, `Action ${action.type} completed (Free). Actions: ${newActionsTaken}/${currentActionsPerTurn}`];
   }
 
-  let winner = checkWinCondition(nextState);
+  let winner = checkWinCondition(finalState);
   if (winner) {
     console.log(`[Reducer] Win condition met after action ${action.type}. Winner: ${winner}`);
-    return { ...nextState, winner, phase: 'end', log: [...nextState.log, `Player ${winner} wins!`] };
+    return { ...finalState, winner, phase: 'end', log: [...finalState.log, `Player ${winner} wins!`] };
   }
 
   if (newActionsTaken >= currentActionsPerTurn) {
     console.log(`[Reducer] Action limit reached (${newActionsTaken}/${currentActionsPerTurn}). Ending turn.`);
     const stateBeforeEnd = {
-      ...nextState,
-      log: [...nextState.log, `Action limit reached (${newActionsTaken}/${currentActionsPerTurn}). Ending turn.`],
+      ...finalState,
+      log: [...finalState.log, `Action limit reached (${newActionsTaken}/${currentActionsPerTurn}). Ending turn.`],
     };
     return endTurnSequence(stateBeforeEnd);
   }
 
-  return nextState;
+  return finalState;
 }
