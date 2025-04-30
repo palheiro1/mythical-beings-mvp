@@ -1,6 +1,7 @@
-import { GameState, PlayerState } from './types';
-import { getCreatureWisdom } from './utils.js';
+import { GameState, Knowledge, PlayerState, SummonKnowledgePayload } from './types';
+import { getCreatureWisdom, getPlayerState, getOpponentState } from './utils.js';
 import { v4 as uuidv4 } from 'uuid';
+import { applyPassiveAbilities } from './passives'; // Make sure this is imported
 
 /**
  * Rotates a creature, increasing its wisdom.
@@ -97,47 +98,58 @@ export function drawKnowledge(state: GameState, payload: { playerId: string; kno
  * @param payload Data for the action (playerId, knowledgeId, instanceId, creatureId).
  * @returns The updated game state.
  */
-export function summonKnowledge(state: GameState, payload: { playerId: string; knowledgeId: string; instanceId: string; creatureId: string }): GameState {
-  const { playerId, instanceId, creatureId } = payload;
-  const playerIndex = state.players.findIndex(p => p.id === playerId);
-  if (playerIndex === -1) return state;
+export function summonKnowledge(state: GameState, payload: SummonKnowledgePayload): GameState {
+  const { playerId, knowledgeId, instanceId, creatureId } = payload;
+  const newState = JSON.parse(JSON.stringify(state)) as GameState;
+  const player = getPlayerState(newState, playerId);
+  const opponent = getOpponentState(newState, playerId); // Needed for Lisovik target
 
-  const updatedPlayers = [...state.players];
-  const player = { ...updatedPlayers[playerIndex] };
+  if (!player) return newState; // Should not happen if validation passed
 
-  const knowledgeCardIndex = player.hand.findIndex(k => k.instanceId === instanceId);
-  if (knowledgeCardIndex === -1) {
-    console.warn(`[Action] Card with instanceId ${instanceId} not found in hand for SUMMON_KNOWLEDGE.`);
-    return state;
+  const knowledgeIndex = player.hand.findIndex(k => k.instanceId === instanceId);
+  if (knowledgeIndex === -1) {
+    console.error(`[Action] summonKnowledge: Knowledge ${instanceId} not found in hand of player ${playerId}`);
+    return newState; // Card not found
   }
-  const knowledgeCard = player.hand[knowledgeCardIndex];
+  const knowledgeToSummon = player.hand[knowledgeIndex];
 
-  const creatureIndex = player.creatures.findIndex(c => c.id === creatureId);
-  if (creatureIndex === -1) return state;
-  const creature = { ...player.creatures[creatureIndex] };
-
-  player.hand = player.hand.filter(k => k.instanceId !== instanceId);
-
-  const fieldSlotIndex = player.field.findIndex(f => f.creatureId === creatureId);
-  if (fieldSlotIndex === -1) {
-    console.warn(`[Action] Field slot not found for creatureId ${creatureId} during SUMMON_KNOWLEDGE.`);
-    return state; // Return state if slot not found
+  const fieldIndex = player.field.findIndex(f => f.creatureId === creatureId);
+  if (fieldIndex === -1) {
+    console.error(`[Action] summonKnowledge: Creature slot ${creatureId} not found for player ${playerId}`);
+    return newState; // Creature slot not found
   }
 
-  // Ensure the knowledge card has rotation set to 0 when summoned
-  const knowledgeToPlace = { ...knowledgeCard, rotation: 0 };
+  let leavingKnowledge: Knowledge | null = null;
 
-  player.field = [
-    ...player.field.slice(0, fieldSlotIndex),
-    { creatureId: creatureId, knowledge: knowledgeToPlace }, // Assign the knowledge card
-    ...player.field.slice(fieldSlotIndex + 1),
-  ];
+  // --- Handle Knowledge Replacement and KNOWLEDGE_LEAVE Trigger ---
+  if (player.field[fieldIndex].knowledge) {
+    leavingKnowledge = player.field[fieldIndex].knowledge;
+    console.log(`[Action] summonKnowledge: Replacing ${leavingKnowledge?.name} (${leavingKnowledge?.instanceId}) on ${creatureId}`);
+    newState.discardPile.push(leavingKnowledge!); // Add replaced card to discard
 
-  updatedPlayers[playerIndex] = player;
+    // Trigger KNOWLEDGE_LEAVE passive
+    const eventDataLeave = {
+      playerId: playerId, // The player whose knowledge is leaving
+      creatureId: creatureId,
+      knowledgeCard: leavingKnowledge,
+    };
+    console.log(`[Action] summonKnowledge: Applying KNOWLEDGE_LEAVE passives.`);
+    // Pass the modified newState into applyPassiveAbilities
+    const stateAfterLeavePassive = applyPassiveAbilities(newState, 'KNOWLEDGE_LEAVE', eventDataLeave);
+    // Update newState with the result of the passive application
+    Object.assign(newState, stateAfterLeavePassive);
+    // Re-fetch player/opponent references in case passives modified them
+    // player = getPlayerState(newState, playerId);
+    // opponent = getOpponentState(newState, playerId);
+  }
+  // --- End Replacement Logic ---
 
-  return {
-    ...state,
-    players: updatedPlayers as [PlayerState, PlayerState],
-    log: [...state.log, `Player ${playerId} summoned ${knowledgeCard.name} onto ${creature.name}.`]
-  };
+  // Place the new knowledge
+  player.field[fieldIndex].knowledge = knowledgeToSummon;
+  // Remove the summoned card from hand
+  player.hand.splice(knowledgeIndex, 1);
+
+  newState.log = [...newState.log, `${playerId} summoned ${knowledgeToSummon.name} onto ${creatureId}${leavingKnowledge ? ` (replacing ${leavingKnowledge.name})` : ''}.`];
+
+  return newState;
 }

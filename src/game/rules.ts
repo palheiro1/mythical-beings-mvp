@@ -119,13 +119,10 @@ export function isValidAction(state: GameState, action: GameAction): ValidationR
         return { isValid: false, reason: `Creature ${creatureId} not on field` };
       }
       const creatureSlot = player.field[creatureSlotIndex];
-      if (creatureSlot.knowledge) {
-        return { isValid: false, reason: `Creature ${creatureId} already has knowledge` };
-      }
 
       const creature = player.creatures.find(c => c.id === creatureId);
       if (!creature) {
-        return { isValid: false, reason: `Base creature ${creatureId} not found` };
+        return { isValid: false, reason: `Creature ${creatureId} not found for player ${playerId}` };
       }
 
       const creatureWisdom = creature.currentWisdom;
@@ -149,8 +146,12 @@ export function isValidAction(state: GameState, action: GameAction): ValidationR
         return { isValid: false, reason: `This slot (${creatureSlotIndex}) is currently blocked by an opponent's aquatic3 effect.` };
       }
 
+      if (state.blockedSlots[playerIndex]?.includes(creatureId)) {
+        return { isValid: false, reason: `Creature slot ${creatureId} is currently blocked.` };
+      }
+
       if (creatureWisdom < effectiveCost) {
-        return { isValid: false, reason: `Insufficient wisdom (${creatureWisdom} < ${effectiveCost})` };
+        return { isValid: false, reason: `Insufficient wisdom on ${creature.id} (${creatureWisdom}) for ${knowledgeCard.name} (cost ${effectiveCost})` };
       }
       return { isValid: true };
     }

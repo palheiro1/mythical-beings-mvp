@@ -23,10 +23,10 @@ This checklist will guide the step-by-step creation and restructure of a robust,
   - [✅] Adaro: `AFTER_PLAYER_SUMMON` (on self) - If summoned knowledge is water, draw 1 card from market (free).
   - [✅] Kyzy: `AFTER_SUMMON` (Any) - If earth knowledge summoned, force OPPONENT of Kyzy's owner to discard 1 card.
   - [✅] Japinunus: `AFTER_SUMMON` (Owner) - If owner summoned air knowledge, owner gains +1 Power.
-  - [ ] Kappa: (Handled elsewhere) - Summoning aquatic knowledge is a free action.
-  - [ ] Dudugera: (Handled elsewhere) - Summoning knowledge onto Dudugera is a free action.
-  - [ ] Inkanyamba: `AFTER_PLAYER_DRAW` - Discard 1 card from market.
-  - [ ] Lisovik: `KNOWLEDGE_LEAVE` (owner's knowledge) - If leaving knowledge is earth, deal 1 damage to opponent.
+  - [✅] Kappa: (Handled elsewhere) - Summoning aquatic knowledge is a free action. - Covered in `tests/gameReducer/passives/kappa.test.ts`
+  - [✅] Dudugera: (Handled elsewhere) - Summoning knowledge onto Dudugera is a free action. - Covered in `tests/gameReducer/basicActions.test.ts`
+  - [✅] Inkanyamba: `AFTER_PLAYER_DRAW` - Discard 1 card from market.
+  - [✅] Lisovik: `KNOWLEDGE_LEAVE` (owner's knowledge) - If leaving knowledge is earth, deal 1 damage to opponent.
   - [ ] Pele: `AFTER_PLAYER_SUMMON` or `AFTER_OPPONENT_SUMMON` - If owner summoned earth knowledge, discard 1 opponent knowledge with lower cost.
   - [ ] Tsenehale: `KNOWLEDGE_LEAVE` (on self) - If leaving knowledge is air, owner gains +1 Power.
   - [ ] Tulpar: `AFTER_PLAYER_SUMMON` or `AFTER_OPPONENT_SUMMON` - If owner summoned air knowledge, rotate one of owner's creatures 90º.
