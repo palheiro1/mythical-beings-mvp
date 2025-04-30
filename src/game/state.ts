@@ -169,46 +169,67 @@ export function initializeGame(payload: InitializeGamePayload): GameState {
 
 function endTurnSequence(state: GameState): GameState {
   console.log(`[Reducer] Starting endTurnSequence for Player ${state.players[state.currentPlayerIndex].id}`);
-  let newState = JSON.parse(JSON.stringify(state)) as GameState;
+  let workingState = state;
 
-  let winner = checkWinCondition(newState);
-  if (winner) {
-    console.log(`[Reducer] Win condition met at start of endTurnSequence. Winner: ${winner}`);
-    return { ...newState, winner, phase: 'end', log: [...newState.log, `Player ${winner} wins!`] };
+  // --- Rotate Creatures ---
+  const currentPlayerId = workingState.players[workingState.currentPlayerIndex].id;
+  workingState.players[workingState.currentPlayerIndex].creatures.forEach(creature => {
+    if (creature.rotation < creature.maxRotations) {
+      creature.rotation += 1;
+      workingState.log.push(`Creature ${creature.name} (Owner: ${currentPlayerId}) rotated to ${creature.rotation}/${creature.maxRotations}.`);
+    }
+  });
+
+  // --- Transition Turn ---
+  workingState.currentPlayerIndex = (workingState.currentPlayerIndex + 1) % workingState.players.length;
+  if (workingState.currentPlayerIndex === 0) {
+    workingState.turn += 1;
+  }
+  const newPlayerId = workingState.players[workingState.currentPlayerIndex].id;
+  workingState.phase = 'knowledge';
+  workingState.actionsTakenThisTurn = 0;
+  workingState.log.push(`Turn ${workingState.turn}: Player ${newPlayerId} starts.`);
+  console.log(`[Reducer] Transitioning to Turn ${workingState.turn}, Player ${newPlayerId}. Phase: ${workingState.phase}`);
+
+  // --- Apply TURN_START Passives ---
+  console.log(`[Reducer] Applying TURN_START passives for Player ${newPlayerId}`);
+  workingState = applyPassiveAbilities(workingState, 'TURN_START', { playerId: newPlayerId });
+
+  // --- Execute Knowledge Phase ---
+  console.log(`[Reducer] Executing knowledge phase for Player ${newPlayerId}`);
+  workingState = executeKnowledgePhase(workingState);
+
+  // --- ZHAR-PTITSA Passive ---
+  const playerAfterKnowledge = workingState.players[workingState.currentPlayerIndex];
+  const hasZharPtitsa = playerAfterKnowledge.creatures.some(c => c.id === 'zhar-ptitsa');
+
+  if (hasZharPtitsa) {
+    workingState.log.push(`[Passive Effect] Zhar-Ptitsa (Owner: ${newPlayerId}) triggers free draw.`);
+    if (workingState.market.length > 0) {
+      const drawnCard = workingState.market.shift();
+      if (drawnCard) {
+        playerAfterKnowledge.hand.push(drawnCard);
+        workingState.log.push(`[Passive Effect] Zhar-Ptitsa (Owner: ${newPlayerId}) draws ${drawnCard.name}. Hand size: ${playerAfterKnowledge.hand.length}`);
+        if (workingState.knowledgeDeck.length > 0) {
+          const deckCardToRefill = workingState.knowledgeDeck.shift();
+          if (deckCardToRefill) {
+            const refillCard = { ...deckCardToRefill, instanceId: crypto.randomUUID() };
+            workingState.market.push(refillCard);
+            workingState.log.push(`[Passive Effect] Market refilled with ${refillCard.name}.`);
+          }
+        }
+      }
+    } else {
+      workingState.log.push(`[Passive Effect] Zhar-Ptitsa triggered, but Market is empty.`);
+    }
   }
 
-  const nextPlayerIndex = ((newState.currentPlayerIndex + 1) % 2) as 0 | 1;
-  const nextTurn = newState.currentPlayerIndex === 1 ? newState.turn + 1 : newState.turn;
-  const nextPlayerId = newState.players[nextPlayerIndex].id;
+  // --- Transition to Action Phase ---
+  workingState.phase = 'action';
+  workingState.log.push(`Turn ${workingState.turn}: Action Phase started.`);
+  console.log(`[Reducer] endTurnSequence complete. New phase: ${workingState.phase}`);
 
-  newState = {
-    ...newState,
-    currentPlayerIndex: nextPlayerIndex,
-    turn: nextTurn,
-    phase: 'knowledge',
-    actionsTakenThisTurn: 0,
-    log: [...newState.log, `--- Turn ${nextTurn} (Player ${nextPlayerId}) ---`],
-  };
-  console.log(`[Reducer] Transitioning to Turn ${nextTurn}, Player ${nextPlayerId}. Phase: knowledge`);
-
-  console.log(`[Reducer] Applying TURN_START passives for Player ${nextPlayerId}`);
-  newState = applyPassiveAbilities(newState, 'TURN_START', { playerId: nextPlayerId });
-
-  console.log(`[Reducer] Executing knowledge phase for Player ${nextPlayerId}`);
-  newState = executeKnowledgePhase(newState);
-
-  winner = checkWinCondition(newState);
-  if (winner) {
-    console.log(`[Reducer] Win condition met after knowledge phase for Player ${nextPlayerId}. Winner: ${winner}`);
-    return { ...newState, winner: winner, phase: 'end', log: [...newState.log, `Player ${winner} wins!`] };
-  }
-
-  newState.phase = 'action';
-  newState.actionsTakenThisTurn = 0;
-  newState.log = [...newState.log, `Turn ${newState.turn}: Action Phase started.`];
-
-  console.log(`[Reducer] endTurnSequence complete. New phase: ${newState.phase}`);
-  return newState;
+  return workingState;
 }
 
 export function gameReducer(state: GameState | null, action: GameAction): GameState | null {

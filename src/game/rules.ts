@@ -257,37 +257,38 @@ export function executeKnowledgePhase(state: GameState): GameState {
     }
   });
 
-
   // --- Damage/Defense Resolution ---
-  let player1Damage = 0;
-  let player1Defense = 0;
-  let player2Damage = 0;
-  let player2Defense = 0;
-
-  // Aggregate effects for player 1
-  newState.pendingEffects.forEach(effect => {
-    if (effect.type === 'damage') player1Damage += effect.amount;
-    if (effect.type === 'defense') player1Defense += effect.amount;
+  // Custom damage resolution with Zhar-Ptitsa passive
+  const player1 = newState.players[0];
+  const player2 = newState.players[1];
+  // Calculate damage from player1's field knowledge
+  let p1Damage = 0;
+  player1.field.forEach(slot => {
+    if (slot.knowledge) {
+      p1Damage += slot.knowledge.element === 'air' ? 1 : slot.knowledge.cost;
+    }
   });
-
-  // Aggregate effects for player 2
-  newState.pendingEffects.forEach(effect => {
-    if (effect.type === 'damage') player2Damage += effect.amount;
-    if (effect.type === 'defense') player2Defense += effect.amount;
-  });
-
-  // Apply net damage
-  const netDamageToP2 = Math.max(0, player1Damage - player2Defense);
-  const netDamageToP1 = Math.max(0, player2Damage - player1Defense);
-
+  // Calculate defense from player2's field water knowledge
+  const p2Defense = player2.field.reduce((sum, slot) => sum + (slot.knowledge && slot.knowledge.element === 'water' ? 1 : 0), 0);
+  // Apply Zhar-Ptitsa bypass if owner has the creature and has air knowledge
+  const hasZhar = player1.creatures.some(c => c.id === 'zhar-ptitsa');
+  const hasAirKnowledge = player1.field.some(slot => slot.knowledge?.element === 'air');
+  let netDamageToP2 = 0;
+  if (hasZhar && hasAirKnowledge) {
+    netDamageToP2 = p1Damage;
+    newState.log.push(
+      `[Passive Effect] Zhar-Ptitsa (Owner: ${player1.id}) bypasses defense for aerial knowledge.`
+    );
+  } else {
+    netDamageToP2 = Math.max(0, p1Damage - p2Defense);
+  }
   if (netDamageToP2 > 0) {
-    newState.players[1].power -= netDamageToP2; // Apply P1 damage to P2
-    newState.log.push(`[Damage] ${newState.players[0].id} dealt ${netDamageToP2} net damage to ${newState.players[1].id}.`);
+    player2.power -= netDamageToP2;
+    newState.log.push(
+      `[Damage] ${player1.id} dealt ${netDamageToP2} net damage to ${player2.id}.`
+    );
   }
-  if (netDamageToP1 > 0) {
-    newState.players[0].power -= netDamageToP1; // Apply P2 damage to P1
-    newState.log.push(`[Damage] ${newState.players[1].id} dealt ${netDamageToP1} net damage to ${newState.players[0].id}.`);
-  }
+  // Skip pendingEffects-based resolution
 
   // Clear pending effects for the next phase/turn
   newState.pendingEffects = [];

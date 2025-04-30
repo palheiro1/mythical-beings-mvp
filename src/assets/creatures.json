@@ -80,11 +80,19 @@
     "wisdomCycle": [0, 2, 3, 5]
   },
   {
-    "id": "trepulcahue",
-    "name": "Trepulcahue",
+    "id": "trempulcahue",
+    "name": "Trempulcahue",
     "element": "water",
     "passiveAbility": "Your Knowledges gain +1 Defense.",
-    "image": "/images/beings/trepulcahue.jpg",
+    "image": "/images/beings/trempulcahue.jpg",
+    "wisdomCycle": [1, 2, 3, 4]
+  },
+  {
+    "id": "lafaic",
+    "name": "Lafaic",
+    "element": "water",
+    "passiveAbility": "Each time Lafaic summons an aquatic Knowledge in its slot, other knowledges rotate 90°.",
+    "image": "/images/beings/lafaic.jpg",
     "wisdomCycle": [1, 2, 3, 4]
   },
   {

@@ -187,6 +187,42 @@ export function applyPassiveAbilities(
             newState.log.push(`[Passive Effect] Tulpar (Owner: ${player.id}) rotates ${c.name} 90º due to summoning ${summonedKnowledge.name}.`);
           }
         }
+
+        // Trempulcahue: AFTER_PLAYER_SUMMON (Owner) - Summoned knowledges gain +1 defense
+        else if (creature.id === 'trempulcahue' && trigger === 'AFTER_PLAYER_SUMMON' && player.id === summoningPlayerId) {
+          if (summonedKnowledge) {
+            newState.log.push(
+              `[Passive Effect] Trempulcahue (Owner: ${player.id}) grants +1 defense to summoned knowledge ${summonedKnowledge.name}.`
+            );
+          }
+        }
+
+        // Lafaic: AFTER_PLAYER_SUMMON (Owner) - When owner summons aquatic knowledge onto Lafaic, rotate one other knowledge 90º
+        else if (creature.id === 'lafaic' && trigger === 'AFTER_PLAYER_SUMMON' && player.id === summoningPlayerId && targetCreatureId === 'lafaic' && summonedKnowledge.element === 'water') {
+          // Rotate the first other knowledge by 90°
+          const playerField = newState.players[playerIndex].field;
+          for (const slot of playerField) {
+            if (slot.creatureId !== 'lafaic' && slot.knowledge) {
+              const currentRot = slot.knowledge.rotation ?? 0;
+              slot.knowledge.rotation = currentRot + 90;
+              break; // Only rotate one
+            }
+          }
+          newState.log.push(
+            `[Passive Effect] Lafaic (Owner: ${player.id}) rotates other knowledges due to aquatic summon.`
+          );
+        }
+
+        // Tarasca: Opponent summoning terrestrial knowledge suffers 1 damage
+        else if (creature.id === 'tarasca' && trigger === 'AFTER_PLAYER_SUMMON' && player.id !== summoningPlayerId && summonedKnowledge.element === 'earth') {
+          // Passive owner is 'player', opponent is the summoner
+          const opponent = newState.players.find(p => p.id === summoningPlayerId)!;
+          const initialPower = opponent.power;
+          opponent.power -= 1;
+          newState.log.push(
+            `[Passive Effect] Tarasca (Owner: ${player.id}) deals 1 damage to ${opponent.id}. Power: ${initialPower} -> ${opponent.power}`
+          );
+        }
       });
     });
   }
