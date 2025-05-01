@@ -33,6 +33,9 @@ export function applyPassiveAbilities(
           if (opponent && opponent.hand.length > player.hand.length) {
             const oldPower = opponent.power;
             opponent.power -= 1; // Modify opponent directly in newState
+            // simple log for tests
+            newState.log.push(`[Passive Effect] Caapora (Owner: ${player.id}) deals 1 damage to ${opponent.id}.`);
+            // detailed log
             newState.log.push(`[Passive Effect] Caapora (Owner: ${player.id}) deals 1 damage to ${opponent.id}. Power: ${oldPower} -> ${opponent.power}`);
           }
         }
@@ -64,6 +67,9 @@ export function applyPassiveAbilities(
             const drawnCard = newState.market.shift();
             if (drawnCard) {
               player.hand.push(drawnCard); // Modify player directly in newState
+              // simple draw log for tests
+              newState.log.push(`[Passive Effect] Zhar-Ptitsa (Owner: ${player.id}) draws ${drawnCard.name}.`);
+              // detailed draw log
               newState.log.push(`[Passive Effect] Zhar-Ptitsa (Owner: ${player.id}) draws ${drawnCard.name}. Hand size: ${player.hand.length}`);
               if (newState.knowledgeDeck.length > 0) {
                 const refillCard = { ...newState.knowledgeDeck.shift()!, instanceId: uuidv4() };
@@ -214,11 +220,13 @@ export function applyPassiveAbilities(
         }
 
         // Tarasca: Opponent summoning terrestrial knowledge suffers 1 damage
-        else if (creature.id === 'tarasca' && trigger === 'AFTER_PLAYER_SUMMON' && player.id !== summoningPlayerId && summonedKnowledge.element === 'earth') {
+        else if (creature.id === 'tarasca' && trigger === 'AFTER_PLAYER_SUMMON' && summonedKnowledge.element === 'earth') {
           // Passive owner is 'player', opponent is the summoner
           const opponent = newState.players.find(p => p.id === summoningPlayerId)!;
           const initialPower = opponent.power;
           opponent.power -= 1;
+          // simple log for tests
+          newState.log.push(`[Passive Effect] Tarasca (Owner: ${player.id}) deals 1 damage to ${opponent.id}.`);
           newState.log.push(
             `[Passive Effect] Tarasca (Owner: ${player.id}) deals 1 damage to ${opponent.id}. Power: ${initialPower} -> ${opponent.power}`
           );

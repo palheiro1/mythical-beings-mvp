@@ -252,6 +252,31 @@ export function gameReducer(state: GameState | null, action: GameAction): GameSt
 
   console.log(`[Reducer] Action: ${action.type}`, action.payload);
 
+  // After logging the action, handle rotate knowledge
+  if (action.type === 'ROTATE_KNOWLEDGE' && action.payload && 'playerId' in action.payload && 'creatureId' in action.payload) {
+    const { playerId, creatureId } = action.payload as { playerId: string; creatureId: string };
+    let newState = state;
+    // Find the player's field slot
+    const player = newState.players.find(p => p.id === playerId);
+    if (!player) return state;
+    const fieldSlot = player.field.find(slot => slot.creatureId === creatureId);
+    if (!fieldSlot || !fieldSlot.knowledge) return state;
+    const knowledgeCard = fieldSlot.knowledge;
+    const currentRotation = knowledgeCard.rotation ?? 0;
+    const maxRotations = (knowledgeCard.maxRotations ?? 4) * 90;
+    if (currentRotation + 90 >= maxRotations) {
+      // Knowledge leaves play
+      fieldSlot.knowledge = null;
+      newState.discardPile.push(knowledgeCard);
+      // Trigger KNOWLEDGE_LEAVE passives
+      newState = applyPassiveAbilities(newState, 'KNOWLEDGE_LEAVE', { playerId, creatureId, knowledgeCard });
+    } else {
+      // Just rotate
+      knowledgeCard.rotation = currentRotation + 90;
+    }
+    return newState;
+  }
+
   let intermediateState = state!;
   let actionConsumed = false;
 
