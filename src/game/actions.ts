@@ -1,7 +1,7 @@
-import { GameState, Knowledge, PlayerState, SummonKnowledgePayload } from './types';
+import { GameState, Knowledge, PlayerState, SummonKnowledgePayload, KnowledgeEffect } from './types'; // Added KnowledgeEffect
 import { getCreatureWisdom, getPlayerState, getOpponentState } from './utils.js';
 import { v4 as uuidv4 } from 'uuid';
-// Remove applyPassiveAbilities import if no longer used here
+import { applyKnowledgeEffect } from './effects.js'; // Import the new effect handler
 
 // Define a return type that includes info about leaving knowledge
 export type SummonKnowledgeResult = {
@@ -104,27 +104,29 @@ export function drawKnowledge(state: GameState, payload: { playerId: string; kno
 /**
  * Summons a knowledge card from the player's hand onto a creature.
  * Assumes the action is valid.
+ * Applies any immediate 'effect' defined on the knowledge card.
  * @param state The current game state.
  * @param payload Data for the action (playerId, knowledgeId, instanceId, creatureId).
  * @returns The updated game state and info about any knowledge that left.
  */
 export function summonKnowledge(state: GameState, payload: SummonKnowledgePayload): SummonKnowledgeResult {
   const { playerId, knowledgeId, instanceId, creatureId } = payload;
-  const newState = JSON.parse(JSON.stringify(state)) as GameState;
-  const player = getPlayerState(newState, playerId);
+  // Use a mutable copy for intermediate steps within this function
+  let workingState = JSON.parse(JSON.stringify(state)) as GameState;
+  const player = getPlayerState(workingState, playerId);
 
   // Basic validation (should ideally be covered by isValidAction, but good safety net)
-  if (!player) return { newState, leavingKnowledgeInfo: null };
+  if (!player) return { newState: workingState, leavingKnowledgeInfo: null };
   const knowledgeIndex = player.hand.findIndex(k => k.instanceId === instanceId);
   if (knowledgeIndex === -1) {
     console.error(`[Action] summonKnowledge: Knowledge ${instanceId} not found in hand of player ${playerId}`);
-    return { newState, leavingKnowledgeInfo: null };
+    return { newState: workingState, leavingKnowledgeInfo: null };
   }
   const knowledgeToSummon = player.hand[knowledgeIndex];
   const fieldIndex = player.field.findIndex(f => f.creatureId === creatureId);
   if (fieldIndex === -1) {
     console.error(`[Action] summonKnowledge: Creature slot ${creatureId} not found for player ${playerId}`);
-    return { newState, leavingKnowledgeInfo: null };
+    return { newState: workingState, leavingKnowledgeInfo: null };
   }
 
   let leavingKnowledge: Knowledge | null = null;
@@ -134,7 +136,7 @@ export function summonKnowledge(state: GameState, payload: SummonKnowledgePayloa
   if (player.field[fieldIndex].knowledge) {
     leavingKnowledge = player.field[fieldIndex].knowledge;
     console.log(`[Action] summonKnowledge: Replacing ${leavingKnowledge?.name} (${leavingKnowledge?.instanceId}) on ${creatureId}`);
-    newState.discardPile.push(leavingKnowledge!); // Add replaced card to discard
+    workingState.discardPile.push(leavingKnowledge!); // Add replaced card to discard
     // Prepare info for KNOWLEDGE_LEAVE trigger in reducer
     leavingKnowledgeInfo = {
       playerId: playerId,
@@ -150,8 +152,17 @@ export function summonKnowledge(state: GameState, payload: SummonKnowledgePayloa
   // Remove the summoned card from hand
   player.hand.splice(knowledgeIndex, 1);
 
-  newState.log = [...newState.log, `${playerId} summoned ${knowledgeToSummon.name} onto ${creatureId}${leavingKnowledge ? ` (replacing ${leavingKnowledge.name})` : ''}.`];
+  workingState.log = [...workingState.log, `${playerId} summoned ${knowledgeToSummon.name} onto ${creatureId}${leavingKnowledge ? ` (replacing ${leavingKnowledge.name})` : ''}.`];
+
+  // --- Apply Immediate Effect (if any) ---
+  if (knowledgeToSummon.effect) {
+    console.log(`[Action] summonKnowledge: Applying immediate effect for ${knowledgeToSummon.name}:`, knowledgeToSummon.effect);
+    // Apply the effect using the helper function
+    workingState = applyKnowledgeEffect(workingState, knowledgeToSummon.effect as KnowledgeEffect, playerId, knowledgeToSummon.name);
+    // Note: applyKnowledgeEffect handles logging and state updates internally
+  }
+  // --- End Effect Application ---
 
   // Return the modified state and the info about any knowledge that left
-  return { newState, leavingKnowledgeInfo };
+  return { newState: workingState, leavingKnowledgeInfo };
 }

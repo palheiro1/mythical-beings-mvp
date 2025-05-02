@@ -328,3 +328,48 @@ export const knowledgeEffects: Record<string, KnowledgeEffectFn> = {
     return state;
   },
 };
+
+// New helper function to apply generic effects defined on knowledge cards
+export function applyKnowledgeEffect(state: GameState, effect: KnowledgeEffect, sourcePlayerId: string, knowledgeName: string): GameState {
+  let newState = { ...state }; // Clone state to avoid direct mutation issues
+  newState.players = newState.players.map(p => ({ ...p })) as [PlayerState, PlayerState]; // Deep clone players array
+
+  const sourcePlayerIndex = newState.players.findIndex(p => p.id === sourcePlayerId);
+  const opponentPlayerIndex = 1 - sourcePlayerIndex;
+
+  console.log(`[Effect Application] Applying effect for ${knowledgeName}:`, effect);
+
+  switch (effect.type) {
+    case 'DAMAGE':
+      const amount = effect.amount || 0;
+      if (amount <= 0) break;
+
+      const applyDamage = (targetIndex: number) => {
+        if (newState.players[targetIndex]) {
+          // TODO: Incorporate defense logic here if applicable
+          newState.players[targetIndex].power -= amount;
+          newState.log = [...newState.log, `[Effect] ${knowledgeName} deals ${amount} damage to ${newState.players[targetIndex].id}.`];
+          console.log(`[Effect Application] Applied ${amount} damage to ${newState.players[targetIndex].id}. New power: ${newState.players[targetIndex].power}`);
+        }
+      };
+
+      if (effect.target === 'BOTH') {
+        applyDamage(sourcePlayerIndex);
+        applyDamage(opponentPlayerIndex);
+      } else {
+        const targetPlayerIndex = effect.target === 'OPPONENT' ? opponentPlayerIndex : (effect.target === 'SELF' ? sourcePlayerIndex : -1);
+        if (targetPlayerIndex !== -1) {
+          applyDamage(targetPlayerIndex);
+        }
+      }
+      break;
+
+    // TODO: Implement other effect types (HEAL, DRAW, DISCARD, etc.) as needed
+    // case 'HEAL': ...
+    // case 'DRAW': ...
+
+    default:
+      console.warn(`[Effect Application] Unhandled effect type in applyKnowledgeEffect: ${effect.type}`);
+  }
+  return newState;
+}

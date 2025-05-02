@@ -8,14 +8,14 @@ This checklist will guide the step-by-step creation and restructure of a robust,
 - [✅] Test turn transitions (knowledge phase -> action phase) - Covered in `tests/rules/validation.test.ts`
 - [✅] Test turn transitions (action phase -> end turn -> knowledge phase) - Covered in `tests/rules/validation.test.ts`
 - [✅] Test win conditions (basic scenarios) - Covered in `tests/rules/winConditions.test.ts`
-- [ ] Test win conditions (edge cases, e.g., simultaneous)
+- [✅] Test win conditions (edge cases, e.g., simultaneous) - Covered in `tests/rules/winConditions.test.ts`
 - [✅] Test action-per-turn limits and resets - Covered in `tests/rules/validation.test.ts`
 
 ## 2. Action Validation
 - [✅] Test all valid actions (rotate, draw, summon, end turn) - Covered in `tests/rules/validation.test.ts`
 - [✅] Test all invalid actions (wrong phase, wrong player, invalid payload) - Covered in `tests/rules/validation.test.ts`
 - [✅] Test edge cases (full hand, insufficient wisdom, creature occupied) - Covered in `tests/rules/validation.test.ts`
-- [ ] Test edge cases (empty market, empty deck, blocked slots)
+- [✅] Test edge cases (empty market, empty deck, blocked slots) - Covered in `tests/rules/validation.test.ts`
 
 ## 3. Passive Abilities
 - [✅] List all creature passives from `passives.ts`
@@ -24,16 +24,17 @@ This checklist will guide the step-by-step creation and restructure of a robust,
   - [✅] Kyzy: `AFTER_SUMMON` (Any) - If earth knowledge summoned, force OPPONENT of Kyzy's owner to discard 1 card. - Covered in `tests/gameReducer/passives/kyzy.test.ts`
   - [✅] Japinunus: `AFTER_SUMMON` (Owner) - If owner summoned air knowledge, owner gains +1 Power. - Covered in `tests/gameReducer/passives/japinunus.test.ts`
   - [✅] Kappa: (Handled elsewhere) - Summoning aquatic knowledge is a free action. - Covered in `tests/gameReducer/passives/kappa.test.ts`
-  - [✅] Dudugera: (Handled elsewhere) - Summoning knowledge onto Dudugera is a free action. - Covered in `tests/gameReducer/basicActions.test.ts` (Note: This file might not exist, assuming coverage based on previous state)
+  - [✅] Dudugera: (Handled elsewhere) - Summoning knowledge onto Dudugera is a free action. - Covered in `tests/gameReducer/passives/dudugera.test.ts`
   - [✅] Inkanyamba: `AFTER_PLAYER_DRAW` - Discard 1 card from market. - Covered in `tests/gameReducer/passives/inkanyamba.test.ts`
   - [✅] Lisovik: `KNOWLEDGE_LEAVE` (owner's knowledge) - If leaving knowledge is earth, deal 1 damage to opponent. - Covered in `tests/gameReducer/passives/lisovik.test.ts`
   - [✅] Pele: `AFTER_SUMMON` (Owner) - If owner summoned earth knowledge, discard 1 opponent knowledge with lower cost. - Covered in `tests/gameReducer/passives/pele.test.ts`
-  - [✅] Tsenehale: `KNOWLEDGE_LEAVE` (on self) - If leaving knowledge is air, owner gains +1 Power.
+  - [✅] Tsenehale: `KNOWLEDGE_LEAVE` (owner's knowledge) - If leaving knowledge is air, owner gains +1 Power. - Covered in `tests/gameReducer/passives/tsenehale.test.ts`
   - [✅] Tulpar: `AFTER_SUMMON` (Owner) - If owner summoned air knowledge, rotate one of owner's creatures 90º. - Covered in `tests/gameReducer/passives/tulpar.test.ts`
-  - [✅] Trempulcahue: `TURN_START` - If owner has > cards in hand than opponent, deal 1 damage to opponent.
-  - [✅] Zhar-Ptitsa: `TURN_START` - Draw 1 card from market (free).
-  - [✅] Lafaic: `AFTER_PLAYER_SUMMON` (Owner) - When owner summons aquatic knowledge onto Lafaic, rotate one other knowledge 90º.
-- [🤼🏾] Test edge cases (multiple passives, stacking, etc.) - *Partially covered: `interactions.test.ts` exists but has failures. Needs review.*
+  - [✅] Trempulcahue: `AFTER_PLAYER_SUMMON` (Owner) - Knowledge summoned onto Trempulcahue gains +1 Defense. - Covered in `tests/gameReducer/passives/trempulcahue.test.ts`
+  - [✅] Zhar-Ptitsa: `TURN_START` - Draw 1 card from market (free). `DAMAGE_CALCULATION` - Owner's aerial knowledge bypasses opponent's defense. - Covered in `tests/gameReducer/interactions.test.ts` (Turn Start) & `tests/gameReducer/passives/zhar-ptitsa.test.ts` (Damage Calc)
+  - [✅] Lafaic: `AFTER_PLAYER_SUMMON` (Owner) - When owner summons aquatic knowledge onto Lafaic, rotate one other knowledge 90º. - Covered in `tests/gameReducer/passives/lafaic.test.ts`
+  - [✅] Tarasca: `AFTER_OPPONENT_SUMMON` - If opponent summons terrestrial knowledge, deal 1 damage to opponent summoner. - Covered in `tests/gameReducer/passives/tarasca.test.ts`
+- [✅] Test edge cases (multiple passives, stacking, etc.) - Covered in `tests/gameReducer/passives/interactions.test.ts`. *Note: Tests pass, but TODOs added for potential logic issues with chained KNOWLEDGE_LEAVE and AFTER_PLAYER_DRAW triggers.*
 
 ## 4. Knowledge Card Effects
 - [ ] List all unique knowledge effects from `effects.ts`

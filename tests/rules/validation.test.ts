@@ -44,6 +44,47 @@ describe('isValidAction', () => {
     expect(result.reason).toBe('Market is empty');
   });
 
+  it('returns true for DRAW_KNOWLEDGE when deck is empty but market is not', () => {
+    state.knowledgeDeck = []; // Empty the deck
+    const card = state.market[0];
+    const action = { type: 'DRAW_KNOWLEDGE', payload: { playerId: player1, knowledgeId: card.id, instanceId: card.instanceId } };
+    const result = isValidAction(state, action);
+    expect(result.isValid).toBe(true); // Drawing from market is still valid
+  });
+
+  it('returns false for SUMMON_KNOWLEDGE when target slot is blocked by opponent', () => {
+    const player = state.players[0];
+    const creatureId = player.creatures[0].id;
+    const knowledgeCard = createTestKnowledge('terrestrial1', { cost: 1 });
+    player.hand.push(knowledgeCard);
+    player.creatures[0].currentWisdom = 1; // Ensure enough wisdom
+
+    // Block the first slot (index 0) for player 0 by player 1
+    state.blockedSlots = { 0: [], 1: [0] };
+
+    const action = { type: 'SUMMON_KNOWLEDGE', payload: { playerId: player1, knowledgeId: knowledgeCard.id, instanceId: knowledgeCard.instanceId, creatureId: creatureId } };
+    const result = isValidAction(state, action);
+    expect(result.isValid).toBe(false);
+    expect(result.reason).toContain('blocked by an opponent');
+  });
+
+  it('returns false for SUMMON_KNOWLEDGE when target slot is blocked by self (using creatureId)', () => {
+    const player = state.players[0];
+    const creatureId = player.creatures[0].id;
+    const knowledgeCard = createTestKnowledge('terrestrial1', { cost: 1 });
+    player.hand.push(knowledgeCard);
+    player.creatures[0].currentWisdom = 1; // Ensure enough wisdom
+
+    // Block the creature slot for player 0 by player 0
+    state.blockedSlots = { 0: [creatureId], 1: [] };
+
+    const action = { type: 'SUMMON_KNOWLEDGE', payload: { playerId: player1, knowledgeId: knowledgeCard.id, instanceId: knowledgeCard.instanceId, creatureId: creatureId } };
+    const result = isValidAction(state, action);
+    expect(result.isValid).toBe(false);
+    // Match the exact error message returned by the function
+    expect(result.reason).toBe(`Creature slot ${creatureId} is currently blocked.`);
+  });
+
   it('returns true for END_TURN action', () => {
     const action = { type: 'END_TURN', payload: { playerId: player1 } };
     expect(isValidAction(state, action).isValid).toBe(true);
