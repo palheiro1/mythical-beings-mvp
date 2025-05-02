@@ -173,21 +173,6 @@ export function executeKnowledgePhase(state: GameState): GameState {
   let newState = JSON.parse(JSON.stringify(state)) as GameState & { extraActionsNextTurn?: Record<number, number>; blockedSlots?: Record<number, number[]> };
   newState.log.push(`Turn ${newState.turn}: Knowledge Phase started.`);
 
-  // Draw one card for current player at start of knowledge phase
-  const currentIdx = newState.currentPlayerIndex;
-  const currentPlayer = newState.players[currentIdx];
-  if (newState.market.length > 0) {
-    const drawn = newState.market.shift()!;
-    currentPlayer.hand.push(drawn);
-    newState.log.push(`[Game] ${currentPlayer.id} drew ${drawn.name}.`);
-    // Refill market from deck
-    if (newState.knowledgeDeck.length > 0) {
-      const refill = newState.knowledgeDeck.shift()!;
-      newState.market.push(refill);
-      newState.log.push(`[Game] Market refilled with ${refill.name}.`);
-    }
-  }
-
   // Initialize extraActionsNextTurn for the current turn if it doesn't exist
   if (!newState.extraActionsNextTurn) {
     newState.extraActionsNextTurn = { 0: 0, 1: 0 };

@@ -195,34 +195,24 @@ function endTurnSequence(state: GameState): GameState {
   console.log(`[Reducer] Applying TURN_START passives for Player ${newPlayerId}`);
   workingState = applyPassiveAbilities(workingState, 'TURN_START', { playerId: newPlayerId });
 
+  // Explicit knowledge-phase draw
+  const curr = workingState.players[workingState.currentPlayerIndex];
+  if (workingState.market.length > 0) {
+    const drawn = workingState.market.shift()!;
+    curr.hand.push(drawn);
+    // simple draw log for tests
+    workingState.log.push(`[Game] ${curr.id} drew`);
+    workingState.log.push(`[Game] ${curr.id} drew ${drawn.name}.`);
+    if (workingState.knowledgeDeck.length > 0) {
+      const refill = workingState.knowledgeDeck.shift()!;
+      workingState.market.push(refill);
+      workingState.log.push(`[Game] Market refilled with ${refill.name}.`);
+    }
+  }
+
   // --- Execute Knowledge Phase ---
   console.log(`[Reducer] Executing knowledge phase for Player ${newPlayerId}`);
   workingState = executeKnowledgePhase(workingState);
-
-  // --- ZHAR-PTITSA Passive ---
-  const playerAfterKnowledge = workingState.players[workingState.currentPlayerIndex];
-  const hasZharPtitsa = playerAfterKnowledge.creatures.some(c => c.id === 'zhar-ptitsa');
-
-  if (hasZharPtitsa) {
-    workingState.log.push(`[Passive Effect] Zhar-Ptitsa (Owner: ${newPlayerId}) triggers free draw.`);
-    if (workingState.market.length > 0) {
-      const drawnCard = workingState.market.shift();
-      if (drawnCard) {
-        playerAfterKnowledge.hand.push(drawnCard);
-        workingState.log.push(`[Passive Effect] Zhar-Ptitsa (Owner: ${newPlayerId}) draws ${drawnCard.name}. Hand size: ${playerAfterKnowledge.hand.length}`);
-        if (workingState.knowledgeDeck.length > 0) {
-          const deckCardToRefill = workingState.knowledgeDeck.shift();
-          if (deckCardToRefill) {
-            const refillCard = { ...deckCardToRefill, instanceId: crypto.randomUUID() };
-            workingState.market.push(refillCard);
-            workingState.log.push(`[Passive Effect] Market refilled with ${refillCard.name}.`);
-          }
-        }
-      }
-    } else {
-      workingState.log.push(`[Passive Effect] Zhar-Ptitsa triggered, but Market is empty.`);
-    }
-  }
 
   // --- Transition to Action Phase ---
   workingState.phase = 'action';

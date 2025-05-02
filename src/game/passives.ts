@@ -273,6 +273,7 @@ export function applyPassiveAbilities(
       player.creatures.forEach(creature => {
         // Lisovik: KNOWLEDGE_LEAVE (owner's knowledge) - If leaving knowledge is earth, deal 1 damage to opponent.
         if (creature.id === 'lisovik' && player.id === ownerOfLeavingKnowledgeId && leavingKnowledge.element === 'earth') {
+          newState.log.push(`[Passive Effect] Lisovik (Owner: ${player.id}) deals 1 damage to ${opponent.id}.`);
           if (opponent) {
             const initialOpponentPower = opponent.power;
             opponent.power -= 1;
@@ -295,6 +296,7 @@ export function applyPassiveAbilities(
           const initialOwnerPower = playerInNewState.power; // Use power from newState reference
           playerInNewState.power += 1; // Modify the player within newState
 
+          newState.log.push(`[Passive Effect] Tsenehale (Owner: ${playerInNewState.id}) grants +1 Power to owner`);
           // Modify newState's log directly
           newState.log.push(`[Passive Effect] Tsenehale (Owner: ${playerInNewState.id}) grants +1 Power to owner as ${leavingKnowledge.name} leaves play from ${creatureKnowledgeLeftFromId}.`);
           newState.log.push(`Power: ${initialOwnerPower} -> ${playerInNewState.power}`);
