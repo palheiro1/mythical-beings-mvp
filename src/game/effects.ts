@@ -18,21 +18,29 @@ export const knowledgeEffects: Record<string, KnowledgeEffectFn> = {
   // Terrestrial 1: Damage based on rotation, +1 if opponent's creature has no knowledge
   terrestrial1: ({ state, playerIndex, fieldSlotIndex, knowledge, rotation }) => {
     const opponentIndex = playerIndex === 0 ? 1 : 0;
-    let damage = 0;
+    let baseDamage = 0;
     let logMsg = `[Terrestrial1] Rotation: ${rotation}º. `;
-    if (rotation === 0) damage = 1;
-    else if (rotation === 90) damage = 0;
-    else if (rotation === 180) damage = 2;
-    logMsg += `Base damage: ${damage}. `;
-    // Check if opponent's creature (same slot) has no knowledge
+    if (rotation === 0) baseDamage = 1;
+    else if (rotation === 180) baseDamage = 2;
+    // 90 and 270 (default) have baseDamage = 0
+    logMsg += `Base damage: ${baseDamage}. `;
+
+    let bonusDamage = 0;
     const opponentFieldSlot = state.players[opponentIndex].field[fieldSlotIndex] || { knowledge: null };
-    if (!opponentFieldSlot.knowledge) {
-      damage += 1;
+    // Only add bonus if base damage > 0 and opponent has no knowledge
+    if (!opponentFieldSlot.knowledge && baseDamage > 0) {
+      bonusDamage = 1;
       logMsg += `Opponent's creature has no knowledge: +1 damage. `;
+    } else if (!opponentFieldSlot.knowledge && baseDamage === 0) {
+      logMsg += `Opponent's creature has no knowledge, but base damage is 0. No bonus applied. `;
     }
-    logMsg += `Total damage: ${damage}.`;
-    if (damage > 0) {
-      return { ...state, log: [...state.log, `${knowledge.name} deals ${damage} damage to Player ${opponentIndex + 1}. ${logMsg}`] };
+
+    const totalDamage = baseDamage + bonusDamage;
+    logMsg += `Total damage: ${totalDamage}.`;
+
+    if (totalDamage > 0) {
+      // Apply damage logic needs to be handled by the reducer, this function just logs intent
+      return { ...state, log: [...state.log, `${knowledge.name} deals ${totalDamage} damage to Player ${opponentIndex + 1}. ${logMsg}`] };
     }
     return { ...state, log: [...state.log, `${knowledge.name} causes no damage. ${logMsg}`] };
   },
