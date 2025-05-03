@@ -1,6 +1,6 @@
 import { knowledgeEffects } from './effects.js';
 // Removed unused CombatBuffers import
-import { GameState, GameAction, Knowledge } from './types';
+import { GameState, GameAction, Knowledge, PlayerState } from './types';
 import { applyPassiveAbilities } from './passives.js';
 
 // Constants
@@ -169,152 +169,117 @@ export function isValidAction(state: GameState, action: GameAction): ValidationR
  * @returns The updated game state after the knowledge phase.
  */
 export function executeKnowledgePhase(state: GameState): GameState {
-  // Restore deep clone to prevent mutation issues
-  let newState = JSON.parse(JSON.stringify(state)) as GameState & { extraActionsNextTurn?: Record<number, number>; blockedSlots?: Record<number, number[]> };
+  // Use deep clone for the overall phase state
+  let newState = JSON.parse(JSON.stringify(state)) as GameState; // Use GameState directly
   newState.log.push(`Turn ${newState.turn}: Knowledge Phase started.`);
 
-  // Initialize extraActionsNextTurn for the current turn if it doesn't exist
-  if (!newState.extraActionsNextTurn) {
-    newState.extraActionsNextTurn = { 0: 0, 1: 0 };
-  }
-  // Ensure pendingEffects is initialized if missing (due to clone)
-  if (!newState.pendingEffects) {
-     newState.pendingEffects = [];
-  }
-  // Ensure blockedSlots is initialized if missing (due to clone)
-   if (!newState.blockedSlots) {
-     newState.blockedSlots = { 0: [], 1: [] };
-   }
-
+  // No need to manually initialize properties if initialGameState and types are correct
 
   // 1. Rotate Knowledge Cards and Apply Effects
   const knowledgeToDiscard: { playerIndex: number; slotIndex: number; card: Knowledge }[] = [];
 
   for (let playerIndex = 0; playerIndex < newState.players.length; playerIndex++) {
-    const player = newState.players[playerIndex];
+    for (let slotIndex = 0; slotIndex < newState.players[playerIndex].field.length; slotIndex++) {
+      const slot = newState.players[playerIndex].field[slotIndex];
 
-    player.field.forEach((slot, slotIndex) => {
       if (slot.knowledge) {
-        const currentRotation = slot.knowledge.rotation ?? 0;
-        const maxRotationDegrees = (slot.knowledge.maxRotations || 4) * 90; // Default to 4 if undefined
-        const willBeDiscarded = currentRotation + 90 >= maxRotationDegrees; // Check if it will be discarded this turn
+        const originalKnowledge = slot.knowledge;
 
+        // --- Calculate Rotation --- 
+        const currentRotation = originalKnowledge.rotation ?? 0;
+        const maxRotationDegrees = (originalKnowledge.maxRotations || 4) * 90;
         const nextRotation = currentRotation + 90;
-        slot.knowledge.rotation = nextRotation;
-        newState.log.push(`Knowledge ${slot.knowledge.name} (Player ${playerIndex + 1}, Slot ${slotIndex}) rotated to ${nextRotation}º.`);
+        const willBeDiscarded = nextRotation >= maxRotationDegrees;
+        const finalRotationValue = willBeDiscarded ? maxRotationDegrees : nextRotation;
 
-        const effectFn = knowledgeEffects[slot.knowledge.id];
-        if (effectFn) {
-          newState = effectFn({
-            state: newState,
-            playerIndex: playerIndex,
-            fieldSlotIndex: slotIndex,
-            knowledge: slot.knowledge,
-            rotation: nextRotation,
-            isFinalRotation: willBeDiscarded // Pass whether it will be discarded
-          });
+        // --- Prepare State for Effect --- 
+        let stateWithRotationUpdated = JSON.parse(JSON.stringify(newState)) as GameState;
+        const slotInClonedState = stateWithRotationUpdated.players[playerIndex]?.field[slotIndex];
+        let knowledgeAfterRotation: Knowledge | null = null;
+
+        if (slotInClonedState?.knowledge?.instanceId === originalKnowledge.instanceId) {
+          slotInClonedState.knowledge.rotation = finalRotationValue;
+          knowledgeAfterRotation = slotInClonedState.knowledge;
+        } else {
+          console.error(`[executeKnowledgePhase] Mismatch finding knowledge ${originalKnowledge.instanceId} in cloned state before effect.`);
+          knowledgeAfterRotation = { ...originalKnowledge, rotation: finalRotationValue };
         }
 
+        // --- Apply Effect (if any) --- 
+        const effectFn = knowledgeEffects[originalKnowledge.id];
+        if (effectFn && knowledgeAfterRotation) {
+           newState = effectFn({
+             state: stateWithRotationUpdated,
+             playerIndex: playerIndex,
+             fieldSlotIndex: slotIndex,
+             knowledge: knowledgeAfterRotation,
+             rotation: finalRotationValue,
+             isFinalRotation: willBeDiscarded
+           });
+        } else {
+           newState = stateWithRotationUpdated;
+        }
+
+        // --- Check for Discard --- 
         if (willBeDiscarded) {
-          knowledgeToDiscard.push({ playerIndex, slotIndex, card: { ...slot.knowledge } });
+          const finalKnowledgeInSlot = newState.players[playerIndex]?.field[slotIndex]?.knowledge;
+          if (finalKnowledgeInSlot?.instanceId === originalKnowledge.instanceId && finalKnowledgeInSlot.rotation === finalRotationValue) {
+             knowledgeToDiscard.push({ playerIndex, slotIndex, card: { ...finalKnowledgeInSlot } });
+          }
         }
-      }
-    });
+      } // end if(slot.knowledge)
+    } // end for slotIndex
+  } // end for playerIndex
+
+  // --- Discard Phase --- 
+  if (knowledgeToDiscard.length > 0) {
+    newState = processKnowledgeDiscards(newState, knowledgeToDiscard);
   }
 
-  knowledgeToDiscard.forEach(({ playerIndex, slotIndex, card }) => {
-    const player = newState.players[playerIndex];
-    const creatureName = player.creatures.find(c => c.id === player.field[slotIndex].creatureId)?.name || `Creature ${player.field[slotIndex].creatureId}`;
-    const maxRotationDegrees = (card.maxRotations || 4) * 90;
+  // 2. Resolve Pending Damage/Effects (if any were queued)
+  // newState = resolvePendingEffects(newState);
 
-    newState.discardPile.push(card);
-    newState.log.push(`${card.name} on ${creatureName} (Player ${playerIndex + 1}) reached ${card.rotation}º/${maxRotationDegrees}º and was discarded.`);
+  // 3. Check Win Conditions
+  newState = checkWinConditions(newState); // Renamed from checkWinCondition
 
-    if (card.id === 'aquatic3') {
-      const opponentIndex = playerIndex === 0 ? 1 : 0;
-      const opposingSlotIndex = slotIndex;
-      if (newState.blockedSlots && newState.blockedSlots[opponentIndex]) {
-        const initialLength = newState.blockedSlots[opponentIndex].length;
-        newState.blockedSlots[opponentIndex] = newState.blockedSlots[opponentIndex].filter((idx: number) => idx !== opposingSlotIndex);
-        if (newState.blockedSlots[opponentIndex].length < initialLength) {
-          newState.log.push(`Block on opponent's slot ${opposingSlotIndex} removed`);
-        }
-      }
-    }
+  newState.log.push(`Turn ${newState.turn}: Knowledge Phase ended.`);
 
-    newState = applyPassiveAbilities(newState, 'KNOWLEDGE_LEAVE', {
-      playerId: player.id,
-      creatureId: player.field[slotIndex].creatureId,
-      knowledgeCard: card
-    });
-
-    const targetPlayer = newState.players[playerIndex]; // Use newState here
-    if (targetPlayer && targetPlayer.field[slotIndex]) {
-      targetPlayer.field[slotIndex].knowledge = null;
-      console.log(`[executeKnowledgePhase] Set knowledge to null for Player ${playerIndex + 1}, Slot ${slotIndex}`);
-    } else {
-      console.error(`[executeKnowledgePhase] Error: Could not find player/slot to nullify knowledge for discard. PlayerIndex: ${playerIndex}, SlotIndex: ${slotIndex}`);
-    }
-  });
-
-  // --- Damage/Defense Resolution ---
-  // Custom damage resolution with Zhar-Ptitsa passive
-  const player1 = newState.players[0];
-  const player2 = newState.players[1];
-  // Calculate damage from player1's field knowledge
-  let p1Damage = 0;
-  player1.field.forEach(slot => {
-    if (slot.knowledge) {
-      p1Damage += slot.knowledge.element === 'air' ? 1 : slot.knowledge.cost;
-    }
-  });
-  // Calculate defense from player2's field water knowledge
-  const p2Defense = player2.field.reduce((sum, slot) => sum + (slot.knowledge && slot.knowledge.element === 'water' ? 1 : 0), 0);
-  // Apply Zhar-Ptitsa bypass if owner has the creature and has air knowledge
-  const hasZhar = player1.creatures.some(c => c.id === 'zhar-ptitsa');
-  const hasAirKnowledge = player1.field.some(slot => slot.knowledge?.element === 'air');
-  let netDamageToP2 = 0;
-  if (hasZhar && hasAirKnowledge) {
-    netDamageToP2 = p1Damage;
-    newState.log.push(
-      `[Passive Effect] Zhar-Ptitsa (Owner: ${player1.id}) bypasses defense for aerial knowledge.`
-    );
-  } else {
-    netDamageToP2 = Math.max(0, p1Damage - p2Defense);
-  }
-  if (netDamageToP2 > 0) {
-    player2.power -= netDamageToP2;
-    newState.log.push(
-      `[Damage] ${player1.id} dealt ${netDamageToP2} net damage to ${player2.id}.`
-    );
-  }
-  // Skip pendingEffects-based resolution
-
-  // Clear pending effects for the next phase/turn
-  newState.pendingEffects = [];
-
-  newState.phase = 'action';
-  newState.actionsTakenThisTurn = 0;
-  newState.log.push(`Turn ${newState.turn}: Action Phase started.`);
-
+  // Return the final state - type assertion might not be strictly needed if handled well
   return newState;
 }
 
 /**
  * Checks if the game has reached a win condition.
  * @param state The current game state.
- * @returns The ID of the winning player, or null if no winner yet.
+ * @returns The updated game state, potentially with a winner and phase change.
  */
-export function checkWinCondition(state: GameState): string | null {
+export function checkWinConditions(state: GameState): GameState {
   const player1 = state.players[0];
   const player2 = state.players[1];
+  let winner: string | null = null;
 
   if (player2.power <= 0) {
-    return player1.id;
+    winner = player1.id;
   }
   if (player1.power <= 0) {
-    return player2.id;
+    // If player 1 also reached 0 or less (e.g. simultaneous damage), player 2 might still win if they have more power
+    if (winner === player1.id && player1.power < player2.power) {
+       winner = player2.id; // Player 2 wins if player 1 is also <= 0 but has less power
+    } else if (winner === null) {
+       winner = player2.id; // Player 2 wins if only player 1 is <= 0
+    }
+    // If both are <= 0 and equal power, could be a draw or player1 wins based on tie-breaker rule (currently player1 wins)
   }
 
-  return null;
+  if (winner && state.winner !== winner) { // Only update if winner changed
+    console.log(`[WinCondition] Player ${winner} has won!`);
+    return {
+      ...state,
+      winner: winner,
+      phase: 'gameOver',
+      log: [...state.log, `Game Over! Player ${winner} wins!`]
+    };
+  }
+
+  return state; // No winner or winner already set
 }

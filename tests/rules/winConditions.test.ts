@@ -1,31 +1,36 @@
 import { describe, it, expect } from 'vitest';
-import { checkWinCondition } from '../../src/game/rules'; // Removed .js
+import { checkWinConditions } from '../../src/game/rules'; // Removed .js, corrected name
 import { createInitialTestState, createTestCreature, createTestKnowledge } from '../utils/testHelpers'; // Removed .js
 import { gameReducer } from '../../src/game/state'; // Removed .js
 import { GameState } from '../../src/game/types'; // Removed .js
 
-describe('checkWinCondition', () => {
+describe('checkWinConditions', () => { // Corrected describe block name
   it('returns player1 ID when player2 power <= 0', () => {
     const state = createInitialTestState();
     state.players[1].power = 0;
-    expect(checkWinCondition(state)).toBe('player1');
+    let resultState = checkWinConditions(state); // Correct the function call and check the winner property on the returned state
+    expect(resultState.winner).toBe('player1');
     state.players[1].power = -5;
-    expect(checkWinCondition(state)).toBe('player1');
+    resultState = checkWinConditions(state);
+    expect(resultState.winner).toBe('player1');
   });
 
   it('returns player2 ID when player1 power <= 0', () => {
     const state = createInitialTestState();
     state.players[0].power = 0;
-    expect(checkWinCondition(state)).toBe('player2');
+    let resultState = checkWinConditions(state); // Correct the function call and check the winner property on the returned state
+    expect(resultState.winner).toBe('player2');
     state.players[0].power = -10;
-    expect(checkWinCondition(state)).toBe('player2');
+    resultState = checkWinConditions(state);
+    expect(resultState.winner).toBe('player2');
   });
 
   it('returns null when both players power > 0', () => {
     const state = createInitialTestState();
     state.players[0].power = 5;
     state.players[1].power = 5;
-    expect(checkWinCondition(state)).toBeNull();
+    const resultState = checkWinConditions(state); // Correct the function call and check the winner property on the returned state
+    expect(resultState.winner).toBeNull();
   });
 });
 
@@ -86,7 +91,7 @@ describe('Win Condition Edge Cases', () => {
     expect(result.players[1].power).toBe(0);
     expect(result.log).toContain(`[Effect] ${damageKnowledge.name} deals 1 damage to ${p2Id}.`);
     expect(result.log).toContain(`[Game] ${p1Id} wins! ${p2Id} reached 0 Power.`);
-    expect(result.phase).toBe('finished'); // Game phase should update
+    expect(result.phase).toBe('gameOver'); // Game phase should update
   });
 
   it('should result in a draw if both players reach 0 power simultaneously', () => {
@@ -122,6 +127,6 @@ describe('Win Condition Edge Cases', () => {
     expect(result.log).toContain(`[Effect] ${mutualDestructionKnowledge.name} deals 1 damage to ${p1Id}.`);
     expect(result.log).toContain(`[Effect] ${mutualDestructionKnowledge.name} deals 1 damage to ${p2Id}.`);
     expect(result.log).toContain('[Game] Draw! Both players reached 0 Power simultaneously.');
-    expect(result.phase).toBe('finished');
+    expect(result.phase).toBe('gameOver'); // Correct the expected phase
   });
 });

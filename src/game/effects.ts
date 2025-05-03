@@ -262,18 +262,24 @@ export const knowledgeEffects: Record<string, KnowledgeEffectFn> = {
     return newState;
   },
 
-  // Aquatic 5: Final - Win 1 extra Action
+  // Aquatic 5: Final - Win 1 extra Action next turn
   aquatic5: ({ state, playerIndex, isFinalRotation }) => {
+    // Return a new state object, don't mutate input
     let newState = { ...state };
     if (isFinalRotation) {
-      if (!('extraActionsNextTurn' in newState)) {
-        (newState as any).extraActionsNextTurn = { 0: 0, 1: 0 };
-      }
-      const currentExtra = (newState as any).extraActionsNextTurn[playerIndex] || 0;
-      (newState as any).extraActionsNextTurn[playerIndex] = currentExtra + 1;
-      newState.log.push(`Aquatic5: Grants 1 extra action for next turn.`);
+      // Clone extraActionsNextTurn to avoid direct mutation
+      const newExtraActions = { ...newState.extraActionsNextTurn }; 
+      newExtraActions[playerIndex] = (newExtraActions[playerIndex] || 0) + 1;
+      
+      // Return the new state with updated extra actions and log
+      return {
+        ...newState,
+        extraActionsNextTurn: newExtraActions,
+        log: [...newState.log, `Aquatic5: Grants 1 extra action for Player ${playerIndex + 1} next turn.`]
+      };
     }
-    return newState;
+    // If not final rotation, return the original state (or a clone if other mutations happened)
+    return newState; 
   },
 
   // Aerial 1: Apparition - Gain +1 Power (on summon only) + Deals 1 damage

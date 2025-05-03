@@ -64,6 +64,7 @@ export interface GameState {
   winner: string | null; // ID of the winning player, or null
   log: string[]; // History of game events/actions
   blockedSlots?: Record<number, number[]>; // Tracks which field slots are blocked for each player index
+  extraActionsNextTurn?: { 0: number; 1: number }; // Actions granted by aquatic5
   pendingEffects?: { type: 'damage' | 'defense'; amount: number }[]; // Change pendingEffects type
 }
 

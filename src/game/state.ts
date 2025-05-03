@@ -1,5 +1,5 @@
 import { GameState, GameAction, PlayerState, Knowledge, Creature, SummonKnowledgePayload } from './types.js';
-import { isValidAction, executeKnowledgePhase, checkWinCondition } from './rules.js';
+import { isValidAction, executeKnowledgePhase, checkWinConditions } from './rules.js';
 import { rotateCreature, drawKnowledge, summonKnowledge } from './actions.js';
 import { applyPassiveAbilities } from './passives.js';
 import * as knowledgeData from '../assets/knowledges.json';
@@ -95,6 +95,23 @@ const initialPlayerState = (id: string, creatures: Creature[]): PlayerState => (
   selectedCreatures: creatures,
 });
 
+export const initialGameState: GameState = {
+  gameId: '',
+  players: [],
+  knowledgeDeck: [],
+  market: [],
+  discardPile: [],
+  currentPlayerIndex: 0,
+  turn: 1,
+  phase: 'setup', // Start in setup phase
+  actionsTakenThisTurn: 0,
+  actionsPerTurn: ACTIONS_PER_TURN,
+  winner: null,
+  log: [],
+  blockedSlots: { 0: [], 1: [] }, // Initialize blockedSlots
+  extraActionsNextTurn: { 0: 0, 1: 0 }, // Initialize extraActionsNextTurn
+};
+
 export function initializeGame(payload: InitializeGamePayload): GameState {
   const { gameId, player1Id, player2Id, player1SelectedIds, player2SelectedIds } = payload;
 
@@ -146,6 +163,7 @@ export function initializeGame(payload: InitializeGamePayload): GameState {
     winner: null,
     log: [`Game ${gameId} initialized. Player 1 starts.`],
     blockedSlots: { 0: [], 1: [] }, // Initialize blockedSlots
+    extraActionsNextTurn: { 0: 0, 1: 0 }, // Initialize extraActionsNextTurn
   };
   checkForDuplicateIds(initialState, "After initial deal"); // Check 1
 
@@ -155,9 +173,9 @@ export function initializeGame(payload: InitializeGamePayload): GameState {
   initialState = executeKnowledgePhase(initialState);
   checkForDuplicateIds(initialState, "After executeKnowledgePhase"); // Check 3
 
-  const winner = checkWinCondition(initialState);
-  if (winner) {
-    initialState = { ...initialState, winner, phase: 'end', log: [...initialState.log, `Player ${winner} wins!`] };
+  initialState = checkWinConditions(initialState);
+  if (initialState.winner) {
+    initialState = { ...initialState, phase: 'gameOver', log: [...initialState.log, `Player ${initialState.winner} wins!`] };
   }
 
   const finalState = injectInstanceIds(initialState);
@@ -196,15 +214,16 @@ function endTurnSequence(state: GameState): GameState {
   workingState = applyPassiveAbilities(workingState, 'TURN_START', { playerId: newPlayerId });
 
   // Check win condition after TURN_START passives
-  let winner = checkWinCondition(workingState);
-  if (winner !== null || (workingState.players[0].power <= 0 && workingState.players[1].power <= 0)) {
+  workingState = checkWinConditions(workingState);
+  if (workingState.winner !== null || (workingState.players[0].power <= 0 && workingState.players[1].power <= 0)) {
     const isDraw = workingState.players[0].power <= 0 && workingState.players[1].power <= 0;
+    const winner = workingState.winner;
     const loser = isDraw ? null : (winner === workingState.players[0].id ? workingState.players[1] : workingState.players[0]);
     const winLog = isDraw
       ? `[Game] Draw! Both players reached 0 Power simultaneously.`
       : `[Game] ${winner} wins! ${loser?.id} reached 0 Power.`;
     console.log(`[Reducer] Win/Draw condition met after TURN_START passives. ${winLog}`);
-    return { ...workingState, winner: isDraw ? null : winner, phase: 'finished', log: [...workingState.log, winLog] };
+    return { ...workingState, phase: 'gameOver', log: [...workingState.log, winLog] };
   }
 
   // Explicit knowledge-phase draw
@@ -227,15 +246,16 @@ function endTurnSequence(state: GameState): GameState {
   workingState = executeKnowledgePhase(workingState);
 
   // Check win condition after Knowledge Phase
-  winner = checkWinCondition(workingState);
-  if (winner !== null || (workingState.players[0].power <= 0 && workingState.players[1].power <= 0)) {
+  workingState = checkWinConditions(workingState);
+  if (workingState.winner !== null || (workingState.players[0].power <= 0 && workingState.players[1].power <= 0)) {
     const isDraw = workingState.players[0].power <= 0 && workingState.players[1].power <= 0;
+    const winner = workingState.winner;
     const loser = isDraw ? null : (winner === workingState.players[0].id ? workingState.players[1] : workingState.players[0]);
     const winLog = isDraw
       ? `[Game] Draw! Both players reached 0 Power simultaneously.`
       : `[Game] ${winner} wins! ${loser?.id} reached 0 Power.`;
     console.log(`[Reducer] Win/Draw condition met after Knowledge Phase. ${winLog}`);
-    return { ...workingState, winner: isDraw ? null : winner, phase: 'finished', log: [...workingState.log, winLog] };
+    return { ...workingState, phase: 'gameOver', log: [...workingState.log, winLog] };
   }
 
   // --- Transition to Action Phase ---
@@ -301,7 +321,14 @@ export function gameReducer(state: GameState | null, action: GameAction): GameSt
       return state;
     }
     console.log("[Reducer] Handling END_TURN action.");
-    return endTurnSequence(intermediateState);
+    let stateAfterEndOfTurn = endTurnSequence(state);
+
+    if (stateAfterEndOfTurn.winner) {
+      return stateAfterEndOfTurn;
+    }
+
+    console.log('[Reducer] endTurnSequence complete. Returning state for next turn action phase.');
+    return stateAfterEndOfTurn;
   }
 
   if (!action.payload || typeof action.payload !== 'object' || !('playerId' in action.payload)) {
@@ -339,16 +366,16 @@ export function gameReducer(state: GameState | null, action: GameAction): GameSt
         : 'AFTER_OPPONENT_DRAW';
       console.log(`[Reducer] Applying ${drawTrigger} passives.`);
       intermediateState = applyPassiveAbilities(intermediateState, drawTrigger, eventDataDraw);
-      // Check win condition after draw passives
-      let winner = checkWinCondition(intermediateState);
-      if (winner !== null || (intermediateState.players[0].power <= 0 && intermediateState.players[1].power <= 0)) {
+      intermediateState = checkWinConditions(intermediateState);
+      if (intermediateState.winner !== null || (intermediateState.players[0].power <= 0 && intermediateState.players[1].power <= 0)) {
         const isDraw = intermediateState.players[0].power <= 0 && intermediateState.players[1].power <= 0;
+        const winner = intermediateState.winner;
         const loser = isDraw ? null : (winner === intermediateState.players[0].id ? intermediateState.players[1] : intermediateState.players[0]);
         const winLog = isDraw
           ? `[Game] Draw! Both players reached 0 Power simultaneously.`
           : `[Game] ${winner} wins! ${loser?.id} reached 0 Power.`;
         console.log(`[Reducer] Win/Draw condition met after ${drawTrigger} passives. ${winLog}`);
-        return { ...intermediateState, winner: isDraw ? null : winner, phase: 'finished', log: [...intermediateState.log, winLog] };
+        return { ...intermediateState, phase: 'gameOver', log: [...intermediateState.log, winLog] };
       }
       actionConsumed = true;
       break;
@@ -398,16 +425,16 @@ export function gameReducer(state: GameState | null, action: GameAction): GameSt
         : 'AFTER_OPPONENT_SUMMON';
       console.log(`[Reducer] Applying ${summonTrigger} passives.`);
       intermediateState = applyPassiveAbilities(intermediateState, summonTrigger, eventDataSummon);
-      // Check win condition after summon passives
-      let winner = checkWinCondition(intermediateState);
-      if (winner !== null || (intermediateState.players[0].power <= 0 && intermediateState.players[1].power <= 0)) {
+      intermediateState = checkWinConditions(intermediateState);
+      if (intermediateState.winner !== null || (intermediateState.players[0].power <= 0 && intermediateState.players[1].power <= 0)) {
         const isDraw = intermediateState.players[0].power <= 0 && intermediateState.players[1].power <= 0;
+        const winner = intermediateState.winner;
         const loser = isDraw ? null : (winner === intermediateState.players[0].id ? intermediateState.players[1] : intermediateState.players[0]);
         const winLog = isDraw
           ? `[Game] Draw! Both players reached 0 Power simultaneously.`
           : `[Game] ${winner} wins! ${loser?.id} reached 0 Power.`;
         console.log(`[Reducer] Win/Draw condition met after ${summonTrigger} passives. ${winLog}`);
-        return { ...intermediateState, winner: isDraw ? null : winner, phase: 'finished', log: [...intermediateState.log, winLog] };
+        return { ...intermediateState, phase: 'gameOver', log: [...intermediateState.log, winLog] };
       }
       break;
     }
@@ -434,16 +461,16 @@ export function gameReducer(state: GameState | null, action: GameAction): GameSt
     console.log(`[Reducer] Action ${action.type} processed (Free). Actions taken: ${newActionsTaken}/${currentActionsPerTurn}`);
   }
 
-  // Check win condition after the main action processing but before action limit check
-  let winner = checkWinCondition(finalState);
-  if (winner !== null || (finalState.players[0].power <= 0 && finalState.players[1].power <= 0)) {
+  finalState = checkWinConditions(finalState);
+  if (finalState.winner !== null || (finalState.players[0].power <= 0 && finalState.players[1].power <= 0)) {
     const isDraw = finalState.players[0].power <= 0 && finalState.players[1].power <= 0;
+    const winner = finalState.winner;
     const loser = isDraw ? null : (winner === finalState.players[0].id ? finalState.players[1] : finalState.players[0]);
     const winLog = isDraw
       ? `[Game] Draw! Both players reached 0 Power simultaneously.`
       : `[Game] ${winner} wins! ${loser?.id} reached 0 Power.`;
     console.log(`[Reducer] Win/Draw condition met after action ${action.type}. ${winLog}`);
-    return { ...finalState, winner: isDraw ? null : winner, phase: 'finished', log: [...finalState.log, winLog] };
+    return { ...finalState, phase: 'gameOver', log: [...finalState.log, winLog] };
   }
 
   if (newActionsTaken >= currentActionsPerTurn) {
