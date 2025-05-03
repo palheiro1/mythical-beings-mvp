@@ -1,7 +1,77 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 // Removed unused imports: KnowledgeType, CreatureElement
-import { GameState, Knowledge } from './types';
+import { GameState, Knowledge, PlayerState } from './types';
 import { applyPassiveAbilities } from './passives.js'; // Import applyPassiveAbilities
+
+// Helper function to calculate damage, considering defense and passives
+// Returns final damage amount and logs to be added.
+function calculateDamage(
+  state: GameState, // Read-only state
+  targetPlayerIndex: number,
+  damageAmount: number,
+  sourcePlayerIndex: number,
+  sourceKnowledge: Knowledge,
+  sourceFieldSlotIndex: number
+): { finalDamage: number; logs: string[] } {
+  const logs: string[] = [];
+  if (damageAmount <= 0) {
+    return { finalDamage: 0, logs };
+  }
+
+  const sourcePlayer = state.players[sourcePlayerIndex];
+  const targetPlayer = state.players[targetPlayerIndex];
+  if (!targetPlayer) {
+    console.error(`[calculateDamage] Target player at index ${targetPlayerIndex} not found.`);
+    return { finalDamage: 0, logs };
+  }
+  const sourceCreatureId = sourcePlayer?.field[sourceFieldSlotIndex]?.creatureId;
+  const sourceCreature = sourcePlayer?.creatures.find(c => c.id === sourceCreatureId);
+  const targetFieldSlot = targetPlayer.field[sourceFieldSlotIndex];
+
+  let defense = 0;
+  let defenseSource = '';
+  let bypassDefense = false;
+
+  // Check if target has defense (e.g., from aquatic2 - Asteroid)
+  if (targetFieldSlot?.knowledge?.id === 'aquatic2') {
+    const opponentOfDefenderIndex = targetPlayerIndex === 0 ? 1 : 0;
+    const opponentOfDefenderSlot = state.players[opponentOfDefenderIndex]?.field[sourceFieldSlotIndex];
+
+    if (!opponentOfDefenderSlot?.knowledge) {
+      defense = 1; // Assuming aquatic2 grants 1 defense
+      defenseSource = 'Aquatic2 (Asteroid)';
+      logs.push(`[Defense] ${targetPlayer.id} has +1 defense from ${defenseSource} because opposing slot ${sourceFieldSlotIndex} is empty.`);
+    } else {
+      defenseSource = 'Aquatic2 (Asteroid)';
+      logs.push(`[Defense] ${targetPlayer.id} has ${defenseSource}, but opposing slot ${sourceFieldSlotIndex} has knowledge. No defense bonus.`);
+    }
+  }
+
+  // Check if attacker has Zhar-Ptitsa and knowledge is aerial
+  if (sourceCreature?.id === 'zhar-ptitsa' && sourceKnowledge.element === 'air') {
+    if (defense > 0) {
+      bypassDefense = true;
+      logs.push(`[Passive Effect] Zhar-Ptitsa (Owner: ${sourcePlayer.id}) bypasses defense for aerial knowledge ${sourceKnowledge.name}.`);
+    }
+  }
+
+  const finalDamage = bypassDefense ? damageAmount : Math.max(0, damageAmount - defense);
+
+  if (finalDamage > 0) {
+    let logMsg = `[Effect] ${sourceKnowledge.name} deals ${finalDamage} damage to ${targetPlayer.id}. (Base: ${damageAmount}`;
+    if (defense > 0) {
+      logMsg += `, Defense: ${defense}`;
+      if (bypassDefense) logMsg += ' - Bypassed';
+    }
+    logMsg += ')';
+    logs.push(logMsg);
+    console.log(`[Damage Calculation] Calculated ${finalDamage} damage for ${targetPlayer.id}.`);
+  } else {
+    logs.push(`[Effect] ${sourceKnowledge.name} deals 0 damage to ${targetPlayer.id} (Base: ${damageAmount}, Defense: ${defense}).`);
+  }
+
+  return { finalDamage, logs };
+}
 
 // Effect function signature
 export type KnowledgeEffectFn = (params: {
@@ -9,40 +79,43 @@ export type KnowledgeEffectFn = (params: {
   playerIndex: number;
   fieldSlotIndex: number;
   knowledge: Knowledge;
-  rotation: number; // Keep rotation as it's used by many effects
+  // *** IMPORTANT: This rotation value should be the rotation *before* the knowledge phase increment ***
+  rotation: number;
   isFinalRotation: boolean;
 }) => GameState;
 
 // Effect function map
 export const knowledgeEffects: Record<string, KnowledgeEffectFn> = {
   // Terrestrial 1: Damage based on rotation, +1 if opponent's creature has no knowledge
-  terrestrial1: ({ state, playerIndex, fieldSlotIndex, knowledge, rotation }) => {
+  terrestrial1: ({ state, playerIndex, fieldSlotIndex, knowledge, rotation }) => { // Use passed rotation
+    let newState = JSON.parse(JSON.stringify(state)) as GameState;
     const opponentIndex = playerIndex === 0 ? 1 : 0;
+
     let baseDamage = 0;
-    let logMsg = `[Terrestrial1] Rotation: ${rotation}º. `;
+    // Use the rotation value passed into the function
     if (rotation === 0) baseDamage = 1;
     else if (rotation === 180) baseDamage = 2;
-    // 90 and 270 (default) have baseDamage = 0
-    logMsg += `Base damage: ${baseDamage}. `;
 
     let bonusDamage = 0;
-    const opponentFieldSlot = state.players[opponentIndex].field[fieldSlotIndex] || { knowledge: null };
-    // Only add bonus if base damage > 0 and opponent has no knowledge
-    if (!opponentFieldSlot.knowledge && baseDamage > 0) {
+    const opponentFieldSlot = newState.players[opponentIndex].field[fieldSlotIndex];
+    if (!opponentFieldSlot?.knowledge && baseDamage > 0) {
       bonusDamage = 1;
-      logMsg += `Opponent's creature has no knowledge: +1 damage. `;
-    } else if (!opponentFieldSlot.knowledge && baseDamage === 0) {
-      logMsg += `Opponent's creature has no knowledge, but base damage is 0. No bonus applied. `;
     }
 
     const totalDamage = baseDamage + bonusDamage;
-    logMsg += `Total damage: ${totalDamage}.`;
 
     if (totalDamage > 0) {
-      // Apply damage logic needs to be handled by the reducer, this function just logs intent
-      return { ...state, log: [...state.log, `${knowledge.name} deals ${totalDamage} damage to Player ${opponentIndex + 1}. ${logMsg}`] };
+      // Pass the cloned state (newState) to calculateDamage (it's read-only)
+      const { finalDamage, logs } = calculateDamage(newState, opponentIndex, totalDamage, playerIndex, knowledge, fieldSlotIndex);
+      newState.log.push(...logs);
+      // Apply damage to the cloned state
+      if (finalDamage > 0 && newState.players[opponentIndex]) {
+        newState.players[opponentIndex].power -= finalDamage;
+      }
+    } else {
+      newState.log.push(`${knowledge.name} causes no damage this rotation (${rotation}º).`);
     }
-    return { ...state, log: [...state.log, `${knowledge.name} causes no damage. ${logMsg}`] };
+    return newState; // Return the modified clone
   },
 
   // Terrestrial 2: Look at opponent's hand and discard 1 card
@@ -76,14 +149,22 @@ export const knowledgeEffects: Record<string, KnowledgeEffectFn> = {
 
   // Terrestrial 3: Damage equal to summoning creature's wisdom
   terrestrial3: ({ state, playerIndex, fieldSlotIndex, knowledge }) => {
+    let newState = JSON.parse(JSON.stringify(state)) as GameState;
     const opponentIndex = playerIndex === 0 ? 1 : 0;
-    const creatureId = state.players[playerIndex].field[fieldSlotIndex].creatureId;
-    const creature = state.players[playerIndex].creatures.find(c => c.id === creatureId);
+    const creatureId = newState.players[playerIndex].field[fieldSlotIndex]?.creatureId;
+    const creature = newState.players[playerIndex].creatures.find(c => c.id === creatureId);
     const wisdom = creature?.currentWisdom ?? creature?.baseWisdom ?? 0;
+
     if (wisdom > 0) {
-      state.log.push(`${knowledge.name} deals ${wisdom} damage to Player ${opponentIndex + 1}.`);
+      const { finalDamage, logs } = calculateDamage(newState, opponentIndex, wisdom, playerIndex, knowledge, fieldSlotIndex);
+      newState.log.push(...logs);
+      if (finalDamage > 0 && newState.players[opponentIndex]) {
+        newState.players[opponentIndex].power -= finalDamage;
+      }
+    } else {
+      newState.log.push(`${knowledge.name} causes no damage as creature wisdom is 0.`);
     }
-    return state;
+    return newState;
   },
 
   // Terrestrial 4: Eliminate opponent's knowledge cards
@@ -175,54 +256,51 @@ export const knowledgeEffects: Record<string, KnowledgeEffectFn> = {
 
   // Aquatic 1: Rotates one of your Knowledge cards immediately (MVP: auto-pick first, log TODO)
   aquatic1: ({ state, playerIndex, fieldSlotIndex, knowledge }) => {
-    let modifiedState = state;
-    const playerField = modifiedState.players[playerIndex].field;
+    let newState = JSON.parse(JSON.stringify(state)) as GameState; // Clone at the start
+    const playerField = newState.players[playerIndex].field;
     const rotatable = playerField
       .map((slot, idx) => ({ slot, idx }))
       .filter(({ slot, idx }) => {
         if (!slot.knowledge || idx === fieldSlotIndex) return false;
         const maxRotationDegrees = (slot.knowledge.maxRotations || 4) * 90;
+        // Use rotation from the cloned state
         return (slot.knowledge.rotation ?? 0) < maxRotationDegrees;
       });
 
     if (rotatable.length === 0) {
-      modifiedState.log.push(`${knowledge.name}: No other knowledge cards to rotate.`);
-      return modifiedState;
+      newState.log.push(`${knowledge.name}: No other knowledge cards to rotate.`);
+      return newState; // Return the clone
     }
 
     const { slot, idx } = rotatable[0];
-    const k = slot.knowledge!;
+    const k = slot.knowledge!; // Operate on knowledge within the cloned state
     const currentRotation = k.rotation ?? 0;
     const newRotation = currentRotation + 90;
-    k.rotation = newRotation;
+    k.rotation = newRotation; // Rotate the knowledge in the clone
     const maxRotationDegreesTarget = (k.maxRotations || 4) * 90;
 
-    modifiedState.log.push(`${knowledge.name}: Rotated ${k.name} to ${newRotation}º and triggered its effect immediately. [TODO: Let user choose which knowledge to rotate if multiple are available]`);
+    newState.log.push(`${knowledge.name}: Rotated ${k.name} to ${newRotation}º and triggered its effect immediately. [TODO: Let user choose which knowledge to rotate if multiple are available]`);
 
     const effectFn = knowledgeEffects[k.id];
     if (effectFn) {
-      modifiedState = effectFn({
-        state: modifiedState,
+      // Call the nested effect function, passing the *current* cloned state (newState)
+      // The nested function will clone again if necessary
+      newState = effectFn({
+        state: newState, // Pass the current clone
         playerIndex,
         fieldSlotIndex: idx,
-        knowledge: k,
-        rotation: newRotation,
+        knowledge: k, // Pass the rotated knowledge from the clone
+        rotation: newRotation, // Pass the new rotation
         isFinalRotation: newRotation >= maxRotationDegreesTarget,
       });
     }
 
-    return modifiedState;
+    return newState; // Return the final state after potential nested effect
   },
 
   // Aquatic 2: Gain +1 defense when defending if the opposing Creature has no Knowledge cards
-  aquatic2: ({ state, playerIndex, fieldSlotIndex }) => {
-    const opponentIndex = playerIndex === 0 ? 1 : 0;
-    const opponentFieldSlot = state.players[opponentIndex].field[fieldSlotIndex];
-    if (opponentFieldSlot && opponentFieldSlot.knowledge) {
-      state.log.push(`Aquatic2: No defense granted (opposing creature has knowledge).`);
-    } else {
-      state.log.push(`Aquatic2: Provides +1 defense to Player ${playerIndex + 1} (opposing creature has no knowledge).`);
-    }
+  aquatic2: ({ state }) => {
+    // Passive effect, no action needed here. Return original state (or clone if paranoia demands).
     return state;
   },
 
@@ -264,70 +342,99 @@ export const knowledgeEffects: Record<string, KnowledgeEffectFn> = {
 
   // Aquatic 5: Final - Win 1 extra Action next turn
   aquatic5: ({ state, playerIndex, isFinalRotation }) => {
-    // Return a new state object, don't mutate input
     let newState = { ...state };
     if (isFinalRotation) {
-      // Clone extraActionsNextTurn to avoid direct mutation
       const newExtraActions = { ...newState.extraActionsNextTurn }; 
       newExtraActions[playerIndex] = (newExtraActions[playerIndex] || 0) + 1;
       
-      // Return the new state with updated extra actions and log
       return {
         ...newState,
         extraActionsNextTurn: newExtraActions,
         log: [...newState.log, `Aquatic5: Grants 1 extra action for Player ${playerIndex + 1} next turn.`]
       };
     }
-    // If not final rotation, return the original state (or a clone if other mutations happened)
     return newState; 
   },
 
   // Aerial 1: Apparition - Gain +1 Power (on summon only) + Deals 1 damage
-  aerial1: ({ state, playerIndex }) => {
+  aerial1: ({ state, playerIndex, fieldSlotIndex, knowledge }) => {
+    let newState = JSON.parse(JSON.stringify(state)) as GameState;
     const opponentIndex = playerIndex === 0 ? 1 : 0;
     const damage = 1;
-    state.log.push(`Aerial1 deals ${damage} damage to Player ${opponentIndex + 1}.`);
-    return state;
+    const { finalDamage, logs } = calculateDamage(newState, opponentIndex, damage, playerIndex, knowledge, fieldSlotIndex);
+    newState.log.push(...logs);
+    if (finalDamage > 0 && newState.players[opponentIndex]) {
+      newState.players[opponentIndex].power -= finalDamage;
+    }
+    // Note: The +1 Power on summon is not handled here, likely needs a passive or direct reducer logic.
+    return newState;
   },
 
   // Aerial 2: +1 Power (1st rotation), +2 Power (2nd), +3 Power (3rd), no 4th rotation
-  aerial2: ({ state, playerIndex, rotation }) => {
+  aerial2: ({ state, playerIndex, fieldSlotIndex, rotation }) => { // Use passed rotation
+    let newState = JSON.parse(JSON.stringify(state)) as GameState;
     let powerGain = 0;
+    // Use the rotation value passed into the function
     if (rotation === 0) powerGain = 1;
     else if (rotation === 90) powerGain = 2;
     else if (rotation === 180) powerGain = 3;
-    if (powerGain > 0) {
-      state.players[playerIndex].power += powerGain;
-      state.log.push(`Aerial2: Rotation ${rotation}º - Player ${playerIndex + 1} gains +${powerGain} Power.`);
+    if (powerGain > 0 && newState.players[playerIndex]) {
+      newState.players[playerIndex].power += powerGain;
+      newState.log.push(`Aerial2: Rotation ${rotation}º - Player ${playerIndex + 1} gains +${powerGain} Power.`);
     }
-    return state;
+    return newState;
   },
 
   // Aerial 3: While in play, adds +1 to the Wisdom of all your Creatures
   aerial3: ({ state, playerIndex, isFinalRotation }) => {
+    let newState = JSON.parse(JSON.stringify(state)) as GameState;
     if (!isFinalRotation) {
-      const player = state.players[playerIndex];
+      const player = newState.players[playerIndex];
       player.creatures = player.creatures.map(creature => ({
         ...creature,
         currentWisdom: (typeof creature.currentWisdom === 'number' ? creature.currentWisdom : creature.baseWisdom) + 1,
       }));
-      state.log.push(`Aerial3: While in play, all your creatures gain +1 Wisdom.`);
+      newState.log.push(`Aerial3: While in play, all your creatures gain +1 Wisdom.`);
     }
-    return state;
+    return newState;
   },
 
   // Aerial 4: Rotational damage & self-power
-  aerial4: ({ state, playerIndex, rotation }) => {
+  aerial4: ({ state, playerIndex, fieldSlotIndex, knowledge, rotation }) => { // Use passed rotation
+    let newState = JSON.parse(JSON.stringify(state)) as GameState;
+    const opponentIndex = playerIndex === 0 ? 1 : 0;
+
+    // Use the rotation value passed into the function
     const dmg = (rotation === 0 ? 1 : (rotation === 90 || rotation === 180 ? 2 : 0));
-    state.players[playerIndex].power += dmg;
-    state.log.push(`Aerial4: Deals ${dmg} damage & grants ${dmg} power.`);
-    return state;
+
+    // Apply damage to opponent first
+    if (dmg > 0) {
+      const { finalDamage, logs } = calculateDamage(newState, opponentIndex, dmg, playerIndex, knowledge, fieldSlotIndex);
+      newState.log.push(...logs);
+      if (finalDamage > 0 && newState.players[opponentIndex]) {
+        newState.players[opponentIndex].power -= finalDamage;
+      }
+    }
+    // Then apply power gain to self
+    if (dmg > 0) {
+      if(newState.players[playerIndex]) {
+         newState.players[playerIndex].power += dmg;
+         newState.log.push(`[Effect] ${knowledge.name} grants ${dmg} power to ${newState.players[playerIndex].id}.`);
+      } else {
+         console.error(`[Aerial4 Effect] Player index ${playerIndex} not found.`);
+      }
+    }
+    if (dmg === 0) {
+       newState.log.push(`[Effect] ${knowledge.name} causes no damage or power gain this rotation (${rotation}º).`);
+    }
+    return newState;
   },
 
   // Aerial 5: All opponent creatures rotate 90º clockwise (lose wisdom)
   aerial5: ({ state, playerIndex }) => {
+    let newState = JSON.parse(JSON.stringify(state)) as GameState;
     const opponentIndex = playerIndex === 0 ? 1 : 0;
-    const opponent = state.players[opponentIndex];
+    const opponent = newState.players[opponentIndex];
     let rotatedCount = 0;
     opponent.creatures = opponent.creatures.map(creature => {
       const currentRotation = creature.rotation ?? 0;
@@ -338,52 +445,13 @@ export const knowledgeEffects: Record<string, KnowledgeEffectFn> = {
       }
       return creature;
     });
-    state.log.push(`Aerial5: Rotated ${rotatedCount} of opponent's creatures 90º clockwise (they lose wisdom).`);
-    return state;
+    newState.log.push(`Aerial5: Rotated ${rotatedCount} of opponent's creatures 90º clockwise (they lose wisdom).`);
+    return newState;
   },
 };
 
 // New helper function to apply generic effects defined on knowledge cards
 export function applyKnowledgeEffect(state: GameState, effect: KnowledgeEffect, sourcePlayerId: string, knowledgeName: string): GameState {
-  let newState = { ...state }; // Clone state to avoid direct mutation issues
-  newState.players = newState.players.map(p => ({ ...p })) as [PlayerState, PlayerState]; // Deep clone players array
-
-  const sourcePlayerIndex = newState.players.findIndex(p => p.id === sourcePlayerId);
-  const opponentPlayerIndex = 1 - sourcePlayerIndex;
-
-  console.log(`[Effect Application] Applying effect for ${knowledgeName}:`, effect);
-
-  switch (effect.type) {
-    case 'DAMAGE':
-      const amount = effect.amount || 0;
-      if (amount <= 0) break;
-
-      const applyDamage = (targetIndex: number) => {
-        if (newState.players[targetIndex]) {
-          // TODO: Incorporate defense logic here if applicable
-          newState.players[targetIndex].power -= amount;
-          newState.log = [...newState.log, `[Effect] ${knowledgeName} deals ${amount} damage to ${newState.players[targetIndex].id}.`];
-          console.log(`[Effect Application] Applied ${amount} damage to ${newState.players[targetIndex].id}. New power: ${newState.players[targetIndex].power}`);
-        }
-      };
-
-      if (effect.target === 'BOTH') {
-        applyDamage(sourcePlayerIndex);
-        applyDamage(opponentPlayerIndex);
-      } else {
-        const targetPlayerIndex = effect.target === 'OPPONENT' ? opponentPlayerIndex : (effect.target === 'SELF' ? sourcePlayerIndex : -1);
-        if (targetPlayerIndex !== -1) {
-          applyDamage(targetPlayerIndex);
-        }
-      }
-      break;
-
-    // TODO: Implement other effect types (HEAL, DRAW, DISCARD, etc.) as needed
-    // case 'HEAL': ...
-    // case 'DRAW': ...
-
-    default:
-      console.warn(`[Effect Application] Unhandled effect type in applyKnowledgeEffect: ${effect.type}`);
-  }
-  return newState;
+  console.warn(`[Effect Application] applyKnowledgeEffect is likely deprecated. Effects should be handled by specific functions in knowledgeEffects.`);
+  return state;
 }

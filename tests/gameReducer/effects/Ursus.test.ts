@@ -51,11 +51,9 @@ describe('Ursus (terrestrial1) Effect', () => {
       isFinalRotation: false,
     });
 
+    expect(result.players[1].power).toBe(p2InitialPower - 1);
     const lastLogEntry = result.log[result.log.length - 1];
-    expect(lastLogEntry).toMatch(/deals 1 damage/);
-    expect(lastLogEntry).toMatch(/Base damage: 1/);
-    expect(lastLogEntry).not.toMatch(/Opponent's creature has no knowledge/);
-    expect(lastLogEntry).toMatch(/Total damage: 1/);
+    expect(lastLogEntry).toMatch(/Ursus deals 1 damage to player2/);
   });
 
   it('should deal 2 damage at 0 degrees rotation (opponent has NO knowledge)', () => {
@@ -72,11 +70,9 @@ describe('Ursus (terrestrial1) Effect', () => {
       isFinalRotation: false,
     });
 
+    expect(result.players[1].power).toBe(p2InitialPower - 2);
     const lastLogEntry = result.log[result.log.length - 1];
-    expect(lastLogEntry).toMatch(/deals 2 damage/);
-    expect(lastLogEntry).toMatch(/Base damage: 1/);
-    expect(lastLogEntry).toMatch(/Opponent's creature has no knowledge: \+1 damage/);
-    expect(lastLogEntry).toMatch(/Total damage: 2/);
+    expect(lastLogEntry).toMatch(/Ursus deals 2 damage to player2/);
   });
 
   it('should deal 0 damage at 90 degrees rotation', () => {
@@ -93,10 +89,9 @@ describe('Ursus (terrestrial1) Effect', () => {
       isFinalRotation: false,
     });
 
+    expect(result.players[1].power).toBe(p2InitialPower);
     const lastLogEntry = result.log[result.log.length - 1];
-    expect(lastLogEntry).toMatch(/causes no damage/);
-    expect(lastLogEntry).toMatch(/Base damage: 0/);
-    expect(lastLogEntry).toMatch(/Total damage: 0/);
+    expect(lastLogEntry).toMatch(/Ursus causes no damage this rotation/);
   });
 
   it('should deal 2 damage at 180 degrees rotation (opponent has knowledge)', () => {
@@ -113,11 +108,9 @@ describe('Ursus (terrestrial1) Effect', () => {
       isFinalRotation: false, // Assuming not final rotation for this test
     });
 
+    expect(result.players[1].power).toBe(p2InitialPower - 2);
     const lastLogEntry = result.log[result.log.length - 1];
-    expect(lastLogEntry).toMatch(/deals 2 damage/);
-    expect(lastLogEntry).toMatch(/Base damage: 2/);
-    expect(lastLogEntry).not.toMatch(/Opponent's creature has no knowledge/);
-    expect(lastLogEntry).toMatch(/Total damage: 2/);
+    expect(lastLogEntry).toMatch(/Ursus deals 2 damage to player2/);
   });
 
   it('should deal 3 damage at 180 degrees rotation (opponent has NO knowledge)', () => {
@@ -134,11 +127,9 @@ describe('Ursus (terrestrial1) Effect', () => {
       isFinalRotation: false,
     });
 
+    expect(result.players[1].power).toBe(p2InitialPower - 3);
     const lastLogEntry = result.log[result.log.length - 1];
-    expect(lastLogEntry).toMatch(/deals 3 damage/);
-    expect(lastLogEntry).toMatch(/Base damage: 2/);
-    expect(lastLogEntry).toMatch(/Opponent's creature has no knowledge: \+1 damage/);
-    expect(lastLogEntry).toMatch(/Total damage: 3/);
+    expect(lastLogEntry).toMatch(/Ursus deals 3 damage to player2/);
   });
 
   // Optional: Test for 270 degrees if it should do nothing
@@ -155,9 +146,8 @@ describe('Ursus (terrestrial1) Effect', () => {
       isFinalRotation: true, // Assuming 270 is final rotation
     });
 
+    expect(result.players[1].power).toBe(p2InitialPower);
     const lastLogEntry = result.log[result.log.length - 1];
-    expect(lastLogEntry).toMatch(/causes no damage/);
-    expect(lastLogEntry).toMatch(/Base damage: 0/); // Based on current code, falls through to 0
-    expect(lastLogEntry).toMatch(/Total damage: 0/);
+    expect(lastLogEntry).toMatch(/Ursus causes no damage this rotation/);
   });
 });

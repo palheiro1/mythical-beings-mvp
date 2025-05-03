@@ -169,84 +169,135 @@ export function isValidAction(state: GameState, action: GameAction): ValidationR
  * @returns The updated game state after the knowledge phase.
  */
 export function executeKnowledgePhase(state: GameState): GameState {
-  // Use deep clone for the overall phase state
-  let newState = JSON.parse(JSON.stringify(state)) as GameState; // Use GameState directly
-  newState.log.push(`Turn ${newState.turn}: Knowledge Phase started.`);
+  let phaseState = JSON.parse(JSON.stringify(state)) as GameState; // Initial clone for the whole phase
+  phaseState.log.push(`Turn ${phaseState.turn}: Knowledge Phase started.`);
 
-  // No need to manually initialize properties if initialGameState and types are correct
-
-  // 1. Rotate Knowledge Cards and Apply Effects
   const knowledgeToDiscard: { playerIndex: number; slotIndex: number; card: Knowledge }[] = [];
+  const effectStates: { playerIndex: number; slotIndex: number; state: GameState }[] = [];
 
-  for (let playerIndex = 0; playerIndex < newState.players.length; playerIndex++) {
-    for (let slotIndex = 0; slotIndex < newState.players[playerIndex].field.length; slotIndex++) {
-      const slot = newState.players[playerIndex].field[slotIndex];
+  // 1. Calculate Rotations and Prepare Effect States (Read-only pass)
+  for (let playerIndex = 0; playerIndex < phaseState.players.length; playerIndex++) {
+    for (let slotIndex = 0; slotIndex < phaseState.players[playerIndex].field.length; slotIndex++) {
+      const slot = phaseState.players[playerIndex].field[slotIndex];
 
       if (slot.knowledge) {
         const originalKnowledge = slot.knowledge;
-
-        // --- Calculate Rotation --- 
-        const currentRotation = originalKnowledge.rotation ?? 0;
+        const currentRotation = originalKnowledge.rotation ?? 0; // Rotation *before* increment
         const maxRotationDegrees = (originalKnowledge.maxRotations || 4) * 90;
         const nextRotation = currentRotation + 90;
         const willBeDiscarded = nextRotation >= maxRotationDegrees;
-        const finalRotationValue = willBeDiscarded ? maxRotationDegrees : nextRotation;
 
-        // --- Prepare State for Effect --- 
-        let stateWithRotationUpdated = JSON.parse(JSON.stringify(newState)) as GameState;
-        const slotInClonedState = stateWithRotationUpdated.players[playerIndex]?.field[slotIndex];
-        let knowledgeAfterRotation: Knowledge | null = null;
-
-        if (slotInClonedState?.knowledge?.instanceId === originalKnowledge.instanceId) {
-          slotInClonedState.knowledge.rotation = finalRotationValue;
-          knowledgeAfterRotation = slotInClonedState.knowledge;
-        } else {
-          console.error(`[executeKnowledgePhase] Mismatch finding knowledge ${originalKnowledge.instanceId} in cloned state before effect.`);
-          knowledgeAfterRotation = { ...originalKnowledge, rotation: finalRotationValue };
-        }
-
-        // --- Apply Effect (if any) --- 
+        // Check if effect exists
         const effectFn = knowledgeEffects[originalKnowledge.id];
-        if (effectFn && knowledgeAfterRotation) {
-           newState = effectFn({
-             state: stateWithRotationUpdated,
-             playerIndex: playerIndex,
-             fieldSlotIndex: slotIndex,
-             knowledge: knowledgeAfterRotation,
-             rotation: finalRotationValue,
-             isFinalRotation: willBeDiscarded
-           });
-        } else {
-           newState = stateWithRotationUpdated;
+        if (effectFn) {
+          // Prepare a state snapshot *before* this specific effect runs
+          // This snapshot includes the state *before* any effects in this phase have been applied
+          let stateForEffect = JSON.parse(JSON.stringify(phaseState)) as GameState;
+
+          // Store the state snapshot and parameters needed to run the effect later
+          effectStates.push({
+            playerIndex,
+            slotIndex,
+            state: stateForEffect // Pass the clean state from the start of the phase
+          });
         }
 
-        // --- Check for Discard --- 
+        // Check for discard based on nextRotation
         if (willBeDiscarded) {
-          const finalKnowledgeInSlot = newState.players[playerIndex]?.field[slotIndex]?.knowledge;
-          if (finalKnowledgeInSlot?.instanceId === originalKnowledge.instanceId && finalKnowledgeInSlot.rotation === finalRotationValue) {
-             knowledgeToDiscard.push({ playerIndex, slotIndex, card: { ...finalKnowledgeInSlot } });
-          }
+          // We need the knowledge card as it exists *before* potential modification by effects
+          knowledgeToDiscard.push({ playerIndex, slotIndex, card: { ...originalKnowledge } });
         }
-      } // end if(slot.knowledge)
-    } // end for slotIndex
-  } // end for playerIndex
 
-  // --- Discard Phase --- 
-  if (knowledgeToDiscard.length > 0) {
-    newState = processKnowledgeDiscards(newState, knowledgeToDiscard);
+        // --- Update Rotation in the main phaseState ---
+        // This happens regardless of whether an effect exists
+        const knowledgeInMainState = phaseState.players[playerIndex]?.field[slotIndex]?.knowledge;
+        if (knowledgeInMainState?.instanceId === originalKnowledge.instanceId) {
+           knowledgeInMainState.rotation = nextRotation; // Update rotation for the next phase/turn
+        }
+      }
+    }
   }
 
-  // 2. Resolve Pending Damage/Effects (if any were queued)
-  // newState = resolvePendingEffects(newState);
+  // 2. Apply Effects Sequentially (Mutating pass)
+  // Start with the initial phase state
+  let currentState = phaseState;
+  for (const { playerIndex, slotIndex, state: stateSnapshot } of effectStates) {
+      const slot = stateSnapshot.players[playerIndex]?.field[slotIndex]; // Get slot from the snapshot
+      if (slot?.knowledge) {
+          const knowledgeForEffect = slot.knowledge;
+          const effectFn = knowledgeEffects[knowledgeForEffect.id];
+          const currentRotation = knowledgeForEffect.rotation ?? 0; // Rotation before increment
+          const maxRotationDegrees = (knowledgeForEffect.maxRotations || 4) * 90;
+          const nextRotation = currentRotation + 90;
+          const willBeDiscarded = nextRotation >= maxRotationDegrees;
 
-  // 3. Check Win Conditions
-  newState = checkWinConditions(newState); // Renamed from checkWinCondition
+          if (effectFn) {
+              // Apply effect to the *currentState* using data from the snapshot
+              currentState = effectFn({
+                  state: currentState, // Pass the progressively updated state
+                  playerIndex: playerIndex,
+                  fieldSlotIndex: slotIndex,
+                  knowledge: knowledgeForEffect, // Use knowledge from snapshot
+                  rotation: currentRotation, // *** Pass rotation BEFORE increment ***
+                  isFinalRotation: willBeDiscarded
+              });
+          }
+      }
+  }
+  // Update phaseState with the result of all effects
+  phaseState = currentState;
 
-  newState.log.push(`Turn ${newState.turn}: Knowledge Phase ended.`);
 
-  // Return the final state - type assertion might not be strictly needed if handled well
+  // 3. Discard Phase (using the knowledge identified in step 1)
+  if (knowledgeToDiscard.length > 0) {
+    phaseState = processKnowledgeDiscards(phaseState, knowledgeToDiscard);
+  }
+
+  // 4. Check Win Conditions
+  phaseState = checkWinConditions(phaseState);
+
+  phaseState.log.push(`Turn ${phaseState.turn}: Knowledge Phase ended.`);
+  return phaseState;
+}
+
+
+/**
+ * Processes the discarding of knowledge cards at the end of the knowledge phase.
+ * @param state The current game state.
+ * @param discards An array of knowledge cards to discard.
+ * @returns The updated game state.
+ */
+function processKnowledgeDiscards(
+  state: GameState,
+  discards: { playerIndex: number; slotIndex: number; card: Knowledge }[]
+): GameState {
+  let newState = state; // Start with the current state (already a clone from executeKnowledgePhase)
+  const discardedInstanceIds = new Set(discards.map(d => d.card.instanceId));
+
+  for (const { playerIndex, slotIndex, card } of discards) {
+    const player = newState.players[playerIndex];
+    const fieldSlot = player?.field[slotIndex];
+
+    // Double-check if the card is still there and matches the instanceId before discarding
+    if (fieldSlot?.knowledge?.instanceId === card.instanceId) {
+      newState.log.push(`[Knowledge Phase] ${card.name} (Player ${playerIndex + 1}, Slot ${slotIndex}) reached max rotations and is discarded.`);
+      newState.discardPile.push(fieldSlot.knowledge);
+      fieldSlot.knowledge = null;
+
+      // Apply KNOWLEDGE_LEAVE passives
+      newState = applyPassiveAbilities(newState, 'KNOWLEDGE_LEAVE', {
+        playerId: player.id,
+        creatureId: fieldSlot.creatureId,
+        knowledgeCard: card, // Pass the card that is leaving
+      });
+    } else {
+       // This might happen if an effect already removed the card
+       console.log(`[Knowledge Phase] Card ${card.name} (Instance: ${card.instanceId}) already removed from Player ${playerIndex + 1}, Slot ${slotIndex} before discard step.`);
+    }
+  }
   return newState;
 }
+
 
 /**
  * Checks if the game has reached a win condition.
@@ -254,32 +305,50 @@ export function executeKnowledgePhase(state: GameState): GameState {
  * @returns The updated game state, potentially with a winner and phase change.
  */
 export function checkWinConditions(state: GameState): GameState {
+  // Avoid modifying state if game is already over
+  if (state.phase === 'gameOver') {
+    return state;
+  }
+
   const player1 = state.players[0];
   const player2 = state.players[1];
+
+  const p1Power = player1.power;
+  const p2Power = player2.power;
+
   let winner: string | null = null;
+  let isDraw = false;
+  let logMsg = '';
 
-  if (player2.power <= 0) {
+  // Check for Draw first
+  if (p1Power <= 0 && p2Power <= 0) {
+    isDraw = true;
+    winner = null; // Explicitly null for draw
+    logMsg = '[Game] Draw! Both players reached 0 Power or less simultaneously.';
+    console.log(`[WinCondition] Draw condition met! P1: ${p1Power}, P2: ${p2Power}`);
+  }
+  // Check for Player 1 win
+  else if (p2Power <= 0) {
     winner = player1.id;
+    logMsg = `[Game] ${winner} wins! ${player2.id} reached 0 Power or less.`;
+    console.log(`[WinCondition] Player ${winner} wins! P2 power: ${p2Power}`);
   }
-  if (player1.power <= 0) {
-    // If player 1 also reached 0 or less (e.g. simultaneous damage), player 2 might still win if they have more power
-    if (winner === player1.id && player1.power < player2.power) {
-       winner = player2.id; // Player 2 wins if player 1 is also <= 0 but has less power
-    } else if (winner === null) {
-       winner = player2.id; // Player 2 wins if only player 1 is <= 0
-    }
-    // If both are <= 0 and equal power, could be a draw or player1 wins based on tie-breaker rule (currently player1 wins)
+  // Check for Player 2 win
+  else if (p1Power <= 0) {
+    winner = player2.id;
+    logMsg = `[Game] ${winner} wins! ${player1.id} reached 0 Power or less.`;
+    console.log(`[WinCondition] Player ${winner} wins! P1 power: ${p1Power}`);
   }
 
-  if (winner && state.winner !== winner) { // Only update if winner changed
-    console.log(`[WinCondition] Player ${winner} has won!`);
+  // Update state if a winner is found or it's a draw
+  if (winner !== null || isDraw) {
     return {
       ...state,
       winner: winner,
       phase: 'gameOver',
-      log: [...state.log, `Game Over! Player ${winner} wins!`]
+      log: [...state.log, logMsg]
     };
   }
 
-  return state; // No winner or winner already set
+  return state; // No winner or draw yet
 }
