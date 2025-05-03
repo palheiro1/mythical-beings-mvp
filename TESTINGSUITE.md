@@ -37,11 +37,26 @@ This checklist will guide the step-by-step creation and restructure of a robust,
 - [✅] Test edge cases (multiple passives, stacking, etc.) - Covered in `tests/gameReducer/passives/interactions.test.ts`. *Note: Tests pass, but TODOs added for potential logic issues with chained KNOWLEDGE_LEAVE and AFTER_PLAYER_DRAW triggers.*
 
 ## 4. Knowledge Card Effects
-- [ ] List all unique knowledge effects from `effects.ts`
-- [✅] Basic Damage/Defense application - Covered indirectly in `tests/rules/validation.test.ts`
-- [✅] Test specific effects (draw, discard, block, etc.) - Covered in `tests/rules/validation.test.ts`
-- [🤼🏾] Test edge cases (stacking, blocked, etc.) - *Partially covered: Blocking tested (aquatic3). Missing: Tests for stacking effects.*
-- [🤼🏾] Test log output for effects - *Partially covered: Logs checked for tested effects in `tests/rules/validation.test.ts`. Missing: Comprehensive log checks for all effects.*
+- [✅] List all unique knowledge effects from `effects.ts` / `knowledges.json`:
+  - [✅] `terrestrial1` (Ursus): Rotational damage (1@0º, 2@180º), +1 if opponent slot empty. - *Tested in `tests/gameReducer/effects/Ursus.test.ts`*
+  - [🤼🏾] `terrestrial2` (Serpent): Look at opponent hand, discard 1. - *Discard mechanic tested in validation, specific effect logic not isolated.*
+  - [🤼🏾] `terrestrial3` (Earthquake): Damage = summoning creature's wisdom. - *Damage calculation tested indirectly, specific effect logic not isolated.*
+  - [🤼🏾] `terrestrial4` (Fire): Eliminate opponent knowledge cost <= 2. - *Effect logic not specifically tested.*
+  - [🤼🏾] `terrestrial5` (Lupus): Discard 1 opponent knowledge from field. - *Discard mechanic tested in validation, specific effect logic not isolated.*
+  - [🤼🏾] `aquatic1` (Tsunami): Rotate 1 other friendly knowledge, trigger effect. - *Effect logic not specifically tested.*
+  - [🤼🏾] `aquatic2` (Asteroid): Passive defense (+1 if attacker slot empty). - *Defense mechanic tested in passives/validation, specific effect logic not isolated.*
+  - [🤼🏾] `aquatic3` (Hurricane): Block opponent summoning onto opposing slot. - *Block mechanic tested in validation, specific effect logic not isolated.*
+  - [🤼🏾] `aquatic4` (Delphinidae): Apparition - Draw 1 from market (free). - *Draw mechanic tested in validation, specific effect logic not isolated.*
+  - [🤼🏾] `aquatic5` (Galapago): Final - Gain +1 action next turn. - *Effect logic not specifically tested.*
+  - [🤼🏾] `aerial1` (Lepidoptera): Apparition - Gain +1 Power (Passive/Reducer). Deals 1 damage. - *Damage calculation tested indirectly, specific effect logic not isolated.*
+  - [🤼🏾] `aerial2` (Blue Sky): Rotational power gain (+1@0º, +2@90º, +3@180º). - *Effect logic not specifically tested.*
+  - [🤼🏾] `aerial3` (Owl): Passive - All friendly creatures +1 Wisdom. - *Effect logic not specifically tested.*
+  - [🤼🏾] `aerial4` (Chiropter): Rotational damage & self-power (1@0º, 2@90º/180º). - *Damage calculation tested indirectly, specific effect logic not isolated.*
+  - [🤼🏾] `aerial5` (Migration): Rotate all opponent creatures 90º. - *Effect logic not specifically tested.*
+- [🤼🏾] Basic Damage/Defense application - *Partially covered indirectly in passive/validation/Ursus tests.*
+- [🤼🏾] Test specific effects (draw, discard, block, etc.) - *Partially covered in `tests/rules/validation.test.ts` and passive tests, but not isolated per effect.*
+- [🤼🏾] Test edge cases (stacking, blocked, etc.) - *Partially covered: Blocking tested (aquatic3). Missing: Tests for stacking effects (e.g., multiple wisdom buffs), specific rotational edge cases.*
+- [🤼🏾] Test log output for effects - *Partially covered: Logs checked for tested effects. Missing: Comprehensive log checks for all effects.*
 
 ## 5. Market, Deck, and Discard Logic
 - [✅] Test market refill and empty market behavior - Covered in `tests/gameReducer/marketDeck.test.ts`
@@ -74,4 +89,4 @@ This checklist will guide the step-by-step creation and restructure of a robust,
 
 ---
 
-*Last updated: 2025-05-01*
+*Last updated: 2025-05-03*

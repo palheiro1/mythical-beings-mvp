@@ -1,4 +1,5 @@
 import { knowledgeEffects } from './effects.js';
+import { cloneDeep } from 'lodash'; // Import cloneDeep
 // Removed unused CombatBuffers import
 import { GameState, GameAction, Knowledge, PlayerState } from './types';
 import { applyPassiveAbilities } from './passives.js';
@@ -169,7 +170,7 @@ export function isValidAction(state: GameState, action: GameAction): ValidationR
  * @returns The updated game state after the knowledge phase.
  */
 export function executeKnowledgePhase(state: GameState): GameState {
-  let phaseState = JSON.parse(JSON.stringify(state)) as GameState; // Initial clone for the whole phase
+  let phaseState = cloneDeep(state); // Use cloneDeep for initial phase clone
   phaseState.log.push(`Turn ${phaseState.turn}: Knowledge Phase started.`);
 
   const knowledgeToDiscard: { playerIndex: number; slotIndex: number; card: Knowledge }[] = [];
@@ -182,73 +183,65 @@ export function executeKnowledgePhase(state: GameState): GameState {
 
       if (slot.knowledge) {
         const originalKnowledge = slot.knowledge;
-        const currentRotation = originalKnowledge.rotation ?? 0; // Rotation *before* increment
+        const currentRotation = originalKnowledge.rotation ?? 0;
         const maxRotationDegrees = (originalKnowledge.maxRotations || 4) * 90;
         const nextRotation = currentRotation + 90;
         const willBeDiscarded = nextRotation >= maxRotationDegrees;
 
-        // Check if effect exists
         const effectFn = knowledgeEffects[originalKnowledge.id];
         if (effectFn) {
           // Prepare a state snapshot *before* this specific effect runs
-          // This snapshot includes the state *before* any effects in this phase have been applied
-          let stateForEffect = JSON.parse(JSON.stringify(phaseState)) as GameState;
+          // Use cloneDeep for the snapshot as well, though maybe unnecessary if effects always clone
+          let stateForEffect = cloneDeep(phaseState);
 
-          // Store the state snapshot and parameters needed to run the effect later
           effectStates.push({
             playerIndex,
             slotIndex,
-            state: stateForEffect // Pass the clean state from the start of the phase
+            state: stateForEffect
           });
         }
 
-        // Check for discard based on nextRotation
         if (willBeDiscarded) {
-          // We need the knowledge card as it exists *before* potential modification by effects
           knowledgeToDiscard.push({ playerIndex, slotIndex, card: { ...originalKnowledge } });
         }
 
-        // --- Update Rotation in the main phaseState ---
-        // This happens regardless of whether an effect exists
         const knowledgeInMainState = phaseState.players[playerIndex]?.field[slotIndex]?.knowledge;
         if (knowledgeInMainState?.instanceId === originalKnowledge.instanceId) {
-           knowledgeInMainState.rotation = nextRotation; // Update rotation for the next phase/turn
+           knowledgeInMainState.rotation = nextRotation;
         }
       }
     }
   }
 
   // 2. Apply Effects Sequentially (Mutating pass)
-  // Start with the initial phase state
-  let currentState = phaseState;
+  let currentState = phaseState; // Start with the already cloned phaseState
   for (const { playerIndex, slotIndex, state: stateSnapshot } of effectStates) {
-      const slot = stateSnapshot.players[playerIndex]?.field[slotIndex]; // Get slot from the snapshot
+      const slot = stateSnapshot.players[playerIndex]?.field[slotIndex];
       if (slot?.knowledge) {
           const knowledgeForEffect = slot.knowledge;
           const effectFn = knowledgeEffects[knowledgeForEffect.id];
-          const currentRotation = knowledgeForEffect.rotation ?? 0; // Rotation before increment
+          const currentRotation = knowledgeForEffect.rotation ?? 0;
           const maxRotationDegrees = (knowledgeForEffect.maxRotations || 4) * 90;
           const nextRotation = currentRotation + 90;
           const willBeDiscarded = nextRotation >= maxRotationDegrees;
 
           if (effectFn) {
-              // Apply effect to the *currentState* using data from the snapshot
+              // Apply effect to the *currentState*
+              // The effect function itself now uses cloneDeep internally
               currentState = effectFn({
-                  state: currentState, // Pass the progressively updated state
+                  state: currentState,
                   playerIndex: playerIndex,
                   fieldSlotIndex: slotIndex,
-                  knowledge: knowledgeForEffect, // Use knowledge from snapshot
-                  rotation: currentRotation, // *** Pass rotation BEFORE increment ***
+                  knowledge: knowledgeForEffect,
+                  rotation: currentRotation,
                   isFinalRotation: willBeDiscarded
               });
           }
       }
   }
-  // Update phaseState with the result of all effects
-  phaseState = currentState;
+  phaseState = currentState; // Update phaseState with the result of all effects
 
-
-  // 3. Discard Phase (using the knowledge identified in step 1)
+  // 3. Discard Phase
   if (knowledgeToDiscard.length > 0) {
     phaseState = processKnowledgeDiscards(phaseState, knowledgeToDiscard);
   }
@@ -259,7 +252,6 @@ export function executeKnowledgePhase(state: GameState): GameState {
   phaseState.log.push(`Turn ${phaseState.turn}: Knowledge Phase ended.`);
   return phaseState;
 }
-
 
 /**
  * Processes the discarding of knowledge cards at the end of the knowledge phase.
@@ -297,7 +289,6 @@ function processKnowledgeDiscards(
   }
   return newState;
 }
-
 
 /**
  * Checks if the game has reached a win condition.

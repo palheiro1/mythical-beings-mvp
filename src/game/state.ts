@@ -5,6 +5,7 @@ import { applyPassiveAbilities } from './passives.js';
 import * as knowledgeData from '../assets/knowledges.json';
 import * as creatureData from '../assets/creatures.json';
 import { getPlayerState } from './utils.js';
+import { cloneDeep } from 'lodash'; // Import cloneDeep
 
 // Constants
 const INITIAL_POWER = 20;
@@ -82,8 +83,8 @@ const lookupCreatures = (ids: string[], allCreatures: Creature[]): Creature[] =>
     console.error("Could not find all selected creatures! IDs:", ids, "Found:", foundCreatures);
     throw new Error(`Failed to initialize game: Could not find all selected creatures for IDs: ${ids.join(', ')}`);
   }
-  // Re-add deep clone to ensure creature data is independent
-  return JSON.parse(JSON.stringify(foundCreatures));
+  // Use cloneDeep for safer cloning
+  return cloneDeep(foundCreatures);
 };
 
 const initialPlayerState = (id: string, creatures: Creature[]): PlayerState => ({
