@@ -6,7 +6,7 @@ import { cloneDeep } from 'lodash'; // Import cloneDeep
 
 // Helper function to calculate damage, considering defense and passives
 // Returns final damage amount and logs to be added.
-function calculateDamage(
+export function calculateDamage(
   state: GameState, // Read-only state
   targetPlayerIndex: number,
   damageAmount: number,
