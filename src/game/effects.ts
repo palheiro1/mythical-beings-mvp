@@ -129,6 +129,7 @@ export const knowledgeEffects: Record<string, KnowledgeEffectFn> = {
     let combinedLog: string[] = [];
 
     // --- Damage Calculation (from valueCycle) ---
+    // This part seems okay, assuming valueCycle is defined for terrestrial2 if needed
     const cycleIndex = rotation / 90;
     const baseValue = knowledge.valueCycle?.[cycleIndex] ?? 0;
     const baseDamage = baseValue > 0 ? baseValue : 0;
@@ -141,30 +142,35 @@ export const knowledgeEffects: Record<string, KnowledgeEffectFn> = {
         combinedLog.push(`${knowledge.name} deals ${finalDamage} damage (Rotation: ${rotation}º).`);
       }
     } else {
-      combinedLog.push(`${knowledge.name} causes no damage this rotation (${rotation}º).`);
+      // Only log no damage if there was no damage value in the cycle
+      if (!knowledge.valueCycle || knowledge.valueCycle.length === 0) {
+         combinedLog.push(`${knowledge.name} has no rotational damage effect.`);
+      } else {
+         combinedLog.push(`${knowledge.name} causes no damage this rotation (${rotation}º).`);
+      }
     }
 
-    // --- Discard Logic (Apparition - assuming it happens on first rotation 0º, needs confirmation) ---
-    // TODO: Confirm if discard is only on Apparition (rotation 0?) or every rotation. Assuming Apparition for now.
-    if (rotation === 0) { // Only discard on the first rotation (Apparition)
-        const opponentHand = newState.players[opponentIndex].hand;
-        let discardLog = `[Apparition] ${knowledge.name} attempts to discard from opponent hand.`;
-        if (opponentHand.length === 0) {
-          discardLog += ' No cards to discard.';
-        } else {
-          const [discarded, ...rest] = opponentHand;
-          discardLog += ` Discarded: ${discarded.name}.`;
-          const newPlayers = [...newState.players];
-          newPlayers[opponentIndex] = {
-            ...newPlayers[opponentIndex],
-            hand: rest,
-          };
-          const newDiscardPile = [...newState.discardPile, discarded];
-          newState.players = newPlayers as [PlayerState, PlayerState];
-          newState.discardPile = newDiscardPile;
-        }
-        combinedLog.push(discardLog);
+    // --- Discard Logic (Always Active) ---
+    // Removed the `if (rotation === 0)` condition
+    const opponentHand = newState.players[opponentIndex].hand;
+    let discardLog = `[Effect] ${knowledge.name}`; // Simplified log prefix
+    if (opponentHand.length === 0) {
+      // Match the test expectation
+      discardLog = `${knowledge.name}: Opponent has no cards to discard.`;
+    } else {
+      const [discarded, ...rest] = opponentHand;
+      // Match the test expectation
+      discardLog = `${knowledge.name} forces opponent to discard ${discarded.name}.`;
+      const newPlayers = [...newState.players];
+      newPlayers[opponentIndex] = {
+        ...newPlayers[opponentIndex],
+        hand: rest,
+      };
+      const newDiscardPile = [...newState.discardPile, discarded];
+      newState.players = newPlayers as [PlayerState, PlayerState];
+      newState.discardPile = newDiscardPile;
     }
+    combinedLog.push(discardLog);
 
 
     return {
@@ -307,7 +313,7 @@ export const knowledgeEffects: Record<string, KnowledgeEffectFn> = {
     };
   },
 
-  // Aquatic 1: Rotates one of your Knowledge cards immediately (MVP: auto-pick first, log TODO)
+  // Aquatic 1: Rotates one of your Knowledge cards immediately (MVP: auto-pick first)
   aquatic1: ({ state, playerIndex, fieldSlotIndex, knowledge }) => {
     let newState = cloneDeep(state); // Use cloneDeep
     const playerField = newState.players[playerIndex].field;
@@ -315,40 +321,32 @@ export const knowledgeEffects: Record<string, KnowledgeEffectFn> = {
       .map((slot, idx) => ({ slot, idx }))
       .filter(({ slot, idx }) => {
         if (!slot.knowledge || idx === fieldSlotIndex) return false;
-        const maxRotationDegrees = (slot.knowledge.maxRotations || 4) * 90;
-        // Use rotation from the cloned state
+        // Use maxRotations from the specific knowledge card, default to 4 if undefined
+        const maxRotations = slot.knowledge.maxRotations ?? 4;
+        const maxRotationDegrees = maxRotations * 90;
+        // Check if current rotation is less than the max possible degrees
         return (slot.knowledge.rotation ?? 0) < maxRotationDegrees;
       });
 
     if (rotatable.length === 0) {
-      newState.log.push(`${knowledge.name}: No other knowledge cards to rotate.`);
+      newState.log.push(`[Effect] ${knowledge.name}: No other knowledge cards to rotate.`); // Added [Effect] prefix
       return newState; // Return the clone
     }
 
+    // MVP: Auto-pick the first rotatable card found
     const { slot, idx } = rotatable[0];
     const k = slot.knowledge!; // Operate on knowledge within the cloned state
     const currentRotation = k.rotation ?? 0;
     const newRotation = currentRotation + 90;
     k.rotation = newRotation; // Rotate the knowledge in the clone
-    const maxRotationDegreesTarget = (k.maxRotations || 4) * 90;
 
-    newState.log.push(`${knowledge.name}: Rotated ${k.name} to ${newRotation}º and triggered its effect immediately. [TODO: Let user choose which knowledge to rotate if multiple are available]`);
+    // Add log message for successful rotation
+    newState.log.push(`[Effect] ${knowledge.name} rotates ${k.name} (Slot ${idx}). New rotation: ${newRotation}º.`);
 
-    const effectFn = knowledgeEffects[k.id];
-    if (effectFn) {
-      // Call the nested effect function, passing the *current* cloned state (newState)
-      // The nested function will clone again if necessary
-      newState = effectFn({
-        state: newState, // Pass the current clone
-        playerIndex,
-        fieldSlotIndex: idx,
-        knowledge: k, // Pass the rotated knowledge from the clone
-        rotation: newRotation, // Pass the new rotation
-        isFinalRotation: newRotation >= maxRotationDegreesTarget,
-      });
-    }
+    // TODO: Decide if rotating a card should trigger its own rotational effect immediately.
+    // Currently, it does not.
 
-    return newState; // Return the final state after potential nested effect
+    return newState; // Return the modified clone
   },
 
   // Aquatic 2: Gain +1 defense when defending if the opposing Creature has no Knowledge cards (Passive in calculateDamage) + Rotational Damage
