@@ -228,6 +228,9 @@ export const knowledgeEffects: Record<string, KnowledgeEffectFn> = {
           creatureId: slot.creatureId,
         });
 
+        // Add to discard pile
+        newState.discardPile.push(leavingKnowledge);
+
         return { ...slot, knowledge: null };
       }
       return slot;
