@@ -34,6 +34,14 @@ export interface Knowledge extends BaseCard {
   cost: number; // Wisdom cost to summon
   effect: string; // Description of the effect when played/activated
   maxRotations?: number; // Maximum number of 90-degree rotations before discard
+  /**
+   * Optional array defining damage/defense values per rotation.
+   * Index corresponds to rotation step (0=0º, 1=90º, 2=180º, 3=270º).
+   * Positive values = Damage dealt.
+   * Negative values = Defense gained (special handling may apply).
+   * 0 = No damage/defense effect.
+   */
+  valueCycle?: number[];
   // Runtime properties (added during gameplay, not in JSON)
   rotation?: number; // 0, 90, 180, 270 degrees
   instanceId?: string; // Unique per-instance ID for React keys

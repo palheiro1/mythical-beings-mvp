@@ -14,11 +14,11 @@
 
 **Refactoring TODO List:**
 
-1.  **Update Type Definition (`src/game/types.ts`):**
+1.  **[✅] Update Type Definition (`src/game/types.ts`):**
     *   Locate the `Knowledge` interface.
     *   Add the new optional property: `valueCycle?: number[];`
 
-2.  **Populate Data (`src/assets/knowledges.json`):**
+2.  **[✅] Populate Data (`src/assets/knowledges.json`):**
     *   Carefully edit this file.
     *   For *each* knowledge card object that has rotational damage or defense values based on the provided list:
         *   Add the `valueCycle` property.
@@ -54,7 +54,7 @@
         ```
     *   Double-check all entries against the provided data and the card's `maxRotations`.
 
-3.  **Refactor Effect Logic (`src/game/effects.ts`):**
+3.  **[✅] Refactor Effect Logic (`src/game/effects.ts`):**
     *   Go through each function within the `knowledgeEffects` object.
     *   **Identify Functions to Change:** Focus on functions currently using `if/else` or ternary operators based on the `rotation` parameter to determine a base damage value (e.g., `terrestrial1`, `aerial4`, potentially others that should have cycles like `aerial1`, `aerial3`, `aquatic2`, `aquatic4`, `aquatic5`, `terrestrial2`, `terrestrial5`).
     *   **Modify Logic:**

@@ -319,3 +319,25 @@ function getOpponentPlayerIndex(state: GameState, playerId: string): number {
 function getPlayerIndex(state: GameState, playerId: string): number {
   return state.players.findIndex(p => p.id === playerId);
 }
+
+// Aerial 5: All opponent creatures rotate 90º clockwise (lose wisdom)
+export const aerial5 = ({ state, playerIndex }: { state: GameState; playerIndex: number }) => {
+  let newState = cloneDeep(state); // Use cloneDeep
+  const opponentIndex = playerIndex === 0 ? 1 : 0;
+  const opponent = newState.players[opponentIndex];
+  let rotatedCount = 0;
+
+  opponent.creatures = opponent.creatures.map(creature => {
+    const currentRotation = creature.rotation ?? 0;
+    if (currentRotation < 270) { // Assuming 270 is max rotation for creatures
+      rotatedCount++;
+      const newRotation = currentRotation + 90;
+      return { ...creature, rotation: newRotation };
+    }
+    return creature;
+  });
+
+  newState.log.push(`[Effect] Migration: Rotated ${rotatedCount} of opponent's creatures 90º clockwise (they lose wisdom).`);
+
+  return newState; // Return the modified clone
+};

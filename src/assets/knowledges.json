@@ -4,17 +4,18 @@
     "name": "Lepidoptera",
     "type": "spell",
     "cost": 1,
-    "effect": "Placeholder effect for Aerial 1",
+    "effect": "Apparition: Gain 1 power point. Deals damage based on rotation.",
     "image": "/images/spells/aerial1.jpg",
     "maxRotations": 2,
-    "element": "air"
+    "element": "air",
+    "valueCycle": [1, 0]
   },
   {
     "id": "aerial2",
     "name": "Blue Sky",
     "type": "spell",
     "cost": 2,
-    "effect": "Placeholder effect for Aerial 2",
+    "effect": "Gain [1, 2, 3] power point, according rotation.",
     "image": "/images/spells/aerial2.jpg",
     "maxRotations": 3,
     "element": "air"
@@ -24,37 +25,40 @@
     "name": "Owl",
     "type": "spell",
     "cost": 3,
-    "effect": "Placeholder effect for Aerial 3",
+    "effect": "While in play, adds +1 to the Wisdom of all your Creatures. Deals damage based on rotation.",
     "image": "/images/spells/aerial3.jpg",
     "maxRotations": 3,
-    "element": "air"
+    "element": "air",
+    "valueCycle": [1, 1, 0]
   },
   {
     "id": "aerial4",
     "name": "Chiropter",
     "type": "spell",
     "cost": 4,
-    "effect": "Placeholder effect for Aerial 4",
+    "effect": "Each point of damage caused by it to the opponent generates +1 power point to the owner. Deals damage based on rotation.",
     "image": "/images/spells/aerial4.jpg",
     "maxRotations": 3,
-    "element": "air"
+    "element": "air",
+    "valueCycle": [1, 2, 2]
   },
   {
     "id": "aerial5",
     "name": "Migration",
     "type": "spell",
     "cost": 5,
-    "effect": "Placeholder effect for Aerial 5",
+    "effect": "The Rival reduces all his Creatures 1 step.",
     "image": "/images/spells/aerial5.jpg",
     "maxRotations": 1,
-    "element": "air"
+    "element": "air",
+    "valueCycle": [2]
   },
   {
     "id": "aquatic1",
     "name": "Tsunami",
     "type": "spell",
     "cost": 1,
-    "effect": "Placeholder effect for Aquatic 1",
+    "effect": "Rotate a Knowledge 1 step.",
     "image": "/images/spells/aquatic1.jpg",
     "maxRotations": 1,
     "element": "water"
@@ -64,17 +68,18 @@
     "name": "Asteroid",
     "type": "spell",
     "cost": 2,
-    "effect": "Placeholder effect for Aquatic 2",
+    "effect": "Gain +1 when defending if the opposing Creature has no summoned Knowledges. Deals damage/defense based on rotation.",
     "image": "/images/spells/aquatic2.jpg",
     "maxRotations": 4,
-    "element": "water"
+    "element": "water",
+    "valueCycle": [-1, 1, -1, 1]
   },
   {
     "id": "aquatic3",
     "name": "Hurricane",
     "type": "spell",
     "cost": 3,
-    "effect": "Placeholder effect for Aquatic 3",
+    "effect": "The opposing Creature cannot summon Knowledges.",
     "image": "/images/spells/aquatic3.jpg",
     "maxRotations": 2,
     "element": "water"
@@ -84,47 +89,51 @@
     "name": "Deslphinidae",
     "type": "spell",
     "cost": 4,
-    "effect": "Placeholder effect for Aquatic 4",
+    "effect": "Appearance: Draw 1 card from the Market without spending Action. Deals damage/defense based on rotation.",
     "image": "/images/spells/aquatic4.jpg",
     "maxRotations": 4,
-    "element": "water"
+    "element": "water",
+    "valueCycle": [1, -2, 1, 2]
   },
   {
     "id": "aquatic5",
     "name": "Galapago",
     "type": "spell",
     "cost": 5,
-    "effect": "Placeholder effect for Aquatic 5",
+    "effect": "Final: win 1 extra Action your next Action phase. Deals damage/defense based on rotation.",
     "image": "/images/spells/aquatic5.jpg",
     "maxRotations": 4,
-    "element": "water"
+    "element": "water",
+    "valueCycle": [-2, 2, -2, 2]
   },
   {
     "id": "terrestrial1",
     "name": "Ursus",
     "type": "spell",
     "cost": 1,
-    "effect": "Placeholder effect for Terrestrial 1",
+    "effect": "If the opposing Creature has not summoned Knowledges, it causes +1 damage. Deals damage based on rotation.",
     "image": "/images/spells/terrestrial1.jpg",
     "maxRotations": 3,
-    "element": "earth"
+    "element": "earth",
+    "valueCycle": [1, 0, 2]
   },
   {
     "id": "terrestrial2",
     "name": "Serpent",
     "type": "spell",
     "cost": 2,
-    "effect": "Placeholder effect for Terrestrial 2",
+    "effect": "Apparition: Look at the Rival's Hand and discard 1 of his cards. Deals damage based on rotation.",
     "image": "/images/spells/terrestrial2.jpg",
     "maxRotations": 4,
-    "element": "earth"
+    "element": "earth",
+    "valueCycle": [1, 0, 1, 0]
   },
   {
     "id": "terrestrial3",
     "name": "Earthquake",
     "type": "spell",
     "cost": 3,
-    "effect": "Placeholder effect for Terrestrial 3",
+    "effect": "It causes as many points of damage as the wisdom of the summoning Creature.",
     "image": "/images/spells/terrestrial3.jpg",
     "maxRotations": 1,
     "element": "earth"
@@ -134,7 +143,7 @@
     "name": "Fire",
     "type": "spell",
     "cost": 4,
-    "effect": "Placeholder effect for Terrestrial 4",
+    "effect": "Rival Knowledges of wisdom [2, 1] or lower are eliminated.",
     "image": "/images/spells/terrestrial4.jpg",
     "maxRotations": 2,
     "element": "earth"
@@ -144,9 +153,10 @@
     "name": "Lupus",
     "type": "spell",
     "cost": 5,
-    "effect": "Placeholder effect for Terrestrial 5",
+    "effect": "Final: remove 1 summoned Knowledge of the Rival's Table. Deals damage based on rotation.",
     "image": "/images/spells/terrestrial5.jpg",
     "maxRotations": 4,
-    "element": "earth"
+    "element": "earth",
+    "valueCycle": [1, 1, 2, 3]
   }
 ]
