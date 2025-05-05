@@ -86,7 +86,7 @@
   },
   {
     "id": "aquatic4",
-    "name": "Deslphinidae",
+    "name": "Delphinidae",
     "type": "spell",
     "cost": 4,
     "effect": "Appearance: Draw 1 card from the Market without spending Action. Deals damage/defense based on rotation.",

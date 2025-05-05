@@ -46,8 +46,8 @@ This checklist will guide the step-by-step creation and restructure of a robust,
   - [✅] `aquatic1` (Tsunami): Rotate 1 other friendly knowledge, trigger effect. - *Tested in `tests/gameReducer/effects/Tsunami.test.ts`*
   - [✅] `aquatic2` (Asteroid): Rotational defense/damage (-1@0º, +1@90º, -1@180º, +1@270º). - *Effect logic not specifically tested.*
   - [✅] `aquatic3` (Hurricane): Block opponent summoning onto opposing slot. - *Effect logic not specifically tested.*
-  - [🤼🏾] `aquatic4` (Delphinidae): Apparition: Draw 1 from Market. Rotational damage/defense (0@0º, 2@90º, -2@180º, 2@270º). - *Effect logic not specifically tested.*
-  - [🤼🏾] `aquatic5` (Galapago): Rotational damage/defense (-2@0º, 2@90º, -2@180º, 2@270º). Final: +1 Action next turn. - *Effect logic not specifically tested.*
+  - [✅] `aquatic4` (Delphinidae): Apparition: Draw 1 from Market. Rotational damage/defense (0@0º, 2@90º, -2@180º, 2@270º). - *Effect logic not specifically tested.*
+  - [✅] `aquatic5` (Galapago): Rotational damage/defense (-2@0º, 2@90º, -2@180º, 2@270º). Final: +1 Action next turn. - *Effect logic not specifically tested.*
   - [🤼🏾] `aerial1` (Lepidoptera): Apparition: +1 Power. Rotational damage (1@0º). - *Effect logic not specifically tested.*
   - [🤼🏾] `aerial2` (Blue Sky): Rotational power gain (+1@0º, +2@90º, +3@180º). - *Effect logic not specifically tested.*
   - [🤼🏾] `aerial3` (Owl): Passive: +1 Wisdom to all friendly creatures. Rotational damage (1@0º, 1@90º). - *Effect logic not specifically tested.*
