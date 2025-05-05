@@ -8,7 +8,7 @@
     "image": "/images/spells/aerial1.jpg",
     "maxRotations": 2,
     "element": "air",
-    "valueCycle": [1, 0]
+    "valueCycle": [1, 1]
   },
   {
     "id": "aerial2",
@@ -29,7 +29,7 @@
     "image": "/images/spells/aerial3.jpg",
     "maxRotations": 3,
     "element": "air",
-    "valueCycle": [1, 1, 0]
+    "valueCycle": [1, 1, 2]
   },
   {
     "id": "aerial4",

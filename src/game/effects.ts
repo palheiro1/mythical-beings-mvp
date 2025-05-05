@@ -631,7 +631,7 @@ export const knowledgeEffects: Record<string, KnowledgeEffectFn> = {
     };
   },
 
-  // Aerial 5: All opponent creatures rotate 90º clockwise (lose wisdom)
+  // Aerial 5: All opponent creatures rotate 90º counterclockwise (reduce wisdom)
   aerial5: ({ state, playerIndex, trigger }) => {
     let newState = cloneDeep(state); // Use cloneDeep
     const opponentIndex = playerIndex === 0 ? 1 : 0;
@@ -639,14 +639,14 @@ export const knowledgeEffects: Record<string, KnowledgeEffectFn> = {
     let rotatedCount = 0;
     opponent.creatures = opponent.creatures.map(creature => {
       const currentRotation = creature.rotation ?? 0;
-      if (currentRotation < 270) {
+      if (currentRotation > 0) {
         rotatedCount++;
-        const newRotation = currentRotation + 90;
+        const newRotation = Math.max(0, currentRotation - 90);
         return { ...creature, rotation: newRotation };
       }
       return creature;
     });
-    newState.log.push(`Aerial5: Rotated ${rotatedCount} of opponent's creatures 90º clockwise (they lose wisdom).`);
+    newState.log.push(`Aerial5: Rotated ${rotatedCount} of opponent's creatures 90º counterclockwise (they lose wisdom).`);
     return newState;
   },
 };
