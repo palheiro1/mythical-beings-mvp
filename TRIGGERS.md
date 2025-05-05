@@ -2,63 +2,66 @@
 
 ## Overview
 
-In Mythical Beings MVP, Knowledge card effects can trigger at different moments:
-- **On Summon (Apparition/Appearance):** When the card enters play.
-- **On Phase/Rotation:** Effects that trigger each knowledge phase, often based on rotation.
-- **Final Rotation:** Effects that trigger only on the last rotation before the card is discarded (and only if the card leaves play due to reaching its max rotation).
-- **While In Play:** Effects that persist as long as the card remains on the field.
-
-**Design Decision:**
-- There is **no generic `onLeave` trigger** for knowledge cards. Effects that should happen when a card leaves play only trigger if the card is leaving due to reaching its final rotation (not if destroyed, replaced, or otherwise removed early).
+In Mythical Beings MVP, card effects and passives trigger at specific, well-defined moments:
+- **onSummon**: When a card is summoned/enters play.
+- **onPhase**: Each knowledge phase (rotation step).
+- **onFinalRotation**: When a card leaves play due to reaching its max rotation.
+- **whileInPlay**: As long as the card remains on the field.
+- **TURN_START**: At the start of a player's turn (for passives).
+- **AFTER_PLAYER_SUMMON / AFTER_OPPONENT_SUMMON**: After a player or opponent summons a knowledge card.
+- **AFTER_PLAYER_DRAW / AFTER_OPPONENT_DRAW**: After a player or opponent draws a card.
+- **KNOWLEDGE_LEAVE**: When a knowledge card leaves play (for passives that care about this event).
 
 ## Why Standardize Triggers?
-- **Clarity:** Developers and designers can see exactly when and how each effect triggers.
-- **Consistency:** All effects use the same mechanism, reducing bugs and confusion.
-- **Extensibility:** New triggers (e.g., on-draw, on-destroy) can be added easily if needed in the future.
-- **Testing:** Unit tests can target specific triggers and edge cases.
+- **Clarity**: Developers and designers can see exactly when and how each effect triggers.
+- **Consistency**: All effects use the same mechanism, reducing bugs and confusion.
+- **Extensibility**: New triggers can be added easily if needed in the future.
+- **Testing**: Unit tests can target specific triggers and edge cases.
 
-## Proposed Standard Triggers
+## Standard Triggers Table
 
-| Trigger Name        | When It Fires                                         | Example Cards                |
-|--------------------|-------------------------------------------------------|------------------------------|
-| `onSummon`         | When the card is summoned/enters play                 | Aerial1, Aquatic4, Terrestrial2 |
-| `onPhase`          | Each knowledge phase (rotation step)                  | Most rotational effects      |
-| `onFinalRotation`  | Only when the card leaves play due to max rotation    | Terrestrial5, Aquatic5       |
-| `whileInPlay`      | As long as the card is on the field                   | Aerial3, Aquatic3            |
+| Trigger Name         | When It Fires                                         | Example Cards/Creatures           |
+|---------------------|-------------------------------------------------------|-----------------------------------|
+| onSummon            | When the card is summoned/enters play                 | Aerial1, Aquatic4, Terrestrial2   |
+| onPhase             | Each knowledge phase (rotation step)                  | Most rotational effects           |
+| onFinalRotation     | When the card leaves play due to max rotation         | Terrestrial5, Aquatic5            |
+| whileInPlay         | As long as the card is on the field                   | Aerial3, Aquatic3                 |
+| TURN_START          | At the start of a player's turn                       | Caapora, Trepulcahue, Zhar-Ptitsa |
+| AFTER_PLAYER_SUMMON | After the player summons a knowledge card             | Adaro, Japinunus, Pele, Tulpar    |
+| AFTER_OPPONENT_SUMMON| After the opponent summons a knowledge card          | Tarasca, Kyzy                     |
+| AFTER_PLAYER_DRAW   | After the player draws a card                         | Inkanyamba                       |
+| AFTER_OPPONENT_DRAW | After the opponent draws a card                       | Inkanyamba                       |
+| KNOWLEDGE_LEAVE     | When a knowledge card leaves play                     | Lisovik, Tsenehale                |
 
-**Note:**
-- `onFinalRotation` is only triggered if the card leaves play due to reaching its max rotation. If a card is destroyed or removed by another effect before its final rotation, its `onFinalRotation` effect does **not** trigger.
+## Passive Abilities: Standardized Triggers
 
-## Plan for Standardization
+All creature passives now use a standardized trigger and are documented in code. See the table below for a summary:
 
-1. **Define a Trigger Enum/Type:**
-   - [✅] Add `KnowledgeEffectTrigger` type to `types.ts`.
-   - [✅] Update `KnowledgeEffectFn` signature to accept a `trigger` parameter.
-2. **Refactor Effect Functions:**
-   - [✅] Refactor all effect functions in `effects.ts` to use the new trigger system.
-   - [✅] Remove hardcoded checks for rotation, apparition, etc., in favor of trigger-based logic.
-3. **Update Effect Execution:**
-   - [✅] In `actions.ts`, call the effect with `trigger: 'onSummon'` when a card is summoned.
-   - [✅] In `rules.ts` (knowledge phase), call the effect with `trigger: 'onPhase'` or `onFinalRotation` as appropriate.
-   - [✅] Remove any generic `onLeave` effect logic for knowledge cards.
-   - [✅] For persistent effects, ensure `whileInPlay` is checked/applied each phase.
-4. **Refactor Passive Abilities:**
-   - [ ] Refactor `passives.ts` to use the standardized trigger/effect system where possible, for consistency and maintainability.
-5. **Update Tests:**
-   - [ ] Update all effect and passive tests to use the new trigger system.
-   - [ ] Add tests for onSummon and onFinalRotation triggers for all relevant cards.
-6. **Documentation:**
-   - [✅] Update this file and code comments to reflect the new system.
-   - [ ] Add a table in the README or EFFECTS.md mapping each card to its triggers.
+| Creature       | Trigger                | Effect Summary                                      |
+|---------------|------------------------|-----------------------------------------------------|
+| Caapora       | TURN_START             | If opponent has more cards in hand, deal 1 damage   |
+| Trepulcahue   | TURN_START             | If owner has more cards in hand, deal 1 damage      |
+| Zhar-Ptitsa   | TURN_START             | Owner draws 1 card from market (free draw)          |
+| Adaro         | AFTER_PLAYER_SUMMON    | Owner draws 1 card from market (if water on Adaro)  |
+| Japinunus     | AFTER_PLAYER_SUMMON    | Owner gains +1 Power (if air knowledge summoned)    |
+| Kyzy          | AFTER_PLAYER_SUMMON/   | Opponent discards 1 card (if earth knowledge)       |
+|               | AFTER_OPPONENT_SUMMON  |                                                     |
+| Pele          | AFTER_PLAYER_SUMMON    | Discard 1 opponent knowledge with lower cost        |
+| Tulpar        | AFTER_PLAYER_SUMMON    | Rotate one owner's creature 90º (if air knowledge)  |
+| Trempulcahue  | AFTER_PLAYER_SUMMON    | Summoned knowledge gains +1 defense (log only)      |
+| Lafaic        | AFTER_PLAYER_SUMMON    | Rotate one other knowledge 90º (if water on Lafaic) |
+| Tarasca       | AFTER_PLAYER_SUMMON    | Opponent takes 1 damage (if earth knowledge)        |
+| Inkanyamba    | AFTER_PLAYER_DRAW/     | Discard top card from market, refill if possible    |
+|               | AFTER_OPPONENT_DRAW    |                                                     |
+| Lisovik       | KNOWLEDGE_LEAVE        | Deal 1 damage to opponent (if earth knowledge)      |
+| Tsenehale     | KNOWLEDGE_LEAVE        | Owner gains +1 Power (if air knowledge)             |
 
----
-
-**Benefits:**
+## Benefits
 - Unified, extensible, and testable effect system.
 - Easier to add new cards and triggers.
 - Fewer bugs from inconsistent trigger handling.
 
-**See also:**
+## See Also
 - `EFFECTS.md` for effect implementation details.
 - `REFACTOR.md` for ongoing effect/data refactoring.
 - `TESTINGSUITE.md` for test coverage and plans.

@@ -25,7 +25,9 @@ export function applyPassiveAbilities(
       if (player.id !== eventData.playerId) return;
 
       player.creatures.forEach(creature => {
-        // Caapora
+        // Caapora Passive: Triggers at TURN_START if opponent has more cards in hand than the owner.
+        // Effect: Deals 1 damage to opponent's power.
+        // Standardized trigger: 'TURN_START'
         if (creature.id === 'caapora') {
           const opponentIndex = newState.players.findIndex(p => p.id !== player.id);
           const opponent = newState.players[opponentIndex];
@@ -40,27 +42,22 @@ export function applyPassiveAbilities(
           }
         }
 
-        // Trepulcahue: TURN_START - If owner has > cards in hand, deal 1 damage to opponent.
+        // Trepulcahue Passive: Triggers at TURN_START if owner has more cards in hand than the opponent.
+        // Effect: Deals 1 damage to opponent's power.
+        // Standardized trigger: 'TURN_START'
         else if (creature.id === 'trepulcahue') {
-          const owner = newState.players.find(p => p.id === player.id);
           const opponentIndex = newState.players.findIndex(p => p.id !== player.id);
           const opponent = newState.players[opponentIndex];
-
-          if (owner && opponent && owner.hand.length > opponent.hand.length) {
-            const initialOpponentHealth = opponent.health;
-            // --- DEBUG LOG ---
-            console.log(`[Passives DEBUG] Trepulcahue Triggered for ${owner.id}. Opponent ${opponent.id} health BEFORE: ${initialOpponentHealth}`);
-            // --- END DEBUG LOG ---
-            opponent.health -= 1; // Modify directly
-            // --- DEBUG LOG ---
-            console.log(`[Passives DEBUG] Trepulcahue Triggered for ${owner.id}. Opponent ${opponent.id} health AFTER: ${opponent.health}`);
-            // --- END DEBUG LOG ---
-            newState.log.push(`[Passive Effect] Trepulcahue (Owner: ${owner.id}) deals 1 damage to ${opponent.id} (Hand size ${owner.hand.length} > ${opponent.hand.length}).`);
-            newState.log.push(`Health: ${initialOpponentHealth} -> ${opponent.health}`);
+          if (opponent && player.hand.length > opponent.hand.length) {
+            const oldPower = opponent.power;
+            opponent.power -= 1;
+            newState.log.push(`[Passive Effect] Trepulcahue (Owner: ${player.id}) deals 1 damage to ${opponent.id}.`);
+            newState.log.push(`[Passive Effect] Trepulcahue (Owner: ${player.id}) deals 1 damage to ${opponent.id}. Power: ${oldPower} -> ${opponent.power}`);
           }
         }
 
-        // Zhar-Ptitsa
+        // Zhar-Ptitsa Passive: Triggers at TURN_START. Owner draws 1 card from market (free draw).
+        // Standardized trigger: 'TURN_START'
         else if (creature.id === 'zhar-ptitsa') {
           newState.log.push(`[Passive Effect] Zhar-Ptitsa (Owner: ${player.id}) triggers free draw.`);
           if (newState.market.length > 0) {
@@ -100,7 +97,9 @@ export function applyPassiveAbilities(
       const opponent = newState.players[(playerIndex + 1) % 2]; // Get opponent relative to passive owner
 
       player.creatures.forEach(creature => {
-        // Adaro: AFTER_PLAYER_SUMMON (on self) - If summoned knowledge is water, draw 1 card from market (free).
+        // Adaro Passive: Triggers on AFTER_PLAYER_SUMMON when owner summons water knowledge onto Adaro.
+        // Effect: Owner draws 1 card from market (free draw).
+        // Standardized trigger: 'AFTER_PLAYER_SUMMON'
         if (creature.id === 'adaro' && trigger === 'AFTER_PLAYER_SUMMON' && player.id === summoningPlayerId && targetCreatureId === 'adaro' && summonedKnowledge.element === 'water') {
           newState.log.push(`[Passive Effect] Adaro (Owner: ${player.id}) triggers free draw.`);
           if (newState.market.length > 0) {
@@ -122,10 +121,12 @@ export function applyPassiveAbilities(
           }
         }
 
-        // Japinunus: AFTER_SUMMON (Owner) - If owner summoned air knowledge, owner gains +1 Power.
+        // Japinunus Passive: Triggers on AFTER_PLAYER_SUMMON when owner summons air knowledge.
+        // Effect: Owner gains +1 Power.
+        // Standardized trigger: 'AFTER_PLAYER_SUMMON'
         else if (creature.id === 'japinunus' && player.id === summoningPlayerId && summonedKnowledge.element === 'air') {
-          const initialPower = player.power; // Get power before modification
-          player.power += 1; // Modify player directly in newState
+          const initialPower = player.power;
+          player.power += 1;
           newState.log.push(`[Passive Effect] Japinunus (Owner: ${player.id}) grants +1 Power to owner.`);
           newState.log.push(`Power: ${initialPower} -> ${player.power}`);
         }
@@ -178,10 +179,12 @@ export function applyPassiveAbilities(
           }
         }
 
-        // Tulpar: AFTER_SUMMON (Owner) - If owner summoned air knowledge, rotate one of owner's creatures 90º.
+        // Tulpar Passive: Triggers on AFTER_PLAYER_SUMMON when owner summons air knowledge.
+        // Effect: Rotates one of owner's creatures 90º (if not fully rotated).
+        // Standardized trigger: 'AFTER_PLAYER_SUMMON'
         else if (creature.id === 'tulpar' && summonedKnowledge.element === 'air' && player.id === summoningPlayerId) {
           const notFullyRotated = player.creatures
-            .map((c, index) => ({ creature: c, index })) // Keep track of original index
+            .map((c, index) => ({ creature: c, index }))
             .filter(({ creature: c }) => (c.rotation ?? 0) < 270);
 
           if (notFullyRotated.length === 0) {
@@ -194,7 +197,9 @@ export function applyPassiveAbilities(
           }
         }
 
-        // Trempulcahue: AFTER_PLAYER_SUMMON (Owner) - Summoned knowledges gain +1 defense
+        // Trempulcahue Passive: Triggers on AFTER_PLAYER_SUMMON when owner summons any knowledge.
+        // Effect: Summoned knowledge gains +1 defense (log only, actual defense logic may be handled elsewhere).
+        // Standardized trigger: 'AFTER_PLAYER_SUMMON'
         else if (creature.id === 'trempulcahue' && trigger === 'AFTER_PLAYER_SUMMON' && player.id === summoningPlayerId) {
           if (summonedKnowledge) {
             newState.log.push(
@@ -203,7 +208,9 @@ export function applyPassiveAbilities(
           }
         }
 
-        // Lafaic: AFTER_PLAYER_SUMMON (Owner) - When owner summons aquatic knowledge onto Lafaic, rotate one other knowledge 90º
+        // Lafaic Passive: Triggers on AFTER_PLAYER_SUMMON when owner summons aquatic knowledge onto Lafaic.
+        // Effect: Rotates one other knowledge on owner's field by 90º.
+        // Standardized trigger: 'AFTER_PLAYER_SUMMON'
         else if (creature.id === 'lafaic' && trigger === 'AFTER_PLAYER_SUMMON' && player.id === summoningPlayerId && targetCreatureId === 'lafaic' && summonedKnowledge.element === 'water') {
           // Rotate the first other knowledge by 90°
           const playerField = newState.players[playerIndex].field;
@@ -219,13 +226,14 @@ export function applyPassiveAbilities(
           );
         }
 
-        // Tarasca: Opponent summoning terrestrial knowledge suffers 1 damage
+        // Tarasca Passive: Triggers on AFTER_PLAYER_SUMMON when opponent summons terrestrial/earth knowledge.
+        // Effect: Deals 1 damage to opponent's power.
+        // Standardized trigger: 'AFTER_PLAYER_SUMMON'
         else if (creature.id === 'tarasca' && trigger === 'AFTER_PLAYER_SUMMON' && summonedKnowledge.element === 'earth') {
           // Passive owner is 'player', opponent is the summoner
           const opponent = newState.players.find(p => p.id === summoningPlayerId)!;
           const initialPower = opponent.power;
           opponent.power -= 1;
-          // simple log for tests
           newState.log.push(`[Passive Effect] Tarasca (Owner: ${player.id}) deals 1 damage to ${opponent.id}.`);
           newState.log.push(
             `[Passive Effect] Tarasca (Owner: ${player.id}) deals 1 damage to ${opponent.id}. Power: ${initialPower} -> ${opponent.power}`
@@ -241,6 +249,9 @@ export function applyPassiveAbilities(
       const opponent = newState.players[(playerIndex + 1) % 2]; // Get opponent relative to passive owner
 
       player.creatures.forEach(creature => {
+        // Inkanyamba Passive: Triggers on AFTER_PLAYER_DRAW or AFTER_OPPONENT_DRAW when owner draws a card.
+        // Effect: Discards the top card from the market and refills it if possible.
+        // Standardized triggers: 'AFTER_PLAYER_DRAW', 'AFTER_OPPONENT_DRAW'
         if (creature.id === 'inkanyamba' && eventData.playerId === player.id && newState.market.length > 0) {
           const cardToDiscard = newState.market[0]; // Discard the first card
           newState.market = newState.market.slice(1);
@@ -271,7 +282,9 @@ export function applyPassiveAbilities(
       const opponent = newState.players[(playerIndex + 1) % 2]; // Get opponent relative to passive owner
 
       player.creatures.forEach(creature => {
-        // Lisovik: KNOWLEDGE_LEAVE (owner's knowledge) - If leaving knowledge is earth, deal 1 damage to opponent.
+        // Lisovik Passive: Triggers on KNOWLEDGE_LEAVE when owner's earth knowledge leaves play.
+        // Effect: Deals 1 damage to opponent's power.
+        // Standardized trigger: 'KNOWLEDGE_LEAVE'
         if (creature.id === 'lisovik' && player.id === ownerOfLeavingKnowledgeId && leavingKnowledge.element === 'earth') {
           newState.log.push(`[Passive Effect] Lisovik (Owner: ${player.id}) deals 1 damage to ${opponent.id}`);
           if (opponent) {
@@ -284,7 +297,9 @@ export function applyPassiveAbilities(
           }
         }
 
-        // Tsenehale: KNOWLEDGE_LEAVE (owner's knowledge) - If leaving knowledge is air, owner gains +1 Power.
+        // Tsenehale Passive: Triggers on KNOWLEDGE_LEAVE when owner's air knowledge leaves play.
+        // Effect: Owner gains +1 Power.
+        // Standardized trigger: 'KNOWLEDGE_LEAVE'
         else if (creature.id === 'tsenehale' && player.id === ownerOfLeavingKnowledgeId && leavingKnowledge.element === 'air') {
           // Get a fresh reference to the player within newState
           const playerInNewState = newState.players.find(p => p.id === player.id);
