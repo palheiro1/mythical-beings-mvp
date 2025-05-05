@@ -381,14 +381,15 @@ export const knowledgeEffects: Record<string, KnowledgeEffectFn> = {
   // Aquatic 3: Prevent opponent from summoning knowledge onto the opposing creature (persistent block)
   aquatic3: ({ state, playerIndex, fieldSlotIndex, isFinalRotation }) => {
     let newState = cloneDeep(state); // Use cloneDeep
+    const opponentIndex = playerIndex === 0 ? 1 : 0;
     if (!newState.blockedSlots) newState.blockedSlots = { 0: [], 1: [] };
     if (!isFinalRotation) {
-      if (!newState.blockedSlots[playerIndex].includes(fieldSlotIndex)) {
-        newState.blockedSlots[playerIndex] = [...newState.blockedSlots[playerIndex], fieldSlotIndex];
+      if (!newState.blockedSlots[opponentIndex].includes(fieldSlotIndex)) {
+        newState.blockedSlots[opponentIndex] = [...newState.blockedSlots[opponentIndex], fieldSlotIndex];
         newState.log.push(`Aquatic3: Opponent cannot summon knowledge onto the opposing creature (slot ${fieldSlotIndex}) while this card is in play.`);
       }
     } else {
-      newState.blockedSlots[playerIndex] = newState.blockedSlots[playerIndex].filter(idx => idx !== fieldSlotIndex);
+      newState.blockedSlots[opponentIndex] = newState.blockedSlots[opponentIndex].filter(idx => idx !== fieldSlotIndex);
       newState.log.push(`Aquatic3: Block on opponent's slot ${fieldSlotIndex} removed (aquatic3 left play).`);
     }
     return newState;
@@ -419,26 +420,22 @@ export const knowledgeEffects: Record<string, KnowledgeEffectFn> = {
         combinedLog.push(`${knowledge.name} causes no damage or defense this rotation (${rotation}º).`);
     }
 
-
-    // --- Draw Logic (Apparition - assuming rotation 0) ---
-    // TODO: Confirm if draw is only on Apparition (rotation 0?) or every rotation. Assuming Apparition.
-    if (rotation === 0) {
+    // --- Draw Logic (Apparition - only if not already drawn) ---
+    if (rotation === 0 && newState.market.length > 0 && !newState.players[playerIndex].hand.some(card => card.id === newState.market[0].id)) {
       let drawLog = `[Apparition] ${knowledge.name} attempts to draw from market.`;
-      if (newState.market.length === 0) {
-        drawLog += ' Market is empty, no card drawn.';
-      } else {
-        const drawnCard = newState.market.shift();
-        if (drawnCard) {
-          newState.players[playerIndex].hand.push(drawnCard);
-          drawLog += ` Drew ${drawnCard.name}.`;
-          // Refill market from deck
-          if (newState.knowledgeDeck.length > 0) {
-            const refillCard = newState.knowledgeDeck.shift();
-            if (refillCard) newState.market.push(refillCard);
-          }
+      const drawnCard = newState.market.shift();
+      if (drawnCard) {
+        newState.players[playerIndex].hand.push(drawnCard);
+        drawLog += ` Drew ${drawnCard.name}.`;
+        // Refill market from deck
+        if (newState.knowledgeDeck && newState.knowledgeDeck.length > 0) {
+          const refillCard = newState.knowledgeDeck.shift();
+          if (refillCard) newState.market.push(refillCard);
         }
       }
       combinedLog.push(drawLog);
+    } else if (rotation === 0 && newState.market.length === 0) {
+      combinedLog.push(`[Apparition] ${knowledge.name} attempts to draw from market. Market is empty, no card drawn.`);
     }
 
     return {

@@ -41,12 +41,12 @@ This checklist will guide the step-by-step creation and restructure of a robust,
   - [✅] `terrestrial1` (Ursus): Rotational damage (1@0º, 2@180º), +1 if opponent slot empty. - *Tested in `tests/gameReducer/effects/Ursus.test.ts`*
   - [✅] `terrestrial2` (Serpent): Look at opponent hand, discard 1. - *Tested in `tests/gameReducer/effects/Serpent.test.ts`*
   - [✅] `terrestrial3` (Earthquake): Damage = summoning creature's wisdom. - *Damage calculation tested indirectly, specific effect logic not isolated.*
-  - [🤼🏾] `terrestrial4` (Fire): Eliminate opponent knowledge cost <= 2. - *Effect logic not specifically tested.*
+  - [✅] `terrestrial4` (Fire): Eliminate opponent knowledge cost <= 2. - *Effect logic not specifically tested.*
   - [✅] `terrestrial5` (Lupus): Rotational damage (1@0º, 1@90º, 2@180º, 3@270º), Final: Discard 1 opponent knowledge from field. - *Tested in `tests/gameReducer/effects/Lupus.test.ts`*
   - [✅] `aquatic1` (Tsunami): Rotate 1 other friendly knowledge, trigger effect. - *Tested in `tests/gameReducer/effects/Tsunami.test.ts`*
   - [✅] `aquatic2` (Asteroid): Rotational defense/damage (-1@0º, +1@90º, -1@180º, +1@270º). - *Effect logic not specifically tested.*
-  - [🤼🏾] `aquatic3` (Kraken): Block opponent summoning onto opposing slot. - *Effect logic not specifically tested.*
-  - [🤼🏾] `aquatic4` (Leviathan): Apparition: Draw 1 from Market. Rotational damage/defense (0@0º, 2@90º, -2@180º, 2@270º). - *Effect logic not specifically tested.*
+  - [✅] `aquatic3` (Hurricane): Block opponent summoning onto opposing slot. - *Effect logic not specifically tested.*
+  - [🤼🏾] `aquatic4` (Delphinidae): Apparition: Draw 1 from Market. Rotational damage/defense (0@0º, 2@90º, -2@180º, 2@270º). - *Effect logic not specifically tested.*
   - [🤼🏾] `aquatic5` (Galapago): Rotational damage/defense (-2@0º, 2@90º, -2@180º, 2@270º). Final: +1 Action next turn. - *Effect logic not specifically tested.*
   - [🤼🏾] `aerial1` (Lepidoptera): Apparition: +1 Power. Rotational damage (1@0º). - *Effect logic not specifically tested.*
   - [🤼🏾] `aerial2` (Blue Sky): Rotational power gain (+1@0º, +2@90º, +3@180º). - *Effect logic not specifically tested.*
