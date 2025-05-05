@@ -89,4 +89,61 @@ describe('isValidAction', () => {
     const action = { type: 'END_TURN', payload: { playerId: player1 } };
     expect(isValidAction(state, action).isValid).toBe(true);
   });
+
+  it('returns false for action with missing payload', () => {
+    const action = { type: 'ROTATE_CREATURE' };
+    const result = isValidAction(state, action);
+    expect(result.isValid).toBe(false);
+    expect(result.reason).toMatch(/payload/i);
+  });
+
+  it('returns false for action with extra fields in payload', () => {
+    const action = { type: 'END_TURN', payload: { playerId: player1, extra: 123 } };
+    const result = isValidAction(state, action);
+    expect(result.isValid).toBe(false);
+    expect(result.reason).toMatch(/extra/i);
+  });
+
+  it('returns false for action with wrong data type in payload', () => {
+    const action = { type: 'ROTATE_CREATURE', payload: { playerId: player1, creatureId: 12345 } }; // creatureId should be string
+    const result = isValidAction(state, action);
+    expect(result.isValid).toBe(false);
+    expect(result.reason).toMatch(/creatureId/i);
+  });
+
+  it('returns false for action in wrong phase', () => {
+    state.phase = 'knowledge';
+    const action = { type: 'ROTATE_CREATURE', payload: { playerId: player1, creatureId: state.players[0].creatures[0].id } };
+    const result = isValidAction(state, action);
+    expect(result.isValid).toBe(false);
+    expect(result.reason).toMatch(/phase/i);
+  });
+
+  it('returns false for action by wrong player', () => {
+    const action = { type: 'END_TURN', payload: { playerId: 'notCurrentPlayer' } };
+    const result = isValidAction(state, action);
+    expect(result.isValid).toBe(false);
+    expect(result.reason).toMatch(/turn/i);
+  });
+
+  it('returns false for action on non-existent slot', () => {
+    const action = { type: 'ROTATE_CREATURE', payload: { playerId: player1, creatureId: 'nonexistent' } };
+    const result = isValidAction(state, action);
+    expect(result.isValid).toBe(false);
+    expect(result.reason).toMatch(/not found|invalid/i);
+  });
+
+  it('returns false for action on already-occupied slot', () => {
+    // Simulate a field slot already having knowledge
+    const player = state.players[0];
+    const creatureId = player.creatures[0].id;
+    player.field[0].knowledge = createTestKnowledge('terrestrial1');
+    const knowledgeCard = createTestKnowledge('terrestrial2');
+    player.hand.push(knowledgeCard);
+    player.creatures[0].currentWisdom = 2;
+    const action = { type: 'SUMMON_KNOWLEDGE', payload: { playerId: player1, knowledgeId: knowledgeCard.id, instanceId: knowledgeCard.instanceId, creatureId: creatureId } };
+    const result = isValidAction(state, action);
+    expect(result.isValid).toBe(false);
+    expect(result.reason).toMatch(/already has knowledge/i);
+  });
 });

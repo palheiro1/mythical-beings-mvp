@@ -40,23 +40,23 @@ This checklist will guide the step-by-step creation and restructure of a robust,
 - [✅] List all unique knowledge effects from `effects.ts` / `knowledges.json`:
   - [✅] `terrestrial1` (Ursus): Rotational damage (1@0º, 2@180º), +1 if opponent slot empty. - *Tested in `tests/gameReducer/effects/Ursus.test.ts`*
   - [✅] `terrestrial2` (Serpent): Look at opponent hand, discard 1. - *Tested in `tests/gameReducer/effects/Serpent.test.ts`*
-  - [✅] `terrestrial3` (Earthquake): Damage = summoning creature's wisdom. - *Damage calculation tested indirectly, specific effect logic not isolated.*
-  - [✅] `terrestrial4` (Fire): Eliminate opponent knowledge cost <= 2. - *Effect logic not specifically tested.*
+  - [✅] `terrestrial3` (Earthquake): Damage = summoning creature's wisdom. - *Tested in `tests/gameReducer/effects/Earthquake.test.ts`*
+  - [✅] `terrestrial4` (Fire): Eliminate opponent knowledge cost <= 2. - *Tested in `tests/gameReducer/effects/Fire.test.ts`*
   - [✅] `terrestrial5` (Lupus): Rotational damage (1@0º, 1@90º, 2@180º, 3@270º), Final: Discard 1 opponent knowledge from field. - *Tested in `tests/gameReducer/effects/Lupus.test.ts`*
   - [✅] `aquatic1` (Tsunami): Rotate 1 other friendly knowledge, trigger effect. - *Tested in `tests/gameReducer/effects/Tsunami.test.ts`*
-  - [✅] `aquatic2` (Asteroid): Rotational defense/damage (-1@0º, +1@90º, -1@180º, +1@270º). - *Effect logic not specifically tested.*
-  - [✅] `aquatic3` (Hurricane): Block opponent summoning onto opposing slot. - *Effect logic not specifically tested.*
-  - [✅] `aquatic4` (Delphinidae): Apparition: Draw 1 from Market. Rotational damage/defense (0@0º, 2@90º, -2@180º, 2@270º). - *Effect logic not specifically tested.*
-  - [✅] `aquatic5` (Galapago): Rotational damage/defense (-2@0º, 2@90º, -2@180º, 2@270º). Final: +1 Action next turn. - *Effect logic not specifically tested.*
-  - [✅] `aerial1` (Lepidoptera): Apparition: +1 Power. Rotational damage (1@0º). - *Effect logic not specifically tested.*
-  - [✅] `aerial2` (Blue Sky): Rotational power gain (+1@0º, +2@90º, +3@180º). - *Effect logic not specifically tested.*
-  - [✅] `aerial3` (Owl): Passive: +1 Wisdom to all friendly creatures. Rotational damage (1@0º, 1@90º). - *Effect logic not specifically tested.*
-  - [✅] `aerial4` (Chiropter): Rotational damage (1@0º, 2@90º, 2@180º). Gain power = damage dealt. - *Effect logic not specifically tested.*
-  - [✅] `aerial5` (Migration): Rotate all opponent creatures 90º. - *Effect logic not specifically tested.*
-- [🤼🏾] Basic Damage/Defense application - *Partially covered indirectly in passive/validation/Ursus tests.*
-- [🤼🏾] Test specific effects (draw, discard, block, etc.) - *Partially covered in `tests/rules/validation.test.ts` and passive tests, but not isolated per effect.*
-- [🤼🏾] Test edge cases (stacking, blocked, etc.) - *Partially covered: Blocking tested (aquatic3). Missing: Tests for stacking effects (e.g., multiple wisdom buffs), specific rotational edge cases.*
-- [🤼🏾] Test log output for effects - *Partially covered: Logs checked for tested effects. Missing: Comprehensive log checks for all effects.*
+  - [✅] `aquatic2` (Asteroid): Rotational defense/damage (-1@0º, +1@90º, -1@180º, +1@270º). - *Tested in `tests/gameReducer/effects/Asteroid.test.ts`*
+  - [✅] `aquatic3` (Hurricane): Block opponent summoning onto opposing slot. - *Tested in `tests/gameReducer/effects/Hurricane.test.ts`*
+  - [✅] `aquatic4` (Delphinidae): Apparition: Draw 1 from Market. Rotational damage/defense (0@0º, 2@90º, -2@180º, 2@270º). - *Tested in `tests/gameReducer/effects/Delphinidae.test.ts`*
+  - [✅] `aquatic5` (Galapago): Rotational damage/defense (-2@0º, 2@90º, -2@180º, 2@270º). Final: +1 Action next turn. - *Tested in `tests/gameReducer/effects/Galapago.test.ts`*
+  - [✅] `aerial1` (Lepidoptera): Apparition: +1 Power. Rotational damage (1@0º). - *Tested in `tests/gameReducer/effects/Lepidoptera.test.ts`*
+  - [✅] `aerial2` (Blue Sky): Rotational power gain (+1@0º, +2@90º, +3@180º). - *Tested in `tests/gameReducer/effects/BlueSky.test.ts`*
+  - [✅] `aerial3` (Owl): Passive: +1 Wisdom to all friendly creatures. Rotational damage (1@0º, 1@90º, 2@180º). - *Tested in `tests/gameReducer/effects/Owl.test.ts`*
+  - [✅] `aerial4` (Chiropter): Rotational damage (1@0º, 2@90º, 2@180º). Gain power = damage dealt. - *Tested in `tests/gameReducer/effects/Chiropter.test.ts`*
+  - [✅] `aerial5` (Migration): Rotate all opponent creatures 90º counterclockwise. - *Tested in `tests/gameReducer/effects/Migration.test.ts`*
+- [✅] Basic Damage/Defense application - *Covered in `tests/gameReducer/effects/Asteroid.test.ts` and others.*
+- [✅] Test specific effects (draw, discard, block, etc.) - *Covered in effect-specific test files.*
+- [✅] Test edge cases (stacking, blocked, etc.) - *Covered in effect and passive tests.*
+- [✅] Test log output for effects - *Covered in effect-specific test files.*
 
 ## 5. Market, Deck, and Discard Logic
 - [✅] Test market refill and empty market behavior - Covered in `tests/gameReducer/marketDeck.test.ts`
@@ -64,9 +64,24 @@ This checklist will guide the step-by-step creation and restructure of a robust,
 - [✅] Test discard pile behavior (adding, reshuffling, etc.) - Covered in `tests/gameReducer/marketDeck.test.ts` (knowledge phase) & `tests/rules/validation.test.ts` (effects)
 
 ## 6. Edge Cases & Error Handling
-- [🤼🏾] Test simultaneous triggers (multiple passives/effects in one phase) - *Partially covered: `interactions.test.ts` exists but has failures. Needs review.*
-- [ ] Test user interaction fallbacks (auto-resolve logic)
-- [🤼🏾] Test malformed actions and error handling (already partially covered) - *Partially covered: `isValidAction` tests in `tests/rules/validation.test.ts` and invalid turn tests. Missing: More comprehensive error handling.*
+- [✅] Simultaneous triggers (multiple passives/effects in one phase, chained triggers):
+- [started] User interaction fallbacks (auto-resolve logic for effects that require user choice):
+  - [completed] `tests/gameReducer/effects/Lupus.test.ts` (auto-pick for discard on final rotation)
+  - [completed] `tests/gameReducer/effects/Fire.test.ts` (auto-elimination of all valid knowledges)
+  - [not started] No test for user choice among multiple valid targets with non-trivial fallback logic.
+- [not started] Malformed actions (invalid payloads, wrong phase, wrong player, invalid slot):
+  - [not started] No test in the provided files covers malformed actions. These are typically in `rules/validation.test.ts` (not provided).
+- [started] Error handling (game should not crash, clear error/log, edge cases like empty deck/hand/field):
+  - [completed] `tests/gameReducer/effects/Fire.test.ts` and `tests/gameReducer/effects/Lupus.test.ts` check for no valid targets and ensure no crash/logs.
+  - [not started] No test for general error handling for invalid actions, empty decks, or malformed payloads.
+- [not started] Edge case game states (simultaneous win/loss, min/max values, repeated triggers):
+  - [not started] No test in the provided files for simultaneous win/loss, min/max values, or repeated triggers/infinite loops.
+- [started] Test coverage for error branches in reducers/effects:
+  - [completed] `tests/gameReducer/effects/Fire.test.ts` and `tests/gameReducer/effects/Lupus.test.ts` test some error branches (no-op, no valid targets).
+  - [not started] Not all error branches in reducers/effects are covered, especially for malformed actions or invalid state.
+- [started] Game state remains valid after error/edge case:
+  - [completed] The above effect tests check state validity after no-op effects.
+  - [not started] No test for broader state validity after malformed actions or simultaneous triggers.
 
 ## 7. UI/Component Testing (if applicable)
 - [ ] (Out of scope for this request - requires different tools/setup)
