@@ -29,6 +29,7 @@ describe('Delphinidae (aquatic4) Effect', () => {
       fieldSlotIndex,
       knowledge: gameState.players[0].field[fieldSlotIndex].knowledge,
       rotation: 0,
+      trigger: 'onPhase',
     });
     // Player should have drawn the first card
     expect(result.players[0].hand.length).toBe(1);
@@ -47,6 +48,7 @@ describe('Delphinidae (aquatic4) Effect', () => {
       fieldSlotIndex,
       knowledge: gameState.players[0].field[fieldSlotIndex].knowledge,
       rotation: 0,
+      trigger: 'onPhase',
     });
     expect(result.players[0].hand.length).toBe(0);
     expect(result.market.length).toBe(0);
@@ -60,6 +62,7 @@ describe('Delphinidae (aquatic4) Effect', () => {
       fieldSlotIndex,
       knowledge: gameState.players[0].field[fieldSlotIndex].knowledge,
       rotation: 0,
+      trigger: 'onPhase',
     });
     // Damage is 1 at 0º (see valueCycle)
     expect(result.log.some(log => log.includes('deals 1 damage'))).toBe(true);
@@ -73,6 +76,7 @@ describe('Delphinidae (aquatic4) Effect', () => {
       fieldSlotIndex,
       knowledge,
       rotation: 90,
+      trigger: 'onPhase',
     });
     // Defense is -2 at 90º (see valueCycle)
     expect(result.log.some(log => log.includes('provides 2 potential defense'))).toBe(true);
@@ -86,6 +90,7 @@ describe('Delphinidae (aquatic4) Effect', () => {
       fieldSlotIndex,
       knowledge,
       rotation: 180,
+      trigger: 'onPhase',
     });
     expect(result.log.some(log => log.includes('deals 1 damage'))).toBe(true);
   });
@@ -98,6 +103,7 @@ describe('Delphinidae (aquatic4) Effect', () => {
       fieldSlotIndex,
       knowledge,
       rotation: 270,
+      trigger: 'onPhase',
     });
     expect(result.log.some(log => log.includes('deals 2 damage'))).toBe(true);
   });

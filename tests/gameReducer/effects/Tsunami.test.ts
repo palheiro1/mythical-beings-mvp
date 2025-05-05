@@ -56,6 +56,7 @@ describe('Tsunami (aquatic1) Effect', () => {
       playerIndex,
       fieldSlotIndex: tsunamiSlotIndex, // Tsunami's own slot index
       knowledge: gameState.players[playerIndex].field[tsunamiSlotIndex].knowledge!,
+      trigger: 'onPhase',
       // rotation and isFinalRotation are not used by aquatic1
     });
 
@@ -76,6 +77,7 @@ describe('Tsunami (aquatic1) Effect', () => {
       playerIndex,
       fieldSlotIndex: tsunamiSlotIndex,
       knowledge: gameState.players[playerIndex].field[tsunamiSlotIndex].knowledge!,
+      trigger: 'onPhase',
     });
 
     const tsunamiKnowledgeAfter = newState.players[playerIndex].field[tsunamiSlotIndex].knowledge;
@@ -94,6 +96,7 @@ describe('Tsunami (aquatic1) Effect', () => {
       playerIndex,
       fieldSlotIndex: tsunamiSlotIndex,
       knowledge: gameState.players[playerIndex].field[tsunamiSlotIndex].knowledge!,
+      trigger: 'onPhase',
     });
 
     const targetKnowledgeAfter = newState.players[playerIndex].field[targetSlotIndex].knowledge;
@@ -112,6 +115,7 @@ describe('Tsunami (aquatic1) Effect', () => {
       playerIndex,
       fieldSlotIndex: tsunamiSlotIndex,
       knowledge: gameState.players[playerIndex].field[tsunamiSlotIndex].knowledge!,
+      trigger: 'onPhase',
     });
 
     expect(newState.players[playerIndex].field[tsunamiSlotIndex].knowledge!.rotation).toBe(initialTsunamiRotation);

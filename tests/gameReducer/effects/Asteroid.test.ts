@@ -31,6 +31,7 @@ describe('Aquatic2 (Asteroid) Effect', () => {
       knowledge: gameState.players[0].field[fieldSlotIndex].knowledge!,
       rotation: 0,
       isFinalRotation: false,
+      trigger: 'onPhase',
     });
     // No damage dealt, only defense is provided (handled in calculateDamage when attacked)
     expect(result.players[1].power).toBe(20);
@@ -47,6 +48,7 @@ describe('Aquatic2 (Asteroid) Effect', () => {
       knowledge,
       rotation: 90,
       isFinalRotation: false,
+      trigger: 'onPhase',
     });
     expect(result.players[1].power).toBe(19);
     expect(result.log.some(log => log.includes('deals 1 damage'))).toBe(true);
@@ -62,6 +64,7 @@ describe('Aquatic2 (Asteroid) Effect', () => {
       knowledge,
       rotation: 180,
       isFinalRotation: false,
+      trigger: 'onPhase',
     });
     expect(result.players[1].power).toBe(20);
     expect(result.log.some(log => log.includes('causes no damage this rotation') || log.includes('defense'))).toBe(true);
@@ -77,6 +80,7 @@ describe('Aquatic2 (Asteroid) Effect', () => {
       knowledge,
       rotation: 270,
       isFinalRotation: true,
+      trigger: 'onPhase',
     });
     expect(result.players[1].power).toBe(19);
     expect(result.log.some(log => log.includes('deals 1 damage'))).toBe(true);

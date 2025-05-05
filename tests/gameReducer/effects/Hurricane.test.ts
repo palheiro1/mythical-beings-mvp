@@ -27,6 +27,7 @@ describe('Hurricane (aquatic3) Effect', () => {
       playerIndex: 0,
       fieldSlotIndex,
       isFinalRotation: false,
+      trigger: 'onPhase',
     });
     // Opponent's slot 0 should be blocked
     expect(result.blockedSlots[1]).toContain(fieldSlotIndex);
@@ -43,6 +44,7 @@ describe('Hurricane (aquatic3) Effect', () => {
       playerIndex: 0,
       fieldSlotIndex,
       isFinalRotation: true,
+      trigger: 'onPhase',
     });
     // Block should be removed
     expect(result.blockedSlots[1]).not.toContain(fieldSlotIndex);
@@ -57,6 +59,7 @@ describe('Hurricane (aquatic3) Effect', () => {
       playerIndex: 0,
       fieldSlotIndex,
       isFinalRotation: false,
+      trigger: 'onPhase',
     });
     // Only slot 0 should be blocked for opponent
     expect(result.blockedSlots[1]).toEqual([fieldSlotIndex]);
@@ -72,6 +75,7 @@ describe('Hurricane (aquatic3) Effect', () => {
       playerIndex: 0,
       fieldSlotIndex,
       isFinalRotation: false,
+      trigger: 'onPhase',
     });
     // Block should still be present, no duplicate
     expect(result.blockedSlots[1].filter(i => i === fieldSlotIndex).length).toBe(1);

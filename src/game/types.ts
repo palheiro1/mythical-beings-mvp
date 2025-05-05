@@ -106,6 +106,13 @@ export type PassiveTriggerType =
   | 'DAMAGE_CALCULATION' // For defense modifications etc.
   | 'BLOCK_VALIDATION'; // For effects like unblockable
 
+// [✅] Knowledge Card Effect Triggers
+export type KnowledgeEffectTrigger =
+  | 'onSummon'
+  | 'onPhase'
+  | 'onFinalRotation'
+  | 'whileInPlay';
+
 // Data passed with passive triggers
 export interface PassiveEventData {
   playerId: string; // The player ID associated with the primary event (e.g., who summoned, who drew, whose turn started)

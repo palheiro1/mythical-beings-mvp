@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 // Removed unused imports: KnowledgeType, CreatureElement
-import { GameState, Knowledge, PlayerState } from './types';
+import { GameState, Knowledge, PlayerState, KnowledgeEffectTrigger } from './types';
 import { applyPassiveAbilities } from './passives.js'; // Import applyPassiveAbilities
 import { cloneDeep } from 'lodash'; // Import cloneDeep
 
@@ -83,12 +83,13 @@ export type KnowledgeEffectFn = (params: {
   // *** IMPORTANT: This rotation value should be the rotation *before* the knowledge phase increment ***
   rotation: number;
   isFinalRotation: boolean;
+  trigger: KnowledgeEffectTrigger;
 }) => GameState;
 
 // Effect function map
 export const knowledgeEffects: Record<string, KnowledgeEffectFn> = {
   // Terrestrial 1: Damage based on rotation, +1 if opponent's creature has no knowledge
-  terrestrial1: ({ state, playerIndex, fieldSlotIndex, knowledge, rotation }) => {
+  terrestrial1: ({ state, playerIndex, fieldSlotIndex, knowledge, rotation, trigger }) => {
     let newState = cloneDeep(state); // Use cloneDeep
     const opponentIndex = playerIndex === 0 ? 1 : 0;
 
@@ -123,7 +124,7 @@ export const knowledgeEffects: Record<string, KnowledgeEffectFn> = {
   },
 
   // Terrestrial 2: Look at opponent's hand and discard 1 card + Rotational Damage
-  terrestrial2: ({ state, playerIndex, fieldSlotIndex, knowledge, rotation }) => { // Added fieldSlotIndex and rotation
+  terrestrial2: ({ state, playerIndex, fieldSlotIndex, knowledge, rotation, trigger }) => { // Added fieldSlotIndex and rotation
     let newState = cloneDeep(state); // Use cloneDeep
     const opponentIndex = playerIndex === 0 ? 1 : 0;
     let combinedLog: string[] = [];
@@ -180,7 +181,7 @@ export const knowledgeEffects: Record<string, KnowledgeEffectFn> = {
   },
 
   // Terrestrial 3: Damage equal to summoning creature's wisdom
-  terrestrial3: ({ state, playerIndex, fieldSlotIndex, knowledge }) => {
+  terrestrial3: ({ state, playerIndex, fieldSlotIndex, knowledge, trigger }) => {
     let newState = cloneDeep(state); // Use cloneDeep
     const opponentIndex = playerIndex === 0 ? 1 : 0;
     const creatureId = newState.players[playerIndex].field[fieldSlotIndex]?.creatureId;
@@ -200,7 +201,7 @@ export const knowledgeEffects: Record<string, KnowledgeEffectFn> = {
   },
 
   // Terrestrial 4: Eliminate opponent's knowledge cards
-  terrestrial4: ({ state, playerIndex, knowledge }) => {
+  terrestrial4: ({ state, playerIndex, knowledge, trigger }) => {
     let newState = cloneDeep(state); // Use cloneDeep
     const opponentIndex = playerIndex === 0 ? 1 : 0;
     const opponentId = newState.players[opponentIndex].id;
@@ -252,7 +253,7 @@ export const knowledgeEffects: Record<string, KnowledgeEffectFn> = {
   },
 
   // Terrestrial 5: Final - Discard one opponent knowledge + Rotational Damage
-  terrestrial5: ({ state, playerIndex, fieldSlotIndex, knowledge, rotation, isFinalRotation }) => { // Added fieldSlotIndex, rotation, isFinalRotation
+  terrestrial5: ({ state, playerIndex, fieldSlotIndex, knowledge, rotation, isFinalRotation, trigger }) => { // Added fieldSlotIndex, rotation, isFinalRotation
     let newState = cloneDeep(state); // Use cloneDeep
     const opponentIndex = playerIndex === 0 ? 1 : 0;
     let combinedLog: string[] = [];
@@ -317,7 +318,7 @@ export const knowledgeEffects: Record<string, KnowledgeEffectFn> = {
   },
 
   // Aquatic 1: Rotates one of your Knowledge cards immediately (MVP: auto-pick first)
-  aquatic1: ({ state, playerIndex, fieldSlotIndex, knowledge }) => {
+  aquatic1: ({ state, playerIndex, fieldSlotIndex, knowledge, trigger }) => {
     let newState = cloneDeep(state); // Use cloneDeep
     const playerField = newState.players[playerIndex].field;
     const rotatable = playerField
@@ -353,7 +354,7 @@ export const knowledgeEffects: Record<string, KnowledgeEffectFn> = {
   },
 
   // Aquatic 2: Gain +1 defense when defending if the opposing Creature has no Knowledge cards (Passive in calculateDamage) + Rotational Damage
-  aquatic2: ({ state, playerIndex, fieldSlotIndex, knowledge, rotation }) => { // Added params
+  aquatic2: ({ state, playerIndex, fieldSlotIndex, knowledge, rotation, trigger }) => { // Added params
     let newState = cloneDeep(state); // Use cloneDeep
     const opponentIndex = playerIndex === 0 ? 1 : 0;
 
@@ -379,7 +380,7 @@ export const knowledgeEffects: Record<string, KnowledgeEffectFn> = {
   },
 
   // Aquatic 3: Prevent opponent from summoning knowledge onto the opposing creature (persistent block)
-  aquatic3: ({ state, playerIndex, fieldSlotIndex, isFinalRotation }) => {
+  aquatic3: ({ state, playerIndex, fieldSlotIndex, isFinalRotation, trigger }) => {
     let newState = cloneDeep(state); // Use cloneDeep
     const opponentIndex = playerIndex === 0 ? 1 : 0;
     if (!newState.blockedSlots) newState.blockedSlots = { 0: [], 1: [] };
@@ -396,7 +397,7 @@ export const knowledgeEffects: Record<string, KnowledgeEffectFn> = {
   },
 
   // Aquatic 4: Apparition - Draw 1 card from Market + Rotational Damage/Defense
-  aquatic4: ({ state, playerIndex, fieldSlotIndex, knowledge, rotation }) => { // Added fieldSlotIndex, rotation
+  aquatic4: ({ state, playerIndex, fieldSlotIndex, knowledge, rotation, trigger }) => { // Added fieldSlotIndex, rotation
     let newState = cloneDeep(state); // Use cloneDeep
     const opponentIndex = playerIndex === 0 ? 1 : 0;
     let combinedLog: string[] = [];
@@ -445,7 +446,7 @@ export const knowledgeEffects: Record<string, KnowledgeEffectFn> = {
   },
 
   // Aquatic 5: Final - Win 1 extra Action next turn + Rotational Damage/Defense
-  aquatic5: ({ state, playerIndex, fieldSlotIndex, knowledge, rotation, isFinalRotation }) => { // Added fieldSlotIndex, knowledge, rotation
+  aquatic5: ({ state, playerIndex, fieldSlotIndex, knowledge, rotation, isFinalRotation, trigger }) => { // Added fieldSlotIndex, knowledge, rotation
     let newState = cloneDeep(state); // Use cloneDeep
     const opponentIndex = playerIndex === 0 ? 1 : 0;
     let combinedLog: string[] = [];
@@ -484,7 +485,7 @@ export const knowledgeEffects: Record<string, KnowledgeEffectFn> = {
   },
 
   // Aerial 1: Apparition - Gain +1 Power (on summon only) + Rotational Damage
-  aerial1: ({ state, playerIndex, fieldSlotIndex, knowledge, rotation }) => { // Added rotation
+  aerial1: ({ state, playerIndex, fieldSlotIndex, knowledge, rotation, trigger }) => { // Added rotation
     let newState = cloneDeep(state); // Use cloneDeep
     const opponentIndex = playerIndex === 0 ? 1 : 0;
     let combinedLog: string[] = [];
@@ -515,7 +516,7 @@ export const knowledgeEffects: Record<string, KnowledgeEffectFn> = {
   },
 
   // Aerial 2: +1 Power (1st rotation), +2 Power (2nd), +3 Power (3rd), no 4th rotation
-  aerial2: ({ state, playerIndex, fieldSlotIndex, rotation }) => {
+  aerial2: ({ state, playerIndex, fieldSlotIndex, rotation, trigger }) => {
     let newState = cloneDeep(state); // Use cloneDeep
     let powerGain = 0;
     // Use the rotation value passed into the function
@@ -530,7 +531,7 @@ export const knowledgeEffects: Record<string, KnowledgeEffectFn> = {
   },
 
   // Aerial 3: While in play, adds +1 to the Wisdom of all your Creatures + Rotational Damage
-  aerial3: ({ state, playerIndex, fieldSlotIndex, knowledge, rotation, isFinalRotation }) => { // Added fieldSlotIndex, knowledge, rotation
+  aerial3: ({ state, playerIndex, fieldSlotIndex, knowledge, rotation, isFinalRotation, trigger }) => { // Added fieldSlotIndex, knowledge, rotation
     let newState = cloneDeep(state); // Use cloneDeep
     const opponentIndex = playerIndex === 0 ? 1 : 0;
     let combinedLog: string[] = [];
@@ -587,7 +588,7 @@ export const knowledgeEffects: Record<string, KnowledgeEffectFn> = {
   },
 
   // Aerial 4: Rotational damage & self-power equal to damage dealt
-  aerial4: ({ state, playerIndex, fieldSlotIndex, knowledge, rotation }) => {
+  aerial4: ({ state, playerIndex, fieldSlotIndex, knowledge, rotation, trigger }) => {
     let newState = cloneDeep(state); // Use cloneDeep
     const opponentIndex = playerIndex === 0 ? 1 : 0;
     let combinedLog: string[] = []; // Use combinedLog for clarity
@@ -631,7 +632,7 @@ export const knowledgeEffects: Record<string, KnowledgeEffectFn> = {
   },
 
   // Aerial 5: All opponent creatures rotate 90º clockwise (lose wisdom)
-  aerial5: ({ state, playerIndex }) => {
+  aerial5: ({ state, playerIndex, trigger }) => {
     let newState = cloneDeep(state); // Use cloneDeep
     const opponentIndex = playerIndex === 0 ? 1 : 0;
     const opponent = newState.players[opponentIndex];

@@ -49,6 +49,7 @@ describe('Ursus (terrestrial1) Effect', () => {
       knowledge: state.players[0].field[fieldSlotIndex].knowledge!,
       rotation: 0,
       isFinalRotation: false,
+      trigger: 'onPhase',
     });
 
     expect(result.players[1].power).toBe(p2InitialPower - 1);
@@ -68,6 +69,7 @@ describe('Ursus (terrestrial1) Effect', () => {
       knowledge: state.players[0].field[fieldSlotIndex].knowledge!,
       rotation: 0,
       isFinalRotation: false,
+      trigger: 'onPhase',
     });
 
     expect(result.players[1].power).toBe(p2InitialPower - 2);
@@ -87,6 +89,7 @@ describe('Ursus (terrestrial1) Effect', () => {
       knowledge: state.players[0].field[fieldSlotIndex].knowledge!,
       rotation: 90,
       isFinalRotation: false,
+      trigger: 'onPhase',
     });
 
     expect(result.players[1].power).toBe(p2InitialPower);
@@ -106,6 +109,7 @@ describe('Ursus (terrestrial1) Effect', () => {
       knowledge: state.players[0].field[fieldSlotIndex].knowledge!,
       rotation: 180,
       isFinalRotation: false, // Assuming not final rotation for this test
+      trigger: 'onPhase',
     });
 
     expect(result.players[1].power).toBe(p2InitialPower - 2);
@@ -125,6 +129,7 @@ describe('Ursus (terrestrial1) Effect', () => {
       knowledge: state.players[0].field[fieldSlotIndex].knowledge!,
       rotation: 180,
       isFinalRotation: false,
+      trigger: 'onPhase',
     });
 
     expect(result.players[1].power).toBe(p2InitialPower - 3);
@@ -144,6 +149,7 @@ describe('Ursus (terrestrial1) Effect', () => {
       knowledge: state.players[0].field[fieldSlotIndex].knowledge!,
       rotation: 270,
       isFinalRotation: true, // Assuming 270 is final rotation
+      trigger: 'onPhase',
     });
 
     expect(result.players[1].power).toBe(p2InitialPower);

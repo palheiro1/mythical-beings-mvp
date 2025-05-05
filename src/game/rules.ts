@@ -234,7 +234,8 @@ export function executeKnowledgePhase(state: GameState): GameState {
                   fieldSlotIndex: slotIndex,
                   knowledge: knowledgeForEffect,
                   rotation: currentRotation,
-                  isFinalRotation: willBeDiscarded
+                  isFinalRotation: willBeDiscarded,
+                  trigger: 'onPhase',
               });
           }
       }

@@ -49,6 +49,7 @@ describe('Serpent (terrestrial2) Effect', () => {
       playerIndex,
       fieldSlotIndex,
       knowledge: gameState.players[playerIndex].field[fieldSlotIndex].knowledge!,
+      trigger: 'onPhase',
       // rotation and isFinalRotation are not used by terrestrial2
     });
 
@@ -74,6 +75,7 @@ describe('Serpent (terrestrial2) Effect', () => {
       playerIndex,
       fieldSlotIndex,
       knowledge: gameState.players[playerIndex].field[fieldSlotIndex].knowledge!,
+      trigger: 'onPhase',
     });
 
     // Check opponent's hand (still empty)
@@ -99,6 +101,7 @@ describe('Serpent (terrestrial2) Effect', () => {
       playerIndex,
       fieldSlotIndex,
       knowledge: gameState.players[playerIndex].field[fieldSlotIndex].knowledge!,
+      trigger: 'onPhase',
     });
 
     // Check player's hand (unchanged)

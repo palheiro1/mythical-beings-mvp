@@ -36,6 +36,7 @@ describe('Earthquake (terrestrial3) Effect', () => {
       knowledge: gameState.players[0].field[fieldSlotIndex].knowledge!,
       rotation: 0,
       isFinalRotation: false,
+      trigger: 'onPhase',
     });
     expect(result.players[1].power).toBe(20 - wisdom);
     // Log should mention damage
@@ -52,6 +53,7 @@ describe('Earthquake (terrestrial3) Effect', () => {
       knowledge: gameState.players[0].field[fieldSlotIndex].knowledge!,
       rotation: 0,
       isFinalRotation: false,
+      trigger: 'onPhase',
     });
     expect(result.players[1].power).toBe(20);
     expect(result.log.some(log => log.includes('causes no damage as creature wisdom is 0'))).toBe(true);

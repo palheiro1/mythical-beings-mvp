@@ -34,6 +34,7 @@ describe('Fire (terrestrial4) Effect', () => {
       state: gameState,
       playerIndex: 0,
       knowledge: gameState.players[0].field[fieldSlotIndex].knowledge!,
+      trigger: 'onPhase',
     });
     // Both should be eliminated
     expect(result.players[1].field[0].knowledge).toBeNull();
@@ -54,6 +55,7 @@ describe('Fire (terrestrial4) Effect', () => {
       state: gameState,
       playerIndex: 0,
       knowledge: gameState.players[0].field[fieldSlotIndex].knowledge!,
+      trigger: 'onPhase',
     });
     // Should not be eliminated
     expect(result.players[1].field[0].knowledge).not.toBeNull();
@@ -69,6 +71,7 @@ describe('Fire (terrestrial4) Effect', () => {
       state: gameState,
       playerIndex: 0,
       knowledge: gameState.players[0].field[fieldSlotIndex].knowledge!,
+      trigger: 'onPhase',
     });
     // No changes, discard pile empty
     expect(result.discardPile.length).toBe(0);

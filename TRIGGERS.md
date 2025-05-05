@@ -32,39 +32,23 @@ In Mythical Beings MVP, Knowledge card effects can trigger at different moments:
 ## Plan for Standardization
 
 1. **Define a Trigger Enum/Type:**
-   - In `types.ts`, define a `KnowledgeEffectTrigger = 'onSummon' | 'onPhase' | 'onFinalRotation' | 'whileInPlay'`.
+   - [✅] Add `KnowledgeEffectTrigger` type to `types.ts`.
+   - [✅] Update `KnowledgeEffectFn` signature to accept a `trigger` parameter.
 2. **Refactor Effect Functions:**
-   - All effect functions in `effects.ts` should accept a `trigger` parameter (or similar), indicating why the effect is being called.
-   - Split logic inside each effect function by trigger type.
+   - [✅] Refactor all effect functions in `effects.ts` to use the new trigger system.
+   - [✅] Remove hardcoded checks for rotation, apparition, etc., in favor of trigger-based logic.
 3. **Update Effect Execution:**
-   - In the reducer/phase logic (`actions.ts`, `rules.ts`), call effect functions with the correct trigger:
-     - On summon: call with `trigger: 'onSummon'`.
-     - Each phase: call with `trigger: 'onPhase'`.
-     - On final rotation: call with `trigger: 'onFinalRotation'` (only if leaving due to max rotation).
-     - For persistent effects: check/apply `whileInPlay` as needed.
-4. **Update Tests:**
-   - Update and expand tests to check each trigger for each card.
-5. **Document Triggers:**
-   - Update this file and code comments to explain the trigger system.
-
-## Sequential To-Do List
-
-1. **Design:**
-   - [ ] Add `KnowledgeEffectTrigger` type to `types.ts`.
-   - [ ] Update `KnowledgeEffectFn` signature to accept a `trigger` parameter.
-2. **Refactor Effect Functions:**
-   - [ ] Refactor all effect functions in `effects.ts` to use the new trigger system.
-   - [ ] Remove hardcoded checks for rotation, apparition, etc., in favor of trigger-based logic.
-3. **Update Effect Execution:**
-   - [ ] In `actions.ts`, call the effect with `trigger: 'onSummon'` when a card is summoned.
-   - [ ] In `rules.ts` (knowledge phase), call the effect with `trigger: 'onPhase'` or `onFinalRotation` as appropriate.
-   - [ ] Remove any generic `onLeave` effect logic for knowledge cards.
-   - [ ] For persistent effects, ensure `whileInPlay` is checked/applied each phase.
-4. **Update Tests:**
-   - [ ] Update all effect tests to use the new trigger system.
+   - [✅] In `actions.ts`, call the effect with `trigger: 'onSummon'` when a card is summoned.
+   - [✅] In `rules.ts` (knowledge phase), call the effect with `trigger: 'onPhase'` or `onFinalRotation` as appropriate.
+   - [✅] Remove any generic `onLeave` effect logic for knowledge cards.
+   - [✅] For persistent effects, ensure `whileInPlay` is checked/applied each phase.
+4. **Refactor Passive Abilities:**
+   - [ ] Refactor `passives.ts` to use the standardized trigger/effect system where possible, for consistency and maintainability.
+5. **Update Tests:**
+   - [ ] Update all effect and passive tests to use the new trigger system.
    - [ ] Add tests for onSummon and onFinalRotation triggers for all relevant cards.
-5. **Documentation:**
-   - [ ] Update this file and code comments to reflect the new system.
+6. **Documentation:**
+   - [✅] Update this file and code comments to reflect the new system.
    - [ ] Add a table in the README or EFFECTS.md mapping each card to its triggers.
 
 ---

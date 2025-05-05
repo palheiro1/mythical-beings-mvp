@@ -63,6 +63,7 @@ describe('Lupus (terrestrial5) Effect', () => {
       knowledge: currentKnowledge,
       rotation,
       isFinalRotation: false,
+      trigger: 'onPhase',
     });
 
     expect(newState.players[opponentIndex].power).toBe(19);
@@ -82,6 +83,7 @@ describe('Lupus (terrestrial5) Effect', () => {
       knowledge: currentKnowledge,
       rotation,
       isFinalRotation: false,
+      trigger: 'onPhase',
     });
 
     expect(newState.players[opponentIndex].power).toBe(19);
@@ -101,6 +103,7 @@ describe('Lupus (terrestrial5) Effect', () => {
       knowledge: currentKnowledge,
       rotation,
       isFinalRotation: false,
+      trigger: 'onPhase',
     });
 
     expect(newState.players[opponentIndex].power).toBe(18);
@@ -120,6 +123,7 @@ describe('Lupus (terrestrial5) Effect', () => {
       knowledge: currentKnowledge,
       rotation,
       isFinalRotation: true,
+      trigger: 'onPhase',
     });
 
     expect(newState.players[opponentIndex].power).toBe(17);
@@ -146,6 +150,7 @@ describe('Lupus (terrestrial5) Effect', () => {
       knowledge: playerFieldSlot.knowledge,
       rotation,
       isFinalRotation: true,
+      trigger: 'onPhase',
     });
 
     // Find the opponent slot again in the new state to check knowledge
@@ -177,6 +182,7 @@ describe('Lupus (terrestrial5) Effect', () => {
       knowledge: playerFieldSlot.knowledge,
       rotation,
       isFinalRotation: false, // Not final
+      trigger: 'onPhase',
     });
 
     expect(opponentFieldSlot.knowledge).toEqual(opponentKnowledgeInstance);
@@ -198,6 +204,7 @@ describe('Lupus (terrestrial5) Effect', () => {
       knowledge: playerFieldSlot.knowledge,
       rotation,
       isFinalRotation: true, // Final rotation
+      trigger: 'onPhase',
     });
 
     const opponentFieldSlot = newState.players[opponentIndex].field.find(slot => slot.creatureId === p2CreatureId);
