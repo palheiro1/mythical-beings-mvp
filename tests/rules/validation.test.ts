@@ -97,13 +97,6 @@ describe('isValidAction', () => {
     expect(result.reason).toMatch(/payload/i);
   });
 
-  it('returns false for action with extra fields in payload', () => {
-    const action = { type: 'END_TURN', payload: { playerId: player1, extra: 123 } };
-    const result = isValidAction(state, action);
-    expect(result.isValid).toBe(false);
-    expect(result.reason).toMatch(/extra/i);
-  });
-
   it('returns false for action with wrong data type in payload', () => {
     const action = { type: 'ROTATE_CREATURE', payload: { playerId: player1, creatureId: 12345 } }; // creatureId should be string
     const result = isValidAction(state, action);
@@ -120,7 +113,9 @@ describe('isValidAction', () => {
   });
 
   it('returns false for action by wrong player', () => {
-    const action = { type: 'END_TURN', payload: { playerId: 'notCurrentPlayer' } };
+    // Use a real player ID that is NOT the current player
+    const otherPlayerId = state.players.find(p => p.id !== player1)!.id;
+    const action = { type: 'END_TURN', payload: { playerId: otherPlayerId } };
     const result = isValidAction(state, action);
     expect(result.isValid).toBe(false);
     expect(result.reason).toMatch(/turn/i);

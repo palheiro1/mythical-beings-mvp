@@ -23,42 +23,35 @@ interface ValidationResult {
 export function isValidAction(state: GameState, action: GameAction): ValidationResult {
   // Allow SET_GAME_STATE and INITIALIZE_GAME without player/turn checks
   if (action.type === 'SET_GAME_STATE' || action.type === 'INITIALIZE_GAME') {
-    return { isValid: true }; // Always allow system actions
+    return { isValid: true };
   }
 
-  // Handle END_TURN before payload check
+  // All actions except SET_GAME_STATE/INITIALIZE_GAME require player/turn checks
+  if (!action.payload || typeof action.payload !== 'object' || !('playerId' in action.payload)) {
+    return { isValid: false, reason: 'Invalid payload structure for player action ' + action.type };
+  }
+  const payload = action.payload as { playerId: string };
+  const playerIndex = state.players.findIndex(p => p.id === payload.playerId);
+
+  if (playerIndex === -1) {
+    return { isValid: false, reason: `Player ${payload.playerId} not found` };
+  }
+
+  // Ensure only the current player can act (including END_TURN)
+  if (state.currentPlayerIndex !== playerIndex) {
+    return { isValid: false, reason: `Not player ${playerIndex}'s turn (Current: ${state.currentPlayerIndex})` };
+  }
+
+  // Special handling for END_TURN after player/turn check
   if (action.type === 'END_TURN') {
-    // Basic checks for END_TURN (can be done here or in reducer)
     if (state.phase !== 'action') {
       const reason = `Cannot end turn outside action phase (Current: ${state.phase})`;
       return { isValid: false, reason };
     }
-    // No need to check actionsTakenThisTurn for END_TURN
     return { isValid: true };
   }
 
-  // All other actions require payload and player/turn checks
-  if (!action.payload || typeof action.payload !== 'object' || !('playerId' in action.payload)) {
-    const reason = `Invalid payload structure for player action ${action.type}`;
-    console.log(`[isValidAction] Failed: ${reason}`);
-    return { isValid: false, reason };
-  }
-
-  // Cast to access playerId after validation
-  const payload = action.payload as { playerId: string; [key: string]: any };
-  const playerId = payload.playerId;
-  const playerIndex = state.players.findIndex(p => p.id === playerId);
-
-  if (playerIndex === -1) {
-    const reason = `Player ${playerId} not found`;
-    return { isValid: false, reason }; // Player not found
-  }
-
-  // Basic checks: Correct player, correct phase, actions available
-  if (state.currentPlayerIndex !== playerIndex) {
-    const reason = `Not player ${playerIndex}'s turn (Current: ${state.currentPlayerIndex})`;
-    return { isValid: false, reason }; // Not player's turn
-  }
+  // Basic checks: Correct phase, actions available
   if (state.phase !== 'action') {
     const reason = `Not action phase (Current: ${state.phase})`;
     return { isValid: false, reason }; // Not action phase
