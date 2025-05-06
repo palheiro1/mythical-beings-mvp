@@ -73,7 +73,16 @@ export function isValidAction(state: GameState, action: GameAction): ValidationR
   // Action-specific validation
   switch (action.type) {
     case 'ROTATE_CREATURE': {
-      const { creatureId } = action.payload as { playerId: string; creatureId: string };
+      // Cast payload to expected shape for this action
+      const rotatePayload = action.payload as { playerId: string; creatureId: any }; // Use 'any' for creatureId initially for type check
+
+      // ADD THIS TYPE CHECK FOR creatureId
+      if (typeof rotatePayload.creatureId !== 'string') {
+        return { isValid: false, reason: 'creatureId must be a string for ROTATE_CREATURE' };
+      }
+      // Now that we've checked it's a string, we can use it safely
+      const creatureId = rotatePayload.creatureId as string;
+
       const player = state.players[playerIndex];
       const creature = player.creatures.find(c => c.id === creatureId);
       if (!creature) {
@@ -86,7 +95,17 @@ export function isValidAction(state: GameState, action: GameAction): ValidationR
       return { isValid: true };
     }
     case 'DRAW_KNOWLEDGE': {
-      const { instanceId } = action.payload as { playerId: string; knowledgeId: string; instanceId: string };
+      const drawPayload = action.payload as { playerId: string; knowledgeId: any; instanceId: any };
+
+      // ADD TYPE CHECKS FOR DRAW_KNOWLEDGE
+      if (typeof drawPayload.knowledgeId !== 'string') {
+        return { isValid: false, reason: 'knowledgeId must be a string for DRAW_KNOWLEDGE' };
+      }
+      if (typeof drawPayload.instanceId !== 'string') {
+        return { isValid: false, reason: 'instanceId must be a string for DRAW_KNOWLEDGE' };
+      }
+      const { instanceId } = drawPayload as { playerId: string; knowledgeId: string; instanceId: string };
+
       const player = state.players[playerIndex];
       // Check 1: Market not empty
       if (state.market.length === 0) {
@@ -103,7 +122,21 @@ export function isValidAction(state: GameState, action: GameAction): ValidationR
       return { isValid: true };
     }
     case 'SUMMON_KNOWLEDGE': {
-      const { knowledgeId, creatureId, instanceId } = action.payload as { playerId: string; knowledgeId: string; instanceId: string; creatureId: string };
+      const summonPayload = action.payload as { playerId: string; knowledgeId: any; instanceId: any; creatureId: any };
+
+      // ADD TYPE CHECKS FOR SUMMON_KNOWLEDGE
+      if (typeof summonPayload.knowledgeId !== 'string') {
+        return { isValid: false, reason: 'knowledgeId must be a string for SUMMON_KNOWLEDGE' };
+      }
+      if (typeof summonPayload.instanceId !== 'string') {
+        return { isValid: false, reason: 'instanceId must be a string for SUMMON_KNOWLEDGE' };
+      }
+      if (typeof summonPayload.creatureId !== 'string') {
+        return { isValid: false, reason: 'creatureId must be a string for SUMMON_KNOWLEDGE' };
+      }
+      // Now cast to specific types
+      const { knowledgeId, creatureId, instanceId } = summonPayload as { playerId: string; knowledgeId: string; instanceId: string; creatureId: string };
+
       const player = state.players[playerIndex];
       // Find knowledge in hand using instanceId for precision
       const knowledgeCard = player.hand.find(k => k.instanceId === instanceId);
