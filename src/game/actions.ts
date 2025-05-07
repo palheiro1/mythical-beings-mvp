@@ -129,30 +129,20 @@ export function summonKnowledge(state: GameState, payload: SummonKnowledgePayloa
     return { newState: workingState, leavingKnowledgeInfo: null };
   }
 
-  let leavingKnowledge: Knowledge | null = null;
-  let leavingKnowledgeInfo: SummonKnowledgeResult['leavingKnowledgeInfo'] = null;
-
-  // --- Handle Knowledge Replacement ---
+  // --- Prevent Knowledge Replacement ---
   if (player.field[fieldIndex].knowledge) {
-    leavingKnowledge = player.field[fieldIndex].knowledge;
-    console.log(`[Action] summonKnowledge: Replacing ${leavingKnowledge?.name} (${leavingKnowledge?.instanceId}) on ${creatureId}`);
-    workingState.discardPile.push(leavingKnowledge!); // Add replaced card to discard
-    // Prepare info for KNOWLEDGE_LEAVE trigger in reducer
-    leavingKnowledgeInfo = {
-      playerId: playerId,
-      creatureId: creatureId,
-      knowledgeCard: leavingKnowledge!,
-    };
-    // DO NOT trigger KNOWLEDGE_LEAVE passive here
+    console.error(`[Action] summonKnowledge: Cannot summon onto occupied slot for creature ${creatureId}.`);
+    // Do not allow replacement, return state unchanged
+    return { newState: workingState, leavingKnowledgeInfo: null };
   }
-  // --- End Replacement Logic ---
+  // --- End Replacement Prevention ---
 
   // Place the new knowledge
   player.field[fieldIndex].knowledge = knowledgeToSummon;
   // Remove the summoned card from hand
   player.hand.splice(knowledgeIndex, 1);
 
-  workingState.log = [...workingState.log, `${playerId} summoned ${knowledgeToSummon.name} onto ${creatureId}${leavingKnowledge ? ` (replacing ${leavingKnowledge.name})` : ''}.`];
+  workingState.log = [...workingState.log, `${playerId} summoned ${knowledgeToSummon.name} onto ${creatureId}.`];
 
   // --- Apply Immediate Effect (if any) ---
   if (knowledgeToSummon.effect) {
@@ -164,5 +154,5 @@ export function summonKnowledge(state: GameState, payload: SummonKnowledgePayloa
   // --- End Effect Application ---
 
   // Return the modified state and the info about any knowledge that left
-  return { newState: workingState, leavingKnowledgeInfo };
+  return { newState: workingState, leavingKnowledgeInfo: null };
 }

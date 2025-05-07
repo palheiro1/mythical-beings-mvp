@@ -1,7 +1,6 @@
 import { knowledgeEffects } from './effects.js';
-import { cloneDeep } from 'lodash'; // Import cloneDeep
-// Removed unused CombatBuffers import
-import { GameState, GameAction, Knowledge, PlayerState } from './types';
+import { cloneDeep } from 'lodash';
+import { GameState, GameAction, Knowledge, SummonKnowledgePayload } from './types'; // Import SummonKnowledgePayload
 import { applyPassiveAbilities } from './passives.js';
 
 // Constants
@@ -26,167 +25,111 @@ export function isValidAction(state: GameState, action: GameAction): ValidationR
     return { isValid: true };
   }
 
-  // All actions except SET_GAME_STATE/INITIALIZE_GAME require player/turn checks
-  if (!action.payload || typeof action.payload !== 'object' || !('playerId' in action.payload)) {
-    return { isValid: false, reason: 'Invalid payload structure for player action ' + action.type };
-  }
-  const payload = action.payload as { playerId: string };
-  const playerIndex = state.players.findIndex(p => p.id === payload.playerId);
-
-  if (playerIndex === -1) {
-    return { isValid: false, reason: `Player ${payload.playerId} not found` };
+  const currentPlayer = state.players[state.currentPlayerIndex];
+  if (!currentPlayer) {
+    return { isValid: false, reason: 'Current player not found.' };
   }
 
-  // Ensure only the current player can act (including END_TURN)
-  if (state.currentPlayerIndex !== playerIndex) {
-    return { isValid: false, reason: `Not player ${playerIndex}'s turn (Current: ${state.currentPlayerIndex})` };
+  // Most actions have a playerId in their payload, ensure it matches the current player
+  if (action.payload && 'playerId' in action.payload && currentPlayer.id !== action.payload.playerId) {
+    return { isValid: false, reason: 'Not the current player\'s turn or action not for this player.' };
   }
 
-  // Special handling for END_TURN after player/turn check
-  if (action.type === 'END_TURN') {
-    if (state.phase !== 'action') {
-      const reason = `Cannot end turn outside action phase (Current: ${state.phase})`;
-      return { isValid: false, reason };
-    }
-    return { isValid: true };
-  }
-
-  // Basic checks: Correct phase, actions available
   if (state.phase !== 'action') {
-    const reason = `Not action phase (Current: ${state.phase})`;
-    return { isValid: false, reason }; // Not action phase
-  }
-  const currentActionsPerTurn = state.actionsPerTurn ?? ACTIONS_PER_TURN;
-  if (state.actionsTakenThisTurn >= currentActionsPerTurn) {
-    const reason = `No actions left (Taken: ${state.actionsTakenThisTurn}/${currentActionsPerTurn})`;
-    console.log(`[isValidAction] Failed: ${reason}`);
-    return { isValid: false, reason }; // No actions left
+    return { isValid: false, reason: 'Not in action phase.' };
   }
 
-  // Action-specific validation
+  if (state.actionsTakenThisTurn >= state.actionsPerTurn && action.type !== 'END_TURN') { // END_TURN is always allowed if it's the player's turn
+    return { isValid: false, reason: 'No actions left this turn.' };
+  }
+
   switch (action.type) {
-    case 'ROTATE_CREATURE': {
-      // Cast payload to expected shape for this action
-      const rotatePayload = action.payload as { playerId: string; creatureId: any }; // Use 'any' for creatureId initially for type check
-
-      // ADD THIS TYPE CHECK FOR creatureId
-      if (typeof rotatePayload.creatureId !== 'string') {
-        return { isValid: false, reason: 'creatureId must be a string for ROTATE_CREATURE' };
+    case 'SUMMON_KNOWLEDGE': {
+      if (!action.payload) {
+        return { isValid: false, reason: 'Missing payload for SUMMON_KNOWLEDGE.' };
       }
-      // Now that we've checked it's a string, we can use it safely
-      const creatureId = rotatePayload.creatureId as string;
+      const payload = action.payload as SummonKnowledgePayload;
+      const actingPlayer = state.players.find((p: typeof state.players[number]) => p.id === payload.playerId);
+      if (!actingPlayer) return { isValid: false, reason: 'Acting player not found for summon.' };
 
-      const player = state.players[playerIndex];
-      const creature = player.creatures.find(c => c.id === creatureId);
+      const creature = actingPlayer.creatures.find((c: typeof actingPlayer.creatures[number]) => c.id === payload.creatureId);
       if (!creature) {
-        return { isValid: false, reason: `Creature ${creatureId} not found` };
+        return { isValid: false, reason: 'Target creature not found.' };
       }
-      const fieldSlot = player.field.find(f => f.creatureId === creatureId);
-      if (!fieldSlot) {
-        return { isValid: false, reason: `Creature ${creatureId} not on field` };
+
+      const fieldSlotIndex = actingPlayer.field.findIndex((s: typeof actingPlayer.field[number]) => s.creatureId === payload.creatureId);
+      if (fieldSlotIndex === -1) {
+        return { isValid: false, reason: 'Target field slot not found.' };
       }
+      const fieldSlot = actingPlayer.field[fieldSlotIndex];
+
+      const actingPlayerIndex = state.players.findIndex((p: typeof state.players[number]) => p.id === actingPlayer.id);
+      const opponentPlayerIndex = actingPlayerIndex === 0 ? 1 : 0;
+
+      // Check if the slot is blocked by the opponent
+      if (state.blockedSlots[opponentPlayerIndex]?.includes(fieldSlotIndex)) {
+        return { isValid: false, reason: `Creature slot ${payload.creatureId} is currently blocked by an opponent.` };
+      }
+
+      // Check if the slot is blocked by the current player (self-block)
+      if (state.blockedSlots[actingPlayerIndex]?.includes(fieldSlotIndex)) {
+        return { isValid: false, reason: `Creature slot ${payload.creatureId} is currently blocked.` };
+      }
+
+      // Check if the slot already has knowledge (new rule)
+      if (fieldSlot.knowledge) {
+        return { isValid: false, reason: 'Creature slot already has knowledge.' };
+      }
+
+      const knowledgeCardInHand = actingPlayer.hand.find((k: Knowledge) => k.instanceId === payload.instanceId);
+      if (!knowledgeCardInHand) {
+        return { isValid: false, reason: 'Knowledge card not in hand.' };
+      }
+      if (creature.currentWisdom < knowledgeCardInHand.cost) {
+        return { isValid: false, reason: 'Creature does not have enough wisdom.' };
+      }
+      return { isValid: true };
+    }
+    case 'ROTATE_CREATURE': {
+      if (!action.payload) {
+        return { isValid: false, reason: 'Missing payload for ROTATE_CREATURE.' };
+      }
+      const payload = action.payload as { playerId: string; creatureId: string };
+      const actingPlayer = state.players.find((p: typeof state.players[number]) => p.id === payload.playerId);
+      if (!actingPlayer) return { isValid: false, reason: 'Acting player not found for rotate.' };
+
+      const creature = actingPlayer.creatures.find((c: typeof actingPlayer.creatures[number]) => c.id === payload.creatureId);
+      if (!creature) {
+        return { isValid: false, reason: 'Creature to rotate not found.' };
+      }
+      // Add any specific rotation rules if necessary (e.g., cannot rotate if already max wisdom)
       return { isValid: true };
     }
     case 'DRAW_KNOWLEDGE': {
-      const drawPayload = action.payload as { playerId: string; knowledgeId: any; instanceId: any };
+      if (!action.payload) {
+        return { isValid: false, reason: 'Missing payload for DRAW_KNOWLEDGE.' };
+      }
+      const payload = action.payload as { playerId: string; knowledgeId: string; instanceId: string };
+      const actingPlayer = state.players.find((p: typeof state.players[number]) => p.id === payload.playerId);
+      if (!actingPlayer) return { isValid: false, reason: 'Acting player not found for draw.' };
 
-      // ADD TYPE CHECKS FOR DRAW_KNOWLEDGE
-      if (typeof drawPayload.knowledgeId !== 'string') {
-        return { isValid: false, reason: 'knowledgeId must be a string for DRAW_KNOWLEDGE' };
+      if (actingPlayer.hand.length >= MAX_HAND_SIZE) {
+        return { isValid: false, reason: 'Hand is full.' };
       }
-      if (typeof drawPayload.instanceId !== 'string') {
-        return { isValid: false, reason: 'instanceId must be a string for DRAW_KNOWLEDGE' };
+      const marketCard = state.market.find((k: Knowledge) => k.instanceId === payload.instanceId);
+      if (!marketCard) {
+        return { isValid: false, reason: 'Card not found in market.' };
       }
-      const { instanceId } = drawPayload as { playerId: string; knowledgeId: string; instanceId: string };
-
-      const player = state.players[playerIndex];
-      // Check 1: Market not empty
-      if (state.market.length === 0) {
-        return { isValid: false, reason: `Market is empty` };
-      }
-      // Check 2: Card exists in market (using instanceId for precision)
-      if (!state.market.some(k => k.instanceId === instanceId)) {
-        return { isValid: false, reason: `Knowledge instance ${instanceId} not in market` };
-      }
-      // Check 3: Hand not full
-      if (player.hand.length >= MAX_HAND_SIZE) {
-        return { isValid: false, reason: `Hand full` };
-      }
+      // Potentially add cost check if drawing from market has a cost in your rules
       return { isValid: true };
     }
-    case 'SUMMON_KNOWLEDGE': {
-      const summonPayload = action.payload as { playerId: string; knowledgeId: any; instanceId: any; creatureId: any };
-
-      // ADD TYPE CHECKS FOR SUMMON_KNOWLEDGE
-      if (typeof summonPayload.knowledgeId !== 'string') {
-        return { isValid: false, reason: 'knowledgeId must be a string for SUMMON_KNOWLEDGE' };
-      }
-      if (typeof summonPayload.instanceId !== 'string') {
-        return { isValid: false, reason: 'instanceId must be a string for SUMMON_KNOWLEDGE' };
-      }
-      if (typeof summonPayload.creatureId !== 'string') {
-        return { isValid: false, reason: 'creatureId must be a string for SUMMON_KNOWLEDGE' };
-      }
-      // Now cast to specific types
-      const { knowledgeId, creatureId, instanceId } = summonPayload as { playerId: string; knowledgeId: string; instanceId: string; creatureId: string };
-
-      const player = state.players[playerIndex];
-      // Find knowledge in hand using instanceId for precision
-      const knowledgeCard = player.hand.find(k => k.instanceId === instanceId);
-      if (!knowledgeCard) {
-        return { isValid: false, reason: `Knowledge instance ${instanceId} not in hand` };
-      }
-      // Ensure knowledgeId matches (consistency check)
-      if (knowledgeCard.id !== knowledgeId) {
-         return { isValid: false, reason: `Knowledge instance ${instanceId} ID mismatch (found ${knowledgeCard.id}, expected ${knowledgeId})` };
-      }
-
-      const creatureSlotIndex = player.field.findIndex(f => f.creatureId === creatureId);
-      if (creatureSlotIndex === -1) {
-        return { isValid: false, reason: `Creature ${creatureId} not on field` };
-      }
-      const creatureSlot = player.field[creatureSlotIndex];
-
-      const creature = player.creatures.find(c => c.id === creatureId);
-      if (!creature) {
-        return { isValid: false, reason: `Creature ${creatureId} not found for player ${playerId}` };
-      }
-
-      const creatureWisdom = creature.currentWisdom;
-      if (typeof creatureWisdom !== 'number') {
-        return { isValid: false, reason: `Creature ${creatureId} has invalid wisdom` };
-      }
-
-      let effectiveCost = knowledgeCard.cost;
-      // Apply cost reductions (consider moving to a helper function)
-      if (knowledgeCard.element === 'water' && player.creatures.some(c => c.id === 'kappa' && player.field.some(f => f.creatureId === 'kappa'))) {
-        effectiveCost = Math.max(1, effectiveCost - 1);
-      }
-      if (knowledgeCard.element === 'earth' && player.creatures.some(c => c.id === 'dudugera' && player.field.some(f => f.creatureId === 'dudugera'))) {
-        effectiveCost = Math.max(1, effectiveCost - 1);
-      }
-
-      // Check if the *target slot* for *this player* is blocked by an *opponent's* aquatic3
-      const opponentIndex = playerIndex === 0 ? 1 : 0;
-      const blockedSlots = state.blockedSlots;
-      if (blockedSlots && blockedSlots[opponentIndex] && blockedSlots[opponentIndex].includes(creatureSlotIndex)) {
-        return { isValid: false, reason: `This slot (${creatureSlotIndex}) is currently blocked by an opponent's aquatic3 effect.` };
-      }
-
-      if (state.blockedSlots[playerIndex]?.includes(creatureId)) {
-        return { isValid: false, reason: `Creature slot ${creatureId} is currently blocked.` };
-      }
-
-      if (creatureWisdom < effectiveCost) {
-        return { isValid: false, reason: `Insufficient wisdom on ${creature.id} (${creatureWisdom}) for ${knowledgeCard.name} (cost ${effectiveCost})` };
-      }
+    case 'END_TURN':
+      // Basic validation already handled (current player, action phase)
       return { isValid: true };
-    }
     default:
-      const unknownAction: never = action; // This will cause a compile error if any GameAction type is missed
-      const reason = `Unhandled action type: ${(unknownAction as any).type}`;
-      console.log(`[isValidAction] Failed: ${reason}`, action);
-      return { isValid: false, reason };
+      // For actions not explicitly handled, assume valid if basic checks pass
+      // Or, you can return { isValid: false, reason: 'Unknown action type.' } for stricter validation
+      return { isValid: true };
   }
 }
 

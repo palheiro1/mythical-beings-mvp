@@ -150,31 +150,33 @@ describe('Passive Interactions', () => {
   });
 
   describe('Scenario 4: Multiple KNOWLEDGE_LEAVE Passives', () => {
-    it('should trigger Lisovik but not Tsenehale when earth knowledge leaves via replacement', () => { // Modified trigger
+    it('should trigger Lisovik but not Tsenehale when earth knowledge leaves via Pele passive', () => {
       const p1Id = 'player1'; // Owner of Lisovik and Tsenehale
-      const p2Id = 'player2';
-      const initialState = createInitialTestState('interaction4a', ['lisovik', 'tsenehale'], ['pele'], {
-        currentPlayerIndex: 0,
+      const p2Id = 'player2'; // Owner of Pele
+      const initialState = createInitialTestState('interaction4a', ['lisovik', 'tsenehale'], ['pele', 'adaro'], {
+        currentPlayerIndex: 1, // P2's turn (Pele owner)
         phase: 'action',
         actionsTakenThisTurn: 0,
       });
 
-      const earthKnowledge: Knowledge = createTestKnowledge('terrestrial1'); // Earth knowledge to be replaced
+      // Place earth knowledge on Lisovik
+      const earthKnowledge: Knowledge = createTestKnowledge('terrestrial1');
       const lisovikFieldIdx = initialState.players[0].field.findIndex(f => f.creatureId === 'lisovik');
       initialState.players[0].field[lisovikFieldIdx].knowledge = earthKnowledge;
-      initialState.players[0].creatures.find(c => c.id === 'lisovik')!.currentWisdom = 1; // Ensure wisdom for replacement
 
-      const replacingKnowledge = createTestKnowledge('aerial1'); // Knowledge to summon
-      initialState.players[0].hand = [replacingKnowledge];
+      // Give P2 (Pele owner) a higher cost earth knowledge to summon
+      const higherCostEarthKnowledge = createTestKnowledge('terrestrial2', { cost: 2 });
+      initialState.players[1].hand = [higherCostEarthKnowledge];
+      initialState.players[1].creatures.find(c => c.id === 'adaro')!.currentWisdom = 2; // Ensure wisdom for summon
 
       const p1PowerBefore = initialState.players[0].power;
       const p2PowerBefore = initialState.players[1].power;
       const discardBefore = initialState.discardPile.length;
 
-      // Trigger knowledge leave via replacement summon
+      // Trigger Pele passive by summoning earth knowledge
       const summonAction = {
         type: 'SUMMON_KNOWLEDGE' as const,
-        payload: { playerId: p1Id, knowledgeId: replacingKnowledge.id, instanceId: replacingKnowledge.instanceId!, creatureId: 'lisovik' }
+        payload: { playerId: p2Id, knowledgeId: higherCostEarthKnowledge.id, instanceId: higherCostEarthKnowledge.instanceId!, creatureId: 'adaro' }
       };
       const result = gameReducer(initialState, summonAction) as GameState;
 
@@ -187,38 +189,40 @@ describe('Passive Interactions', () => {
       expect(result.log).not.toContain(`[Passive Effect] Tsenehale`);
 
       // Check knowledge left field and went to discard
-      expect(result.players[0].field[lisovikFieldIdx].knowledge?.instanceId).toBe(replacingKnowledge.instanceId);
+      expect(result.players[0].field[lisovikFieldIdx].knowledge).toBeNull();
       expect(result.discardPile.length).toBe(discardBefore + 1);
       expect(result.discardPile).toEqual(expect.arrayContaining([
         expect.objectContaining({ instanceId: earthKnowledge.instanceId })
       ]));
     });
 
-    it('should trigger Tsenehale but not Lisovik when air knowledge leaves via replacement', () => { // Modified trigger
+    it('should trigger Tsenehale but not Lisovik when air knowledge leaves via Pele passive', () => {
       const p1Id = 'player1'; // Owner of Lisovik and Tsenehale
-      const p2Id = 'player2';
-      const initialState = createInitialTestState('interaction4b', ['lisovik', 'tsenehale'], ['pele'], {
-        currentPlayerIndex: 0,
+      const p2Id = 'player2'; // Owner of Pele
+      const initialState = createInitialTestState('interaction4b', ['lisovik', 'tsenehale'], ['pele', 'adaro'], {
+        currentPlayerIndex: 1, // P2's turn (Pele owner)
         phase: 'action',
         actionsTakenThisTurn: 0,
       });
 
-      const airKnowledge: Knowledge = createTestKnowledge('aerial1'); // Air knowledge to be replaced
+      // Place air knowledge on Tsenehale
+      const airKnowledge: Knowledge = createTestKnowledge('aerial1');
       const tsenehaleFieldIdx = initialState.players[0].field.findIndex(f => f.creatureId === 'tsenehale');
       initialState.players[0].field[tsenehaleFieldIdx].knowledge = airKnowledge;
-      initialState.players[0].creatures.find(c => c.id === 'tsenehale')!.currentWisdom = 1; // Ensure wisdom for replacement
 
-      const replacingKnowledge = createTestKnowledge('terrestrial1'); // Knowledge to summon
-      initialState.players[0].hand = [replacingKnowledge];
+      // Give P2 (Pele owner) a higher cost earth knowledge to summon
+      const higherCostEarthKnowledge = createTestKnowledge('terrestrial2', { cost: 2 });
+      initialState.players[1].hand = [higherCostEarthKnowledge];
+      initialState.players[1].creatures.find(c => c.id === 'adaro')!.currentWisdom = 2; // Ensure wisdom for summon
 
       const p1PowerBefore = initialState.players[0].power;
       const p2PowerBefore = initialState.players[1].power;
       const discardBefore = initialState.discardPile.length;
 
-      // Trigger knowledge leave via replacement summon
+      // Trigger Pele passive by summoning earth knowledge
       const summonAction = {
         type: 'SUMMON_KNOWLEDGE' as const,
-        payload: { playerId: p1Id, knowledgeId: replacingKnowledge.id, instanceId: replacingKnowledge.instanceId!, creatureId: 'tsenehale' }
+        payload: { playerId: p2Id, knowledgeId: higherCostEarthKnowledge.id, instanceId: higherCostEarthKnowledge.instanceId!, creatureId: 'adaro' }
       };
       const result = gameReducer(initialState, summonAction) as GameState;
 
@@ -231,7 +235,7 @@ describe('Passive Interactions', () => {
       expect(result.log).toContain(`[Passive Effect] Tsenehale (Owner: ${p1Id}) grants +1 Power to owner as ${airKnowledge.name} leaves play from tsenehale.`);
 
       // Check knowledge left field and went to discard
-      expect(result.players[0].field[tsenehaleFieldIdx].knowledge?.instanceId).toBe(replacingKnowledge.instanceId);
+      expect(result.players[0].field[tsenehaleFieldIdx].knowledge).toBeNull();
       expect(result.discardPile.length).toBe(discardBefore + 1);
       expect(result.discardPile).toEqual(expect.arrayContaining([
         expect.objectContaining({ instanceId: airKnowledge.instanceId })
@@ -358,10 +362,10 @@ describe('Passive Interactions', () => {
       expect(result.log).toContain(`[Passive Effect] Pele (Owner: ${p1Id}) discards ${earthKnowledgeToLeave.name} (Cost: ${earthKnowledgeToLeave.cost}) from opponent ${p2Id}'s ${lisovikCreatureId}.`);
 
       // Check Lisovik effect (damages P1 because P2's earth knowledge left)
-      // TODO: Fix KNOWLEDGE_LEAVE trigger from chained passives. Lisovik should trigger here.
-      expect(result.players[0].power).toBe(p1PowerBefore); // P1 takes damage - Currently not happening
+      // Now Lisovik should trigger and P1 should lose 1 power
+      expect(result.players[0].power).toBe(p1PowerBefore - 1); // P1 takes damage
       expect(result.players[1].power).toBe(p2PowerBefore); // P2 power unchanged by Lisovik
-      // expect(result.log).toContain(`[Passive Effect] Lisovik (Owner: ${p2Id}) deals 1 damage to ${p1Id} as ${earthKnowledgeToLeave.name} leaves play.`); // Log check commented out until fixed
+      expect(result.log).toContain(`[Passive Effect] Lisovik (Owner: ${p2Id}) deals 1 damage to ${p1Id} as ${earthKnowledgeToLeave.name} leaves play.`);
     });
 
     it('should trigger Pele discard, then Tsenehale power gain', () => {
@@ -401,10 +405,10 @@ describe('Passive Interactions', () => {
       expect(result.log).toContain(`[Passive Effect] Pele (Owner: ${p1Id}) discards ${airKnowledgeToLeave.name} (Cost: ${airKnowledgeToLeave.cost}) from opponent ${p2Id}'s ${tsenehaleCreatureId}.`);
 
       // Check Tsenehale effect (P2 gains power because P2's air knowledge left)
-      // TODO: Fix KNOWLEDGE_LEAVE trigger from chained passives. Tsenehale should trigger here.
+      // Now Tsenehale should trigger and P2 should gain 1 power
       expect(result.players[0].power).toBe(p1PowerBefore); // P1 power unchanged by Tsenehale
-      expect(result.players[1].power).toBe(p2PowerBefore); // P2 gains power - Currently not happening
-      // expect(result.log).toContain(`[Passive Effect] Tsenehale (Owner: ${p2Id}) grants +1 Power to owner as ${airKnowledgeToLeave.name} leaves play from ${tsenehaleCreatureId}.`); // Log check commented out until fixed
+      expect(result.players[1].power).toBe(p2PowerBefore + 1); // P2 gains power
+      expect(result.log).toContain(`[Passive Effect] Tsenehale (Owner: ${p2Id}) grants +1 Power to owner as ${airKnowledgeToLeave.name} leaves play from ${tsenehaleCreatureId}.`);
     });
   });
 

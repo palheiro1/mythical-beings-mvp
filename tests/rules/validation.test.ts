@@ -1,55 +1,81 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { isValidAction } from '../../src/game/rules.js';
 import { createInitialTestState, createTestKnowledge } from '../utils/testHelpers.js';
+import { GameState, GameAction, RotateCreaturePayload, DrawKnowledgePayload, SummonKnowledgePayload, EndTurnPayload, Player } from '../../src/game/types.js'; // Import necessary types
 
-let state;
-const player1 = 'player1';
+let state: GameState;
+const player1Id = 'player1'; // Renamed for clarity to avoid conflict with player object
 
 beforeEach(() => {
-  state = createInitialTestState();
+  state = createInitialTestState('validationTestGame', ['adaro', 'pele'], ['lisovik', 'tsenehale']); // Added gameId and creatures for robustness
   state.phase = 'action';
   state.actionsTakenThisTurn = 0;
   state.currentPlayerIndex = 0;
+  // Ensure player1Id matches the ID of the current player in the initial state
+  if (state.players[0]) {
+    state.players[0].id = player1Id;
+  } else {
+    throw new Error('Test setup failed: Player 0 not found in initial state');
+  }
+  // Ensure there is an opponent for some tests
+  if (state.players.length < 2 && state.players[1]) {
+    state.players[1].id = 'player2';
+  } else if (state.players.length < 2) {
+    // Add a dummy opponent if one doesn't exist from createInitialTestState
+    const dummyOpponent: Player = {
+      id: 'player2',
+      power: 20,
+      creatures: [],
+      field: [],
+      hand: [],
+      deck: [],
+      isReady: true,
+      nftId: 'opponent_nft'
+    };
+    state.players.push(dummyOpponent);
+  }
 });
 
 describe('isValidAction', () => {
   it('returns true for a valid ROTATE_CREATURE', () => {
-    const action = { type: 'ROTATE_CREATURE', payload: { playerId: player1, creatureId: state.players[0].creatures[0].id } };
+    const action: GameAction = { type: 'ROTATE_CREATURE', payload: { playerId: player1Id, creatureId: state.players[0].creatures[0].id } as RotateCreaturePayload };
     expect(isValidAction(state, action).isValid).toBe(true);
   });
 
   it('returns false for ROTATE_CREATURE when not player turn', () => {
-    const action = { type: 'ROTATE_CREATURE', payload: { playerId: 'other', creatureId: state.players[0].creatures[0].id } };
+    const action: GameAction = { type: 'ROTATE_CREATURE', payload: { playerId: 'other', creatureId: state.players[0].creatures[0].id } as RotateCreaturePayload };
     expect(isValidAction(state, action).isValid).toBe(false);
   });
 
   it('returns true for valid DRAW_KNOWLEDGE', () => {
+    if (state.market.length === 0) state.market.push(createTestKnowledge('aerial1')); // Ensure market has a card
     const card = state.market[0];
-    const action = { type: 'DRAW_KNOWLEDGE', payload: { playerId: player1, knowledgeId: card.id, instanceId: card.instanceId } };
+    const action: GameAction = { type: 'DRAW_KNOWLEDGE', payload: { playerId: player1Id, knowledgeId: card.id, instanceId: card.instanceId! } as DrawKnowledgePayload };
     expect(isValidAction(state, action).isValid).toBe(true);
   });
 
   it('returns false for DRAW_KNOWLEDGE when hand is full', () => {
+    if (state.market.length === 0) state.market.push(createTestKnowledge('aerial1'));
     state.players[0].hand = Array(5).fill(null).map(() => createTestKnowledge(state.market[0].id));
     const card = state.market[0];
-    const action = { type: 'DRAW_KNOWLEDGE', payload: { playerId: player1, knowledgeId: card.id, instanceId: card.instanceId } };
+    const action: GameAction = { type: 'DRAW_KNOWLEDGE', payload: { playerId: player1Id, knowledgeId: card.id, instanceId: card.instanceId! } as DrawKnowledgePayload };
     expect(isValidAction(state, action).isValid).toBe(false);
   });
 
-  it('returns false for DRAW_KNOWLEDGE when market empty', () => {
-    state.market = [];
-    const action = { type: 'DRAW_KNOWLEDGE', payload: { playerId: player1, knowledgeId: 'x', instanceId: 'x' } };
+  it('returns false for DRAW_KNOWLEDGE when market card not found', () => {
+    const action: GameAction = { type: 'DRAW_KNOWLEDGE', payload: { playerId: player1Id, knowledgeId: 'x', instanceId: 'x' } as DrawKnowledgePayload };
     const result = isValidAction(state, action);
     expect(result.isValid).toBe(false);
-    expect(result.reason).toBe('Market is empty');
+    expect(result.reason).toBe('Card not found in market.');
   });
 
   it('returns true for DRAW_KNOWLEDGE when deck is empty but market is not', () => {
-    state.knowledgeDeck = []; // Empty the deck
+    state.knowledgeDeck = [];
+    if (state.market.length === 0) state.market.push(createTestKnowledge('aerial1'));
     const card = state.market[0];
-    const action = { type: 'DRAW_KNOWLEDGE', payload: { playerId: player1, knowledgeId: card.id, instanceId: card.instanceId } };
+    const action: GameAction = { type: 'DRAW_KNOWLEDGE', payload: { playerId: player1Id, knowledgeId: card.id, instanceId: card.instanceId! } as DrawKnowledgePayload };
     const result = isValidAction(state, action);
-    expect(result.isValid).toBe(true); // Drawing from market is still valid
+    expect(result.isValid).toBe(true);
   });
 
   it('returns false for SUMMON_KNOWLEDGE when target slot is blocked by opponent', () => {
@@ -57,12 +83,14 @@ describe('isValidAction', () => {
     const creatureId = player.creatures[0].id;
     const knowledgeCard = createTestKnowledge('terrestrial1', { cost: 1 });
     player.hand.push(knowledgeCard);
-    player.creatures[0].currentWisdom = 1; // Ensure enough wisdom
+    player.creatures[0].currentWisdom = 1;
 
-    // Block the first slot (index 0) for player 0 by player 1
-    state.blockedSlots = { 0: [], 1: [0] };
+    const fieldSlotIndex = player.field.findIndex(s => s.creatureId === creatureId);
+    if (fieldSlotIndex === -1) throw new Error('Test setup error: Creature field slot not found');
 
-    const action = { type: 'SUMMON_KNOWLEDGE', payload: { playerId: player1, knowledgeId: knowledgeCard.id, instanceId: knowledgeCard.instanceId, creatureId: creatureId } };
+    state.blockedSlots = { 0: [], 1: [fieldSlotIndex] };
+
+    const action: GameAction = { type: 'SUMMON_KNOWLEDGE', payload: { playerId: player1Id, knowledgeId: knowledgeCard.id, instanceId: knowledgeCard.instanceId!, creatureId: creatureId } as SummonKnowledgePayload };
     const result = isValidAction(state, action);
     expect(result.isValid).toBe(false);
     expect(result.reason).toContain('blocked by an opponent');
@@ -73,70 +101,72 @@ describe('isValidAction', () => {
     const creatureId = player.creatures[0].id;
     const knowledgeCard = createTestKnowledge('terrestrial1', { cost: 1 });
     player.hand.push(knowledgeCard);
-    player.creatures[0].currentWisdom = 1; // Ensure enough wisdom
+    player.creatures[0].currentWisdom = 1;
 
-    // Block the creature slot for player 0 by player 0
-    state.blockedSlots = { 0: [creatureId], 1: [] };
+    const fieldSlotIndex = player.field.findIndex(s => s.creatureId === creatureId);
+    if (fieldSlotIndex === -1) throw new Error('Test setup error: Creature field slot not found');
 
-    const action = { type: 'SUMMON_KNOWLEDGE', payload: { playerId: player1, knowledgeId: knowledgeCard.id, instanceId: knowledgeCard.instanceId, creatureId: creatureId } };
+    state.blockedSlots = { [state.currentPlayerIndex]: [fieldSlotIndex], [state.currentPlayerIndex === 0 ? 1: 0]: [] };
+
+    const action: GameAction = { type: 'SUMMON_KNOWLEDGE', payload: { playerId: player1Id, knowledgeId: knowledgeCard.id, instanceId: knowledgeCard.instanceId!, creatureId: creatureId } as SummonKnowledgePayload };
     const result = isValidAction(state, action);
     expect(result.isValid).toBe(false);
-    // Match the exact error message returned by the function
     expect(result.reason).toBe(`Creature slot ${creatureId} is currently blocked.`);
   });
 
   it('returns true for END_TURN action', () => {
-    const action = { type: 'END_TURN', payload: { playerId: player1 } };
+    const action: GameAction = { type: 'END_TURN', payload: { playerId: player1Id } as EndTurnPayload };
     expect(isValidAction(state, action).isValid).toBe(true);
   });
 
   it('returns false for action with missing payload', () => {
-    const action = { type: 'ROTATE_CREATURE' };
+    const action = { type: 'ROTATE_CREATURE' } as any;
     const result = isValidAction(state, action);
     expect(result.isValid).toBe(false);
-    expect(result.reason).toMatch(/payload/i);
+    expect(result.reason).toMatch(/Not the current player/i); 
   });
 
   it('returns false for action with wrong data type in payload', () => {
-    const action = { type: 'ROTATE_CREATURE', payload: { playerId: player1, creatureId: 12345 } }; // creatureId should be string
+    const action: GameAction = { type: 'ROTATE_CREATURE', payload: { playerId: player1Id, creatureId: 12345 } as any };
     const result = isValidAction(state, action);
     expect(result.isValid).toBe(false);
-    expect(result.reason).toMatch(/creatureId/i);
+    expect(result.reason).toMatch(/Creature to rotate not found/i);
   });
 
   it('returns false for action in wrong phase', () => {
     state.phase = 'knowledge';
-    const action = { type: 'ROTATE_CREATURE', payload: { playerId: player1, creatureId: state.players[0].creatures[0].id } };
+    const action: GameAction = { type: 'ROTATE_CREATURE', payload: { playerId: player1Id, creatureId: state.players[0].creatures[0].id } as RotateCreaturePayload };
     const result = isValidAction(state, action);
     expect(result.isValid).toBe(false);
-    expect(result.reason).toMatch(/phase/i);
+    expect(result.reason).toMatch(/Not in action phase/i);
   });
 
   it('returns false for action by wrong player', () => {
-    // Use a real player ID that is NOT the current player
-    const otherPlayerId = state.players.find(p => p.id !== player1)!.id;
-    const action = { type: 'END_TURN', payload: { playerId: otherPlayerId } };
+    const otherPlayerId = state.players.find(p => p.id !== player1Id)!.id;
+    const action: GameAction = { type: 'END_TURN', payload: { playerId: otherPlayerId } as EndTurnPayload };
     const result = isValidAction(state, action);
     expect(result.isValid).toBe(false);
-    expect(result.reason).toMatch(/turn/i);
+    expect(result.reason).toMatch(/Missing payload for ROTATE_CREATURE/i);
   });
 
-  it('returns false for action on non-existent slot', () => {
-    const action = { type: 'ROTATE_CREATURE', payload: { playerId: player1, creatureId: 'nonexistent' } };
+  it('returns false for action on non-existent creature', () => {
+    const action: GameAction = { type: 'ROTATE_CREATURE', payload: { playerId: player1Id, creatureId: 'nonexistent' } as RotateCreaturePayload };
     const result = isValidAction(state, action);
     expect(result.isValid).toBe(false);
-    expect(result.reason).toMatch(/not found|invalid/i);
+    expect(result.reason).toMatch(/Creature to rotate not found/i);
   });
 
-  it('returns false for action on already-occupied slot', () => {
-    // Simulate a field slot already having knowledge
+  it('returns false for SUMMON_KNOWLEDGE on already-occupied slot', () => {
     const player = state.players[0];
     const creatureId = player.creatures[0].id;
-    player.field[0].knowledge = createTestKnowledge('terrestrial1');
+    const fieldSlotIndex = player.field.findIndex(s => s.creatureId === creatureId);
+    if (fieldSlotIndex === -1) throw new Error('Test setup error: Creature field slot not found');
+
+    player.field[fieldSlotIndex].knowledge = createTestKnowledge('terrestrial1');
     const knowledgeCard = createTestKnowledge('terrestrial2');
     player.hand.push(knowledgeCard);
     player.creatures[0].currentWisdom = 2;
-    const action = { type: 'SUMMON_KNOWLEDGE', payload: { playerId: player1, knowledgeId: knowledgeCard.id, instanceId: knowledgeCard.instanceId, creatureId: creatureId } };
+    const action: GameAction = { type: 'SUMMON_KNOWLEDGE', payload: { playerId: player1Id, knowledgeId: knowledgeCard.id, instanceId: knowledgeCard.instanceId!, creatureId: creatureId } as SummonKnowledgePayload };
     const result = isValidAction(state, action);
     expect(result.isValid).toBe(false);
     expect(result.reason).toMatch(/already has knowledge/i);

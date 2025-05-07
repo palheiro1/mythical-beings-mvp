@@ -1,4 +1,4 @@
-import { GameState, PassiveTriggerType, PassiveEventData, Knowledge } from './types';
+import { GameState, PassiveTriggerType, PassiveEventData, Knowledge, Creature } from './types.js';
 import { v4 as uuidv4 } from 'uuid';
 
 /**
@@ -162,13 +162,19 @@ export function applyPassiveAbilities(
               if (fieldSlot.knowledge && fieldSlot.knowledge.cost < summonedKnowledge.cost) {
                 discardedCard = fieldSlot.knowledge;
                 discardedFromCreatureId = fieldSlot.creatureId;
-                fieldSlot.knowledge = null; // Remove from field
+                // Use helper to remove knowledge and trigger KNOWLEDGE_LEAVE
+                removeKnowledgeFromFieldAndTriggerPassives(
+                  newState,
+                  opponent.id,
+                  fieldSlot.creatureId,
+                  discardedCard
+                );
+                fieldSlot.knowledge = null; // Remove from field (already handled in helper, but keep for clarity)
                 break; // Discard only one
               }
             }
 
             if (discardedCard && discardedFromCreatureId) {
-              newState.discardPile.push(discardedCard);
               newState.log.push(`[Passive Effect] Pele (Owner: ${player.id}) discards ${discardedCard.name} (Cost: ${discardedCard.cost}) from opponent ${opponent.id}'s ${discardedFromCreatureId}.`);
               console.log(`[Passives] Pele triggered. Discarded ${discardedCard.name} from opponent ${opponent.id}.`);
             } else {
@@ -282,10 +288,10 @@ export function applyPassiveAbilities(
       const opponent = newState.players[(playerIndex + 1) % 2]; // Get opponent relative to passive owner
 
       player.creatures.forEach(creature => {
-        // Lisovik Passive: Triggers on KNOWLEDGE_LEAVE when owner's earth knowledge leaves play.
+        // Lisovik Passive: Triggers on KNOWLEDGE_LEAVE when earth knowledge leaves play from any creature.
         // Effect: Deals 1 damage to opponent's power.
         // Standardized trigger: 'KNOWLEDGE_LEAVE'
-        if (creature.id === 'lisovik' && player.id === ownerOfLeavingKnowledgeId && leavingKnowledge.element === 'earth') {
+        if (creature.id === 'lisovik' && leavingKnowledge.element === 'earth') {
           newState.log.push(`[Passive Effect] Lisovik (Owner: ${player.id}) deals 1 damage to ${opponent.id}`);
           if (opponent) {
             const initialOpponentPower = opponent.power;
@@ -297,10 +303,10 @@ export function applyPassiveAbilities(
           }
         }
 
-        // Tsenehale Passive: Triggers on KNOWLEDGE_LEAVE when owner's air knowledge leaves play.
+        // Tsenehale Passive: Triggers on KNOWLEDGE_LEAVE when air knowledge leaves play from any creature.
         // Effect: Owner gains +1 Power.
         // Standardized trigger: 'KNOWLEDGE_LEAVE'
-        else if (creature.id === 'tsenehale' && player.id === ownerOfLeavingKnowledgeId && leavingKnowledge.element === 'air') {
+        else if (creature.id === 'tsenehale' && leavingKnowledge.element === 'air') {
           // Get a fresh reference to the player within newState
           const playerInNewState = newState.players.find(p => p.id === player.id);
           if (!playerInNewState) {
@@ -313,7 +319,7 @@ export function applyPassiveAbilities(
 
           newState.log.push(`[Passive Effect] Tsenehale (Owner: ${playerInNewState.id}) grants +1 Power to owner`);
           // Modify newState's log directly
-          newState.log.push(`[Passive Effect] Tsenehale (Owner: ${playerInNewState.id}) grants +1 Power to owner as ${leavingKnowledge.name} leaves play from ${creatureKnowledgeLeftFromId}.`);
+          newState.log.push(`[Passive Effect] Tsenehale (Owner: ${playerInNewState.id}) grants +1 Power to owner as ${leavingKnowledge.name} leaves play from tsenehale.`);
           newState.log.push(`Power: ${initialOwnerPower} -> ${playerInNewState.power}`);
         }
       });
@@ -321,6 +327,29 @@ export function applyPassiveAbilities(
   } // --- End KNOWLEDGE_LEAVE ---
 
   return newState; // Return the modified state
+}
+
+/**
+ * Helper to remove a knowledge card from the field, push it to the discard pile,
+ * and trigger KNOWLEDGE_LEAVE passives for that knowledge.
+ * This ensures chained passives (Lisovik, Tsenehale, etc.) are always triggered.
+ */
+function removeKnowledgeFromFieldAndTriggerPassives(
+  state: GameState,
+  playerId: string,
+  creatureId: string,
+  knowledge: Knowledge
+) {
+  // Remove from field (the caller should also set fieldSlot.knowledge = null for clarity)
+  // Push to discard pile
+  state.discardPile.push(knowledge);
+
+  // Trigger KNOWLEDGE_LEAVE passives
+  applyPassiveAbilities(state, 'KNOWLEDGE_LEAVE', {
+    playerId,
+    creatureId,
+    knowledgeCard: knowledge,
+  });
 }
 
 // Helper to get opponent index (avoids direct dependency if utils are complex)
@@ -335,14 +364,19 @@ function getPlayerIndex(state: GameState, playerId: string): number {
   return state.players.findIndex(p => p.id === playerId);
 }
 
+// Simple deep clone function to avoid lodash dependency issues
+function deepClone<T>(obj: T): T {
+  return JSON.parse(JSON.stringify(obj));
+}
+
 // Aerial 5: All opponent creatures rotate 90º clockwise (lose wisdom)
 export const aerial5 = ({ state, playerIndex }: { state: GameState; playerIndex: number }) => {
-  let newState = cloneDeep(state); // Use cloneDeep
+  let newState = deepClone(state); // Use our own deep clone function
   const opponentIndex = playerIndex === 0 ? 1 : 0;
   const opponent = newState.players[opponentIndex];
   let rotatedCount = 0;
 
-  opponent.creatures = opponent.creatures.map(creature => {
+  opponent.creatures = opponent.creatures.map((creature: Creature) => {
     const currentRotation = creature.rotation ?? 0;
     if (currentRotation < 270) { // Assuming 270 is max rotation for creatures
       rotatedCount++;
