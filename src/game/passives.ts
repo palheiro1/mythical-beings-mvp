@@ -288,10 +288,10 @@ export function applyPassiveAbilities(
       const opponent = newState.players[(playerIndex + 1) % 2]; // Get opponent relative to passive owner
 
       player.creatures.forEach(creature => {
-        // Lisovik Passive: Triggers on KNOWLEDGE_LEAVE when earth knowledge leaves play from any creature.
+        // Lisovik Passive: Triggers on KNOWLEDGE_LEAVE when earth knowledge owned by Lisovik's owner leaves play.
         // Effect: Deals 1 damage to opponent's power.
         // Standardized trigger: 'KNOWLEDGE_LEAVE'
-        if (creature.id === 'lisovik' && leavingKnowledge.element === 'earth') {
+        if (creature.id === 'lisovik' && leavingKnowledge.element === 'earth' && ownerOfLeavingKnowledgeId === player.id) {
           newState.log.push(`[Passive Effect] Lisovik (Owner: ${player.id}) deals 1 damage to ${opponent.id}`);
           if (opponent) {
             const initialOpponentPower = opponent.power;
