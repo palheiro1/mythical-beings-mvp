@@ -66,25 +66,71 @@ This checklist will guide the step-by-step creation and restructure of a robust,
 ## 6. Edge Cases & Error Handling
 - [✅] Simultaneous triggers (multiple passives/effects in one phase, chained triggers):
 - [started] User interaction fallbacks (auto-resolve logic for effects that require user choice):
-  - [completed] `tests/gameReducer/effects/Lupus.test.ts` (auto-pick for discard on final rotation)
-  - [completed] `tests/gameReducer/effects/Fire.test.ts` (auto-elimination of all valid knowledges)
+  - [✅] `tests/gameReducer/effects/Lupus.test.ts` (auto-pick for discard on final rotation)
+  - [✅] `tests/gameReducer/effects/Fire.test.ts` (auto-elimination of all valid knowledges)
   - [not started] No test for user choice among multiple valid targets with non-trivial fallback logic.
 - [not started] Malformed actions (invalid payloads, wrong phase, wrong player, invalid slot):
   - [not started] No test in the provided files covers malformed actions. These are typically in `rules/validation.test.ts` (not provided).
 - [started] Error handling (game should not crash, clear error/log, edge cases like empty deck/hand/field):
-  - [completed] `tests/gameReducer/effects/Fire.test.ts` and `tests/gameReducer/effects/Lupus.test.ts` check for no valid targets and ensure no crash/logs.
+  - [✅] `tests/gameReducer/effects/Fire.test.ts` and `tests/gameReducer/effects/Lupus.test.ts` check for no valid targets and ensure no crash/logs.
   - [not started] No test for general error handling for invalid actions, empty decks, or malformed payloads.
 - [not started] Edge case game states (simultaneous win/loss, min/max values, repeated triggers):
   - [not started] No test in the provided files for simultaneous win/loss, min/max values, or repeated triggers/infinite loops.
 - [started] Test coverage for error branches in reducers/effects:
-  - [completed] `tests/gameReducer/effects/Fire.test.ts` and `tests/gameReducer/effects/Lupus.test.ts` test some error branches (no-op, no valid targets).
+  - [✅] `tests/gameReducer/effects/Fire.test.ts` and `tests/gameReducer/effects/Lupus.test.ts` test some error branches (no-op, no valid targets).
   - [not started] Not all error branches in reducers/effects are covered, especially for malformed actions or invalid state.
 - [started] Game state remains valid after error/edge case:
-  - [completed] The above effect tests check state validity after no-op effects.
+  - [✅] The above effect tests check state validity after no-op effects.
   - [not started] No test for broader state validity after malformed actions or simultaneous triggers.
 
 ## 7. UI/Component Testing (if applicable)
-- [ ] (Out of scope for this request - requires different tools/setup)
+- [ ] **Basic Component Rendering**
+  - [ ] Test Card component (different types, attributes, rotations)
+  - [ ] Test CreatureZone component (layout, positioning, interactions)
+  - [ ] Test Market component (different card quantities, selection)
+  - [ ] Test NavBar and navigation elements
+  - [ ] Test Button component states (enabled, disabled, loading)
+
+- [ ] **Game State Visualization**
+  - [ ] Test proper rendering of player resources (power, wisdom)
+  - [ ] Test turn and phase indicators
+  - [ ] Test visual representation of passive abilities
+  - [ ] Test proper display of card attributes and effects
+  - [ ] Test animations and visual feedback
+
+- [ ] **User Interactions**
+  - [ ] Test card selection and highlighting
+  - [ ] Test drag-and-drop functionality between zones
+  - [ ] Test valid vs. invalid target highlighting
+  - [ ] Test action button interactions
+  - [ ] Test tooltips and information displays
+
+- [ ] **Game Flow Integration**
+  - [ ] Test phase transitions reflect in UI
+  - [ ] Test effect animations trigger at appropriate times
+  - [ ] Test visual indicators for passive ability triggers
+  - [ ] Test market refill animations
+  - [ ] Test win/loss screens and animations
+
+- [ ] **Responsive Design**
+  - [ ] Test layout at different screen sizes
+  - [ ] Test touch interactions for mobile devices
+  - [ ] Test orientation changes
+  - [ ] Test UI scaling and readability
+
+- [ ] **Accessibility**
+  - [ ] Test keyboard navigation
+  - [ ] Test screen reader compatibility
+  - [ ] Test sufficient color contrast
+  - [ ] Test ARIA labels on interactive elements
+  - [ ] Test alternative text for images
+
+- [ ] **Error States**
+  - [ ] Test invalid action feedback
+  - [ ] Test network error handling (for multiplayer)
+  - [ ] Test loading states and spinners
+  - [ ] Test error messages and recovery flows
+  - [ ] Test fallback UI for missing assets
 
 ## 8. Multiplayer/Sync (if applicable)
 - [ ] (Out of scope for this request - requires different tools/setup)
