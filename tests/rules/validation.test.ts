@@ -123,7 +123,7 @@ describe('isValidAction', () => {
     const action = { type: 'ROTATE_CREATURE' } as any;
     const result = isValidAction(state, action);
     expect(result.isValid).toBe(false);
-    expect(result.reason).toMatch(/Not the current player/i); 
+    expect(result.reason).toBe('Missing payload for ROTATE_CREATURE.');
   });
 
   it('returns false for action with wrong data type in payload', () => {
@@ -146,7 +146,7 @@ describe('isValidAction', () => {
     const action: GameAction = { type: 'END_TURN', payload: { playerId: otherPlayerId } as EndTurnPayload };
     const result = isValidAction(state, action);
     expect(result.isValid).toBe(false);
-    expect(result.reason).toMatch(/Missing payload for ROTATE_CREATURE/i);
+    expect(result.reason).toBe("Not the current player's turn or action not for this player.");
   });
 
   it('returns false for action on non-existent creature', () => {
