@@ -66,7 +66,7 @@ export interface GameState {
   discardPile: Knowledge[]; // Cards discarded from hand or market
   turn: number; // Current turn number
   currentPlayerIndex: 0 | 1; // Index of the current player in the players array
-  phase: 'knowledge' | 'action' | 'end'; // Current game phase
+  phase: 'knowledge' | 'action' | 'end' | 'gameOver' | 'setup'; // Current game phase
   actionsTakenThisTurn: number; // Counter for actions in Action Phase
   actionsPerTurn: number; // Max actions allowed per turn
   winner: string | null; // ID of the winning player, or null
@@ -90,6 +90,7 @@ export type GameAction =
   | { type: 'ROTATE_CREATURE'; payload: { playerId: string; creatureId: string } }
   | { type: 'DRAW_KNOWLEDGE'; payload: { playerId: string; knowledgeId: string; instanceId: string } }
   | { type: 'SUMMON_KNOWLEDGE'; payload: { playerId: string; knowledgeId: string; creatureId: string; instanceId: string } }
+  | { type: 'ROTATE_KNOWLEDGE'; payload: { playerId: string; creatureId: string; instanceId: string } } // Added instanceId
   | { type: 'END_TURN'; payload: { playerId: string } }
   | { type: 'INITIALIZE_GAME'; payload: { gameId: string; player1Id: string; player2Id: string; player1SelectedIds: string[]; player2SelectedIds: string[] } }
   | { type: 'SET_GAME_STATE'; payload: GameState | null }; // Allow null payload for setting/clearing state
