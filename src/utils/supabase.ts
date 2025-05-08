@@ -362,17 +362,116 @@ export async function uploadAvatar(userId: string, file: File): Promise<string |
   }
 }
 
+/**
+ * Records the game outcome, updates game status to 'finished', and updates player statistics.
+ * @param gameId The ID of the game that ended.
+ * @param winnerId The ID of the winning player, or null for a draw.
+ * @param player1Id The ID of player 1.
+ * @param player2Id The ID of player 2.
+ */
+export async function recordGameOutcomeAndUpdateStats(
+  gameId: string,
+  winnerId: string | null,
+  player1Id: string,
+  player2Id: string
+): Promise<void> {
+  console.log(`[recordGameOutcome] Initiated for game ${gameId}. Winner: ${winnerId}, P1: ${player1Id}, P2: ${player2Id}`);
+  try {
+    // 1. Update game status to 'finished'
+    console.log(`[recordGameOutcome] Attempting to update game ${gameId} status to 'finished'.`);
+    const { error: gameUpdateError } = await supabase
+      .from('games')
+      .update({ status: 'finished', updated_at: new Date().toISOString() })
+      .eq('id', gameId);
+
+    if (gameUpdateError) {
+      console.error(`[recordGameOutcome] Error updating game status for ${gameId}:`, gameUpdateError);
+      // Not returning here, will still attempt to update stats
+    } else {
+      console.log(`[recordGameOutcome] Successfully updated game ${gameId} status to 'finished'.`);
+    }
+
+    // 2. Update stats for both players
+    const playersToUpdate = [player1Id, player2Id];
+    console.log(`[recordGameOutcome] Players to update stats for:`, playersToUpdate);
+
+    for (const playerId of playersToUpdate) {
+      if (!playerId) {
+        console.warn(`[recordGameOutcome] Skipping update for a null/undefined playerId.`);
+        continue;
+      }
+      console.log(`[recordGameOutcome] Processing stats for player ${playerId}.`);
+
+      // Fetch current stats
+      console.log(`[recordGameOutcome] Fetching current profile for player ${playerId}.`);
+      const { data: profile, error: fetchError } = await supabase
+        .from('profiles')
+        .select('games_played, games_won')
+        .eq('id', playerId)
+        .single();
+
+      if (fetchError) {
+        console.error(`[recordGameOutcome] Error fetching profile for player ${playerId}:`, fetchError);
+        continue; // Skip this player if profile fetch fails
+      }
+
+      if (!profile) {
+        console.warn(`[recordGameOutcome] No profile found for player ${playerId}. Skipping stats update.`);
+        continue;
+      }
+
+      console.log(`[recordGameOutcome] Current profile for ${playerId}:`, profile);
+
+      const currentGamesPlayed = profile.games_played ?? 0;
+      const currentGamesWon = profile.games_won ?? 0;
+      console.log(`[recordGameOutcome] Player ${playerId} - Current stats: Played=${currentGamesPlayed}, Won=${currentGamesWon}`);
+
+      const newGamesPlayed = currentGamesPlayed + 1;
+      const newGamesWon = (playerId === winnerId) ? currentGamesWon + 1 : currentGamesWon;
+      console.log(`[recordGameOutcome] Player ${playerId} - New stats: Played=${newGamesPlayed}, Won=${newGamesWon}`);
+
+      console.log(`[recordGameOutcome] Attempting to update profile for player ${playerId} with new stats.`);
+      const { error: statsUpdateError } = await supabase
+        .from('profiles')
+        .update({
+          games_played: newGamesPlayed,
+          games_won: newGamesWon,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', playerId);
+
+      if (statsUpdateError) {
+        console.error(`[recordGameOutcome] Error updating stats for player ${playerId}:`, statsUpdateError);
+      } else {
+        console.log(`[recordGameOutcome] Successfully updated stats for player ${playerId}.`);
+      }
+    }
+    console.log(`[recordGameOutcome] Finished processing for game ${gameId}.`);
+  } catch (error) {
+    console.error(`[recordGameOutcome] Unexpected error during execution for game ${gameId}:`, error);
+  }
+}
+
 // --- Realtime Subscription ---
 
 /**
  * Subscribes to real-time updates for a specific game's state.
  * @param gameId The ID of the game to subscribe to.
  * @param callback Function to call when a state update is received.
+ * @param subscriberId A string identifier for the subscriber (for logging).
  * @returns The Supabase subscription channel.
  */
-export function subscribeToGameState(gameId: string, callback: (newState: GameState) => void): RealtimeChannel {
+export function subscribeToGameState(
+  gameId: string,
+  callback: (newState: GameState) => void,
+  subscriberId?: string // Added subscriberId
+): RealtimeChannel {
+  const channelName = `game-${gameId}`;
+  const subIdForLog = subscriberId || 'UnknownSubscriber';
+  console.log(`[Realtime] ${subIdForLog} attempting to subscribe to channel: ${channelName}`);
+
   const channel = supabase
-    .channel(`game-${gameId}`)
+    .channel(channelName)
     .on(
       'postgres_changes',
       {
@@ -381,23 +480,22 @@ export function subscribeToGameState(gameId: string, callback: (newState: GameSt
         table: 'games',
         filter: `id=eq.${gameId}`,
       },
-      (payload) => {
-        console.log('[Realtime] Game state change received:', payload);
+      (payload: { new?: { state?: GameState } }) => {
+        console.log(`[Realtime] Game state change received on channel ${channelName} for ${subIdForLog}:`, payload);
         if (payload.new && payload.new.state) {
-          // Add validation or transformation if needed
           callback(payload.new.state as GameState);
         }
       }
     )
-    .subscribe((status, err) => {
-        if (status === 'SUBSCRIBED') {
-            console.log(`[Realtime] Subscribed successfully to game ${gameId}`);
-        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-            console.error(`[Realtime] Subscription error for game ${gameId}:`, err || status);
-            // Implement retry logic or error handling as needed
-        } else {
-            console.log(`[Realtime] Subscription status for game ${gameId}:`, status);
-        }
+    .subscribe((status: string, err?: Error) => {
+      // Log with subscriberId
+      if (status === 'SUBSCRIBED') {
+        console.log(`[Realtime] ${subIdForLog} SUBSCRIBED successfully to game ${gameId}`);
+      } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+        console.error(`[Realtime] ${subIdForLog} subscription error for game ${gameId}:`, err || status);
+      } else {
+        console.log(`[Realtime] ${subIdForLog} subscription status for game ${gameId}: ${status}`);
+      }
     });
 
   return channel;

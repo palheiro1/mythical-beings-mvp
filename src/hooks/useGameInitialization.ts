@@ -260,11 +260,10 @@ export function useGameInitialization(
         if (isMounted && currentInitializedGameId.current === gameId) {
             // Avoid subscribing if already subscribed (e.g., due to HMR without full unmount)
             if (!subscription) {
-                console.log(`[setupGame] Setting up real-time subscription for ${gameId}.`);
-                subscription = subscribeToGameState(gameId, handleRealtimeUpdate);
-                console.log(`[setupGame] Subscribed to realtime updates for ${gameId}.`);
+                console.log(`[setupGame] Subscribing to realtime updates for ${gameId} via useGameInitialization.`);
+                subscription = subscribeToGameState(gameId, handleRealtimeUpdate, "GameInitialization"); // Added subscriberId
             } else {
-                 console.log(`[setupGame] Subscription already exists for ${gameId}. Skipping subscribe call.`);
+                console.log(`[setupGame] Already subscribed to ${gameId} via useGameInitialization.`);
             }
         } else {
              console.log(`[setupGame] Aborting subscription: isMounted=${isMounted}, gameId mismatch.`);

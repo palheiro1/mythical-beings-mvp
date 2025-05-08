@@ -1,7 +1,7 @@
-import { useEffect, useReducer, useState } from 'react';
-import { GameState, GameAction } from '../game/types';
-import { gameReducer } from '../game/state';
-import { getGameState, subscribeToGameState, unsubscribeFromGameState } from '../utils/supabase'; // Assuming unsubscribe is exported
+import { useEffect, useReducer, useState, useRef } from 'react';
+import { GameState, GameAction } from '../game/types.js'; // Added .js
+import { gameReducer } from '../game/state.js'; // Added .js
+import { getGameState, subscribeToGameState, unsubscribeFromGameState, recordGameOutcomeAndUpdateStats } from '../utils/supabase.js'; // Added .js
 import { RealtimeChannel } from '@supabase/supabase-js';
 
 /**
@@ -16,17 +16,15 @@ export function useGameStateSync(
     gameId: string | null,
     setError: (error: string | null) => void
 ): [GameState | null, React.Dispatch<GameAction>, boolean] {
-
-    // Initialize reducer with null state
     const [gameState, dispatch] = useReducer(gameReducer, null);
     const [isLoading, setIsLoading] = useState(true);
+    const prevGameStateRef = useRef<GameState | null>(null);
 
     useEffect(() => {
         if (!gameId) {
             console.log("[useGameStateSync] No gameId provided, skipping fetch and subscription.");
             setError("No game ID specified.");
             setIsLoading(false);
-            // Dispatch null state if gameId becomes null after being set
             if (gameState !== null) {
                  dispatch({ type: 'SET_GAME_STATE', payload: null });
             }
@@ -35,34 +33,29 @@ export function useGameStateSync(
 
         console.log(`[useGameStateSync] Initializing for game ${gameId}. Fetching initial state...`);
         setIsLoading(true);
-        setError(null); // Clear previous errors
+        setError(null);
         let channel: RealtimeChannel | null = null;
 
         const setupSync = async () => {
             try {
-                // 1. Fetch the current state
                 const initialState = await getGameState(gameId);
-
                 if (initialState) {
                     console.log(`[useGameStateSync] Initial state fetched for game ${gameId}. Phase: ${initialState.phase}. Dispatching SET_GAME_STATE.`);
                     dispatch({ type: 'SET_GAME_STATE', payload: initialState });
                 } else {
-                    // This is now considered an error condition, as initialization should happen before GameScreen
                     console.error(`[useGameStateSync] Error: Game state is null for game ${gameId}. Initialization likely failed or hasn't occurred.`);
                     setError(`Game not found or unable to load initial state (ID: ${gameId}). Ensure initialization happened after NFT selection.`);
-                    // Dispatch null state if it wasn't already null
                     if (gameState !== null) {
                          dispatch({ type: 'SET_GAME_STATE', payload: null });
                     }
                 }
 
-                // 2. Subscribe to updates (regardless of initial fetch success, maybe state gets created later?)
-                // Although, ideally, we shouldn't reach GameScreen without initial state.
                 console.log(`[useGameStateSync] Subscribing to real-time updates for game ${gameId}.`);
-                channel = subscribeToGameState(gameId, (newState) => {
+                channel = subscribeToGameState(gameId, (newState: GameState) => {
+                    console.error(`%c!!! CALLBACK FIRED IN useGameStateSync for game ${gameId} !!!`, "color: red; font-weight: bold;", newState);
                     console.log(`[useGameStateSync] Realtime update received for game ${gameId}. Phase: ${newState.phase}. Dispatching SET_GAME_STATE.`);
                     dispatch({ type: 'SET_GAME_STATE', payload: newState });
-                });
+                }, "GameStateSync"); // Added subscriberId
 
             } catch (err: any) {
                 console.error(`[useGameStateSync] Error setting up game sync for ${gameId}:`, err);
@@ -78,16 +71,46 @@ export function useGameStateSync(
 
         setupSync();
 
-        // Cleanup function
         return () => {
             if (channel) {
                 console.log(`[useGameStateSync] Cleaning up: Unsubscribing from game ${gameId}.`);
-                unsubscribeFromGameState(channel); // Use the unsubscribe function
+                unsubscribeFromGameState(channel);
                 channel = null;
             }
         };
-        // Re-run effect if gameId changes
-    }, [gameId, setError]); // Removed gameState from dependencies to avoid potential loops
+    }, [gameId, setError]);
+
+    useEffect(() => {
+        const currentGameState = gameState;
+        const previousGameState = prevGameStateRef.current;
+
+        // Check if the game has just ended
+        if (currentGameState && currentGameState.phase === 'gameOver' && previousGameState?.phase !== 'gameOver') {
+            console.log(`[useGameStateSync] Detected game over. Current phase: ${currentGameState.phase}, Previous phase: ${previousGameState?.phase}`);
+
+            if (currentGameState.players && currentGameState.players.length === 2) {
+                const player1Id = currentGameState.players[0]?.id; // Optional chaining for safety
+                const player2Id = currentGameState.players[1]?.id; // Optional chaining for safety
+                const winnerId = typeof currentGameState.winner === 'string' ? currentGameState.winner : null;
+
+                if (currentGameState.gameId && player1Id && player2Id) {
+                    console.log(`[useGameStateSync] Game ${currentGameState.gameId} ended. Winner: ${winnerId}. Player1: ${player1Id}, Player2: ${player2Id}. Recording outcome.`);
+                    recordGameOutcomeAndUpdateStats(currentGameState.gameId, winnerId, player1Id, player2Id);
+                } else {
+                    console.error('[useGameStateSync] Cannot record game outcome: Missing gameId or player IDs.', {
+                        gameId: currentGameState.gameId,
+                        player1Id,
+                        player2Id,
+                        winnerId
+                    });
+                }
+            } else {
+                 console.error('[useGameStateSync] Cannot record game outcome: Player data is insufficient or not structured as expected.', { players: currentGameState.players });
+            }
+        }
+        // Update previous state ref *after* checking the transition
+        prevGameStateRef.current = currentGameState;
+    }, [gameState]); // Re-run when gameState changes
 
     return [gameState, dispatch, isLoading];
 }
