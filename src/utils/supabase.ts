@@ -1,14 +1,49 @@
-import { createClient, SupabaseClient, RealtimeChannel as SupabaseRealtimeChannel } from '@supabase/supabase-js'; // Renamed import
-import { GameState } from '../game/types'; // Assuming types.ts is in ../game/
+import { createClient, SupabaseClient, RealtimeChannel as SupabaseRealtimeChannel } from '@supabase/supabase-js';
+import { GameState } from '../game/types';
 
-// Re-export the type for use in other modules
 export type RealtimeChannel = SupabaseRealtimeChannel;
 
-// Replace with your actual Supabase URL and Anon Key
-const supabaseUrl = 'https://layijhifboyouicxsunq.supabase.co';
-const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxheWlqaGlmYm95b3VpY3hzdW5xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ3MTcwMzgsImV4cCI6MjA2MDI5MzAzOH0.JXnxYMvDdXHAab2b0TQiDTqf7mBfgs0-OlR4UwU1_E0';
+// Load Supabase URL and Anon Key from environment variables
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-export const supabase: SupabaseClient = createClient(supabaseUrl, supabaseAnonKey);
+if (!supabaseUrl) {
+  throw new Error("VITE_SUPABASE_URL is not set. Please check your .env.local file.");
+}
+if (!supabaseAnonKey) {
+  throw new Error("VITE_SUPABASE_ANON_KEY is not set. Please check your .env.local file.");
+}
+
+// Function to get the Clerk session token
+const getToken = async () => {
+  // @ts-expect-error Clerk is attached to window
+  if (typeof window !== 'undefined' && window.Clerk && window.Clerk.session) {
+    // @ts-expect-error Clerk is attached to window
+    const token = await window.Clerk.session.getToken(); // Use standard Clerk session token
+    return token;
+  }
+  return null;
+};
+
+export const supabase: SupabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
+  global: {
+    fetch: async (input, init = {}) => {
+      const clerkToken = await getToken();
+      const headers = new Headers(init.headers);
+
+      if (clerkToken) {
+        headers.set('Authorization', `Bearer ${clerkToken}`);
+      }
+      // The apikey header is automatically added by the Supabase client.
+      return fetch(input, { ...init, headers });
+    },
+  },
+  auth: {
+    autoRefreshToken: false, // Clerk handles token refresh
+    persistSession: false,   // Clerk handles session persistence
+    detectSessionInUrl: false, // Not needed when using external token management
+  },
+});
 
 // Type for match details - adjust based on your actual table structure
 // Added status and other potential fields based on select('*')

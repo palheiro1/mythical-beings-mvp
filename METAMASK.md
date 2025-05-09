@@ -172,26 +172,26 @@ This checklist outlines the steps to integrate Clerk (using Metamask) as an addi
 
 ## Phase 2: Frontend Integration (UI & Client-Side Logic)
 
-- [ ] **2.1. Install/Update Necessary SDKs:**
-    - [ ] Ensure you have the latest Clerk SDK for your frontend framework (e.g., `@clerk/clerk-react` for React).
+- [x] **2.1. Install/Update Necessary SDKs:**
+    - [x] Ensure you have the latest Clerk SDK for your frontend framework (e.g., `@clerk/clerk-react` for React).
         ```bash
         # npm install @clerk/clerk-react
         # yarn add @clerk/clerk-react
         # pnpm add @clerk/clerk-react
         ```
-    - [ ] Ensure you have the Supabase client library (`@supabase/supabase-js`).
+    - [x] Ensure you have the Supabase client library (`@supabase/supabase-js`).
         ```bash
         # npm install @supabase/supabase-js
         # yarn add @supabase/supabase-js
         # pnpm add @supabase/supabase-js
         ```
 
-- [ ] **2.2. Set up Environment Variables:**
-    - [ ] Add your Clerk Frontend API key to your environment variables (e.g., `VITE_CLERK_PUBLISHABLE_KEY` for Vite).
-    - [ ] Ensure your Supabase URL and Anon Key are in your environment variables (e.g., `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`).
+- [x] **2.2. Set up Environment Variables:**
+    - [x] Add your Clerk Frontend API key to your environment variables (e.g., `VITE_CLERK_PUBLISHABLE_KEY` for Vite).
+    - [x] Ensure your Supabase URL and Anon Key are in your environment variables (e.g., `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`).
 
-- [ ] **2.3. Initialize Clerk Provider:**
-    - [ ] Wrap your application (or relevant parts) with the ClerkProvider, configured with your Publishable Key.
+- [x] **2.3. Initialize Clerk Provider:**
+    - [x] Wrap your application (or relevant parts) with the ClerkProvider, configured with your Publishable Key.
         ```tsx
         // Example for React (e.g., in main.tsx or App.tsx)
         // import { ClerkProvider } from '@clerk/clerk-react';
@@ -211,59 +211,50 @@ This checklist outlines the steps to integrate Clerk (using Metamask) as an addi
         // );
         ```
 
-- [ ] **2.4. Update Supabase Client Initialization for Clerk:**
-    - [ ] Modify your Supabase client initialization to use the Clerk session token.
-    - [ ] The `createClerkSupabaseClient()` helper from Clerk is the recommended way for client-side Supabase client creation.
+- [x] **2.4. Update Supabase Client Initialization for Clerk:**
+    - [x] Modify your Supabase client initialization to use the Clerk session token.
+    - [x] The `createClerkSupabaseClient()` helper from Clerk is the recommended way for client-side Supabase client creation.
         ```typescript
         // In your supabase.ts or a similar utility file
         // import { createClient } from '@supabase/supabase-js';
-        // import { useAuth } from '@clerk/clerk-react'; // Or appropriate hook/method
+        // // No direct Clerk imports needed here for token if using window.Clerk
         //
         // const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
         // const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
         //
-        // // Option 1: Using the recommended Clerk helper (check Clerk docs for Supabase)
-        // // This helper typically manages token refresh and Supabase client instantiation.
-        // // import { createClerkSupabaseClient } from '@clerk/clerk-react'; // Or from the correct package
-        // // export const supabase = createClerkSupabaseClient(supabaseUrl, supabaseAnonKey);
-        //
-        // // Option 2: Manual token management (if helper is not used or for specific backend scenarios)
-        // // This involves getting the standard Clerk token and setting it for the Supabase client.
-        // export const supabase = createClient(supabaseUrl, supabaseAnonKey);
-        //
-        // // Function to update Supabase auth (call this after Clerk sign-in and on token refresh)
-        // export async function updateSupabaseAuthWithClerkToken(clerkToken: string | null) {
-        //   if (clerkToken) {
-        //     // Use the standard Clerk session token as the access_token for Supabase.
-        //     // The refresh_token can be an empty string as Clerk handles its own session refresh.
-        //     await supabase.auth.setSession({ access_token: clerkToken, refresh_token: '' });
-        //   } else {
-        //     await supabase.auth.signOut(); // Or handle sign out appropriately
+        // const getToken = async () => {
+        //   // @ts-expect-error Clerk is attached to window
+        //   if (typeof window !== 'undefined' && window.Clerk && window.Clerk.session) {
+        //     // @ts-expect-error Clerk is attached to window
+        //     const token = await window.Clerk.session.getToken(); // Use standard Clerk session token
+        //     return token;
         //   }
-        // }
+        //   return null;
+        // };
         //
-        // // Example of getting the token if managing manually (e.g., within a component/hook context):
-        // // const getSupabaseClientWithManualToken = async () => {
-        // //   const { getToken } = useAuth();
-        // //   const token = await getToken(); // Standard Clerk session token
-        // //
-        // //   // It's generally better to use setSession as above, or ensure the client
-        // //   // is created/updated reactively when the token changes.
-        // //   // Creating a new client on each call might not be efficient.
-        // //   return createClient(supabaseUrl, supabaseAnonKey, {
-        // //     global: {
-        // //       headers: {
-        // //         Authorization: `Bearer ${token}`,
-        // //       },
-        // //     },
-        // //   });
-        // // };
+        // export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+        //   global: {
+        //     fetch: async (input, init = {}) => {
+        //       const clerkToken = await getToken();
+        //       const headers = new Headers(init.headers);
+        //       if (clerkToken) {
+        //         headers.set('Authorization', `Bearer ${clerkToken}`);
+        //       }
+        //       return fetch(input, { ...init, headers });
+        //     },
+        //   },
+        //   auth: {
+        //     autoRefreshToken: false,
+        //     persistSession: false,
+        //     detectSessionInUrl: false,
+        //   },
+        // });
         ```
-    - [ ] **Important:** After a user signs in with Clerk, you'll need to get the session token from Clerk (standard token, not with a deprecated template) and use it to authenticate with Supabase. This is typically done by calling `supabase.auth.setSession({ access_token: clerkToken, refresh_token: '' })` if managing manually, or handled by `createClerkSupabaseClient`.
+    - [x] **Important:** After a user signs in with Clerk, the Supabase client will automatically use the token for subsequent requests due to the custom fetch.
 
-- [ ] **2.5. Add Clerk Sign-In UI Components:**
-    - [ ] Integrate Clerk's pre-built UI components (e.g., `<SignInButton>`, `<SignIn>`, `<SignUpButton>`, `<SignUp>`, `<UserButton>`) into your application where authentication is handled (e.g., Login page, Navbar).
-    - [ ] Ensure you provide a clear "Sign in with Metamask" option. Clerk components will show Metamask if it's the only/primary web3 provider enabled in your Clerk dashboard.
+- [x] **2.5. Add Clerk Sign-In UI Components:**
+    - [x] Integrate Clerk's pre-built UI components (e.g., `<SignInButton>`, `<SignIn>`, `<SignUpButton>`, `<SignUp>`, `<UserButton>`) into your application where authentication is handled (e.g., Login page, Navbar).
+    - [x] Ensure you provide a clear "Sign in with Metamask" option. Clerk components will show Metamask if it's enabled in your Clerk dashboard.
         ```tsx
         // Example in a LoginPage.tsx or NavBar.tsx
         // import { SignInButton, UserButton, SignedIn, SignedOut } from "@clerk/clerk-react";
@@ -285,48 +276,15 @@ This checklist outlines the steps to integrate Clerk (using Metamask) as an addi
         // }
         ```
 
-- [ ] **2.6. Handle Authentication State & Supabase Session:**
-    - [ ] Use Clerk's hooks (e.g., `useUser`, `useAuth`, `useSession`) to manage authentication state.
-    - [ ] When a user signs in via Clerk (or when the app loads and the user is already signed in with Clerk):
-        - [ ] Retrieve the standard JWT from Clerk (e.g., using `session.getToken()` or `auth.getToken()`).
-        - [ ] Use this token to authenticate with your Supabase client as shown in step 2.4 (e.g., by calling `updateSupabaseAuthWithClerkToken` or ensuring `createClerkSupabaseClient` handles it).
-        ```tsx
-        // import { useAuth, useSession } from "@clerk/clerk-react";
-        // import { supabase, updateSupabaseAuthWithClerkToken } from "./utils/supabase"; // Assuming updateSupabaseAuthWithClerkToken from 2.4
-        // import { useEffect } from "react";
-        //
-        // function AuthHandler() { // This component ensures Supabase session is synced with Clerk state
-        //   const { getToken, isSignedIn, userId } = useAuth(); // or useSession().getToken()
-        //
-        //   useEffect(() => {
-        //     const setSupabaseToken = async () => {
-        //       if (isSignedIn) {
-        //         const token = await getToken(); // Standard Clerk session token
-        //         if (token) {
-        //           await updateSupabaseAuthWithClerkToken(token);
-        //           console.log("Supabase session updated with Clerk token for user:", userId);
-        //           // Potentially fetch/sync user profile data here if needed
-        //         }
-        //       } else {
-        //         await updateSupabaseAuthWithClerkToken(null); // Clear Supabase session on Clerk sign out
-        //       }
-        //     };
-        //
-        //     setSupabaseToken();
-        //     // Consider re-running if the token changes during the session (Clerk SDK might handle this with its hooks)
-        //   }, [isSignedIn, getToken, userId]); // Dependencies ensure this runs on auth state changes
-        //
-        //   return null; // This component doesn't render anything
-        // }
-        //
-        // // Include <AuthHandler /> in your app, typically inside ClerkProvider and after Supabase client is initialized.
-        ```
+- [x] **2.6. Handle Authentication State & Supabase Session:**
+    - [x] Use Clerk's hooks (e.g., `useUser`, `useAuth`) to manage authentication state.
+    - [x] The Supabase client is configured (in 2.4) to automatically use the Clerk token. No separate `AuthHandler` component or manual `supabase.auth.setSession()` calls are needed for client-side operations. Clerk's `useAuth` and related hooks become the source of truth for UI changes.
 
-- [ ] **2.7. Update Data Fetching Logic:**
-    - [ ] Ensure all Supabase queries are made using the Supabase client that is authenticated via the Clerk token. RLS policies will handle data access control.
+- [x] **2.7. Update Data Fetching Logic:**
+    - [x] Ensure all Supabase queries are made using the Supabase client that is authenticated via the Clerk token. RLS policies will handle data access control. (This is implicitly handled by updating the Supabase client in step 2.4).
 
-- [ ] **2.8. Adjust `ProtectedRoute` and other auth-dependent components:**
-    - [ ] Your `ProtectedRoute.tsx` and any other components that rely on authentication status will now need to check Clerk's authentication state (e.g., using `useAuth().isSignedIn`).
+- [x] **2.8. Adjust `ProtectedRoute` and other auth-dependent components:**
+    - [x] Your `ProtectedRoute.tsx` and any other components that rely on authentication status will now need to check Clerk's authentication state (e.g., using `useAuth().isSignedIn`).
         ```tsx
         // Example in ProtectedRoute.tsx
         // import { useAuth } from '@clerk/clerk-react';
@@ -346,6 +304,7 @@ This checklist outlines the steps to integrate Clerk (using Metamask) as an addi
         //   return <Outlet />;
         // };
         ```
+    - [x] Remove old `AuthContext.tsx` and `AuthProvider` as Clerk is now the auth manager.
 
 ## Phase 3: Testing and Refinement
 

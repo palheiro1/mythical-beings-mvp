@@ -8,31 +8,28 @@ import ProfilePage from './pages/Profile.js';
 import HowToPlay from './pages/HowToPlay.js';
 import Leaderboard from './pages/Leaderboard.js';
 import WaitingScreen from './pages/WaitingScreen.js';
-import { AuthProvider } from './context/AuthContext.js';
 import ProtectedRoute from './components/ProtectedRoute.js';
+import NavBar from './components/NavBar.js'; // Import NavBar
 
 function App() {
   return (
     <Router>
-      <AuthProvider>
-        <Routes>
-          {/* Public Route */}
-          <Route path="/" element={<Home />} />
+      <NavBar /> {/* Add NavBar here so it's present on all pages */}
+      <Routes>
+        {/* Public Route */}
+        <Route path="/" element={<Home />} />
 
-          {/* Protected Routes */}
-          <Route element={<ProtectedRoute />}>
-            <>
-              <Route path="/lobby" element={<Lobby />} />
-              <Route path="/game/:gameId" element={<GameScreen />} />
-              <Route path="/profile" element={<ProfilePage />} />
-              <Route path="/nft-selection/:gameId" element={<NFTSelection />} />
-              <Route path="/how-to-play" element={<HowToPlay />} />
-              <Route path="/leaderboard" element={<Leaderboard />} />
-              <Route path="/waiting/:gameId" element={<WaitingScreen />} />
-            </>
-          </Route>
-        </Routes>
-      </AuthProvider>
+        {/* Protected Routes */}
+        <Route element={<ProtectedRoute />}>
+          <Route path="/lobby" element={<Lobby />} />
+          <Route path="/game/:gameId" element={<GameScreen />} />
+          <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/nft-selection/:gameId" element={<NFTSelection />} />
+          <Route path="/how-to-play" element={<HowToPlay />} />
+          <Route path="/leaderboard" element={<Leaderboard />} />
+          <Route path="/waiting/:gameId" element={<WaitingScreen />} />
+        </Route>
+      </Routes>
     </Router>
   );
 }

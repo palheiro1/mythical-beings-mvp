@@ -1,19 +1,19 @@
 // File: src/components/ProtectedRoute.tsx
 import React from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '@clerk/clerk-react'; // Changed to use Clerk's useAuth
 
 const ProtectedRoute: React.FC = () => {
-  const { session, loading } = useAuth();
+  const { isSignedIn, isLoaded } = useAuth(); // Use Clerk's auth state
 
-  if (loading) {
-    // Optional: Show a loading spinner while checking auth state
-    return <div className="text-center p-10">Checking authentication...</div>;
+  if (!isLoaded) {
+    // Show a loading spinner or a blank page while Clerk is loading session information
+    return <div className="text-center p-10">Loading authentication status...</div>;
   }
 
-  if (!session) {
-    // User not authenticated, redirect to login page
-    console.log('[ProtectedRoute] No session found, redirecting to /');
+  if (!isSignedIn) {
+    // User not authenticated, redirect to login page (or home page where SignInButton is)
+    console.log('[ProtectedRoute] Clerk: No session found, redirecting to /');
     return <Navigate to="/" replace />;
   }
 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '@clerk/clerk-react'; // Updated to use Clerk's useAuth
 import { usePlayerIdentification } from '../hooks/usePlayerIdentification';
 import { supabase, getAvailableGames, createGame, joinGame, getProfile } from '../utils/supabase';
 import { AvailableGame } from '../game/types';
@@ -21,7 +21,7 @@ interface OnlineUserInfo {
 
 const Lobby: React.FC = () => {
   const navigate = useNavigate();
-  const { loading: authLoading } = useAuth();
+  const { isLoaded: authLoaded, isSignedIn, userId } = useAuth(); // Clerk's useAuth
   const [currentPlayerId, , playerError, , idLoading] = usePlayerIdentification();
   const [availableGames, setAvailableGames] = useState<GameWithUsername[]>([]);
   const [loadingGames, setLoadingGames] = useState(true);
@@ -34,9 +34,9 @@ const Lobby: React.FC = () => {
   const [onlineUsers, setOnlineUsers] = useState<Record<string, OnlineUserInfo>>({});
   const presenceChannelRef = useRef<RealtimeChannel | null>(null);
 
-  const isLoading = authLoading || idLoading || loadingGames;
+  const isLoading = !authLoaded || idLoading || loadingGames;
 
-  console.log('[Lobby] Rendering component...', { isLoading, error, gamesCount: availableGames.length, currentPlayerId });
+  console.log('[Lobby] Rendering component...', { isLoading, error, gamesCount: availableGames.length, currentPlayerIdFromHook: currentPlayerId, clerkUserId: userId });
 
   const fetchGamesAndProfiles = useCallback(async () => {
     console.log('[Lobby] fetchGamesAndProfiles: Fetching games...');
@@ -75,10 +75,10 @@ const Lobby: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (!authLoading && !idLoading) {
+    if (authLoaded && isSignedIn && !idLoading) {
       fetchGamesAndProfiles();
     }
-  }, [authLoading, idLoading, fetchGamesAndProfiles]);
+  }, [authLoaded, isSignedIn, idLoading, fetchGamesAndProfiles]);
 
   useEffect(() => {
     if (playerError) {
@@ -90,14 +90,15 @@ const Lobby: React.FC = () => {
   }, [playerError]);
 
   useEffect(() => {
-    if (currentPlayerId) {
-      getProfile(currentPlayerId)
+    const effectivePlayerId = currentPlayerId || userId;
+    if (effectivePlayerId) {
+      getProfile(effectivePlayerId)
         .then(profile => {
           setUserProfile({ username: profile?.username || null, avatar_url: profile?.avatar_url || null });
         })
         .catch(console.error);
     }
-  }, [currentPlayerId]);
+  }, [currentPlayerId, userId]);
 
   useEffect(() => {
     if (!supabase) return;
@@ -175,16 +176,17 @@ const Lobby: React.FC = () => {
   }, [supabase]);
 
   useEffect(() => {
-    if (!supabase || !currentPlayerId || !userProfile.username) {
+    const effectivePlayerId = currentPlayerId || userId;
+    if (!supabase || !effectivePlayerId || !userProfile.username) {
       console.log('[Lobby Presence] Waiting for Supabase/User ID/Profile before subscribing.');
       return;
     }
 
-    console.log('[Lobby Presence] Setting up presence channel.');
+    console.log('[Lobby Presence] Setting up presence channel for user:', effectivePlayerId);
     const channel = supabase.channel('lobby-presence', {
       config: {
         presence: {
-          key: currentPlayerId,
+          key: effectivePlayerId,
         },
       },
     });
@@ -243,7 +245,7 @@ const Lobby: React.FC = () => {
         if (status === 'SUBSCRIBED') {
           console.log('[Lobby Presence] Successfully subscribed to presence channel.');
           await channel.track({
-            user_id: currentPlayerId,
+            user_id: effectivePlayerId,
             username: userProfile.username,
           });
           console.log('[Lobby Presence] User tracked.');
@@ -265,19 +267,20 @@ const Lobby: React.FC = () => {
         presenceChannelRef.current = null;
       }
     };
-  }, [supabase, currentPlayerId, userProfile.username]);
+  }, [supabase, currentPlayerId, userId, userProfile.username]);
 
   const handleJoinGame = async (gameId: string) => {
-    if (!currentPlayerId) {
+    const effectivePlayerId = currentPlayerId || userId;
+    if (!effectivePlayerId) {
       setNotification('Cannot join game: User not identified.');
       setTimeout(() => setNotification(null), 3000);
       return;
     }
-    console.log(`[Lobby] Player ${currentPlayerId} attempting to join game: ${gameId}`);
+    console.log(`[Lobby] Player ${effectivePlayerId} attempting to join game: ${gameId}`);
     setNotification(`Joining game ${gameId}...`);
 
     try {
-      const joinedGame = await joinGame(gameId, currentPlayerId);
+      const joinedGame = await joinGame(gameId, effectivePlayerId);
 
       if (joinedGame) {
         console.log(`[Lobby] Successfully joined game ${gameId}. Triggering card dealing...`);
@@ -307,12 +310,12 @@ const Lobby: React.FC = () => {
 
         if (fetchError) throw fetchError;
 
-        if (gameData && (gameData.player1_id === currentPlayerId || gameData.player2_id === currentPlayerId)) {
+        if (gameData && (gameData.player1_id === effectivePlayerId || gameData.player2_id === effectivePlayerId)) {
           console.log(`[Lobby] User is already in game ${gameId}. Checking status...`);
           if (gameData.status === 'selecting' || gameData.status === 'active' || (gameData.player1_dealt_hand && gameData.player1_dealt_hand.length > 0)) {
             console.log(`[Lobby] Game status is '${gameData.status}'. Navigating to NFT Selection...`);
             navigate(`/nft-selection/${gameId}`);
-          } else if (gameData.status === 'waiting' && gameData.player2_id === currentPlayerId) {
+          } else if (gameData.status === 'waiting' && gameData.player2_id === effectivePlayerId) {
             setNotification('You seem to be in the game, but setup might be incomplete. Trying to initiate setup...');
             setTimeout(() => setNotification(null), 4000);
             await supabase.functions.invoke('deal-cards', { body: { gameId } });
@@ -341,17 +344,18 @@ const Lobby: React.FC = () => {
   };
 
   const handleCreateGame = async () => {
-    if (!currentPlayerId) {
+    const effectivePlayerId = currentPlayerId || userId;
+    if (!effectivePlayerId) {
       setNotification('Please log in to create a game.');
       setTimeout(() => setNotification(null), 3000);
       return;
     }
 
-    console.log('[Lobby] Creating game with bet amount:', betAmount);
+    console.log('[Lobby] Creating game with bet amount:', betAmount, 'by player:', effectivePlayerId);
     setIsCreating(true);
     const newGameId = uuidv4();
     try {
-      const createdGameData = await createGame(newGameId, currentPlayerId, betAmount);
+      const createdGameData = await createGame(newGameId, effectivePlayerId, betAmount);
 
       if (createdGameData) {
         setShowCreateModal(false);
@@ -370,7 +374,13 @@ const Lobby: React.FC = () => {
     }
   };
 
-  console.log('[Lobby] Preparing to return JSX...', { isLoading, error });
+  console.log('[Lobby] Preparing to return JSX...', { isLoading, error, isSignedIn });
+
+  if (authLoaded && !isSignedIn) {
+    console.log('[Lobby] User not signed in, redirecting to home.');
+    navigate('/');
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-gray-900 text-white relative overflow-hidden">
@@ -380,7 +390,7 @@ const Lobby: React.FC = () => {
 
         {isLoading ? (
           <div className="text-center text-gray-400 py-10">Loading Lobby...</div>
-        ) : playerError && !currentPlayerId ? (
+        ) : playerError && !currentPlayerId && !userId ? (
           <div className="text-center text-red-400 py-10">Error: {playerError}. Please refresh or check URL parameters if testing.</div>
         ) : error ? (
           <div className="text-center text-red-400 py-10">Error loading games: {error}</div>
@@ -427,7 +437,7 @@ const Lobby: React.FC = () => {
                       </p>
                     </div>
                     <div className="text-right">
-                      {game.status === 'waiting' && game.player1_id !== currentPlayerId && (
+                      {game.status === 'waiting' && game.player1_id !== (currentPlayerId || userId) && (
                         <button
                           onClick={() => handleJoinGame(game.id)}
                           className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold py-1 px-3 rounded-md transition-colors duration-200"
@@ -445,7 +455,7 @@ const Lobby: React.FC = () => {
 
             <div className="bg-gray-800 bg-opacity-70 p-6 rounded-xl shadow-xl flex flex-col items-center gap-5">
               <h2 className="text-2xl font-semibold mb-3 text-center text-gray-100">Actions</h2>
-              {currentPlayerId ? (
+              {(currentPlayerId || userId) ? (
                 <button
                   onClick={() => setShowCreateModal(true)}
                   className="bg-green-600 hover:bg-green-700 text-white text-lg font-semibold py-3 px-6 rounded-md transition-colors duration-200 w-full max-w-[200px]"
