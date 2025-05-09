@@ -55,7 +55,7 @@ describe('Win Condition Edge Cases', () => {
 
     expect(result.winner).toBe(p1Id); // P1 wins because P2 reached 0 power
     expect(result.players[1].power).toBe(0);
-    expect(result.log).toContain(`[Game] ${p1Id} wins! ${p2Id} reached 0 Power.`);
+    expect(result.log).toContain(`[Game] ${p1Id} wins! ${p2Id} was defeated.`);
   });
 
   it('should declare winner immediately when opponent reaches 0 power during player\'s turn via effect', () => {
