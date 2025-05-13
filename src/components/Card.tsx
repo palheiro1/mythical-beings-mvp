@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Creature, Knowledge } from '../game/types';
+import { Creature, Knowledge } from '../game/types.js';
 
 interface CardProps {
   card: Creature | Knowledge;
@@ -23,7 +23,7 @@ const Card: React.FC<CardProps> = ({ card, onClick, isSelected, rotation = 0, sh
   const hoverTimer = useRef<NodeJS.Timeout | null>(null);
   const cardRef = useRef<HTMLDivElement>(null); // Ref to get card position
 
-  const handleMouseEnter = () => {
+  const handleMouseEnter = (): void => {
     // Hover/zoom is independent of isDisabled
     if (hoverTimer.current) clearTimeout(hoverTimer.current); // Clear any existing timer before starting a new one
     hoverTimer.current = setTimeout(() => {
@@ -68,7 +68,7 @@ const Card: React.FC<CardProps> = ({ card, onClick, isSelected, rotation = 0, sh
   };
 
   // Handler for leaving the original card area
-  const handleMouseLeaveOriginalCard = () => {
+  const handleMouseLeaveOriginalCard = (): void => {
     // Clear the timer ONLY. This prevents the zoom from showing if the mouse leaves quickly.
     // It does NOT hide the zoom if it's already visible.
     if (hoverTimer.current) {
@@ -78,7 +78,7 @@ const Card: React.FC<CardProps> = ({ card, onClick, isSelected, rotation = 0, sh
   };
 
   // Handler specifically for closing the zoom (used by overlay and backdrop)
-  const handleCloseZoom = () => {
+  const handleCloseZoom = (): void => {
     if (hoverTimer.current) { // Clear timer just in case it's somehow still active
       clearTimeout(hoverTimer.current);
       hoverTimer.current = null;
@@ -86,7 +86,7 @@ const Card: React.FC<CardProps> = ({ card, onClick, isSelected, rotation = 0, sh
     setIsZoomed(false); // Hide the zoom
   };
 
-  const handleClick = () => {
+  const handleClick = (): void => {
     // Click action still respects isDisabled
     if (onClick && !isDisabled) {
       onClick(card.id);
@@ -95,7 +95,7 @@ const Card: React.FC<CardProps> = ({ card, onClick, isSelected, rotation = 0, sh
 
   // Clear timer on unmount
   useEffect(() => {
-    return () => {
+    return (): void => {
       if (hoverTimer.current) {
         clearTimeout(hoverTimer.current);
       }

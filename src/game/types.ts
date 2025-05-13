@@ -1,3 +1,4 @@
+
 export interface CombatBuffers {
   damage: number[];
   defense: number[];

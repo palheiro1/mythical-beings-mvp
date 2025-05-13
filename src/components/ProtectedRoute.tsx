@@ -1,5 +1,4 @@
 // File: src/components/ProtectedRoute.tsx
-import React from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
 import { useAuth } from '@clerk/clerk-react'; // Changed to use Clerk's useAuth
 

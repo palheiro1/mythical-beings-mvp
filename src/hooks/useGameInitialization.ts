@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 // Remove getGameDetails, add supabase
 import { getGameState, subscribeToGameState, unsubscribeFromGameState, updateGameState, RealtimeChannel, supabase } from '../utils/supabase';
 // Remove unused Creature import
-import { GameState, GameAction, Knowledge, PlayerState } from '../game/types';
+import { GameState, GameAction, Knowledge, PlayerState } from '../game/types.js';
 import { initializeGame, gameReducer as originalGameReducer } from '../game/state';
 import { v4 as uuidv4 } from 'uuid';
 

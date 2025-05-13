@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import Card from '../components/Card';
-import { Creature } from '../game/types';
+import { Creature } from '../game/types.js';
 import { supabase, RealtimeChannel } from '../utils/supabase'; // Import supabase client and RealtimeChannel
 import { usePlayerIdentification } from '../hooks/usePlayerIdentification';
 // --- Import the base creature data ---

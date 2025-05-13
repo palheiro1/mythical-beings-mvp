@@ -1,4 +1,3 @@
-import React from 'react';
 import { Link } from 'react-router-dom';
 import { SignInButton, UserButton, SignedIn, SignedOut, useAuth } from "@clerk/clerk-react";
 

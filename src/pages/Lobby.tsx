@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@clerk/clerk-react'; // Updated to use Clerk's useAuth
 import { usePlayerIdentification } from '../hooks/usePlayerIdentification';
 import { supabase, getAvailableGames, createGame, joinGame, getProfile } from '../utils/supabase';
-import { AvailableGame } from '../game/types';
+import { AvailableGame } from '../game/types.js';
 import { v4 as uuidv4 } from 'uuid';
 import { RealtimeChannel, RealtimePresenceState } from '@supabase/supabase-js';
 import NavBar from '../components/NavBar'; // Import NavBar
@@ -75,30 +75,39 @@ const Lobby: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (authLoaded && isSignedIn && !idLoading) {
+    // Fetch games only when auth is loaded, user is signed in, and player identification is complete (or not in an error state)
+    if (authLoaded && isSignedIn && !idLoading && !playerError) {
       fetchGamesAndProfiles();
     }
-  }, [authLoaded, isSignedIn, idLoading, fetchGamesAndProfiles]);
+  }, [authLoaded, isSignedIn, idLoading, playerError, fetchGamesAndProfiles]);
 
   useEffect(() => {
     if (playerError) {
       console.warn('[Lobby] Player identification error:', playerError);
-      setNotification(`Error identifying player: ${playerError}`);
+      // Only set notification if it's a persistent error (not just loading)
+      if (currentPlayerId === null && !idLoading) {
+        setNotification(`Error identifying player: ${playerError}. Please refresh.`);
+      }
       const timer = setTimeout(() => setNotification(null), 5000);
       return () => clearTimeout(timer);
     }
-  }, [playerError]);
+  }, [playerError, currentPlayerId, idLoading]);
 
   useEffect(() => {
-    const effectivePlayerId = currentPlayerId || userId;
-    if (effectivePlayerId) {
-      getProfile(effectivePlayerId)
-        .then(profile => {
+    // Fetch user's own profile using the Supabase UUID (currentPlayerId)
+    if (currentPlayerId) {
+      getProfile(currentPlayerId)
+        .then((profile: any) => {
           setUserProfile({ username: profile?.username || null, avatar_url: profile?.avatar_url || null });
         })
-        .catch(console.error);
+        .catch((err: any) => {
+          console.error(`[Lobby] Error fetching own profile using Supabase ID ${currentPlayerId}:`, err);
+          // Optionally set a default/error state for userProfile if needed
+        });
+    } else if (isSignedIn && !idLoading && !playerError) {
+      console.warn(`[Lobby] Own Supabase ID (currentPlayerId) not available for profile fetch. Clerk ID: ${userId}.`);
     }
-  }, [currentPlayerId, userId]);
+  }, [currentPlayerId, isSignedIn, userId, idLoading, playerError]);
 
   useEffect(() => {
     if (!supabase) return;
@@ -109,7 +118,7 @@ const Lobby: React.FC = () => {
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'games', filter: 'status=eq.waiting' },
-        async (payload) => {
+        async (payload: any) => {
           console.log('[Lobby Realtime] New game detected:', payload.new);
           const newGame = payload.new as AvailableGame;
 
@@ -118,7 +127,7 @@ const Lobby: React.FC = () => {
             try {
               const profile = await getProfile(newGame.player1_id);
               creatorUsername = profile?.username || newGame.player1_id.substring(0, 8);
-            } catch (err) {
+            } catch (err: any) {
               console.error('[Lobby Realtime] Error fetching profile for new game creator:', err);
               creatorUsername = newGame.player1_id.substring(0, 8);
             }
@@ -137,7 +146,7 @@ const Lobby: React.FC = () => {
       .on(
         'postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'games' },
-        (payload) => {
+        (payload: any) => {
           console.log('[Lobby Realtime] Game update detected:', payload.new);
           const updatedGame = payload.new as AvailableGame;
           setAvailableGames((currentGames) =>
@@ -150,7 +159,7 @@ const Lobby: React.FC = () => {
       .on(
         'postgres_changes',
         { event: 'DELETE', schema: 'public', table: 'games' },
-        (payload) => {
+        (payload: any) => {
           console.log('[Lobby Realtime] Game delete detected:', payload.old);
           const deletedGameId = payload.old.id;
           setAvailableGames((currentGames) =>
@@ -158,7 +167,7 @@ const Lobby: React.FC = () => {
           );
         }
       )
-      .subscribe((status, err) => {
+      .subscribe((status: any, err: any) => {
         if (status === 'SUBSCRIBED') {
           console.log('[Lobby Realtime] Successfully subscribed to games channel.');
         } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
@@ -176,17 +185,17 @@ const Lobby: React.FC = () => {
   }, [supabase]);
 
   useEffect(() => {
-    const effectivePlayerId = currentPlayerId || userId;
-    if (!supabase || !effectivePlayerId || !userProfile.username) {
-      console.log('[Lobby Presence] Waiting for Supabase/User ID/Profile before subscribing.');
+    // Use Supabase UUID (currentPlayerId) for presence key
+    const supabaseUserIdForPresence = currentPlayerId;
+    if (!supabase || !supabaseUserIdForPresence) {
+      console.log('[Lobby Presence] Waiting for Supabase client or Supabase User ID (currentPlayerId) before subscribing to presence.');
       return;
     }
-
-    console.log('[Lobby Presence] Setting up presence channel for user:', effectivePlayerId);
+    console.log('[Lobby Presence] Setting up presence channel for Supabase user:', supabaseUserIdForPresence);
     const channel = supabase.channel('lobby-presence', {
       config: {
         presence: {
-          key: effectivePlayerId,
+          key: supabaseUserIdForPresence, // Supabase UUID
         },
       },
     });
@@ -202,7 +211,7 @@ const Lobby: React.FC = () => {
               avatar_url: profile?.avatar_url || null,
             },
           }));
-        } catch (err) {
+        } catch (err: any) {
           console.error(`[Lobby Presence] Error fetching profile for ${userId}:`, err);
           setOnlineUsers(prev => ({
             ...prev,
@@ -229,11 +238,11 @@ const Lobby: React.FC = () => {
           return updatedUsers;
         });
       })
-      .on('presence', { event: 'join' }, ({ key, newPresences }) => {
+      .on('presence', { event: 'join' }, ({ key, newPresences }: { key: string; newPresences: any }) => {
         console.log('[Lobby Presence] Join event:', { key, newPresences });
         fetchProfileForUser(key);
       })
-      .on('presence', { event: 'leave' }, ({ key, leftPresences }) => {
+      .on('presence', { event: 'leave' }, ({ key, leftPresences }: { key: string; leftPresences: any }) => {
         console.log('[Lobby Presence] Leave event:', { key, leftPresences });
         setOnlineUsers(prev => {
           const updated = { ...prev };
@@ -241,14 +250,15 @@ const Lobby: React.FC = () => {
           return updated;
         });
       })
-      .subscribe(async (status) => {
+      .subscribe(async (status: any) => {
         if (status === 'SUBSCRIBED') {
           console.log('[Lobby Presence] Successfully subscribed to presence channel.');
+          // Track with their Supabase UUID as key. Additional info can be passed.
           await channel.track({
-            user_id: effectivePlayerId,
-            username: userProfile.username,
+            user_id: supabaseUserIdForPresence,
+            username: userProfile.username || `User (${supabaseUserIdForPresence.substring(0,6)})`,
           });
-          console.log('[Lobby Presence] User tracked.');
+          console.log('[Lobby Presence] User tracked with key:', supabaseUserIdForPresence);
         } else if (status === 'CLOSED') {
           console.log('[Lobby Presence] Channel closed.');
         } else {
@@ -267,25 +277,24 @@ const Lobby: React.FC = () => {
         presenceChannelRef.current = null;
       }
     };
-  }, [supabase, currentPlayerId, userId, userProfile.username]);
+  }, [supabase, currentPlayerId, userProfile.username]);
 
   const handleJoinGame = async (gameId: string) => {
-    const effectivePlayerId = currentPlayerId || userId;
-    if (!effectivePlayerId) {
-      setNotification('Cannot join game: User not identified.');
+    // currentPlayerId from usePlayerIdentification should be the Supabase UUID.
+    if (!currentPlayerId) {
+      setNotification('Cannot join game: User (Supabase UUID) not identified. Please ensure you are fully logged in.');
       setTimeout(() => setNotification(null), 3000);
+      console.error('[Lobby] Attempted to join game without a valid Supabase Player ID (currentPlayerId).');
       return;
     }
-    console.log(`[Lobby] Player ${effectivePlayerId} attempting to join game: ${gameId}`);
+    console.log(`[Lobby] Player ${currentPlayerId} (Supabase UUID) attempting to join game: ${gameId}`);
     setNotification(`Joining game ${gameId}...`);
-
     try {
-      const joinedGame = await joinGame(gameId, effectivePlayerId);
-
+      // Must use the Supabase UUID (currentPlayerId)
+      const joinedGame = await joinGame(gameId, currentPlayerId);
       if (joinedGame) {
-        console.log(`[Lobby] Successfully joined game ${gameId}. Triggering card dealing...`);
+        console.log(`[Lobby] Successfully joined game ${gameId} as player ${currentPlayerId}. Triggering card dealing...`);
         setNotification('Game joined! Dealing cards...');
-
         const { error: functionError } = await supabase.functions.invoke('deal-cards', {
           body: { gameId },
         });
@@ -310,12 +319,12 @@ const Lobby: React.FC = () => {
 
         if (fetchError) throw fetchError;
 
-        if (gameData && (gameData.player1_id === effectivePlayerId || gameData.player2_id === effectivePlayerId)) {
+        if (gameData && (gameData.player1_id === currentPlayerId || gameData.player2_id === currentPlayerId)) {
           console.log(`[Lobby] User is already in game ${gameId}. Checking status...`);
           if (gameData.status === 'selecting' || gameData.status === 'active' || (gameData.player1_dealt_hand && gameData.player1_dealt_hand.length > 0)) {
             console.log(`[Lobby] Game status is '${gameData.status}'. Navigating to NFT Selection...`);
             navigate(`/nft-selection/${gameId}`);
-          } else if (gameData.status === 'waiting' && gameData.player2_id === effectivePlayerId) {
+          } else if (gameData.status === 'waiting' && gameData.player2_id === currentPlayerId) {
             setNotification('You seem to be in the game, but setup might be incomplete. Trying to initiate setup...');
             setTimeout(() => setNotification(null), 4000);
             await supabase.functions.invoke('deal-cards', { body: { gameId } });
@@ -335,7 +344,7 @@ const Lobby: React.FC = () => {
           fetchGamesAndProfiles();
         }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error(`[Lobby] Error joining game ${gameId}:`, error);
       setNotification(`Error joining game: ${error instanceof Error ? error.message : 'Unknown error'}`);
       setTimeout(() => setNotification(null), 4000);
@@ -344,20 +353,20 @@ const Lobby: React.FC = () => {
   };
 
   const handleCreateGame = async () => {
-    const effectivePlayerId = currentPlayerId || userId;
-    if (!effectivePlayerId) {
-      setNotification('Please log in to create a game.');
+    // currentPlayerId from usePlayerIdentification should be the Supabase UUID.
+    if (!currentPlayerId) {
+      setNotification('Please log in to create a game (Supabase UUID not found).');
       setTimeout(() => setNotification(null), 3000);
+      console.error('[Lobby] Attempted to create game without a valid Supabase Player ID (currentPlayerId).');
       return;
     }
-
-    console.log('[Lobby] Creating game with bet amount:', betAmount, 'by player:', effectivePlayerId);
+    console.log('[Lobby] Creating game with bet amount:', betAmount, 'by player (Supabase UUID):', currentPlayerId);
     setIsCreating(true);
     const newGameId = uuidv4();
     try {
-      const createdGameData = await createGame(newGameId, effectivePlayerId, betAmount);
-
-      if (createdGameData) {
+      // Must use the Supabase UUID (currentPlayerId)
+      const createdGame = await createGame(newGameId, currentPlayerId, betAmount);
+      if (createdGame) {
         setShowCreateModal(false);
         setNotification('Game created successfully! Proceeding to NFT Selection...');
         navigate(`/nft-selection/${newGameId}`);
@@ -365,7 +374,7 @@ const Lobby: React.FC = () => {
         setNotification('Failed to create game. The game ID might already exist or another error occurred.');
         setTimeout(() => setNotification(null), 4000);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('[Lobby] Error creating game:', error);
       setNotification(`Failed to create game: ${error instanceof Error ? error.message : 'Unknown error'}`);
       setTimeout(() => setNotification(null), 4000);
@@ -390,7 +399,7 @@ const Lobby: React.FC = () => {
 
         {isLoading ? (
           <div className="text-center text-gray-400 py-10">Loading Lobby...</div>
-        ) : playerError && !currentPlayerId && !userId ? (
+        ) : playerError && !currentPlayerId && !idLoading ? (
           <div className="text-center text-red-400 py-10">Error: {playerError}. Please refresh or check URL parameters if testing.</div>
         ) : error ? (
           <div className="text-center text-red-400 py-10">Error loading games: {error}</div>
@@ -437,7 +446,7 @@ const Lobby: React.FC = () => {
                       </p>
                     </div>
                     <div className="text-right">
-                      {game.status === 'waiting' && game.player1_id !== (currentPlayerId || userId) && (
+                      {game.status === 'waiting' && game.player1_id !== currentPlayerId && (
                         <button
                           onClick={() => handleJoinGame(game.id)}
                           className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold py-1 px-3 rounded-md transition-colors duration-200"
@@ -455,7 +464,7 @@ const Lobby: React.FC = () => {
 
             <div className="bg-gray-800 bg-opacity-70 p-6 rounded-xl shadow-xl flex flex-col items-center gap-5">
               <h2 className="text-2xl font-semibold mb-3 text-center text-gray-100">Actions</h2>
-              {(currentPlayerId || userId) ? (
+              {currentPlayerId ? (
                 <button
                   onClick={() => setShowCreateModal(true)}
                   className="bg-green-600 hover:bg-green-700 text-white text-lg font-semibold py-3 px-6 rounded-md transition-colors duration-200 w-full max-w-[200px]"
@@ -463,7 +472,7 @@ const Lobby: React.FC = () => {
                   Create Game
                 </button>
               ) : (
-                <p className="text-gray-400 text-center">Log in to create a game.</p>
+                <p className="text-gray-400 text-center">Identifying user... Please wait to create a game.</p>
               )}
             </div>
           </div>

@@ -1,5 +1,5 @@
 import { createClient, SupabaseClient, RealtimeChannel as SupabaseRealtimeChannel } from '@supabase/supabase-js';
-import { GameState } from '../game/types';
+import { GameState } from '../game/types.js';
 
 export type RealtimeChannel = SupabaseRealtimeChannel;
 

@@ -306,33 +306,138 @@ This checklist outlines the steps to integrate Clerk (using Metamask) as an addi
         ```
     - [x] Remove old `AuthContext.tsx` and `AuthProvider` as Clerk is now the auth manager.
 
-## Phase 3: Testing and Refinement
+## Phase 3: Debugging Current Issues (As of 2025-05-09)
 
-- [ ] **3.1. Test Sign-up and Sign-in with Metamask (Clerk):**
+This section outlines the steps to resolve issues identified during development after the initial Clerk integration.
+
+### Issue 1: "Invalid input syntax for type uuid" in Lobby
+
+**Symptoms:**
+- Errors in the browser console on the Lobby page: `Error fetching profile: Object { code: "22P02", ..., message: 'invalid input syntax for type uuid: "user_2wrieISbC..."' }`
+- This prevents user profiles from loading correctly in the lobby.
+
+**Cause:**
+- The `profiles.id` column in your Supabase database is of type `uuid`.
+- Clerk user IDs (e.g., `user_2wrieISbC...`) are strings (TEXT) and are not valid UUIDs.
+- The `getProfile` function attempts to query `profiles.id` using the Clerk user ID, leading to a type mismatch.
+- This also previously caused issues with applying RLS policies to the `profiles` table.
+
+**Resolution Steps (Execute in Supabase SQL Editor):**
+
+1.  **Drop Existing RLS Policies on `profiles` Table:**
+    -   You cannot alter the column type while it's used in RLS policies.
+    ```sql
+    DROP POLICY IF EXISTS "Users can view their own profile" ON public.profiles;
+    DROP POLICY IF EXISTS "Users can create their own profile" ON public.profiles;
+    DROP POLICY IF EXISTS "Users can update their own profile" ON public.profiles;
+    -- Add any other RLS policy names you have on the public.profiles table.
+    ```
+
+2.  **Alter `profiles.id` Column Type to TEXT:**
+    ```sql
+    ALTER TABLE public.profiles
+    ALTER COLUMN id TYPE TEXT;
+    ```
+
+3.  **Recreate RLS Policies for `profiles` Table:**
+    -   These policies now correctly compare `TEXT` (profiles.id) with `TEXT` (Clerk user ID from JWT).
+    ```sql
+    CREATE POLICY "Users can view their own profile"
+    ON public.profiles
+    FOR SELECT
+    TO authenticated
+    USING (id = (SELECT auth.jwt()->>'sub'));
+
+    CREATE POLICY "Users can create their own profile"
+    ON public.profiles
+    FOR INSERT
+    TO authenticated
+    WITH CHECK (id = (SELECT auth.jwt()->>'sub'));
+
+    CREATE POLICY "Users can update their own profile"
+    ON public.profiles
+    FOR UPDATE
+    TO authenticated
+    USING (id = (SELECT auth.jwt()->>'sub'))
+    WITH CHECK (id = (SELECT auth.jwt()->>'sub'));
+
+    -- Optional: Add a DELETE policy if users should be able to delete their own profiles.
+    -- CREATE POLICY "Users can delete their own profile"
+    -- ON public.profiles
+    -- FOR DELETE
+    -- TO authenticated
+    -- USING (id = (SELECT auth.jwt()->>'sub'));
+    ```
+
+4.  **Verify:**
+    -   After applying these changes, reload the Lobby page in the application.
+    -   Confirm that the "invalid input syntax for type uuid" errors are gone and profiles load as expected.
+
+### Issue 2: `deal-cards` Edge Function Fails After Joining Game
+
+**Symptoms:**
+- After a second player joins a game, the client attempts to call the `deal-cards` Supabase Edge Function.
+- The call fails, and the browser console shows: `[Lobby] Error calling deal-cards function: FunctionsHttpError: Edge Function returned a non-2xx status code`.
+- Supabase function logs show `"reason": "EarlyDrop"` for shutdown events, but the critical error message from the function's `catch` block or other `console.error` statements needs to be located.
+
+**Potential Causes & Debugging Steps:**
+
+1.  **Prerequisite: Resolve Issue 1 First.**
+    -   It's possible the `deal-cards` function (or functions it calls) might indirectly try to access profile data. Resolving the `profiles.id` type issue is essential.
+
+2.  **Re-test and Check Detailed Function Logs:**
+    -   After resolving Issue 1, attempt the "join game" flow again.
+    -   If the error persists, go to your Supabase Project Dashboard -> Edge Functions -> select the `deal-cards` function -> Logs.
+    -   **Crucially, look for log entries that are NOT just "shutdown" or "EarlyDrop". Find the actual error message logged by your function's `console.error()` calls** (e.g., `[deal-cards] Supabase update error...` or `[deal-cards] Error processing request...`). This specific error is key.
+
+3.  **Based on the Detailed Error Log, Investigate:**
+
+    a.  **Environment Variables for the Function:**
+        -   In the Supabase Dashboard (Function settings), verify that `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are correctly set and accessible to the function. The Service Role Key is vital for bypassing RLS.
+
+    b.  **`gameId` Parameter:**
+        -   Ensure the `gameId` is being correctly passed from the client and received by the function. Your function code already logs this: `console.log(\`[deal-cards] Received request for gameId: \${gameId}\`);`. Check if this log appears and if `gameId` is valid.
+
+    c.  **`games` Table Schema for Hands & Status:**
+        -   Verify the `games` table in Supabase has columns: `player1_dealt_hand` and `player2_dealt_hand`.
+        -   These columns **must be of type `TEXT[]` (array of text) or `JSONB`** to store the arrays of creature IDs.
+        -   Ensure the `status` column exists and can accept the value `'selecting'`.
+        -   Ensure the `id` column (for `gameId`) and `player2_id` column exist and are of appropriate types (likely `TEXT` for `player2_id` if it stores Clerk user IDs, and `uuid` or `TEXT` for `game.id` depending on how it's generated).
+
+    d.  **Database Update Operation (`supabaseAdmin.from('games').update(...)`):**
+        -   The detailed error log will likely point here if it's a database issue.
+        -   The condition `.not('player2_id', 'is', null)` means the update will only proceed if `player2_id` is set. Confirm this is the case when `deal-cards` is called.
+        -   Any RLS policies on the `games` table should be bypassed by `supabaseAdmin` (using the Service Role Key), but a misconfigured key would cause issues.
+
+    e.  **`../_shared/cors.ts` Import:**
+        -   Ensure the `_shared/cors.ts` file exists in your Supabase function deployment environment and is correctly structured. If this import fails, the function may not initialize correctly.
+
+4.  **Iterative Testing:**
+    -   Make one change at a time based on the logs and re-test to isolate the cause.
+
+## Phase 4: Testing and Refinement
+
+- [ ] **4.1. Test Sign-up and Sign-in with Metamask (Clerk):**
     - [ ] Verify that users can sign up and sign in using Metamask through the Clerk UI.
     - [ ] Confirm that a Clerk user is created.
     - [ ] Confirm that the Supabase client is correctly authenticated using the Clerk token (e.g., by making a test query to a table with RLS).
 
-- [ ] **3.2. Test Data Access with RLS:**
+- [ ] **4.2. Test Data Access with RLS:**
     - [ ] Create data as a Metamask-authenticated user.
     - [ ] Verify that this user can only see and modify their own data.
     - [ ] Sign in as a different user (either another Metamask user or an existing email/password user).
     - [ ] Verify that this second user cannot see or modify the first user's data (and vice-versa), according to your RLS policies.
 
-- [ ] **3.3. Test Existing Supabase Email/Password Auth:**
-    - [ ] Ensure that the original Supabase email/password authentication system still works as expected.
-    - [ ] Verify RLS policies for users authenticated via the original Supabase auth. **This is a critical point**: If you have existing users and data tied to Supabase's `auth.uid()`, you'll need a strategy for RLS. This might involve:
-        - Migrating existing `auth.uid()` in your tables to match Clerk's `sub` if users link accounts or are migrated.
-        - Having RLS policies that can check `auth.uid()` (for Supabase-direct auth) OR `auth.jwt()->>'sub'` (for Clerk-brokered auth). Example: `USING ( (auth.uid() = user_id_column_for_supabase_auth) OR ((select auth.jwt()->>'sub') = user_id_column_for_clerk_auth) )` - this requires careful schema design.
-        - Keeping them separate if the user bases and their data access are intended to be distinct.
+- [ ] **4.3. Test Existing Supabase Email/Password Auth (DEPRECATED - For Review Only):**
+    - [ ] **Note:** Direct Supabase email/password authentication UI has been removed in favor of Clerk. This section is for ensuring any backend logic or RLS related to potentially existing Supabase-native users is handled or understood.
+    - [ ] If there are existing users authenticated directly via Supabase, review how their RLS policies interact with users authenticated via Clerk. The primary user ID is now expected to be the Clerk user ID.
 
-- [ ] **3.4. Test Sign Out:**
-    - [ ] Verify that signing out from Clerk also effectively signs the user out from the Supabase session managed by the Clerk token (e.g., `updateSupabaseAuthWithClerkToken(null)` is called).
-    - [ ] Verify sign out for the original Supabase auth.
+- [ ] **4.4. Test Sign Out:**
+    - [ ] Verify that signing out from Clerk correctly clears the session and revokes access to protected routes and data.
 
-- [ ] **3.5. Review UI/UX:**
-    - [ ] Ensure the login/signup flow is clear and users understand they have multiple options (Metamask via Clerk, and Email/Password via Supabase).
-    - [ ] Check for any console errors or unexpected behavior.
+- [ ] **4.5. Review UI/UX:**
+    - [ ] Ensure the login/signup flow is clear.
+    - [ ] Check for any console errors or unexpected behavior during normal user flows.
 
 ## Notes & Considerations:
 

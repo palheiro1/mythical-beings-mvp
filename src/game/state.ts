@@ -2,8 +2,8 @@ import { GameState, GameAction, PlayerState, Knowledge, Creature, SummonKnowledg
 import { isValidAction, executeKnowledgePhase, checkWinConditions } from './rules.js';
 import { rotateCreature, drawKnowledge, summonKnowledge } from './actions.js';
 import { applyPassiveAbilities } from './passives.js';
-import * as knowledgeData from '../assets/knowledges.json';
-import * as creatureData from '../assets/creatures.json';
+import knowledgeData from '../assets/knowledges.json' assert { type: 'json' };
+import creatureData from '../assets/creatures.json' assert { type: 'json' };
 import { getPlayerState } from './utils.js';
 import { cloneDeep } from 'lodash'; // Import cloneDeep
 
@@ -11,7 +11,7 @@ import { cloneDeep } from 'lodash'; // Import cloneDeep
 const INITIAL_POWER = 20;
 const MARKET_SIZE = 5;
 const ACTIONS_PER_TURN = 2;
-const ALL_CREATURES: Creature[] = creatureData.default as Creature[];
+const ALL_CREATURES: Creature[] = creatureData as Creature[];
 
 // Helper functions
 function shuffleArray<T>(array: T[]): T[] {
@@ -98,7 +98,25 @@ const initialPlayerState = (id: string, creatures: Creature[]): PlayerState => (
 
 export const initialGameState: GameState = {
   gameId: '',
-  players: [],
+  players: [
+    // Dummy placeholder players to satisfy type, will be replaced on game init
+    {
+      id: '',
+      power: 0,
+      creatures: [],
+      hand: [],
+      field: [],
+      selectedCreatures: [],
+    },
+    {
+      id: '',
+      power: 0,
+      creatures: [],
+      hand: [],
+      field: [],
+      selectedCreatures: [],
+    },
+  ],
   knowledgeDeck: [],
   market: [],
   discardPile: [],
@@ -120,7 +138,7 @@ export function initializeGame(payload: InitializeGamePayload): GameState {
   const selectedCreaturesP2 = lookupCreatures(player2SelectedIds, ALL_CREATURES);
 
   const fullDeck: Knowledge[] = [];
-  (knowledgeData.default as any[]).forEach((card: any) => {
+  (knowledgeData as any[]).forEach((card: any) => {
     let copies = 0;
     switch (card.cost) {
       case 1:

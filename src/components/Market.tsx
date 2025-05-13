@@ -1,13 +1,13 @@
 import React from 'react';
-import { Knowledge } from '../game/types';
-import Card from './Card';
+import { Knowledge } from '../game/types.js';
+import Card from './Card.js';
 
 interface MarketProps {
   cards: Knowledge[];
   onCardClick?: (id: string) => void;
 }
 
-const Market: React.FC<MarketProps> = ({ cards, onCardClick }) => {
+const Market: React.FC<MarketProps> = ({ cards, onCardClick }: MarketProps) => {
   return (
     <div className="flex justify-center items-center space-x-1 md:space-x-2 p-1 bg-blue-900/30 rounded min-h-[7rem]"> {/* Adjusted min-height */}
       {cards.map((card, idx) => (

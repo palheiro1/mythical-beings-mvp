@@ -1,6 +1,6 @@
 import React from 'react';
-import { Creature, Knowledge } from '../game/types';
-import Card from './Card';
+import { Creature, Knowledge } from '../game/types.js';
+import Card from './Card.js';
 
 interface CreatureZoneProps {
   creatures: Creature[];
@@ -8,7 +8,7 @@ interface CreatureZoneProps {
   onCreatureClick?: (creatureId: string) => void; // Optional: For rotating or targeting
 }
 
-const CreatureZone: React.FC<CreatureZoneProps> = ({ creatures, field, onCreatureClick }) => {
+const CreatureZone: React.FC<CreatureZoneProps> = ({ creatures, field, onCreatureClick }: CreatureZoneProps) => {
   return (
     // Added gap for better spacing when wrapping
     <div className="flex flex-wrap justify-center md:justify-around items-start p-2 md:p-4 bg-green-900 rounded min-h-[150px] md:min-h-[200px] gap-1 md:gap-2">

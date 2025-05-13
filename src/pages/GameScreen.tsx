@@ -1,18 +1,18 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import { usePlayerIdentification } from '../hooks/usePlayerIdentification';
-import { useGameInitialization } from '../hooks/useGameInitialization';
-import { useGameActions } from '../hooks/useGameActions';
-import { useTurnTimer } from '../hooks/useTurnTimer'; // Import the timer hook
-import { PlayerState } from '../game/types';
-import TopBar from '../components/game/TopBar';
-import ActionBar from '../components/game/ActionBar';
-import TableArea from '../components/game/TableArea';
-import HandsColumn from '../components/game/HandsColumn';
-import MarketColumn from '../components/game/MarketColumn';
-import Logs from '../components/game/Logs'; // Import the Logs component
-import { getProfile } from '../utils/supabase';
+import { useAuth } from '../context/AuthContext.js';
+import { usePlayerIdentification } from '../hooks/usePlayerIdentification.js';
+import { useGameInitialization } from '../hooks/useGameInitialization.js';
+import { useGameActions } from '../hooks/useGameActions.js';
+import { useTurnTimer } from '../hooks/useTurnTimer.js'; // Import the timer hook
+import { PlayerState } from '../game/types.js';
+import TopBar from '../components/game/TopBar.js';
+import ActionBar from '../components/game/ActionBar.js';
+import TableArea from '../components/game/TableArea.js';
+import HandsColumn from '../components/game/HandsColumn.js';
+import MarketColumn from '../components/game/MarketColumn.js';
+import Logs from '../components/game/Logs.js'; // Import the Logs component
+import { getProfile } from '../utils/supabase.js';
 
 interface ProfileInfo {
   username: string | null;

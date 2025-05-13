@@ -1,13 +1,14 @@
+import type { Dispatch } from 'react';
 import { useCallback, useRef } from 'react';
-import { GameState, GameAction, Knowledge } from '../game/types'; // Import Knowledge type
-import { gameReducer } from '../game/state';
-import { updateGameState } from '../utils/supabase';
-import { isValidAction } from '../game/rules';
+import { GameState, GameAction } from '../game/types.js';
+import { gameReducer } from '../game/state.js';
+import { updateGameState } from '../utils/supabase.js';
+import { isValidAction } from '../game/rules.js';
 
 export function useGameActions(
     currentGameState: GameState | null,
     gameId: string | null,
-    dispatch: React.Dispatch<GameAction>,
+    dispatch: Dispatch<GameAction>,
     currentPlayerId: string | null,
     selectedKnowledgeId: string | null
 ): {
