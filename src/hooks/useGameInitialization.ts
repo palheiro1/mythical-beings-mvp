@@ -1,10 +1,10 @@
 import { useEffect, useReducer, useState, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 // Remove getGameDetails, add supabase
-import { getGameState, subscribeToGameState, unsubscribeFromGameState, updateGameState, RealtimeChannel, supabase } from '../utils/supabase';
+import { getGameState, subscribeToGameState, unsubscribeFromGameState, updateGameState, RealtimeChannel, supabase } from '../utils/supabase.js';
 // Remove unused Creature import
 import { GameState, GameAction, Knowledge, PlayerState } from '../game/types.js';
-import { initializeGame, gameReducer as originalGameReducer } from '../game/state';
+import { initializeGame, gameReducer as originalGameReducer } from '../game/state.js';
 import { v4 as uuidv4 } from 'uuid';
 
 // Assign a unique instanceId to each knowledge card for React keys

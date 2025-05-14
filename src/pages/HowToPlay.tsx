@@ -1,6 +1,6 @@
 import React from 'react';
-import NavBar from '../components/NavBar';
-import Card from '../components/Card';
+import NavBar from '../components/NavBar.js';
+import Card from '../components/Card.js';
 import { Creature, Knowledge } from '../game/types.js';
 import creatureData from '../assets/creatures.json';
 import knowledgeData from '../assets/knowledges.json';

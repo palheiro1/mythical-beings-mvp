@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@clerk/clerk-react'; // Updated to use Clerk's useAuth
-import { usePlayerIdentification } from '../hooks/usePlayerIdentification';
-import { supabase, getAvailableGames, createGame, joinGame, getProfile } from '../utils/supabase';
+import { usePlayerIdentification } from '../hooks/usePlayerIdentification.js';
+import { supabase, getAvailableGames, createGame, joinGame, getProfile } from '../utils/supabase.js';
 import { AvailableGame } from '../game/types.js';
 import { v4 as uuidv4 } from 'uuid';
 import { RealtimeChannel, RealtimePresenceState } from '@supabase/supabase-js';
-import NavBar from '../components/NavBar'; // Import NavBar
+import NavBar from '../components/NavBar.js'; // Import NavBar
 
 // Define the combined type for games with creator's username
 interface GameWithUsername extends AvailableGame {
@@ -50,9 +50,14 @@ const Lobby: React.FC = () => {
         const gamesWithUsernames: GameWithUsername[] = await Promise.all(
           fetchedGames.map(async (game) => {
             let creatorUsername = null;
-            if (game.player1_id) {
-              const profile = await getProfile(game.player1_id);
-              creatorUsername = profile?.username || game.player1_id.substring(0, 8);
+            if (game.player1_id) { // game.player1_id should be a UUID
+              try {
+                const profile = await getProfile(game.player1_id); // Ensure this is called with UUID
+                creatorUsername = profile?.username || game.player1_id.substring(0, 8);
+              } catch (profileError) {
+                console.error(`[Lobby] Error fetching profile for player1_id ${game.player1_id}:`, profileError);
+                creatorUsername = 'Error Fetching Name'; // Or some placeholder
+              }
             }
             return { ...game, creatorUsername };
           })
@@ -95,7 +100,7 @@ const Lobby: React.FC = () => {
 
   useEffect(() => {
     // Fetch user's own profile using the Supabase UUID (currentPlayerId)
-    if (currentPlayerId) {
+    if (currentPlayerId) { // currentPlayerId should be the Supabase UUID
       getProfile(currentPlayerId)
         .then((profile: any) => {
           setUserProfile({ username: profile?.username || null, avatar_url: profile?.avatar_url || null });
@@ -105,7 +110,7 @@ const Lobby: React.FC = () => {
           // Optionally set a default/error state for userProfile if needed
         });
     } else if (isSignedIn && !idLoading && !playerError) {
-      console.warn(`[Lobby] Own Supabase ID (currentPlayerId) not available for profile fetch. Clerk ID: ${userId}.`);
+      console.warn(`[Lobby] Own Supabase ID (currentPlayerId) not available for profile fetch. Clerk ID: ${userId}. Attempting to use Clerk ID for profile fetch is likely an error.`);
     }
   }, [currentPlayerId, isSignedIn, userId, idLoading, playerError]);
 
@@ -123,13 +128,13 @@ const Lobby: React.FC = () => {
           const newGame = payload.new as AvailableGame;
 
           let creatorUsername = null;
-          if (newGame.player1_id) {
+          if (newGame.player1_id) { // newGame.player1_id should be a UUID
             try {
-              const profile = await getProfile(newGame.player1_id);
+              const profile = await getProfile(newGame.player1_id); // Ensure this is called with UUID
               creatorUsername = profile?.username || newGame.player1_id.substring(0, 8);
             } catch (err: any) {
               console.error('[Lobby Realtime] Error fetching profile for new game creator:', err);
-              creatorUsername = newGame.player1_id.substring(0, 8);
+              creatorUsername = newGame.player1_id.substring(0, 8); // Fallback, but ideally handle error
             }
           }
 

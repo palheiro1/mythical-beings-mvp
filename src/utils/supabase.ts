@@ -317,7 +317,7 @@ export async function getProfile(userId: string): Promise<any | null> {
   try {
     const { data, error, status } = await supabase
       .from('profiles')
-      .select(`username, avatar_url, updated_at`)
+            .select(`username, avatar_url, created_at`)
       .eq('id', userId)
       .single();
 
