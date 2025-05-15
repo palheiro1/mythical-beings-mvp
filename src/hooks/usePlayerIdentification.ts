@@ -39,7 +39,7 @@ export function usePlayerIdentification(): [
           const { data: profile, error: profileError } = await supabase
             .from('profiles')
             .select('id') // Select the Supabase UUID
-            .eq('clerk_id', clerkUserId) // Match using the Clerk ID
+            .eq('id', clerkUserId) // Match using the Clerk ID, which is stored in profiles.id
             .single();
 
           if (profileError) {
@@ -52,11 +52,11 @@ export function usePlayerIdentification(): [
             }
             setCurrentPlayerId(null);
           } else if (profile && profile.id) {
-            console.log(`[usePlayerIdentification] Supabase profile ID (UUID) found: ${profile.id} for clerk_id: ${clerkUserId}`);
+            console.log(`[usePlayerIdentification] Supabase profile ID found: ${profile.id} (this is the Clerk User ID)`);
             setCurrentPlayerId(profile.id);
             setError(null);
           } else {
-            console.warn(`[usePlayerIdentification] Supabase profile found but no ID for clerk_id: ${clerkUserId}`, profile);
+            console.warn(`[usePlayerIdentification] Supabase profile query for id ${clerkUserId} returned data but no id field, or id was null/empty:`, profile);
             setError('Supabase profile ID is missing.');
             setCurrentPlayerId(null);
           }
