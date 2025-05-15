@@ -11,6 +11,8 @@ import WaitingScreen from './pages/WaitingScreen.js';
 import ProtectedRoute from './components/ProtectedRoute.js';
 import NavBar from './components/NavBar.js'; // Import NavBar
 
+// Moralis is now initialized in main.tsx to ensure polyfills are loaded first
+
 function App() {
   return (
     <Router>

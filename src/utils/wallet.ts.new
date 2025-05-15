@@ -71,45 +71,17 @@ export async function authenticateWithMoralis() {
     const signature = await signer.signMessage(message);
     
     // Call our Supabase Edge Function for verification and JWT minting
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-    const functionUrl = `${supabaseUrl}/functions/v1/moralis-auth`;
-    
-    console.log("Calling Edge Function at:", functionUrl);
-    console.log("With payload:", { message, signature });
-    
     const response = await fetch(
-      functionUrl,
+      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/moralis-auth`,
       {
         method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          // Adding mode and credentials for better CORS handling
-          'Accept': 'application/json'
-        },
-        // Using no-cors mode can help with CORS issues but limits response access
-        // mode: 'no-cors', 
-        // Including credentials if your server supports it
-        // credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message, signature }),
       }
     );
 
     if (!response.ok) {
       const errorText = await response.text();
-      const errorInfo = {
-        status: response.status,
-        statusText: response.statusText,
-        errorText,
-        headers: Object.fromEntries(response.headers.entries()),
-        url: response.url
-      };
-      console.error('Authentication response error:', errorInfo);
-      
-      // If it's a CORS error, it will usually show up as a network error or status 0
-      if (response.status === 0 || response.type === 'opaque') {
-        throw new Error(`CORS issue detected. Please check CORS configuration on the server: ${JSON.stringify(errorInfo)}`);
-      }
-      
       throw new Error(`Authentication failed: ${response.status} ${errorText}`);
     }
 

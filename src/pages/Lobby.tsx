@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@clerk/clerk-react'; // Updated to use Clerk's useAuth
 import { usePlayerIdentification } from '../hooks/usePlayerIdentification.js';
 import { supabase, getAvailableGames, createGame, joinGame, getProfile } from '../utils/supabase.js';
 import { AvailableGame } from '../game/types.js';
@@ -21,8 +20,7 @@ interface OnlineUserInfo {
 
 const Lobby: React.FC = () => {
   const navigate = useNavigate();
-  const { isLoaded: authLoaded, isSignedIn, userId } = useAuth(); // Clerk's useAuth
-  const [currentPlayerId, , playerError, , idLoading] = usePlayerIdentification();
+  const [playerId, _, idLoading, playerError] = usePlayerIdentification();
   const [availableGames, setAvailableGames] = useState<GameWithUsername[]>([]);
   const [loadingGames, setLoadingGames] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -34,9 +32,9 @@ const Lobby: React.FC = () => {
   const [onlineUsers, setOnlineUsers] = useState<Record<string, OnlineUserInfo>>({});
   const presenceChannelRef = useRef<RealtimeChannel | null>(null);
 
-  const isLoading = !authLoaded || idLoading || loadingGames;
+  const isLoading = idLoading || loadingGames;
 
-  console.log('[Lobby] Rendering component...', { isLoading, error, gamesCount: availableGames.length, currentPlayerIdFromHook: currentPlayerId, clerkUserId: userId });
+  console.log('[Lobby] Rendering component...', { isLoading, error, gamesCount: availableGames.length, playerId });
 
   const fetchGamesAndProfiles = useCallback(async () => {
     console.log('[Lobby] fetchGamesAndProfiles: Fetching games...');
@@ -80,39 +78,39 @@ const Lobby: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    // Fetch games only when auth is loaded, user is signed in, and player identification is complete (or not in an error state)
-    if (authLoaded && isSignedIn && !idLoading && !playerError) {
+    // Fetch games only when authentication is complete and player is identified
+    if (!idLoading && playerId && !playerError) {
       fetchGamesAndProfiles();
     }
-  }, [authLoaded, isSignedIn, idLoading, playerError, fetchGamesAndProfiles]);
+  }, [idLoading, playerId, playerError, fetchGamesAndProfiles]);
 
   useEffect(() => {
     if (playerError) {
       console.warn('[Lobby] Player identification error:', playerError);
       // Only set notification if it's a persistent error (not just loading)
-      if (currentPlayerId === null && !idLoading) {
+      if (playerId === null && !idLoading) {
         setNotification(`Error identifying player: ${playerError}. Please refresh.`);
       }
       const timer = setTimeout(() => setNotification(null), 5000);
       return () => clearTimeout(timer);
     }
-  }, [playerError, currentPlayerId, idLoading]);
+  }, [playerError, playerId, idLoading]);
 
   useEffect(() => {
-    // Fetch user's own profile using the Supabase UUID (currentPlayerId)
-    if (currentPlayerId) { // currentPlayerId should be the Supabase UUID
-      getProfile(currentPlayerId)
+    // Fetch user's own profile using the EVM address (playerId)
+    if (playerId) {
+      getProfile(playerId)
         .then((profile: any) => {
           setUserProfile({ username: profile?.username || null, avatar_url: profile?.avatar_url || null });
         })
         .catch((err: any) => {
-          console.error(`[Lobby] Error fetching own profile using Supabase ID ${currentPlayerId}:`, err);
+          console.error(`[Lobby] Error fetching own profile using EVM address ${playerId}:`, err);
           // Optionally set a default/error state for userProfile if needed
         });
-    } else if (isSignedIn && !idLoading && !playerError) {
-      console.warn(`[Lobby] Own Supabase ID (currentPlayerId) not available for profile fetch. Clerk ID: ${userId}. Attempting to use Clerk ID for profile fetch is likely an error.`);
+    } else if (!idLoading && !playerError) {
+      console.warn(`[Lobby] Own EVM address (playerId) not available for profile fetch.`);
     }
-  }, [currentPlayerId, isSignedIn, userId, idLoading, playerError]);
+  }, [playerId, idLoading, playerError]);
 
   useEffect(() => {
     if (!supabase) return;
@@ -190,10 +188,10 @@ const Lobby: React.FC = () => {
   }, [supabase]);
 
   useEffect(() => {
-    // Use Supabase UUID (currentPlayerId) for presence key
-    const supabaseUserIdForPresence = currentPlayerId;
+    // Use Supabase UUID (playerId) for presence key
+    const supabaseUserIdForPresence = playerId;
     if (!supabase || !supabaseUserIdForPresence) {
-      console.log('[Lobby Presence] Waiting for Supabase client or Supabase User ID (currentPlayerId) before subscribing to presence.');
+      console.log('[Lobby Presence] Waiting for Supabase client or Supabase User ID (playerId) before subscribing to presence.');
       return;
     }
     console.log('[Lobby Presence] Setting up presence channel for Supabase user:', supabaseUserIdForPresence);
@@ -282,23 +280,23 @@ const Lobby: React.FC = () => {
         presenceChannelRef.current = null;
       }
     };
-  }, [supabase, currentPlayerId, userProfile.username]);
+  }, [supabase, playerId, userProfile.username]);
 
   const handleJoinGame = async (gameId: string) => {
-    // currentPlayerId from usePlayerIdentification should be the Supabase UUID.
-    if (!currentPlayerId) {
-      setNotification('Cannot join game: User (Supabase UUID) not identified. Please ensure you are fully logged in.');
+    // playerId from usePlayerIdentification should be the EVM address.
+    if (!playerId) {
+      setNotification('Cannot join game: User (EVM address) not identified. Please ensure you are fully logged in.');
       setTimeout(() => setNotification(null), 3000);
-      console.error('[Lobby] Attempted to join game without a valid Supabase Player ID (currentPlayerId).');
+      console.error('[Lobby] Attempted to join game without a valid EVM address (playerId).');
       return;
     }
-    console.log(`[Lobby] Player ${currentPlayerId} (Supabase UUID) attempting to join game: ${gameId}`);
+    console.log(`[Lobby] Player ${playerId} (EVM address) attempting to join game: ${gameId}`);
     setNotification(`Joining game ${gameId}...`);
     try {
-      // Must use the Supabase UUID (currentPlayerId)
-      const joinedGame = await joinGame(gameId, currentPlayerId);
+      // Must use the EVM address (playerId)
+      const joinedGame = await joinGame(gameId, playerId);
       if (joinedGame) {
-        console.log(`[Lobby] Successfully joined game ${gameId} as player ${currentPlayerId}. Triggering card dealing...`);
+        console.log(`[Lobby] Successfully joined game ${gameId} as player ${playerId}. Triggering card dealing...`);
         setNotification('Game joined! Dealing cards...');
         const { error: functionError } = await supabase.functions.invoke('deal-cards', {
           body: { gameId },
@@ -324,12 +322,12 @@ const Lobby: React.FC = () => {
 
         if (fetchError) throw fetchError;
 
-        if (gameData && (gameData.player1_id === currentPlayerId || gameData.player2_id === currentPlayerId)) {
+        if (gameData && (gameData.player1_id === playerId || gameData.player2_id === playerId)) {
           console.log(`[Lobby] User is already in game ${gameId}. Checking status...`);
           if (gameData.status === 'selecting' || gameData.status === 'active' || (gameData.player1_dealt_hand && gameData.player1_dealt_hand.length > 0)) {
             console.log(`[Lobby] Game status is '${gameData.status}'. Navigating to NFT Selection...`);
             navigate(`/nft-selection/${gameId}`);
-          } else if (gameData.status === 'waiting' && gameData.player2_id === currentPlayerId) {
+          } else if (gameData.status === 'waiting' && gameData.player2_id === playerId) {
             setNotification('You seem to be in the game, but setup might be incomplete. Trying to initiate setup...');
             setTimeout(() => setNotification(null), 4000);
             await supabase.functions.invoke('deal-cards', { body: { gameId } });
@@ -358,19 +356,19 @@ const Lobby: React.FC = () => {
   };
 
   const handleCreateGame = async () => {
-    // currentPlayerId from usePlayerIdentification should be the Supabase UUID.
-    if (!currentPlayerId) {
-      setNotification('Please log in to create a game (Supabase UUID not found).');
+    // playerId from usePlayerIdentification should be the EVM address.
+    if (!playerId) {
+      setNotification('Please connect your wallet to create a game (EVM address not found).');
       setTimeout(() => setNotification(null), 3000);
-      console.error('[Lobby] Attempted to create game without a valid Supabase Player ID (currentPlayerId).');
+      console.error('[Lobby] Attempted to create game without a valid EVM address (playerId).');
       return;
     }
-    console.log('[Lobby] Creating game with bet amount:', betAmount, 'by player (Supabase UUID):', currentPlayerId);
+    console.log('[Lobby] Creating game with bet amount:', betAmount, 'by player (EVM address):', playerId);
     setIsCreating(true);
     const newGameId = uuidv4();
     try {
-      // Must use the Supabase UUID (currentPlayerId)
-      const createdGame = await createGame(newGameId, currentPlayerId, betAmount);
+      // Must use the EVM address (playerId)
+      const createdGame = await createGame(newGameId, playerId, betAmount);
       if (createdGame) {
         setShowCreateModal(false);
         setNotification('Game created successfully! Proceeding to NFT Selection...');
@@ -388,10 +386,11 @@ const Lobby: React.FC = () => {
     }
   };
 
-  console.log('[Lobby] Preparing to return JSX...', { isLoading, error, isSignedIn });
+  console.log('[Lobby] Preparing to return JSX...', { isLoading, error, playerId });
 
-  if (authLoaded && !isSignedIn) {
-    console.log('[Lobby] User not signed in, redirecting to home.');
+  // Redirect if user is not authenticated and loading is complete
+  if (!idLoading && !playerId) {
+    console.log('[Lobby] User not signed in (no playerId), redirecting to home.');
     navigate('/');
     return null;
   }
@@ -404,7 +403,7 @@ const Lobby: React.FC = () => {
 
         {isLoading ? (
           <div className="text-center text-gray-400 py-10">Loading Lobby...</div>
-        ) : playerError && !currentPlayerId && !idLoading ? (
+        ) : playerError && !playerId && !idLoading ? (
           <div className="text-center text-red-400 py-10">Error: {playerError}. Please refresh or check URL parameters if testing.</div>
         ) : error ? (
           <div className="text-center text-red-400 py-10">Error loading games: {error}</div>
@@ -451,7 +450,7 @@ const Lobby: React.FC = () => {
                       </p>
                     </div>
                     <div className="text-right">
-                      {game.status === 'waiting' && game.player1_id !== currentPlayerId && (
+                      {game.status === 'waiting' && game.player1_id !== playerId && (
                         <button
                           onClick={() => handleJoinGame(game.id)}
                           className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold py-1 px-3 rounded-md transition-colors duration-200"
@@ -469,7 +468,7 @@ const Lobby: React.FC = () => {
 
             <div className="bg-gray-800 bg-opacity-70 p-6 rounded-xl shadow-xl flex flex-col items-center gap-5">
               <h2 className="text-2xl font-semibold mb-3 text-center text-gray-100">Actions</h2>
-              {currentPlayerId ? (
+              {playerId ? (
                 <button
                   onClick={() => setShowCreateModal(true)}
                   className="bg-green-600 hover:bg-green-700 text-white text-lg font-semibold py-3 px-6 rounded-md transition-colors duration-200 w-full max-w-[200px]"
@@ -477,7 +476,7 @@ const Lobby: React.FC = () => {
                   Create Game
                 </button>
               ) : (
-                <p className="text-gray-400 text-center">Identifying user... Please wait to create a game.</p>
+                <p className="text-gray-400 text-center">Please connect your wallet to create a game.</p>
               )}
             </div>
           </div>

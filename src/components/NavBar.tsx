@@ -1,8 +1,24 @@
 import { Link } from 'react-router-dom';
-import { SignInButton, UserButton, SignedIn, SignedOut, useAuth } from "@clerk/clerk-react";
+import { usePlayerIdentification } from '../hooks/usePlayerIdentification.js';
+import { signOut } from '../utils/wallet.js';
 
 const NavBar: React.FC = () => {
-  const { isLoaded } = useAuth();
+  const [playerId, user, loading] = usePlayerIdentification();
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      window.location.href = '/'; // Redirect to home page after sign out
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
+  };
+
+  // Truncate EVM address for display
+  const formatAddress = (address: string | null) => {
+    if (!address) return '';
+    return `${address.substring(0, 6)}...${address.substring(address.length - 4)}`;
+  };
 
   return (
     <nav className="bg-gray-800 bg-opacity-80 backdrop-blur-sm text-white p-3 shadow-md flex justify-between items-center sticky top-0 z-30">
@@ -18,20 +34,29 @@ const NavBar: React.FC = () => {
       </div>
 
       <div className="flex items-center space-x-4">
-        {!isLoaded ? (
+        {loading ? (
           <div className="h-8 w-24 bg-gray-700 rounded animate-pulse"></div>
         ) : (
           <>
-            <SignedOut>
-              <SignInButton mode="modal">
-                <button className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold py-1 px-3 rounded-md transition-colors duration-200">
-                  Login
+            {!playerId ? (
+              <Link to="/">
+                <button className="bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold py-1 px-3 rounded-md transition-colors duration-200">
+                  Connect Wallet
                 </button>
-              </SignInButton>
-            </SignedOut>
-            <SignedIn>
-              <UserButton afterSignOutUrl="/" />
-            </SignedIn>
+              </Link>
+            ) : (
+              <div className="flex items-center gap-3">
+                <span className="text-sm font-mono bg-gray-700 px-2 py-1 rounded">
+                  {formatAddress(playerId)}
+                </span>
+                <button 
+                  onClick={handleSignOut}
+                  className="text-gray-300 hover:text-white text-sm"
+                >
+                  Sign Out
+                </button>
+              </div>
+            )}
           </>
         )}
       </div>

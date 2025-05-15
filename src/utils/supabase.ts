@@ -14,34 +14,12 @@ if (!supabaseAnonKey) {
   throw new Error("VITE_SUPABASE_ANON_KEY is not set. Please check your .env.local file.");
 }
 
-// Function to get the Clerk session token
-const getToken = async () => {
-  // @ts-expect-error Clerk is attached to window
-  if (typeof window !== 'undefined' && window.Clerk && window.Clerk.session) {
-    // @ts-expect-error Clerk is attached to window
-    const token = await window.Clerk.session.getToken(); // Use standard Clerk session token
-    return token;
-  }
-  return null;
-};
-
+// Create Supabase client with default authentication
 export const supabase: SupabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
-  global: {
-    fetch: async (input, init = {}) => {
-      const clerkToken = await getToken();
-      const headers = new Headers(init.headers);
-
-      if (clerkToken) {
-        headers.set('Authorization', `Bearer ${clerkToken}`);
-      }
-      // The apikey header is automatically added by the Supabase client.
-      return fetch(input, { ...init, headers });
-    },
-  },
   auth: {
-    autoRefreshToken: false, // Clerk handles token refresh
-    persistSession: false,   // Clerk handles session persistence
-    detectSessionInUrl: false, // Not needed when using external token management
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: true,
   },
 });
 

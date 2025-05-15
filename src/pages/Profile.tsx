@@ -1,8 +1,8 @@
 // File: src/pages/Profile.tsx
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../context/AuthContext';
-import { supabase } from '../utils/supabase';
-import NavBar from '../components/NavBar'; // Import NavBar
+import { supabase } from '../utils/supabase.js';
+import NavBar from '../components/NavBar.js'; // Import NavBar
+import { usePlayerIdentification } from '../hooks/usePlayerIdentification.js';
 
 interface ProfileData {
   username: string | null;
@@ -13,7 +13,7 @@ interface ProfileData {
 }
 
 const ProfilePage: React.FC = () => {
-  const { user, loading: authLoading } = useAuth();
+  const [playerId, _, authLoading] = usePlayerIdentification();
   const [loading, setLoading] = useState(true);
   const [profileData, setProfileData] = useState<ProfileData>({
     username: null,
@@ -30,13 +30,13 @@ const ProfilePage: React.FC = () => {
 
   useEffect(() => {
     const fetchProfile = async () => {
-      if (user) {
+      if (playerId) {
         setLoading(true);
         try {
           const { data, error, status } = await supabase
             .from('profiles')
             .select(`username, website, avatar_url, games_won, games_played`)
-            .eq('id', user.id)
+            .eq('id', playerId)
             .single();
 
           if (error && status !== 406) {
@@ -68,11 +68,11 @@ const ProfilePage: React.FC = () => {
     if (!authLoading) {
       fetchProfile();
     }
-  }, [user, authLoading]);
+  }, [playerId, authLoading]);
 
   const updateProfile = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!user) return;
+    if (!playerId) return;
 
     setLoading(true);
     try {
@@ -87,7 +87,7 @@ const ProfilePage: React.FC = () => {
       }
 
       const updates = {
-        id: user.id,
+        id: playerId,
         username: newUsername,
         website: newWebsite,
         avatar_url: avatarUrl,
@@ -119,12 +119,13 @@ const ProfilePage: React.FC = () => {
   };
 
   const uploadAvatar = async (file: File): Promise<string | null> => {
-    if (!user) return null;
+    if (!playerId) return null;
     setUploading(true);
     try {
       const fileExt = file.name.split('.').pop();
-      const fileName = `${user.id}-${Math.random()}.${fileExt}`;
-      const filePath = `${fileName}`;
+      const fileName = `${playerId}-${Math.random()}.${fileExt}`;
+      // Create folder structure for EVM address
+      const filePath = `${playerId}/${fileName}`;
 
       const { error: uploadError } = await supabase.storage.from('avatars').upload(filePath, file, { upsert: true });
 
@@ -155,8 +156,8 @@ const ProfilePage: React.FC = () => {
     return <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">Loading profile...</div>;
   }
 
-  if (!user) {
-    return <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">Please log in to view your profile.</div>;
+  if (!playerId) {
+    return <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">Please connect your wallet to view your profile.</div>;
   }
 
   return (
