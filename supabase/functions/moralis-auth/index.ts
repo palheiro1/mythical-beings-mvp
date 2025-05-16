@@ -141,14 +141,44 @@ serve(async (req) => {
       return errorResponse("Internal server error: JWT secret missing", 500);
     }
 
+    // Helper function to convert ethAddress to a UUID-like format
+    function ethAddressToUUID(address: string): string {
+      // Remove 0x prefix and ensure lowercase
+      const cleanAddress = address.toLowerCase().replace('0x', '');
+      
+      // Pad or truncate to ensure we have exactly 32 hex characters (16 bytes)
+      let normalizedHex = cleanAddress;
+      if (normalizedHex.length > 32) {
+        normalizedHex = normalizedHex.substring(0, 32);
+      } else {
+        while (normalizedHex.length < 32) {
+          normalizedHex += '0';
+        }
+      }
+      
+      // Format as UUID
+      return [
+        normalizedHex.substring(0, 8),
+        normalizedHex.substring(8, 12),
+        normalizedHex.substring(12, 16),
+        normalizedHex.substring(16, 20),
+        normalizedHex.substring(20, 32)
+      ].join('-');
+    }
+
+    // Create UUID from Ethereum address
+    const uuidFromAddress = ethAddressToUUID(evmAddress);
+    console.log("[moralis-auth] INFO: Generated UUID from ETH address:", uuidFromAddress);
+
     const expirationTime = Math.floor(Date.now() / 1000) + (60 * 60 * 24 * 7); // 7 days
     const payload = {
-      sub: evmAddress,
+      sub: uuidFromAddress, // Use UUID-formatted string instead of raw ETH address
       role: "authenticated",
       email: userProfile.email || "",
       user_metadata: {
         username: userProfile.username,
         avatar_url: userProfile.avatar_url,
+        eth_address: evmAddress, // Store the actual ETH address in metadata
       },
       aud: "authenticated",
       iss: supabaseUrl,

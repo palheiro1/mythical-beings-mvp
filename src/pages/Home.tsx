@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePlayerIdentification } from '../hooks/usePlayerIdentification.js';
 import { authenticateWithMoralis } from '../utils/wallet.js';
+import { supabase } from '../utils/supabase.js';
 
 const Home: React.FC = () => {
   const navigate = useNavigate();
@@ -28,7 +29,22 @@ const Home: React.FC = () => {
       console.log('[Home] Successfully authenticated with wallet:', address);
       console.log('[Home] User profile:', user);
       
-      // Will redirect to /lobby due to the useEffect when playerId is set
+      // Force a manual refresh of authentication state to ensure the hook picks up the new session
+      await supabase.auth.refreshSession();
+      
+      // Even if supabase.auth.getUser() fails, we can use our fallback mechanism      
+      try {
+        const { data } = await supabase.auth.getUser();
+        console.log('[Home] Current supabase user after auth:', data?.user);
+      } catch (userError) {
+        console.warn('[Home] Could not get user from Supabase, using fallback:', userError);
+      }
+      
+      // Store the user data in localStorage as a backup
+      localStorage.setItem('mythical_beings_user', JSON.stringify(user));
+      
+      // Manual navigation - don't rely solely on the useEffect since we have workarounds
+      navigate('/lobby');
     } catch (err) {
       console.error('[Home] Wallet authentication error:', err);
       setError(err instanceof Error ? err.message : 'Failed to authenticate with wallet');

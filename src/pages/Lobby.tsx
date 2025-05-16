@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePlayerIdentification } from '../hooks/usePlayerIdentification.js';
-import { supabase, getAvailableGames, createGame, joinGame, getProfile } from '../utils/supabase.js';
+import { supabase, getAvailableGames, createGame, joinGame, getProfile, getCorrectPlayerId } from '../utils/supabase.js';
 import { AvailableGame } from '../game/types.js';
 import { v4 as uuidv4 } from 'uuid';
 import { RealtimeChannel, RealtimePresenceState } from '@supabase/supabase-js';
@@ -322,12 +322,14 @@ const Lobby: React.FC = () => {
 
         if (fetchError) throw fetchError;
 
-        if (gameData && (gameData.player1_id === playerId || gameData.player2_id === playerId)) {
+        const formattedPlayerId = getCorrectPlayerId(playerId);
+        if (gameData && (gameData.player1_id === formattedPlayerId || gameData.player2_id === formattedPlayerId || 
+                          gameData.player1_id === playerId || gameData.player2_id === playerId)) {
           console.log(`[Lobby] User is already in game ${gameId}. Checking status...`);
           if (gameData.status === 'selecting' || gameData.status === 'active' || (gameData.player1_dealt_hand && gameData.player1_dealt_hand.length > 0)) {
             console.log(`[Lobby] Game status is '${gameData.status}'. Navigating to NFT Selection...`);
             navigate(`/nft-selection/${gameId}`);
-          } else if (gameData.status === 'waiting' && gameData.player2_id === playerId) {
+          } else if (gameData.status === 'waiting' && (gameData.player2_id === formattedPlayerId || gameData.player2_id === playerId)) {
             setNotification('You seem to be in the game, but setup might be incomplete. Trying to initiate setup...');
             setTimeout(() => setNotification(null), 4000);
             await supabase.functions.invoke('deal-cards', { body: { gameId } });

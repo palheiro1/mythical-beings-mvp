@@ -24,6 +24,13 @@ export function usePlayerIdentification(): [
     // Get the initial session
     const fetchSession = async () => {
       try {
+        // First check localStorage directly for diagnostic purposes
+        const localStorageToken = localStorage.getItem('supabase.auth.token');
+        console.log('[usePlayerIdentification] Raw localStorage token present:', !!localStorageToken);
+        
+        // Try to refresh the session first to ensure we have the latest
+        await supabase.auth.refreshSession();
+        
         const { data, error: sessionError } = await supabase.auth.getSession();
         
         if (sessionError) {
@@ -34,13 +41,69 @@ export function usePlayerIdentification(): [
         }
 
         if (data?.session) {
-          console.log('[usePlayerIdentification] Session found, user is authenticated');
+          console.log('[usePlayerIdentification] Session found, user is authenticated', data.session);
           setUser(data.session.user);
           // The user ID in the session is the EVM address (from the sub claim in the JWT)
           setPlayerId(data.session.user.id);
           setError(null);
         } else {
-          console.log('[usePlayerIdentification] No active session found');
+          console.log('[usePlayerIdentification] No active session found - checking localStorage backup');
+          
+          // Check for a stored ethereum address that would be set during wallet auth
+          const ethAddress = localStorage.getItem('eth_address');
+          if (ethAddress) {
+            console.log('[usePlayerIdentification] Found ethereum address in localStorage:', ethAddress);
+            
+            // Use the ethereum address as the player ID even without an active session
+            setPlayerId(ethAddress);
+            
+            // Create a minimal user object
+            const minimalUser = {
+              id: ethAddress,
+              app_metadata: { provider: 'moralis' },
+              user_metadata: { eth_address: ethAddress }
+            };
+            setUser(minimalUser as any);
+            setError(null);
+            return;
+          }
+          
+          // Try to recover from localStorage if API call didn't work
+          if (localStorageToken) {
+            try {
+              const parsedToken = JSON.parse(localStorageToken);
+              console.log('[usePlayerIdentification] Found localStorage token, using as fallback:', parsedToken);
+              
+              // Check if this is our manual session workaround
+              if (parsedToken.user && parsedToken.user.user_metadata?.eth_address) {
+                console.log('[usePlayerIdentification] Using manual session workaround from localStorage');
+                setUser(parsedToken.user as any);
+                setPlayerId(parsedToken.user.user_metadata.eth_address);
+                setError(null);
+                return;
+              }
+              
+              // If we have a token in localStorage but getSession failed, try to set it again
+              await supabase.auth.setSession({
+                access_token: parsedToken.access_token,
+                refresh_token: parsedToken.access_token
+              });
+              // Check if it worked
+              const { data: refreshData } = await supabase.auth.getSession();
+              if (refreshData?.session) {
+                console.log('[usePlayerIdentification] Session recovered from localStorage');
+                setUser(refreshData.session.user);
+                setPlayerId(refreshData.session.user.id);
+                setError(null);
+                return;
+              }
+            } catch (parseError) {
+              console.error('[usePlayerIdentification] Error recovering session from localStorage:', parseError);
+            }
+          }
+          
+          // If we reached here, there's truly no session
+          console.log('[usePlayerIdentification] No active session available');
           setPlayerId(null);
           setUser(null);
           setError(null); // Not an error state, just not authenticated

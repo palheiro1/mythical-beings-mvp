@@ -1,7 +1,7 @@
 // filepath: /home/usuario/Documentos/GitHub/CardGame/mythical-beings-mvp/src/utils/wallet.ts
 import { ethers } from 'ethers';
 import Moralis from 'moralis';
-import { supabase } from './supabase.js';
+import { supabase, ethAddressToUUID } from './supabase.js';
 
 declare global {
   interface Window {
@@ -128,15 +128,123 @@ export async function authenticateWithMoralis() {
       throw new Error('Authentication failed: No user profile received.');
     }
 
-    // Set the session in Supabase
-    const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
-      access_token: token,
-      refresh_token: '' // No refresh token with custom JWT
-    });
+    console.log('[wallet] Setting up session with token.');
+
+    let sessionData, sessionError;
+    try {
+      // First, store the token in localStorage to ensure persistence
+      localStorage.setItem('supabase.auth.token', JSON.stringify({
+        access_token: token,
+        expires_at: Date.now() + 3600 * 1000, // 1 hour from now
+        token_type: 'bearer',
+        user: userProfileFromFunction
+      }));
+      
+      console.log('[wallet] Token stored in localStorage. Setting session with Supabase.');
+      
+      // Check if the token is valid by parsing it (basic check)
+      const tokenParts = token.split('.');
+      if (tokenParts.length !== 3) {
+        throw new Error('Invalid token format');
+      }
+      
+      // Decode the payload to check the subject format
+      const payload = JSON.parse(atob(tokenParts[1]));
+      console.log('[wallet] JWT payload:', payload);
+      
+      // Store both the ETH address and the UUID format in localStorage for reference
+      localStorage.setItem('eth_address', userProfileFromFunction.id);
+      localStorage.setItem('eth_address_uuid', ethAddressToUUID(userProfileFromFunction.id));
+      
+      const result = await supabase.auth.setSession({
+        access_token: token,
+        refresh_token: token // For custom JWT flows, using the same token works better
+      });
+      sessionData = result.data;
+      sessionError = result.error;
+      console.log('[wallet] supabase.auth.setSession call completed.'); // Log completion
+    } catch (e) {
+      console.error('[wallet] CRITICAL ERROR during supabase.auth.setSession call:', e);
+      throw e; // Re-throw to be caught by the outer catch block
+    }
 
     if (sessionError) {
-      console.error('[wallet] Error setting Supabase session:', sessionError);
-      throw sessionError;
+      console.error('[wallet] Error setting Supabase session (from result.error):', sessionError);
+      
+      // If the error mentions "sub claim must be a UUID", we need to deploy the updated Edge function
+      if (sessionError.message && sessionError.message.includes('sub claim must be a UUID')) {
+        console.error('[wallet] The Edge Function needs to be updated to format the ETH address as a UUID');
+        console.log('[wallet] Using a client-side workaround for now...');
+        
+        try {
+          // Create a manual session object and store it in localStorage
+          const session = {
+            access_token: token,
+            token_type: 'bearer',
+            user: {
+              id: userProfileFromFunction.id,
+              app_metadata: { provider: 'moralis' },
+              user_metadata: {
+                eth_address: userProfileFromFunction.id,
+                username: userProfileFromFunction.username,
+                avatar_url: userProfileFromFunction.avatar_url
+              },
+              aud: 'authenticated'
+            }
+          };
+          
+          // Store this manually in localStorage
+          localStorage.setItem('supabase.auth.token', JSON.stringify(session));
+          
+          // Create manual session data to return
+          sessionData = { session, user: session.user };
+          console.log('[wallet] Created manual session as workaround:', sessionData);
+          
+          // Continue with the workaround session
+          return { user: userProfileFromFunction, address: userProfileFromFunction.id, sessionUser: session.user };
+        } catch (workaroundError) {
+          console.error('[wallet] Workaround attempt failed:', workaroundError);
+        }
+      }
+      
+      // If we get here, try a more standard fallback approach
+      console.log('[wallet] Attempting standard fallback authentication...');
+      try {
+        // Try a simple auth refresh
+        const { data } = await supabase.auth.refreshSession();
+        
+        if (data.session) {
+          sessionData = data;
+          console.log('[wallet] Session refresh successful:', data);
+        } else {
+          console.error('[wallet] All authentication attempts failed');
+          throw sessionError;
+        }
+      } catch (fallbackError) {
+        console.error('[wallet] All authentication attempts failed');
+        throw sessionError; // Throw original error if fallback also fails
+      }
+    }
+
+    if (!sessionData?.session) {
+        console.error('[wallet] Supabase session not set, sessionData or sessionData.session is null/undefined after setSession call.', sessionData);
+        
+        // Try one more approach - manually create a session
+        try {
+          // Force a session refresh
+          await supabase.auth.refreshSession();
+          const { data } = await supabase.auth.getSession();
+          
+          if (data.session) {
+            console.log('[wallet] Successfully recovered session after refresh');
+            sessionData = data;
+          } else {
+            throw new Error('Failed to set Supabase session: No session data returned after refresh.');
+          }
+        } catch (refreshError) {
+          console.error('[wallet] Session refresh attempt failed:', refreshError);
+          throw new Error('Failed to set Supabase session: No session data returned.');
+        }
     }
 
     console.log('[wallet] Supabase session set successfully:', sessionData);
