@@ -114,15 +114,38 @@ export async function authenticateWithMoralis() {
     }
 
     // Parse response
-    const { token, user } = await response.json();
+    const { token, user: userProfileFromFunction } = await response.json();
     
+    console.log('[wallet] Token received:', token);
+    console.log('[wallet] User profile from function:', userProfileFromFunction);
+
+    if (!token) {
+      console.error('[wallet] No token received from Edge Function.');
+      throw new Error('Authentication failed: No token received.');
+    }
+    if (!userProfileFromFunction) {
+      console.error('[wallet] No user profile received from Edge Function.');
+      throw new Error('Authentication failed: No user profile received.');
+    }
+
     // Set the session in Supabase
-    await supabase.auth.setSession({
+    const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
       access_token: token,
       refresh_token: '' // No refresh token with custom JWT
     });
 
-    return { user, address };
+    if (sessionError) {
+      console.error('[wallet] Error setting Supabase session:', sessionError);
+      throw sessionError;
+    }
+
+    console.log('[wallet] Supabase session set successfully:', sessionData);
+
+    // The user object from setSession might be more aligned with Supabase's internal state
+    // or use supabase.auth.getUser() if preferred after setting session.
+    // For now, let's return the user profile we got from the function, 
+    // as AuthContext/usePlayerIdentification will pick up the official Supabase user.
+    return { user: userProfileFromFunction, address, sessionUser: sessionData?.user };
   } catch (error) {
     console.error('Authentication error:', error);
     throw error;

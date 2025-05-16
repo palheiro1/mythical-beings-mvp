@@ -71,22 +71,25 @@ serve(async (req) => {
       return errorResponse("Internal server error: Moralis API Key not configured", 500);
     }
     // Log only a portion or a confirmation that it's loaded, not the full key for security.
-    console.log(`[moralis-auth] INFO: Using Moralis API Key (first 5 chars): ${moralisApiKey.substring(0, 5)}...`);
+    console.log(`[moralis-auth] INFO: Using Moralis API Key (type check: ${typeof moralisApiKey === 'string' ? 'string' : 'other'}, first 5 chars): ${moralisApiKey.substring(0, 5)}...`);
 
     // Verify with Moralis
-    console.log("[moralis-auth] INFO: Verifying signature with Moralis at https://deep-index.moralis.io/api/v2.2/auth/challenge/verify/evm");
-    const moralisVerificationResponse = await fetch("https://deep-index.moralis.io/api/v2.2/auth/challenge/verify/evm", {
+    const moralisPayload = { message, signature, network: "evm" }; // Changed networkType to network
+    console.log("[moralis-auth] INFO: Verifying signature with Moralis at https://authapi.moralis.io/challenge/verify/evm"); // Changed endpoint URL
+    console.log("[moralis-auth] INFO: Payload to Moralis:", JSON.stringify(moralisPayload));
+
+    const moralisVerificationResponse = await fetch("https://authapi.moralis.io/challenge/verify/evm", { // Changed endpoint URL
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "X-API-Key": moralisApiKey,
       },
-      body: JSON.stringify({ message, signature, networkType: "evm" }),
+      body: JSON.stringify(moralisPayload),
     });
 
     if (!moralisVerificationResponse.ok) {
       const errorBody = await moralisVerificationResponse.text();
-      console.error("[moralis-auth] ERROR: Moralis verification failed. Status:", moralisVerificationResponse.status, "Body:", errorBody);
+      console.error("Moralis verification failed:", moralisVerificationResponse.status, errorBody);
       return errorResponse(`Moralis verification failed: ${errorBody}`, moralisVerificationResponse.status);
     }
 
@@ -160,12 +163,12 @@ serve(async (req) => {
       false,
       ["sign", "verify"]
     );
-    
+
     const header: JoseHeader = {
       alg: "HS256",
       typ: "JWT",
     };
-    
+
     const token = await create(header, payload, cryptoKey);
     console.log("[moralis-auth] INFO: JWT token generated successfully");
 
