@@ -43,8 +43,28 @@ export function usePlayerIdentification(): [
         if (data?.session) {
           console.log('[usePlayerIdentification] Session found, user is authenticated', data.session);
           setUser(data.session.user);
-          // The user ID in the session is the EVM address (from the sub claim in the JWT)
-          setPlayerId(data.session.user.id);
+          
+          // Try to get the raw Ethereum address from user metadata
+          // This is needed because the JWT sub claim is the UUID-formatted ID,
+          // but our app uses raw Ethereum addresses in some places
+          const rawEthAddress = data.session.user.user_metadata?.eth_address;
+          
+          if (rawEthAddress && rawEthAddress.startsWith('0x')) {
+            console.log('[usePlayerIdentification] Using eth_address from user metadata:', rawEthAddress);
+            setPlayerId(rawEthAddress);
+            
+            // Store this for later use
+            try {
+              localStorage.setItem('eth_address', rawEthAddress);
+            } catch (e) {
+              console.warn('[usePlayerIdentification] Failed to store eth_address in localStorage:', e);
+            }
+          } else {
+            // Fallback to the UUID-formatted id (sub claim of JWT)
+            console.log('[usePlayerIdentification] No eth_address in metadata, using user.id:', data.session.user.id);
+            setPlayerId(data.session.user.id);
+          }
+          
           setError(null);
         } else {
           console.log('[usePlayerIdentification] No active session found - checking localStorage backup');

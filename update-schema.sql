@@ -1,23 +1,9 @@
--- This SQL script updates RLS policies for the Mythical Beings game
+-- This SQL script updates table columns and RLS policies for the Mythical Beings game
 -- to support both raw ETH addresses and UUID-formatted addresses
 
--- Make sure the games table exists first
-CREATE TABLE IF NOT EXISTS public.games (
-    id UUID PRIMARY KEY,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL,
-    player1_id TEXT NOT NULL,  -- Changed from UUID with foreign key to TEXT to support both ETH addresses and UUIDs
-    player2_id TEXT,           -- Changed from UUID with foreign key to TEXT to support both ETH addresses and UUIDs
-    status TEXT DEFAULT 'waiting' NOT NULL,
-    state JSONB,
-    bet_amount NUMERIC DEFAULT 0,
-    player1_selected_creatures TEXT[] DEFAULT '{}',
-    player2_selected_creatures TEXT[] DEFAULT '{}',
-    player1_selection_complete BOOLEAN DEFAULT FALSE,
-    player2_selection_complete BOOLEAN DEFAULT FALSE,
-    player1_dealt_hand TEXT[] DEFAULT '{}',
-    player2_dealt_hand TEXT[] DEFAULT '{}'
-);
+-- Make sure player IDs are TEXT type
+ALTER TABLE public.games ALTER COLUMN player1_id TYPE TEXT;
+ALTER TABLE public.games ALTER COLUMN player2_id TYPE TEXT;
 
 -- First, create a helper function to convert between formats
 CREATE OR REPLACE FUNCTION public.is_same_user(user_id_1 TEXT, user_id_2 TEXT) 
@@ -98,11 +84,3 @@ CREATE POLICY "Allow players to view their own games"
     player1_id::text = auth.uid()::text OR 
     player2_id::text = auth.uid()::text
   );
-  
--- Add an admin policy to allow service role to bypass RLS
-DROP POLICY IF EXISTS "Allow service role to manage all games" ON public.games;
-
-CREATE POLICY "Allow service role to manage all games"
-  ON public.games
-  USING (auth.jwt() ->> 'role' = 'service_role')
-  WITH CHECK (auth.jwt() ->> 'role' = 'service_role');

@@ -5,17 +5,39 @@
 echo "Applying RLS policy updates for ETH/UUID address format compatibility..."
 cd /home/usuario/Documentos/GitHub/CardGame/mythical-beings-mvp
 
-# Apply migration using the Supabase CLI
-echo "Applying migration via Supabase CLI..."
+# Supabase API details
+PROJECT_ID="layijhifboyouicxsunq"
+DB_HOST="db.${PROJECT_ID}.supabase.co"
+DB_NAME="postgres"
+DB_USER="postgres"
 
-# Make directory for migrations if not exists
-mkdir -p supabase/migrations
+# Ask for the database password (service role key)
+echo "Please enter your Supabase database password (service role key):"
+read -s DB_PASSWORD
 
-# Navigate to the project directory
-cd supabase
+if [ -z "$DB_PASSWORD" ]; then
+  echo "Error: Password cannot be empty"
+  exit 1
+fi
 
-# Apply migration with Supabase CLI
-echo "Running migration to update RLS policies..."
-supabase migration up
+# Apply the migration directly using psql
+SQL_FILE="supabase/migrations/20250516_update_rls_for_eth_uuid.sql"
+
+if [ -f "$SQL_FILE" ]; then
+  echo "Applying SQL migration directly to database..."
+  
+  # Use the PGPASSWORD environment variable to pass the password to psql
+  PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -U "$DB_USER" -d "$DB_NAME" -f "$SQL_FILE"
+  
+  if [ $? -eq 0 ]; then
+    echo "SQL migration applied successfully!"
+  else
+    echo "Error applying SQL migration"
+    exit 1
+  fi
+else
+  echo "Error: SQL file not found: $SQL_FILE"
+  exit 1
+fi
 
 echo "RLS policy update completed. You should now be able to create games with either ETH or UUID format addresses."
