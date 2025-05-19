@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import Card from '../components/Card.js';
 import { Creature } from '../game/types.js';
-import { supabase, RealtimeChannel } from '../utils/supabase.js'; // Import supabase client and RealtimeChannel
+import { supabase, RealtimeChannel, getCorrectPlayerId } from '../utils/supabase.js'; // Import supabase client, RealtimeChannel, and getCorrectPlayerId
 import { usePlayerIdentification } from '../hooks/usePlayerIdentification.js';
 // --- Import the base creature data ---
 import creatureData from '../assets/creatures.json';
@@ -86,27 +86,48 @@ const NFTSelection: React.FC = () => {
       if (_fetchError) throw _fetchError;
       if (!gameData) throw new Error("Game not found during confirmation.");
 
-      const isPlayer1 = gameData.player1_id === currentPlayerId;
-      const isPlayer2 = gameData.player2_id === currentPlayerId;
+        // Normalize both stored IDs and currentPlayerId for comparison
+        const normalizedCurrent = currentPlayerId ? getCorrectPlayerId(currentPlayerId) : null;
+        const normalized1 = getCorrectPlayerId(gameData.player1_id);
+        const normalized2 = gameData.player2_id ? getCorrectPlayerId(gameData.player2_id) : null;
+        const isPlayer1 = normalizedCurrent && normalized1 === normalizedCurrent;
+        const isPlayer2 = normalizedCurrent && normalized2 === normalizedCurrent;
 
       if (!isPlayer1 && !isPlayer2) {
         throw new Error("You are not part of this game (confirmation check).");
       }
 
-      const updatePayload: {
-        player1_selected_creatures?: string[];
-        player1_selection_complete?: boolean;
-        player2_selected_creatures?: string[];
-        player2_selection_complete?: boolean;
-      } = {};
-
-      if (isPlayer1) {
-        updatePayload.player1_selected_creatures = selected;
-        updatePayload.player1_selection_complete = true;
-      } else {
-        updatePayload.player2_selected_creatures = selected;
-        updatePayload.player2_selection_complete = true;
-      }
+      // First get current state
+      const { data: currentGameData, error: currentGameError } = await supabase
+        .from('games')
+        .select('state')
+        .eq('id', gameId)
+        .single();
+        
+      if (currentGameError) throw currentGameError;
+      
+      // Create a new state object to update or initialize if needed
+      const currentState = currentGameData?.state || {};
+      
+      // Create an update that merges new values into existing state
+      const newState = {
+        ...currentState,
+        ...(isPlayer1 
+          ? {
+              player1SelectedCreatures: selected,
+              player1SelectionComplete: true
+            }
+          : {
+              player2SelectedCreatures: selected, 
+              player2SelectionComplete: true
+            }
+        )
+      };
+      
+      // Create the payload for the update
+      const updatePayload = { 
+        state: newState 
+      };
 
       const { error: updateError } = await supabase
         .from('games')
@@ -137,16 +158,18 @@ const NFTSelection: React.FC = () => {
       // Prefix unused fetchError with underscore
       const { data: gameData, error: _fetchError } = await supabase
         .from('games')
-        .select('player1_selection_complete, player2_selection_complete')
+        .select('state')
         .eq('id', gameId)
         .single();
       // Use _fetchError here if needed for error handling
       if (_fetchError) throw _fetchError;
-      if (gameData?.player1_selection_complete && gameData?.player2_selection_complete) {
+      if (gameData?.state && 
+          gameData.state.player1SelectionComplete && 
+          gameData.state.player2SelectionComplete) {
         navigate(`/game/${gameId}`);
       }
     } catch (err) {
-      // Optionally log polling errors
+      console.warn("[NFTSelection] Error in pollForOpponentCompletion:", err);
     }
   };
 
@@ -180,97 +203,166 @@ const NFTSelection: React.FC = () => {
       return;
     }
 
-    let attempts = 0;
-    const maxAttempts = 5;
-    const intervalTime = 2000;
+    console.log(`[NFTSelection] useEffect for gameId: ${gameId}, currentPlayerId: ${currentPlayerId}`);
+    setIsLoadingHand(true);
+    setError(null);
 
-    const fetchHandData = async () => {
-      console.log(`[NFTSelection] Attempt ${attempts + 1}: Fetching game data for ${gameId}`);
+    const fetchInitialData = async () => {
       try {
-        const { data: gameData, error } = await supabase
+        console.log(`[NFTSelection] Fetching initial game data for game ${gameId}`);
+        const { data: gameData, error: gameError } = await supabase
           .from('games')
-          .select('player1_id, player2_id, player1_dealt_hand, player2_dealt_hand, player1_selection_complete, player2_selection_complete, status')
+          .select('player1_id, player2_id, player1_dealt_hand, player2_dealt_hand, state, status')
           .eq('id', gameId)
           .single();
 
-        if (error) throw error;
-
+        console.log('[NFTSelection] Raw gameData from fetch:', gameData);
+        if (gameError) {
+          console.error('[NFTSelection] Error fetching game data:', gameError);
+          throw gameError;
+        }
         if (!gameData) {
-          throw new Error("Game not found.");
+          console.error('[NFTSelection] No game data returned for gameId:', gameId);
+          throw new Error('Game not found.');
+        }
+        
+        console.log('[NFTSelection] Game data fetched successfully:', gameData);
+        console.log('[NFTSelection] Game state from DB:', gameData.state);
+        console.log('[NFTSelection] Game status from DB:', gameData.status);
+
+
+        // Determine if current player is player1 or player2
+        // Normalize IDs before comparison
+        const normalizedCurrent = getCorrectPlayerId(currentPlayerId);
+        const normalizedP1 = getCorrectPlayerId(gameData.player1_id);
+        const isPlayer1 = normalizedP1 === normalizedCurrent;
+
+        const hand = isPlayer1 ? gameData.player1_dealt_hand : gameData.player2_dealt_hand;
+
+        if (hand && hand.length > 0) {
+          const creatures = hand.map((id: string) => ALL_CREATURES.find(c => c.id === id)).filter(Boolean) as Creature[];
+          setDealtCreatures(creatures);
+          console.log(`[NFTSelection] Dealt hand for player ${isPlayer1 ? '1' : '2'}:`, creatures);
+        } else {
+          console.warn(`[NFTSelection] No hand data found for player ${isPlayer1 ? '1' : '2'} (ID: ${currentPlayerId}). Polling for hand...`);
+          // Poll for hand data if not immediately available
+          const pollHand = async () => {
+            console.log(`[NFTSelection] Polling for hand data - gameId: ${gameId}, player: ${isPlayer1 ? '1' : '2'}`);
+            const { data: updatedGameData, error: pollError } = await supabase
+              .from('games')
+              .select('player1_dealt_hand, player2_dealt_hand') // Fetch both hands
+              .eq('id', gameId)
+              .single();
+
+            console.log('[NFTSelection] Polled game data for hand:', updatedGameData);
+            if (pollError) {
+              console.error('[NFTSelection] Error polling for hand data:', pollError);
+              setError('Failed to load hand data. Please try refreshing.');
+              setIsLoadingHand(false);
+              return;
+            }
+
+            // Access the correct hand based on isPlayer1
+            const currentHand = updatedGameData ? (isPlayer1 ? updatedGameData.player1_dealt_hand : updatedGameData.player2_dealt_hand) : null;
+            if (currentHand && currentHand.length > 0) {
+              const creatures = currentHand.map((id: string) => ALL_CREATURES.find(c => c.id === id)).filter(Boolean) as Creature[];
+              setDealtCreatures(creatures);
+              console.log(`[NFTSelection] Hand data received via polling for player ${isPlayer1 ? '1' : '2'}:`, creatures);
+              setIsLoadingHand(false);
+              if (fetchIntervalRef.current) clearInterval(fetchIntervalRef.current);
+            } else {
+              console.log(`[NFTSelection] Hand data still not available for player ${isPlayer1 ? '1' : '2'}. Will poll again.`);
+            }
+          };
+          fetchIntervalRef.current = setInterval(pollHand, 3000); // Poll every 3 seconds
+        }
+        
+        // Check game state for selections
+        if (gameData.state) {
+            const playerStateKey = isPlayer1 ? 'player1SelectionComplete' : 'player2SelectionComplete';
+            if (gameData.state[playerStateKey]) {
+                setWaiting(true); // Already selected, now waiting for opponent
+                console.log(`[NFTSelection] Player ${isPlayer1 ? '1' : '2'} has already completed selection. Setting to waiting.`);
+            }
         }
 
-        const isPlayer1 = gameData.player1_id === currentPlayerId;
-        const isPlayer2 = gameData.player2_id === currentPlayerId;
-
-        if (!isPlayer1 && !isPlayer2) {
-          throw new Error("You are not part of this game.");
-        }
-
-        const dealtHandIds: string[] = isPlayer1 ? gameData.player1_dealt_hand : gameData.player2_dealt_hand;
-        const selectionComplete: boolean = isPlayer1 ? gameData.player1_selection_complete : gameData.player2_selection_complete;
-
-        if (!dealtHandIds || dealtHandIds.length === 0) {
-          if (attempts < maxAttempts - 1) {
-            console.log("[NFTSelection] Hands not dealt yet, polling again...");
-            attempts++;
-            fetchIntervalRef.current = setTimeout(fetchHandData, intervalTime);
-          } else {
-            throw new Error("Failed to fetch dealt hand after multiple attempts. The dealing function might have failed.");
-          }
-          return;
-        }
-
-        if (fetchIntervalRef.current) {
-          clearTimeout(fetchIntervalRef.current);
-          fetchIntervalRef.current = null;
-        }
-
-        const creatures = dealtHandIds
-          .map(id => ALL_CREATURES.find(c => c.id === id))
-          .filter((c): c is Creature => !!c);
-
-        if (creatures.length !== dealtHandIds.length) {
-          console.warn(`[NFTSelection] Warning: Expected ${dealtHandIds.length} creatures, but found ${creatures.length} based on dealt IDs.`);
-        }
-        if (creatures.length === 0 && dealtHandIds.length > 0) {
-          throw new Error("Dealt hand IDs found, but no matching creature data could be loaded.");
-        }
-
-        setDealtCreatures(creatures);
-        setError(null);
-        setIsLoadingHand(false);
-
-        if (selectionComplete) {
-          console.log("[NFTSelection] Player selection already complete, setting waiting state.");
-          setWaiting(true);
-        }
-
-        console.log("[NFTSelection] Dealt hand fetched successfully:", creatures.map(c => c.name));
 
       } catch (err) {
-        console.error("[NFTSelection] Error fetching dealt hand:", err);
-        setError(err instanceof Error ? err.message : "An unknown error occurred fetching hand data.");
-        setIsLoadingHand(false);
-        if (fetchIntervalRef.current) {
-          clearTimeout(fetchIntervalRef.current);
-          fetchIntervalRef.current = null;
+        console.error('[NFTSelection] Detailed error in fetchInitialData:', err);
+        setError(err instanceof Error ? `Failed to load game: ${err.message}` : 'An unknown error occurred while loading the game.');
+      } finally {
+        // Only set isLoadingHand to false if not polling for hand
+        if (!(fetchIntervalRef.current)) {
+            setIsLoadingHand(false);
         }
       }
     };
 
-    setIsLoadingHand(true);
-    setError(null);
-    fetchHandData();
+    fetchInitialData();
+
+    // Realtime subscription for game updates
+    const channel = supabase.channel(`game-${gameId}`);
+    channel
+      .on('postgres_changes', { 
+          event: 'UPDATE', 
+          schema: 'public', 
+          table: 'games', 
+          filter: `id=eq.${gameId}` 
+        }, 
+        (payload) => {
+          console.log('[NFTSelection] Realtime game update received:', payload);
+          const updatedGame = payload.new as any; // Cast to any to access properties
+
+          if (updatedGame.state && 
+              updatedGame.state.player1SelectionComplete && 
+              updatedGame.state.player2SelectionComplete) {
+            console.log('[NFTSelection] Both players completed selection via realtime. Navigating to game.');
+            if (realtimeChannelRef.current) { // Ensure unsubscription before navigation
+              supabase.removeChannel(realtimeChannelRef.current);
+              realtimeChannelRef.current = null;
+            }
+            navigate(`/game/${gameId}`);
+          } else if (updatedGame.state && updatedGame.player1_id) { // Ensure player1_id exists before using it
+            // Check if current player has completed selection
+            const normalizedCurrent = currentPlayerId ? getCorrectPlayerId(currentPlayerId) : null;
+            const normalizedP1 = getCorrectPlayerId(updatedGame.player1_id); // player1_id should be part of the payload if it's used
+            const isPlayer1Realtime = normalizedP1 === normalizedCurrent; // Renamed to avoid conflict
+            const playerSelectionCompleteKey = isPlayer1Realtime ? 'player1SelectionComplete' : 'player2SelectionComplete';
+            
+            if (updatedGame.state[playerSelectionCompleteKey] && !waiting) {
+                console.log(`[NFTSelection] Current player's selection completion detected via realtime. Setting waiting to true.`);
+                setWaiting(true); // Current player's selection is now complete, wait for opponent
+            }
+          }
+        }
+      )
+      .subscribe((status, err) => {
+        if (status === 'SUBSCRIBED') {
+          console.log('[NFTSelection] Realtime channel subscribed successfully.');
+          setRealtimeFailed(false);
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || err) {
+          console.error('[NFTSelection] Realtime subscription failed:', status, err);
+          setError('Realtime connection failed. Falling back to polling for opponent completion.');
+          setRealtimeFailed(true); 
+        }
+      });
+    
+    realtimeChannelRef.current = channel;
 
     return () => {
       if (fetchIntervalRef.current) {
-        console.log("[NFTSelection] Cleaning up polling timeout.");
-        clearTimeout(fetchIntervalRef.current);
+        clearInterval(fetchIntervalRef.current);
         fetchIntervalRef.current = null;
+        console.log('[NFTSelection] Cleared hand fetch interval.');
+      }
+      if (realtimeChannelRef.current) {
+        supabase.removeChannel(realtimeChannelRef.current)
+          .then(() => console.log('[NFTSelection] Realtime channel unsubscribed successfully on cleanup.'))
+          .catch(unsubError => console.error('[NFTSelection] Error unsubscribing realtime channel on cleanup:', unsubError));
+        realtimeChannelRef.current = null;
       }
     };
-
-  }, [gameId, currentPlayerId, playerError]);
+  }, [gameId, currentPlayerId, playerError, navigate, waiting]); // Added waiting to dependency array
 
   useEffect(() => {
     if (!waiting || !gameId) return;
@@ -280,13 +372,15 @@ const NFTSelection: React.FC = () => {
         // Prefix unused fetchError with underscore
         const { data: gameData, error: _fetchError } = await supabase
           .from('games')
-          .select('player1_selection_complete, player2_selection_complete')
+          .select('state')
           .eq('id', gameId)
           .single();
         // Use _fetchError here if needed for error handling
         if (_fetchError) console.warn("[NFTSelection] Error during immediate completion check:", _fetchError.message); // Example usage
 
-        if (!cancelled && gameData?.player1_selection_complete && gameData?.player2_selection_complete) {
+        if (!cancelled && gameData?.state && 
+            gameData.state.player1SelectionComplete && 
+            gameData.state.player2SelectionComplete) {
           navigate(`/game/${gameId}`);
         }
       } catch (err) {
@@ -308,7 +402,9 @@ const NFTSelection: React.FC = () => {
     const handleGameUpdate = (payload: any) => {
       console.log('[NFTSelection] Realtime game update received:', payload);
       const game = payload.new;
-      if (game.player1_selection_complete && game.player2_selection_complete) {
+      if (game.state && 
+          game.state.player1SelectionComplete && 
+          game.state.player2SelectionComplete) {
         console.log('[NFTSelection] Both players confirmed! Navigating to game screen.');
         if (realtimeChannelRef.current) {
           supabase.removeChannel(realtimeChannelRef.current);
@@ -344,6 +440,7 @@ const NFTSelection: React.FC = () => {
     };
 
   }, [waiting, gameId, navigate]);
+
 
   if (playerError) {
     return <div className="min-h-screen bg-gray-900 text-red-500 flex items-center justify-center">Error identifying player: {playerError}</div>;

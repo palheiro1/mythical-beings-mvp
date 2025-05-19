@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '../utils/supabase.js'; // Import supabase client (with .js extension)
+import { supabase, ethAddressToUUID } from '../utils/supabase.js'; // Import supabase client and UUID converter
 import { User, Session, AuthChangeEvent } from '@supabase/supabase-js';
 
 /**
@@ -51,7 +51,9 @@ export function usePlayerIdentification(): [
           
           if (rawEthAddress && rawEthAddress.startsWith('0x')) {
             console.log('[usePlayerIdentification] Using eth_address from user metadata:', rawEthAddress);
-            setPlayerId(rawEthAddress);
+            // Convert raw Ethereum address to UUID format
+            const uuidId = ethAddressToUUID(rawEthAddress);
+            setPlayerId(uuidId);
             
             // Store this for later use
             try {
@@ -73,9 +75,9 @@ export function usePlayerIdentification(): [
           const ethAddress = localStorage.getItem('eth_address');
           if (ethAddress) {
             console.log('[usePlayerIdentification] Found ethereum address in localStorage:', ethAddress);
-            
-            // Use the ethereum address as the player ID even without an active session
-            setPlayerId(ethAddress);
+            // Convert stored Ethereum address to UUID
+            const uuidId = ethAddressToUUID(ethAddress);
+            setPlayerId(uuidId);
             
             // Create a minimal user object
             const minimalUser = {
@@ -98,7 +100,10 @@ export function usePlayerIdentification(): [
               if (parsedToken.user && parsedToken.user.user_metadata?.eth_address) {
                 console.log('[usePlayerIdentification] Using manual session workaround from localStorage');
                 setUser(parsedToken.user as any);
-                setPlayerId(parsedToken.user.user_metadata.eth_address);
+                // Convert metadata Ethereum address to UUID
+                const rawAddr = parsedToken.user.user_metadata.eth_address;
+                const uuidId = ethAddressToUUID(rawAddr);
+                setPlayerId(uuidId);
                 setError(null);
                 return;
               }

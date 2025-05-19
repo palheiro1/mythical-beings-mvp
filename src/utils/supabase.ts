@@ -276,13 +276,14 @@ export async function joinGame(gameId: string, player2Id: string): Promise<any |
     const { data, error } = await supabase
       .from('games')
       .update({
-          player2_id: effectivePlayerId, // Use the effectivePlayerId instead of formattedPlayerId
-          status: 'active', // <-- Set status to active when player 2 joins
+          player2_id: effectivePlayerId,
+          status: 'active',
           updated_at: new Date().toISOString()
       })
       .eq('id', gameId)
-      .is('player2_id', null) // Ensure we only join if player 2 is not set
-      .select()
+      .is('player2_id', null)
+      // Only select known columns to avoid missing-field errors
+      .select('id, player1_id, player2_id, status, bet_amount, created_at, updated_at')
       .single();
 
     if (error) {
