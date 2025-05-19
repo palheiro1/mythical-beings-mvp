@@ -18,6 +18,56 @@ interface OnlineUserInfo {
   avatar_url: string | null;
 }
 
+// Add this function to authenticate with wallet
+const authenticateWithWallet = async (walletAddress: string) => {
+  if (!walletAddress) {
+    console.error('[authenticateWithWallet] No wallet address provided');
+    throw new Error('No wallet address provided');
+  }
+
+  console.log('[authenticateWithWallet] Attempting to authenticate with wallet:', walletAddress);
+
+  try {
+    // Option 2: Sign in anonymously but associate the wallet address
+    const { data, error } = await supabase.auth.signUp({
+      email: `${walletAddress.toLowerCase().substring(2, 12)}@ethereum.player`,
+      password: `pw_${walletAddress.toLowerCase()}`, // Never exposed, just for authentication
+      options: {
+        data: {
+          eth_address: walletAddress, // Store the wallet address in user metadata
+        },
+      },
+    });
+
+    if (error) {
+      // If user already exists, try signing in instead
+      if (error.message.includes('already registered')) {
+        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+          email: `${walletAddress.toLowerCase().substring(2, 12)}@ethereum.player`,
+          password: `pw_${walletAddress.toLowerCase()}`,
+        });
+
+        if (signInError) {
+          console.error('[authenticateWithWallet] Sign in error:', signInError);
+          throw signInError;
+        }
+
+        console.log('[authenticateWithWallet] Successfully signed in existing user');
+        return signInData;
+      }
+
+      console.error('[authenticateWithWallet] Authentication error:', error);
+      throw error;
+    }
+
+    console.log('[authenticateWithWallet] Authentication successful:', data);
+    return data;
+  } catch (error) {
+    console.error('[authenticateWithWallet] Authentication failed:', error);
+    throw error;
+  }
+};
+
 const Lobby: React.FC = () => {
   const navigate = useNavigate();
   const [playerId, _, idLoading, playerError] = usePlayerIdentification();
@@ -358,13 +408,41 @@ const Lobby: React.FC = () => {
   };
 
   const handleCreateGame = async () => {
-    // playerId from usePlayerIdentification should be the EVM address.
     if (!playerId) {
-      setNotification('Please connect your wallet to create a game (EVM address not found).');
-      setTimeout(() => setNotification(null), 3000);
-      console.error('[Lobby] Attempted to create game without a valid EVM address (playerId).');
+      setNotification('Please connect your wallet to create a game.');
       return;
     }
+
+    // Check for active Supabase session first
+    const { data: sessionData } = await supabase.auth.getSession();
+    if (!sessionData?.session) {
+      // Try to sign in the user with their wallet
+      setNotification('Authenticating with Supabase...');
+      await authenticateWithWallet(playerId);
+
+      // Check again after authentication attempt
+      const { data: newSession } = await supabase.auth.getSession();
+      if (!newSession?.session) {
+        setNotification('Authentication failed. Please try again.');
+        return;
+      }
+    }
+
+    // Create profile record if needed
+    try {
+      const formattedPlayerId = getCorrectPlayerId(playerId);
+      setNotification('Setting up player profile...');
+      await supabase.from('profiles').upsert({
+        id: formattedPlayerId,
+        username: `Player_${formattedPlayerId.substring(0, 6)}`,
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'id' });
+    } catch (profileError) {
+      console.error('[Lobby] Error creating profile:', profileError);
+      // Continue anyway - the error might be that the profile already exists
+    }
+
+    // Now proceed with game creation
     console.log('[Lobby] Creating game with bet amount:', betAmount, 'by player (EVM address):', playerId);
     setIsCreating(true);
     const newGameId = uuidv4();

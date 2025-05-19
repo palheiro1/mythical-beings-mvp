@@ -185,17 +185,31 @@ export async function createGame(gameId: string, player1Id: string, betAmount: n
     // Ensure player1Id is in the correct format (UUID)
     const formattedPlayerId = getCorrectPlayerId(player1Id);
     
-    console.log(`[createGame] Creating game ${gameId} by player ${player1Id} (formatted: ${formattedPlayerId}) with bet ${betAmount}`);
+    // Get current session info
+    const { data: sessionData } = await supabase.auth.getSession();
+    const sessionUserId = sessionData?.session?.user?.id;
     
-    // Store both formats in localStorage for debugging
-    localStorage.setItem('last_player_id_raw', player1Id);
-    localStorage.setItem('last_player_id_formatted', formattedPlayerId);
-    localStorage.setItem('last_game_id', gameId);
+    // Use session user ID if available, otherwise use formatted player ID
+    const effectivePlayerId = sessionUserId || formattedPlayerId;
     
-    // Define the game record we want to insert
+    console.log(`[createGame] Creating game ${gameId} by player ${player1Id} (using ID: ${effectivePlayerId}) with bet ${betAmount}`);
+    
+    // Create profile record to avoid foreign key constraint issues
+    try {
+      await supabase.from('profiles').upsert({
+        id: effectivePlayerId,
+        username: `Player_${effectivePlayerId.substring(0, 6)}`,
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'id' });
+    } catch (profileErr) {
+      console.warn('[createGame] Profile upsert:', profileErr);
+      // Continue anyway as profile might already exist
+    }
+    
+    // Rest of your existing code using effectivePlayerId instead of formattedPlayerId
     const gameRecord = {
       id: gameId,
-      player1_id: formattedPlayerId,
+      player1_id: effectivePlayerId,
       player2_id: null, // Player 2 joins later
       state: null,      // State initialized when game starts
       status: 'waiting', // Initial status
@@ -204,129 +218,6 @@ export async function createGame(gameId: string, player1Id: string, betAmount: n
       updated_at: new Date().toISOString()
     };
     
-    // ATTEMPT 1: Try using the Edge Function to create the game (bypassing RLS)
-    try {
-      console.log('[createGame] Attempt 1: Creating game via edge function...');
-      // Pass both the raw and formatted player IDs for maximum compatibility
-      const { data: edgeData, error: edgeError } = await supabase.functions.invoke('create-game', {
-        body: { 
-          gameId, 
-          player1Id: player1Id,        // Send the original ETH address 
-          formattedPlayerId: formattedPlayerId, // And the UUID version
-          betAmount 
-        }
-      });
-      
-      if (!edgeError && edgeData) {
-        console.log('[createGame] Successfully created game via edge function:', edgeData);
-        return edgeData;
-      } else if (edgeError) {
-        console.warn('[createGame] Edge function error:', edgeError);
-        // Print more details about the error for debugging
-        if (edgeError.message) {
-          console.warn('[createGame] Error message:', edgeError.message);
-        }
-        if (edgeError.context) {
-          console.warn('[createGame] Error context:', edgeError.context);
-        }
-        // Try to extract JSON from the error message if available
-        try {
-          const errorObject = JSON.parse(edgeError.message);
-          console.warn('[createGame] Parsed error details:', errorObject);
-        } catch (e) {
-          // Not JSON, skip
-        }
-        // Continue to next attempt
-      }
-    } catch (edgeErr) {
-      console.warn('[createGame] Edge function not available:', edgeErr);
-      // Continue to next attempt
-    }
-    
-    // ATTEMPT 2: Try using supabaseAdmin client with service role key (if available)
-    if (supabaseAdmin) {
-      try {
-        console.log('[createGame] Attempt 2: Creating game via admin client (bypasses RLS)...');
-        
-        // First see if we need to create the player's profile
-        // This ensures the player exists in the profiles table with both ID formats
-        try {
-          const { error: profileError } = await supabaseAdmin
-            .from('profiles')
-            .upsert({
-              id: formattedPlayerId,
-              eth_address: player1Id.startsWith('0x') ? player1Id : null,
-              username: `Player_${formattedPlayerId.substring(0, 6)}`,
-              updated_at: new Date().toISOString()
-            }, {
-              onConflict: 'id'
-            });
-            
-          if (profileError) {
-            console.warn('[createGame] Admin client profile upsert failed:', profileError);
-          } else {
-            console.log('[createGame] Admin client ensured player profile exists');
-          }
-        } catch (profileErr) {
-          console.warn('[createGame] Error ensuring player profile:', profileErr);
-        }
-        
-        // Now try to insert the game record
-        const { data: adminData, error: adminError } = await supabaseAdmin
-          .from('games')
-          .insert([gameRecord])
-          .select()
-          .single();
-          
-        if (!adminError && adminData) {
-          console.log('[createGame] Successfully created game via admin client:', adminData);
-          return adminData;
-        } else if (adminError) {
-          console.warn('[createGame] Admin client error:', adminError);
-          // Continue to next attempt
-        }
-      } catch (adminErr) {
-        console.warn('[createGame] Admin client operation failed:', adminErr);
-        // Continue to next attempt
-      }
-    } else {
-      console.log('[createGame] No admin client available, skipping that attempt');
-    }
-    
-    // ATTEMPT 3: Direct insert using regular supabase client with JWT token
-    console.log('[createGame] Attempt 3: Creating game via standard client...');
-    
-    // Get the current session and try to refresh it first to ensure it's valid
-    try {
-      await supabase.auth.refreshSession();
-    } catch (refreshErr) {
-      console.log('[createGame] Session refresh attempt failed (might be normal):', refreshErr);
-    }
-    
-    const { data: sessionData } = await supabase.auth.getSession();
-    if (sessionData?.session) {
-      console.log('[createGame] User is authenticated with session:', 
-        sessionData.session.user?.id ? `User ID: ${sessionData.session.user.id}` : 'No user ID in session');
-      
-      // Compare IDs to help debug format issues
-      console.log('[createGame] ID comparison:', { 
-        session_user_id: sessionData.session.user?.id,
-        player1Id: player1Id,
-        formattedPlayerId: formattedPlayerId,
-        areStringEqual: sessionData.session.user?.id === player1Id || sessionData.session.user?.id === formattedPlayerId,
-        eth_address_in_metadata: sessionData.session.user?.user_metadata?.eth_address || 'not found'
-      });
-    } else {
-      console.warn('[createGame] No active session found - auth may be required for this operation');
-      
-      // Try to recover the session from localStorage as a fallback
-      const storedEthAddress = localStorage.getItem('eth_address');
-      if (storedEthAddress) {
-        console.log('[createGame] Found ethereum address in localStorage:', storedEthAddress);
-      }
-    }
-    
-    // Try the insert operation
     const { data, error } = await supabase
       .from('games')
       .insert([gameRecord])
@@ -335,55 +226,7 @@ export async function createGame(gameId: string, player1Id: string, betAmount: n
 
     if (error) {
       console.error('[createGame] Error with standard client:', error);
-      
-      // Handle potential unique constraint violation if gameId already exists
-      if (error.code === '23505') { // Unique violation code for PostgreSQL
-        console.error(`[createGame] Error: Game ID ${gameId} already exists.`);
-        // Optionally, retry with a new ID or inform the user
-        return null; // Indicate failure due to duplicate ID
-      }
-      else if (error.code === '42501' || error.code === 'PGRST301') {
-        console.error('[createGame] RLS policy violation. User not authorized to create game.');
-        console.error('[createGame] This could indicate an authentication issue or incorrect player ID format.');
-        
-        // Let's log more details for debugging
-        console.log('[createGame] Auth state check:');
-        console.log('- Formatted player ID:', formattedPlayerId);
-        console.log('- Original player ID:', player1Id);
-        console.log('- Session user ID:', sessionData?.session?.user?.id || 'No session user ID');
-        
-        // Try one last effort to fix common issues:
-        // 1. Check if session is stale
-        try {
-          console.log('[createGame] Attempting to refresh authentication session...');
-          await supabase.auth.refreshSession();
-          
-          // 2. Try again with the alternative ID format
-          const alternativeId = player1Id.includes('-') ? player1Id.replace(/-/g, '') : ethAddressToUUID(player1Id);
-          console.log('[createGame] Making one more attempt with alternative ID format:', alternativeId);
-          
-          const { data: retryData, error: retryError } = await supabase
-            .from('games')
-            .insert([{
-              ...gameRecord,
-              player1_id: alternativeId
-            }])
-            .select()
-            .single();
-            
-          if (!retryError && retryData) {
-            console.log('[createGame] Success on retry attempt!', retryData);
-            return retryData;
-          } else {
-            console.error('[createGame] Retry attempt also failed:', retryError);
-          }
-        } catch (retryErr) {
-          console.error('[createGame] Error during retry:', retryErr);
-        }
-        
-        return null; // RLS policy violation
-      }
-      throw error; // Re-throw other errors
+      return null;
     }
     
     console.log('[createGame] Successfully created game entry. Returned data:', data);
