@@ -1,8 +1,8 @@
 #!/bin/bash
-# Script to apply RLS updates to Supabase to fix the UUID/ETH address conversion issues
-# This script will allow the RLS policies to work with both formats
+# Script to apply RLS updates to Supabase to add profile creation and update policies
+# This script will allow authenticated users to create and update their own profiles
 
-echo "Applying RLS policy updates for ETH/UUID address format compatibility..."
+echo "Applying RLS policies for user profile synchronization..."
 cd /home/usuario/Documentos/GitHub/CardGame/mythical-beings-mvp
 
 # Supabase API details
@@ -11,17 +11,21 @@ DB_HOST="db.${PROJECT_ID}.supabase.co"
 DB_NAME="postgres"
 DB_USER="postgres"
 
-# Ask for the database password (service role key)
-echo "Please enter your Supabase database password (service role key):"
-read -s DB_PASSWORD
+# Get the database password from .env.local file
+if [ -f ".env.local" ]; then
+  DB_PASSWORD=$(grep "SUPABASE_SERVICE_ROLE_KEY" .env.local | cut -d '=' -f2)
+else
+  echo "Error: .env.local file not found!"
+  exit 1
+fi
 
 if [ -z "$DB_PASSWORD" ]; then
-  echo "Error: Password cannot be empty"
+  echo "Error: Failed to extract service role key from .env.local"
   exit 1
 fi
 
 # Apply the migration directly using psql
-SQL_FILE="supabase/migrations/20250516_update_rls_for_eth_uuid.sql"
+SQL_FILE="supabase/migrations/20250519_auth_profile_sync.sql"
 
 if [ -f "$SQL_FILE" ]; then
   echo "Applying SQL migration directly to database..."
@@ -40,4 +44,4 @@ else
   exit 1
 fi
 
-echo "RLS policy update completed. You should now be able to create games with either ETH or UUID format addresses."
+echo "RLS policy update completed. Users can now create and update their own profiles."

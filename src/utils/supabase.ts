@@ -180,6 +180,28 @@ export async function getGameDetails(gameId: string): Promise<MatchDetails | nul
  * @param betAmount The amount of GEMs bet for the game (0 for free play).
  * @returns The newly created game data or null on error.
  */
+// Helper function to ensure profile exists before game operations
+async function ensureProfileExists(userId: string, ethAddress?: string) {
+  try {
+    console.log('[Game Creation] Ensuring profile exists for:', userId);
+    const { error } = await supabase.from('profiles').upsert({
+      id: userId,
+      username: `Player_${userId.substring(0, 6)}`,
+      eth_address: ethAddress?.startsWith('0x') ? ethAddress : null,
+      updated_at: new Date().toISOString(),
+      created_at: new Date().toISOString()
+    }, { onConflict: 'id' });
+    
+    if (error) {
+      console.error('[Game Creation] Error ensuring profile exists:', error.message);
+    } else {
+      console.log('[Game Creation] Profile confirmed for user:', userId);
+    }
+  } catch (e) {
+    console.error('[Game Creation] Exception in ensureProfileExists:', e instanceof Error ? e.message : String(e));
+  }
+}
+
 export async function createGame(gameId: string, player1Id: string, betAmount: number): Promise<any | null> {
   try {
     // Ensure player1Id is in the correct format (UUID)
@@ -194,17 +216,8 @@ export async function createGame(gameId: string, player1Id: string, betAmount: n
     
     console.log(`[createGame] Creating game ${gameId} by player ${player1Id} (using ID: ${effectivePlayerId}) with bet ${betAmount}`);
     
-    // Create profile record to avoid foreign key constraint issues
-    try {
-      await supabase.from('profiles').upsert({
-        id: effectivePlayerId,
-        username: `Player_${effectivePlayerId.substring(0, 6)}`,
-        updated_at: new Date().toISOString()
-      }, { onConflict: 'id' });
-    } catch (profileErr) {
-      console.warn('[createGame] Profile upsert:', profileErr);
-      // Continue anyway as profile might already exist
-    }
+    // Ensure profile exists before creating game
+    await ensureProfileExists(effectivePlayerId, player1Id);
     
     // Rest of your existing code using effectivePlayerId instead of formattedPlayerId
     const gameRecord = {
@@ -249,11 +262,21 @@ export async function joinGame(gameId: string, player2Id: string): Promise<any |
     // Ensure player2Id is in the correct format (UUID)
     const formattedPlayerId = getCorrectPlayerId(player2Id);
     
+    // Get current session info
+    const { data: sessionData } = await supabase.auth.getSession();
+    const sessionUserId = sessionData?.session?.user?.id;
+    
+    // Use session user ID if available, otherwise use formatted player ID
+    const effectivePlayerId = sessionUserId || formattedPlayerId;
+    
     console.log(`[joinGame] Joining game ${gameId} as player ${player2Id} (formatted: ${formattedPlayerId})`);
+    
+    // Ensure profile exists before joining game
+    await ensureProfileExists(effectivePlayerId, player2Id);
     const { data, error } = await supabase
       .from('games')
       .update({
-          player2_id: formattedPlayerId,
+          player2_id: effectivePlayerId, // Use the effectivePlayerId instead of formattedPlayerId
           status: 'active', // <-- Set status to active when player 2 joins
           updated_at: new Date().toISOString()
       })

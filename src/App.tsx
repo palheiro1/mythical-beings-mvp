@@ -10,10 +10,14 @@ import Leaderboard from './pages/Leaderboard.js';
 import WaitingScreen from './pages/WaitingScreen.js';
 import ProtectedRoute from './components/ProtectedRoute.js';
 import NavBar from './components/NavBar.js'; // Import NavBar
+import { useAuthProfileSync } from './hooks/useAuthProfileSync';
 
 // Moralis is now initialized in main.tsx to ensure polyfills are loaded first
 
 function App() {
+  // Initialize auth-profile synchronization
+  useAuthProfileSync();
+  
   return (
     <Router>
       <NavBar /> {/* Add NavBar here so it's present on all pages */}

@@ -102,6 +102,12 @@ Knowledge cards represent magical skills and wisdom:
 - Deck builder for custom creature selections
 - Enhanced visual effects and animations
 
+## 📝 Technical Documentation
+
+- [Authentication & Profile Sync](AUTH_PROFILE_SYNC.md): Details on the authentication and profile synchronization implementation
+- [RLS Policies](supabase/migrations/20250519_auth_profile_sync.sql): Database security policies
+- [Repair Utility](scripts/repair-orphaned-accounts.ts): Tool for fixing orphaned accounts
+
 ## 💻 Development Commands
 
 ```bash
@@ -116,6 +122,9 @@ npm test
 
 # Reset a test game (for development)
 node reset-game.js
+
+# Verify authentication implementation
+./apply-auth-profile-sync.sh
 ```
 
 ## 🤝 Contributing

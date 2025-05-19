@@ -61,6 +61,30 @@ const authenticateWithWallet = async (walletAddress: string) => {
     }
 
     console.log('[authenticateWithWallet] Authentication successful:', data);
+    
+    // Phase 2 Enhancement: Create/update profile immediately after authentication
+    if (data && data.user) {
+      try {
+        const userId = data.user.id;
+        console.log('[Wallet Auth] Creating/updating profile for user:', userId);
+        const { error } = await supabase.from('profiles').upsert({
+          id: userId,
+          username: `Player_${userId.substring(0, 6)}`,
+          eth_address: walletAddress,
+          updated_at: new Date().toISOString(),
+          created_at: new Date().toISOString()
+        }, { onConflict: 'id' });
+        
+        if (error) {
+          console.error('[Wallet Auth] Error ensuring profile exists:', error.message);
+        } else {
+          console.log('[Wallet Auth] Profile created/updated successfully');
+        }
+      } catch (e) {
+        console.error('[Wallet Auth] Exception while creating profile:', e instanceof Error ? e.message : String(e));
+      }
+    }
+    
     return data;
   } catch (error) {
     console.error('[authenticateWithWallet] Authentication failed:', error);
