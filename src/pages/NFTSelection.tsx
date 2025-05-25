@@ -2,10 +2,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import Card from '../components/Card.js';
 import { Creature } from '../game/types.js';
-import { supabase, RealtimeChannel, getCorrectPlayerId } from '../utils/supabase.js'; // Import supabase client, RealtimeChannel, and getCorrectPlayerId
-import { usePlayerIdentification } from '../hooks/usePlayerIdentification.js';
+import { supabase, RealtimeChannel } from '../utils/supabase.js'; // Import supabase client and RealtimeChannel
+import { useAuth } from '../hooks/useAuth.js';
 // --- Import the base creature data ---
-import creatureData from '../assets/creatures.json';
+import creatureData from '../assets/creatures.json' with { type: 'json' };
 
 // --- Define ALL_CREATURES constant ---
 const ALL_CREATURES: Creature[] = creatureData as Creature[];
@@ -26,7 +26,9 @@ const NFTSelection: React.FC = () => {
 
   const navigate = useNavigate();
   const { gameId } = useParams<{ gameId: string }>();
-  const [currentPlayerId, , playerError] = usePlayerIdentification();
+  const { user, error: authError } = useAuth();
+  const currentPlayerId = user?.id;
+  const playerError = authError;
   const realtimeChannelRef = useRef<RealtimeChannel | null>(null);
   const fetchIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const pollingRef = useRef<NodeJS.Timeout | null>(null); // Fallback polling
@@ -86,12 +88,9 @@ const NFTSelection: React.FC = () => {
       if (_fetchError) throw _fetchError;
       if (!gameData) throw new Error("Game not found during confirmation.");
 
-        // Normalize both stored IDs and currentPlayerId for comparison
-        const normalizedCurrent = currentPlayerId ? getCorrectPlayerId(currentPlayerId) : null;
-        const normalized1 = getCorrectPlayerId(gameData.player1_id);
-        const normalized2 = gameData.player2_id ? getCorrectPlayerId(gameData.player2_id) : null;
-        const isPlayer1 = normalizedCurrent && normalized1 === normalizedCurrent;
-        const isPlayer2 = normalizedCurrent && normalized2 === normalizedCurrent;
+        // Direct comparison since we're using Supabase user IDs now
+        const isPlayer1 = currentPlayerId && gameData.player1_id === currentPlayerId;
+        const isPlayer2 = currentPlayerId && gameData.player2_id === currentPlayerId;
 
       if (!isPlayer1 && !isPlayer2) {
         throw new Error("You are not part of this game (confirmation check).");
@@ -232,10 +231,8 @@ const NFTSelection: React.FC = () => {
 
 
         // Determine if current player is player1 or player2
-        // Normalize IDs before comparison
-        const normalizedCurrent = getCorrectPlayerId(currentPlayerId);
-        const normalizedP1 = getCorrectPlayerId(gameData.player1_id);
-        const isPlayer1 = normalizedP1 === normalizedCurrent;
+        // Direct comparison since we're using Supabase user IDs now
+        const isPlayer1 = gameData.player1_id === currentPlayerId;
 
         const hand = isPlayer1 ? gameData.player1_dealt_hand : gameData.player2_dealt_hand;
 
@@ -324,9 +321,7 @@ const NFTSelection: React.FC = () => {
             navigate(`/game/${gameId}`);
           } else if (updatedGame.state && updatedGame.player1_id) { // Ensure player1_id exists before using it
             // Check if current player has completed selection
-            const normalizedCurrent = currentPlayerId ? getCorrectPlayerId(currentPlayerId) : null;
-            const normalizedP1 = getCorrectPlayerId(updatedGame.player1_id); // player1_id should be part of the payload if it's used
-            const isPlayer1Realtime = normalizedP1 === normalizedCurrent; // Renamed to avoid conflict
+            const isPlayer1Realtime = updatedGame.player1_id === currentPlayerId; // Direct comparison now
             const playerSelectionCompleteKey = isPlayer1Realtime ? 'player1SelectionComplete' : 'player2SelectionComplete';
             
             if (updatedGame.state[playerSelectionCompleteKey] && !waiting) {

@@ -141,43 +141,78 @@ serve(async (req) => {
       return errorResponse("Internal server error: JWT secret missing", 500);
     }
 
-    // Helper function to convert ethAddress to a UUID-like format
-    function ethAddressToUUID(address: string): string {
-      // Remove 0x prefix and ensure lowercase
-      const cleanAddress = address.toLowerCase().replace('0x', '');
-      
-      // Pad or truncate to ensure we have exactly 32 hex characters (16 bytes)
-      let normalizedHex = cleanAddress;
-      if (normalizedHex.length > 32) {
-        normalizedHex = normalizedHex.substring(0, 32);
-      } else {
-        while (normalizedHex.length < 32) {
-          normalizedHex += '0';
+    // Create or sign in the user with Supabase Auth using the ETH address as email
+    const userEmail = `${evmAddress}@metamask.local`;
+    const uniqueUserId = crypto.randomUUID(); // Generate a proper UUID for the user
+    
+    console.log("[moralis-auth] INFO: Creating/signing in Supabase Auth user with email:", userEmail);
+
+    // Try to sign in the user first, if that fails, create a new user
+    let authUser;
+    try {
+      const { data: signInData, error: signInError } = await supabase.auth.admin.signInWithPassword({
+        email: userEmail,
+        password: evmAddress // Use ETH address as password (will be hashed)
+      });
+
+      if (signInError && signInError.message.includes('Invalid login credentials')) {
+        // User doesn't exist, create new user
+        console.log("[moralis-auth] INFO: User not found, creating new user");
+        const { data: signUpData, error: signUpError } = await supabase.auth.admin.createUser({
+          email: userEmail,
+          password: evmAddress,
+          email_confirm: true,
+          user_metadata: {
+            eth_address: evmAddress,
+            username: userProfile.username || `Player_${evmAddress.substring(2, 8)}`,
+            avatar_url: userProfile.avatar_url || null
+          }
+        });
+
+        if (signUpError) {
+          console.error("[moralis-auth] ERROR: Failed to create user:", signUpError);
+          return errorResponse(`Failed to create user: ${signUpError.message}`, 500);
         }
+
+        authUser = signUpData.user;
+        console.log("[moralis-auth] INFO: New user created:", authUser?.id);
+      } else if (signInError) {
+        console.error("[moralis-auth] ERROR: Failed to sign in user:", signInError);
+        return errorResponse(`Failed to authenticate user: ${signInError.message}`, 500);
+      } else {
+        authUser = signInData.user;
+        console.log("[moralis-auth] INFO: Existing user signed in:", authUser?.id);
       }
-      
-      // Format as UUID
-      return [
-        normalizedHex.substring(0, 8),
-        normalizedHex.substring(8, 12),
-        normalizedHex.substring(12, 16),
-        normalizedHex.substring(16, 20),
-        normalizedHex.substring(20, 32)
-      ].join('-');
+    } catch (authError: any) {
+      console.error("[moralis-auth] ERROR: Auth operation failed:", authError);
+      return errorResponse(`Authentication failed: ${authError.message}`, 500);
     }
 
-    // Create UUID from Ethereum address
-    const uuidFromAddress = ethAddressToUUID(evmAddress);
-    console.log("[moralis-auth] INFO: Generated UUID from ETH address:", uuidFromAddress);
+    if (!authUser) {
+      return errorResponse("Failed to authenticate user", 500);
+    }
+
+    // Update user profile with the Supabase Auth user ID
+    console.log("[moralis-auth] INFO: Ensuring user profile exists for auth user:", authUser.id);
+    const { data: updatedProfileData, error: updatedProfileError } = await supabase
+      .rpc("ensure_user_profile_exists", { 
+        p_evm_address: evmAddress,
+        p_user_id: authUser.id 
+      });
+
+    if (updatedProfileError) {
+      console.error("[moralis-auth] ERROR: Error calling ensure_user_profile_exists:", JSON.stringify(updatedProfileError));
+      return errorResponse(`Failed to ensure user profile: ${updatedProfileError.message}`, 500);
+    }
 
     const expirationTime = Math.floor(Date.now() / 1000) + (60 * 60 * 24 * 7); // 7 days
     const payload = {
-      sub: uuidFromAddress, // Use UUID-formatted string instead of raw ETH address
+      sub: authUser.id, // Use the actual Supabase Auth user ID
       role: "authenticated",
-      email: userProfile.email || "",
+      email: authUser.email || userEmail,
       user_metadata: {
-        username: userProfile.username,
-        avatar_url: userProfile.avatar_url,
+        username: authUser.user_metadata?.username || userProfile.username,
+        avatar_url: authUser.user_metadata?.avatar_url || userProfile.avatar_url,
         eth_address: evmAddress, // Store the actual ETH address in metadata
       },
       aud: "authenticated",

@@ -1,53 +1,38 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { usePlayerIdentification } from '../hooks/usePlayerIdentification.js';
-import { authenticateWithMoralis } from '../utils/wallet.js';
-import { supabase } from '../utils/supabase.js';
+import { useAuth } from '../hooks/useAuth.js';
 
 const Home: React.FC = () => {
   const navigate = useNavigate();
-  const [playerId, user, loading, authError] = usePlayerIdentification();
+  const { user, loading, error, signInWithMetaMask } = useAuth();
   const [authLoading, setAuthLoading] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(authError);
+  const [authError, setAuthError] = useState<string | null>(error);
 
   useEffect(() => {
-    if (!loading && playerId) {
+    if (!loading && user) {
       console.log('[Home] User already logged in, redirecting to /lobby');
       navigate('/lobby');
     }
-    if (authError) {
-      setError(authError);
+    if (error) {
+      setAuthError(error);
     }
-  }, [playerId, loading, navigate, authError]);
+  }, [user, loading, navigate, error]);
 
   const handleConnectWallet = async () => {
     setAuthLoading(true);
-    setError(null);
+    setAuthError(null);
     
     try {
-      const { user, address } = await authenticateWithMoralis();
-      console.log('[Home] Successfully authenticated with wallet:', address);
-      console.log('[Home] User profile:', user);
-      
-      // Force a manual refresh of authentication state to ensure the hook picks up the new session
-      await supabase.auth.refreshSession();
-      
-      // Even if supabase.auth.getUser() fails, we can use our fallback mechanism      
-      try {
-        const { data } = await supabase.auth.getUser();
-        console.log('[Home] Current supabase user after auth:', data?.user);
-      } catch (userError) {
-        console.warn('[Home] Could not get user from Supabase, using fallback:', userError);
+      const result = await signInWithMetaMask();
+      if (result.success) {
+        console.log('[Home] Successfully authenticated with MetaMask');
+        // Navigation will happen automatically via useEffect when user state updates
+      } else {
+        setAuthError(result.error || 'Authentication failed');
       }
-      
-      // Store the user data in localStorage as a backup
-      localStorage.setItem('mythical_beings_user', JSON.stringify(user));
-      
-      // Manual navigation - don't rely solely on the useEffect since we have workarounds
-      navigate('/lobby');
-    } catch (err) {
-      console.error('[Home] Wallet authentication error:', err);
-      setError(err instanceof Error ? err.message : 'Failed to authenticate with wallet');
+    } catch (error: any) {
+      console.error('[Home] Authentication error:', error);
+      setAuthError(error.message || 'Authentication failed');
     } finally {
       setAuthLoading(false);
     }
@@ -62,7 +47,7 @@ const Home: React.FC = () => {
       <img src="/images/assets/LogoXogoBrancoTransparenteEN.png" alt="Mythical Beings Logo" className="w-1/3 h-auto mb-8" />
       <h1 className="text-4xl font-bold mb-2">Welcome to Mythical Beings</h1>
       
-      {!playerId && (
+      {!user && (
         <div className="text-center">
           <p className="text-lg text-gray-300 mb-8">Connect your wallet to enter the world of Mythical Beings!</p>
           
@@ -85,9 +70,9 @@ const Home: React.FC = () => {
             )}
           </button>
           
-          {error && (
+          {authError && (
             <div className="mt-4 bg-red-600/20 border border-red-600 text-red-100 p-3 rounded-md">
-              {error}
+              {authError}
             </div>
           )}
         </div>

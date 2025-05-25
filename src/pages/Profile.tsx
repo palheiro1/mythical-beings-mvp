@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../utils/supabase.js';
 import NavBar from '../components/NavBar.js'; // Import NavBar
-import { usePlayerIdentification } from '../hooks/usePlayerIdentification.js';
+import { useAuth } from '../hooks/useAuth.js';
 
 interface ProfileData {
   username: string | null;
@@ -13,7 +13,8 @@ interface ProfileData {
 }
 
 const ProfilePage: React.FC = () => {
-  const [playerId, _, authLoading] = usePlayerIdentification();
+  const { user, loading: authLoading } = useAuth();
+  const playerId = user?.id;
   const [loading, setLoading] = useState(true);
   const [profileData, setProfileData] = useState<ProfileData>({
     username: null,

@@ -1,9 +1,8 @@
 import { Link } from 'react-router-dom';
-import { usePlayerIdentification } from '../hooks/usePlayerIdentification.js';
-import { signOut } from '../utils/wallet.js';
+import { useAuth } from '../hooks/useAuth.js';
 
 const NavBar: React.FC = () => {
-  const [playerId, user, loading] = usePlayerIdentification();
+  const { user, loading, signOut } = useAuth();
 
   const handleSignOut = async () => {
     try {
@@ -14,11 +13,14 @@ const NavBar: React.FC = () => {
     }
   };
 
-  // Truncate EVM address for display
-  const formatAddress = (address: string | null) => {
-    if (!address) return '';
-    return `${address.substring(0, 6)}...${address.substring(address.length - 4)}`;
+  // Format ETH address for display
+  const formatAddress = (ethAddress: string | null) => {
+    if (!ethAddress) return '';
+    return `${ethAddress.substring(0, 6)}...${ethAddress.substring(ethAddress.length - 4)}`;
   };
+
+  // Get ETH address from user metadata
+  const ethAddress = user?.user_metadata?.eth_address;
 
   return (
     <nav className="bg-gray-800 bg-opacity-80 backdrop-blur-sm text-white p-3 shadow-md flex justify-between items-center sticky top-0 z-30">
@@ -38,7 +40,7 @@ const NavBar: React.FC = () => {
           <div className="h-8 w-24 bg-gray-700 rounded animate-pulse"></div>
         ) : (
           <>
-            {!playerId ? (
+            {!user ? (
               <Link to="/">
                 <button className="bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold py-1 px-3 rounded-md transition-colors duration-200">
                   Connect Wallet
@@ -47,7 +49,7 @@ const NavBar: React.FC = () => {
             ) : (
               <div className="flex items-center gap-3">
                 <span className="text-sm font-mono bg-gray-700 px-2 py-1 rounded">
-                  {formatAddress(playerId)}
+                  {formatAddress(ethAddress)}
                 </span>
                 <button 
                   onClick={handleSignOut}

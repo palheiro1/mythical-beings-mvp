@@ -1,7 +1,7 @@
 // filepath: /home/usuario/Documentos/GitHub/CardGame/mythical-beings-mvp/src/utils/wallet.ts
 import { ethers } from 'ethers';
 import Moralis from 'moralis';
-import { supabase, ethAddressToUUID } from './supabase.js';
+import { supabase } from './supabase.js';
 
 declare global {
   interface Window {
@@ -152,9 +152,8 @@ export async function authenticateWithMoralis() {
       const payload = JSON.parse(atob(tokenParts[1]));
       console.log('[wallet] JWT payload:', payload);
       
-      // Store both the ETH address and the UUID format in localStorage for reference
+      // Store both the ETH address for reference (no UUID conversion needed)
       localStorage.setItem('eth_address', userProfileFromFunction.id);
-      localStorage.setItem('eth_address_uuid', ethAddressToUUID(userProfileFromFunction.id));
       
       const result = await supabase.auth.setSession({
         access_token: token,
@@ -249,11 +248,8 @@ export async function authenticateWithMoralis() {
 
     console.log('[wallet] Supabase session set successfully:', sessionData);
 
-    // The user object from setSession might be more aligned with Supabase's internal state
-    // or use supabase.auth.getUser() if preferred after setting session.
-    // For now, let's return the user profile we got from the function, 
-    // as AuthContext/usePlayerIdentification will pick up the official Supabase user.
-    return { user: userProfileFromFunction, address, sessionUser: sessionData?.user };
+    // Return the user information
+    return { user: userProfileFromFunction, address, sessionUser: sessionData?.session?.user };
   } catch (error) {
     console.error('Authentication error:', error);
     throw error;

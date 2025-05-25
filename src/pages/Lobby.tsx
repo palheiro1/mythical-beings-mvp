@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { usePlayerIdentification } from '../hooks/usePlayerIdentification.js';
-import { supabase, getAvailableGames, createGame, joinGame, getProfile, getCorrectPlayerId } from '../utils/supabase.js';
+import { useAuth } from '../hooks/useAuth.js';
+import { supabase, getAvailableGames, createGame, joinGame, getProfile } from '../utils/supabase.js';
 import { AvailableGame } from '../game/types.js';
 import { v4 as uuidv4 } from 'uuid';
 import { RealtimeChannel, RealtimePresenceState } from '@supabase/supabase-js';
@@ -94,7 +94,9 @@ const authenticateWithWallet = async (walletAddress: string) => {
 
 const Lobby: React.FC = () => {
   const navigate = useNavigate();
-  const [playerId, _, idLoading, playerError] = usePlayerIdentification();
+  const { user, loading: idLoading, error: authError } = useAuth();
+  const playerId = user?.id;
+  const playerError = authError;
   const [availableGames, setAvailableGames] = useState<GameWithUsername[]>([]);
   const [loadingGames, setLoadingGames] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -396,14 +398,13 @@ const Lobby: React.FC = () => {
 
         if (fetchError) throw fetchError;
 
-        const formattedPlayerId = getCorrectPlayerId(playerId);
-        if (gameData && (gameData.player1_id === formattedPlayerId || gameData.player2_id === formattedPlayerId || 
-                          gameData.player1_id === playerId || gameData.player2_id === playerId)) {
+        // Direct comparison since we're using Supabase user IDs now
+        if (gameData && (gameData.player1_id === playerId || gameData.player2_id === playerId)) {
           console.log(`[Lobby] User is already in game ${gameId}. Checking status...`);
           if (gameData.status === 'selecting' || gameData.status === 'active' || (gameData.player1_dealt_hand && gameData.player1_dealt_hand.length > 0)) {
             console.log(`[Lobby] Game status is '${gameData.status}'. Navigating to NFT Selection...`);
             navigate(`/nft-selection/${gameId}`);
-          } else if (gameData.status === 'waiting' && (gameData.player2_id === formattedPlayerId || gameData.player2_id === playerId)) {
+          } else if (gameData.status === 'waiting' && gameData.player2_id === playerId) {
             setNotification('You seem to be in the game, but setup might be incomplete. Trying to initiate setup...');
             setTimeout(() => setNotification(null), 4000);
             await supabase.functions.invoke('deal-cards', { body: { gameId } });
@@ -454,11 +455,11 @@ const Lobby: React.FC = () => {
 
     // Create profile record if needed
     try {
-      const formattedPlayerId = getCorrectPlayerId(playerId);
+      // Use Supabase user ID directly now
       setNotification('Setting up player profile...');
       await supabase.from('profiles').upsert({
-        id: formattedPlayerId,
-        username: `Player_${formattedPlayerId.substring(0, 6)}`,
+        id: playerId,
+        username: `Player_${playerId.substring(0, 6)}`,
         updated_at: new Date().toISOString()
       }, { onConflict: 'id' });
     } catch (profileError) {

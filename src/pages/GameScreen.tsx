@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext.js';
-import { usePlayerIdentification } from '../hooks/usePlayerIdentification.js';
+import { useAuth } from '../hooks/useAuth.js';
 import { useGameInitialization } from '../hooks/useGameInitialization.js';
 import { useGameActions } from '../hooks/useGameActions.js';
 import { useTurnTimer } from '../hooks/useTurnTimer.js'; // Import the timer hook
@@ -21,11 +20,12 @@ interface ProfileInfo {
 
 const GameScreen: React.FC = () => {
   const navigate = useNavigate();
-  const { loading: authLoading } = useAuth();
-  const [currentPlayerId, , , , idLoading] = usePlayerIdentification();
+  const { user, loading: authLoading } = useAuth();
+  const currentPlayerId = user?.id;
+  const idLoading = authLoading;
   const [error, setError] = useState<string | null>(null);
 
-  const [gameState, dispatch, gameLoading, gameId] = useGameInitialization(currentPlayerId, setError);
+  const [gameState, dispatch, gameLoading, gameId] = useGameInitialization(currentPlayerId || null, setError);
 
   const [isMyTurn, setIsMyTurn] = useState(false);
   const [playerProfiles, setPlayerProfiles] = useState<{ [key: string]: ProfileInfo }>({});
@@ -42,9 +42,39 @@ const GameScreen: React.FC = () => {
 
   // --- Turn Timer --- 
   const TURN_DURATION_SECONDS = 30;
+  
+  // Map broader GameState phase types to narrower component phase types
+  const mapPhaseForTimer = (phase: string | undefined): 'knowledge' | 'action' | 'end' | null => {
+    if (!phase) return null;
+    switch (phase) {
+      case 'knowledge':
+      case 'action':
+      case 'end':
+        return phase;
+      case 'gameOver':
+      case 'setup':
+      default:
+        return null; // For non-timer phases, return null to disable timer
+    }
+  };
+
+  const mapPhaseForTableArea = (phase: string | undefined): 'knowledge' | 'action' | 'end' => {
+    if (!phase) return 'end';
+    switch (phase) {
+      case 'knowledge':
+      case 'action':
+      case 'end':
+        return phase;
+      case 'gameOver':
+      case 'setup':
+      default:
+        return 'end'; // Default to 'end' for invalid phases
+    }
+  };
+  
   const remainingTime = useTurnTimer({
     isMyTurn,
-    phase: gameState?.phase ?? null,
+    phase: mapPhaseForTimer(gameState?.phase),
     turnDurationSeconds: TURN_DURATION_SECONDS,
     onTimerEnd: handleEndTurn, // Call handleEndTurn when timer ends
     gameTurn: gameState?.turn ?? 0,
@@ -208,7 +238,7 @@ const GameScreen: React.FC = () => {
               currentPlayerHand={player.hand}
               opponentPlayerHand={opponent.hand}
               isMyTurn={isMyTurn}
-              phase={gameState.phase}
+              phase={mapPhaseForTableArea(gameState.phase)}
               selectedKnowledgeId={selectedKnowledgeId}
               onHandCardClick={handleHandClick}
             />
@@ -224,7 +254,7 @@ const GameScreen: React.FC = () => {
               currentPlayer={player}
               opponentPlayer={opponent}
               isMyTurn={isMyTurn}
-              phase={gameState.phase}
+              phase={mapPhaseForTableArea(gameState.phase)}
               selectedKnowledgeId={selectedKnowledgeId}
               onCreatureClickForSummon={handleCreatureClick}
               onRotateCreature={handleCreatureClick}
@@ -240,7 +270,7 @@ const GameScreen: React.FC = () => {
             marketCards={gameState.market}
             deckCount={gameState.knowledgeDeck.length}
             isMyTurn={isMyTurn}
-            phase={gameState.phase}
+            phase={mapPhaseForTableArea(gameState.phase)}
             onDrawKnowledge={handleMarketClick}
           />
         </div>

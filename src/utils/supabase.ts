@@ -6,9 +6,6 @@ export type RealtimeChannel = SupabaseRealtimeChannel;
 // Load Supabase URL and Anon Key from environment variables
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-// For admin operations like bypassing RLS (use cautiously!)
-const supabaseServiceKey = import.meta.env.VITE_SUPABASE_SERVICE_KEY;
-
 if (!supabaseUrl) {
   throw new Error("VITE_SUPABASE_URL is not set. Please check your .env.local file.");
 }
@@ -16,108 +13,7 @@ if (!supabaseAnonKey) {
   throw new Error("VITE_SUPABASE_ANON_KEY is not set. Please check your .env.local file.");
 }
 
-// Optional service client for admin operations (will be null if key not provided)
-let supabaseAdmin: SupabaseClient | null = null;
-if (supabaseServiceKey) {
-  supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false
-    }
-  });
-}
-
-/**
- * Helper function to convert an Ethereum address to a UUID format
- * This ensures consistent ID format between the JWT and database operations
- * @param address The Ethereum address to convert to UUID
- * @returns UUID string formatted from the Ethereum address
- */
-export function ethAddressToUUID(address: string): string {
-  // Remove 0x prefix and ensure lowercase
-  const cleanAddress = address.toLowerCase().replace('0x', '');
-  
-  // Pad or truncate to ensure we have exactly 32 hex characters (16 bytes)
-  let normalizedHex = cleanAddress;
-  if (normalizedHex.length > 32) {
-    normalizedHex = normalizedHex.substring(0, 32);
-  } else {
-    while (normalizedHex.length < 32) {
-      normalizedHex += '0';
-    }
-  }
-  
-  // Format as UUID
-  return [
-    normalizedHex.substring(0, 8),
-    normalizedHex.substring(8, 12),
-    normalizedHex.substring(12, 16),
-    normalizedHex.substring(16, 20),
-    normalizedHex.substring(20, 32)
-  ].join('-');
-}
-
-/**
- * Helper function to get the correct player ID format for database operations
- * This checks localStorage for the original Ethereum address format when needed
- * @param id Either Ethereum address or UUID format
- * @returns The correct ID format to use for database operations
- */
-export function getCorrectPlayerId(id: string): string {
-  if (!id) {
-    console.error('[getCorrectPlayerId] No ID provided');
-    return '';
-  }
-  
-  // If it's already a UUID format, return it
-  if (id.includes('-') && id.length === 36) {
-    return id;
-  }
-  
-  // If it's an ETH address, convert it to UUID
-  if (id.startsWith('0x') && id.length === 42) {
-    return ethAddressToUUID(id);
-  }
-  
-  // Check if we have the original ETH address in localStorage
-  try {
-    const storedEthAddress = localStorage.getItem('eth_address');
-    if (storedEthAddress && storedEthAddress.startsWith('0x')) {
-      console.log(`[getCorrectPlayerId] Using stored ETH address: ${storedEthAddress.substring(0, 10)}...`);
-      return ethAddressToUUID(storedEthAddress);
-    }
-    
-    // Check alternative storage formats
-    const storedSession = localStorage.getItem('sb-session');
-    if (storedSession) {
-      try {
-        const sessionData = JSON.parse(storedSession);
-        if (sessionData?.user?.user_metadata?.eth_address) {
-          console.log(`[getCorrectPlayerId] Using ETH address from session metadata`);
-          return ethAddressToUUID(sessionData.user.user_metadata.eth_address);
-        }
-      } catch (e) {
-        console.warn('[getCorrectPlayerId] Failed to parse session data', e);
-      }
-    }
-  } catch (e) {
-    console.warn('[getCorrectPlayerId] Error accessing localStorage:', e);
-  }
-  
-  // If we reach here and have a non-empty id that's not in standard format,
-  // try our best to convert it
-  if (id && !id.includes('-')) {
-    // Clean up the id - remove any 0x prefix and ensure 32 chars
-    console.log(`[getCorrectPlayerId] Converting non-standard ID format: ${id.substring(0, 10)}...`);
-    return ethAddressToUUID(id);
-  }
-  
-  console.warn(`[getCorrectPlayerId] Could not determine correct ID format for: ${id}`);
-  return id; // Return as-is as a last resort
-  
-  // If all else fails, return the original id
-  return id;
-}
+// Legacy functions removed - using Supabase Auth user IDs directly
 
 // Create Supabase client with default authentication
 export const supabase: SupabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
@@ -204,15 +100,12 @@ async function ensureProfileExists(userId: string, ethAddress?: string) {
 
 export async function createGame(gameId: string, player1Id: string, betAmount: number): Promise<any | null> {
   try {
-    // Ensure player1Id is in the correct format (UUID)
-    const formattedPlayerId = getCorrectPlayerId(player1Id);
-    
     // Get current session info
     const { data: sessionData } = await supabase.auth.getSession();
     const sessionUserId = sessionData?.session?.user?.id;
     
-    // Use session user ID if available, otherwise use formatted player ID
-    const effectivePlayerId = sessionUserId || formattedPlayerId;
+    // Use session user ID if available, otherwise use provided player ID directly
+    const effectivePlayerId = sessionUserId || player1Id;
     
     console.log(`[createGame] Creating game ${gameId} by player ${player1Id} (using ID: ${effectivePlayerId}) with bet ${betAmount}`);
     
@@ -259,17 +152,14 @@ export async function createGame(gameId: string, player1Id: string, betAmount: n
  */
 export async function joinGame(gameId: string, player2Id: string): Promise<any | null> {
   try {
-    // Ensure player2Id is in the correct format (UUID)
-    const formattedPlayerId = getCorrectPlayerId(player2Id);
-    
     // Get current session info
     const { data: sessionData } = await supabase.auth.getSession();
     const sessionUserId = sessionData?.session?.user?.id;
     
-    // Use session user ID if available, otherwise use formatted player ID
-    const effectivePlayerId = sessionUserId || formattedPlayerId;
+    // Use session user ID if available, otherwise use provided player ID directly
+    const effectivePlayerId = sessionUserId || player2Id;
     
-    console.log(`[joinGame] Joining game ${gameId} as player ${player2Id} (formatted: ${formattedPlayerId})`);
+    console.log(`[joinGame] Joining game ${gameId} as player ${player2Id} (using ID: ${effectivePlayerId})`);
     
     // Ensure profile exists before joining game
     await ensureProfileExists(effectivePlayerId, player2Id);
@@ -449,14 +339,11 @@ export async function logMove(gameId: string, playerId: string, action: string, 
  */
 export async function getProfile(userId: string): Promise<any | null> {
   try {
-    // Ensure userId is in the correct format
-    const formattedUserId = getCorrectPlayerId(userId);
-    
-    console.log(`[getProfile] Fetching profile for ${userId} (formatted: ${formattedUserId})`);
+    console.log(`[getProfile] Fetching profile for ${userId}`);
     const { data, error, status } = await supabase
       .from('profiles')
             .select(`username, avatar_url, created_at`)
-      .eq('id', formattedUserId)
+      .eq('id', userId)
       .single();
 
     if (error && status !== 406) { // 406: No rows found, not necessarily an error here
@@ -479,13 +366,10 @@ export async function getProfile(userId: string): Promise<any | null> {
  */
 export async function updateProfile(userId: string, updates: { username?: string; avatar_url?: string }): Promise<any | null> {
   try {
-    // Ensure userId is in the correct format
-    const formattedUserId = getCorrectPlayerId(userId);
-    
-    console.log(`[updateProfile] Updating profile for ${userId} (formatted: ${formattedUserId})`);
+    console.log(`[updateProfile] Updating profile for ${userId}`);
     const profileUpdates = {
       ...updates,
-      id: formattedUserId, // Ensure the ID is included for upsert and in correct format
+      id: userId, // Ensure the ID is included for upsert
       updated_at: new Date().toISOString(),
     };
 
