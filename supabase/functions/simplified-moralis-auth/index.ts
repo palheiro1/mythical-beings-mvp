@@ -67,7 +67,7 @@ function validateSignature(message: string, signature: string): string | null {
 }
 
 serve(async (req) => {
-  console.log(`[native-auth] ${req.method} ${req.url}`);
+  console.log(`[simplified-auth] ${req.method} ${req.url}`);
   
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
@@ -80,11 +80,15 @@ serve(async (req) => {
   }
 
   try {
+    console.log("[simplified-auth] Starting authentication process");
+    
     // Parse request body
     let body;
     try {
       body = await req.json();
+      console.log("[simplified-auth] Request body parsed successfully");
     } catch (error) {
+      console.error("[simplified-auth] Failed to parse request body:", error);
       return errorResponse("Invalid request body", 400);
     }
 
@@ -92,6 +96,7 @@ serve(async (req) => {
 
     // Validate required fields
     if (!message || !signature) {
+      console.error("[simplified-auth] Missing required fields:", { hasMessage: !!message, hasSignature: !!signature });
       return errorResponse("Missing message or signature", 400);
     }
 
@@ -100,21 +105,27 @@ serve(async (req) => {
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     const jwtSecret = Deno.env.get("JWT_SECRET") || Deno.env.get("SUPABASE_JWT_SECRET");
 
+    console.log("[simplified-auth] Environment check:", { 
+      hasSupabaseUrl: !!supabaseUrl, 
+      hasServiceRoleKey: !!serviceRoleKey,
+      hasJwtSecret: !!jwtSecret
+    });
+
     if (!supabaseUrl || !serviceRoleKey || !jwtSecret) {
-      console.error("[native-auth] Missing environment variables");
+      console.error("[simplified-auth] Missing environment variables");
       return errorResponse("Server configuration error", 500);
     }
 
     // Verify signature using our native approach
-    console.log("[native-auth] Verifying signature");
+    console.log("[simplified-auth] Verifying signature");
     const verifiedAddress = validateSignature(message, signature);
 
     if (!verifiedAddress) {
-      console.error("[native-auth] Signature verification failed");
+      console.error("[simplified-auth] Signature verification failed");
       return errorResponse("Invalid signature", 400);
     }
 
-    console.log("[native-auth] Signature verified for address:", verifiedAddress);
+    console.log("[simplified-auth] Signature verified for address:", verifiedAddress);
 
     // Create Supabase client
     const supabase = createClient(supabaseUrl, serviceRoleKey);
@@ -122,7 +133,7 @@ serve(async (req) => {
     // Create unique email for this ETH address
     const userEmail = `${verifiedAddress.toLowerCase()}@metamask.local`;
     
-    console.log("[native-auth] Creating/retrieving Supabase Auth user");
+    console.log("[simplified-auth] Creating/retrieving Supabase Auth user");
 
     // Try to get existing user first
     const { data: existingUsers } = await supabase.auth.admin.listUsers();
@@ -133,10 +144,10 @@ serve(async (req) => {
 
     if (!authUser) {
       // Create new user
-      console.log("[native-auth] Creating new Supabase Auth user");
+      console.log("[simplified-auth] Creating new Supabase Auth user");
       const { data: newUserData, error: createError } = await supabase.auth.admin.createUser({
         email: userEmail,
-        password: crypto.randomUUID(), // Random password since we use signature auth
+        password: 'metamask-verified-user', // Consistent password for all MetaMask users
         email_confirm: true,
         user_metadata: {
           eth_address: verifiedAddress.toLowerCase(),
@@ -146,14 +157,24 @@ serve(async (req) => {
       });
 
       if (createError) {
-        console.error("[native-auth] Failed to create user:", createError);
+        console.error("[simplified-auth] Failed to create user:", createError);
         return errorResponse(`Failed to create user: ${createError.message}`, 500);
       }
 
       authUser = newUserData.user;
-      console.log("[native-auth] New user created:", authUser?.id);
+      console.log("[simplified-auth] New user created:", authUser?.id);
     } else {
-      console.log("[native-auth] Existing user found:", authUser.id);
+      console.log("[simplified-auth] Existing user found:", authUser.id);
+      
+      // Ensure the existing user has the correct password for signin
+      const { error: updateError } = await supabase.auth.admin.updateUserById(authUser.id, {
+        password: 'metamask-verified-user'
+      });
+      
+      if (updateError) {
+        console.error("[simplified-auth] Failed to update user password:", updateError);
+        // Don't fail here, just log the warning
+      }
     }
 
     if (!authUser) {
@@ -161,7 +182,7 @@ serve(async (req) => {
     }
 
     // Create/update profile in profiles table
-    console.log("[native-auth] Ensuring profile exists");
+    console.log("[simplified-auth] Ensuring profile exists");
     const { error: profileError } = await supabase
       .from('profiles')
       .upsert({
@@ -172,63 +193,85 @@ serve(async (req) => {
       });
 
     if (profileError) {
-      console.error("[native-auth] Profile creation failed:", profileError);
+      console.error("[simplified-auth] Profile creation failed:", profileError);
       return errorResponse(`Profile creation failed: ${profileError.message}`, 500);
     }
 
-    console.log("[native-auth] Profile ensured for user:", authUser.id);
+    console.log("[simplified-auth] Profile ensured for user:", authUser.id);
 
-    // Generate JWT token
-    const expirationTime = Math.floor(Date.now() / 1000) + (60 * 60 * 24 * 7); // 7 days
-    const payload = {
-      sub: authUser.id, // Use Supabase Auth user ID directly
-      role: "authenticated",
-      email: authUser.email,
-      user_metadata: {
-        username: authUser.user_metadata?.username || `Player_${verifiedAddress.substring(2, 8)}`,
-        eth_address: verifiedAddress.toLowerCase(),
-        authentication_method: 'metamask'
-      },
-      aud: "authenticated",
-      iss: supabaseUrl,
-      exp: expirationTime,
-    };
-
-    // Convert the secret to a CryptoKey
-    const cryptoKey = await crypto.subtle.importKey(
-      "raw",
-      new TextEncoder().encode(jwtSecret),
-      { name: "HMAC", hash: "SHA-256" },
-      false,
-      ["sign", "verify"]
-    );
-
-    const header: JoseHeader = {
-      alg: "HS256",
-      typ: "JWT",
-    };
-
-    const token = await create(header, payload, cryptoKey);
-    console.log("[native-auth] JWT token generated successfully");
-
-    // Return successful response
-    return new Response(JSON.stringify({ 
-      token, 
-      user: {
-        id: authUser.id,
+    // Use Supabase's native session creation instead of manual JWT
+    console.log("[simplified-auth] Creating session using Supabase admin methods");
+    
+    try {
+      // Use admin.signInWithPassword to create a proper session
+      const { data: sessionData, error: sessionError } = await supabase.auth.admin.generateLink({
+        type: 'invite',
         email: authUser.email,
-        user_metadata: authUser.user_metadata
+        options: {
+          data: authUser.user_metadata
+        }
+      });
+
+      if (sessionError) {
+        console.error("[simplified-auth] Failed to generate session link:", sessionError);
+        
+        // Fallback: try to create a session manually with simpler approach
+        console.log("[simplified-auth] Trying manual session creation...");
+        
+        // Create a simple session using admin updateUserById
+        const { data: updatedUser, error: updateError } = await supabase.auth.admin.updateUserById(
+          authUser.id,
+          {
+            user_metadata: authUser.user_metadata
+          }
+        );
+
+        if (updateError) {
+          console.error("[simplified-auth] Failed to update user:", updateError);
+          return errorResponse("Failed to create session", 500);
+        }
+
+        // Return a simplified response that we'll handle differently
+        return new Response(JSON.stringify({
+          success: true,
+          user_id: authUser.id,
+          email: authUser.email,
+          user_metadata: authUser.user_metadata,
+          // Signal that we should use signInWithPassword on client side
+          use_password_signin: true
+        }), {
+          status: 200,
+          headers: {
+            ...corsHeaders,
+            "Content-Type": "application/json",
+          }
+        });
       }
-    }), {
-      status: 200,
-      headers: {
-        ...corsHeaders,
-        "Content-Type": "application/json",
-      }
-    });
+
+      console.log("[simplified-auth] Session link generated successfully");
+
+      // Return simplified response for client to handle
+      return new Response(JSON.stringify({
+        success: true,
+        user_id: authUser.id,
+        email: authUser.email,
+        user_metadata: authUser.user_metadata,
+        // Signal that we should use signInWithPassword on client side
+        use_password_signin: true        }), {
+        status: 200,
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "application/json",
+        }
+      });
+
+    } catch (sessionCreationError) {
+      console.error("[simplified-auth] Session creation failed:", sessionCreationError);
+      return errorResponse("Session creation failed", 500);
+    }
 
   } catch (error: any) {
-    console.error("[native-auth] Critical error:", error);
+    console.error("[simplified-auth] Critical error:", error);
     return errorResponse(error.message || "Internal server error", 500);
   }
 });

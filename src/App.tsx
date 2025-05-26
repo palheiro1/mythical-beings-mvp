@@ -1,5 +1,5 @@
-import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { AuthProvider } from './context/AuthProvider.js';
 import Home from './pages/Home.js';
 import Lobby from './pages/Lobby.js';
 import GameScreen from './pages/GameScreen.js';
@@ -9,18 +9,18 @@ import HowToPlay from './pages/HowToPlay.js';
 import Leaderboard from './pages/Leaderboard.js';
 import WaitingScreen from './pages/WaitingScreen.js';
 import ProtectedRoute from './components/ProtectedRoute.js';
-import NavBar from './components/NavBar.js'; // Import NavBar
-import { useAuthProfileSync } from './hooks/useAuthProfileSync';
+import NavBar from './components/NavBar.js';
+import { useAuthProfileSync } from './hooks/useAuthProfileSync.js';
 
 // Moralis is now initialized in main.tsx to ensure polyfills are loaded first
 
-function App() {
+function AppContent() {
   // Initialize auth-profile synchronization
   useAuthProfileSync();
   
   return (
     <Router>
-      <NavBar /> {/* Add NavBar here so it's present on all pages */}
+      <NavBar />
       <Routes>
         {/* Public Route */}
         <Route path="/" element={<Home />} />
@@ -37,6 +37,14 @@ function App() {
         </Route>
       </Routes>
     </Router>
+  );
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   );
 }
 

@@ -182,7 +182,7 @@ By signing this message, you are proving ownership of this wallet address.`;
         };
       }
 
-      if (!data || !data.token) {
+      if (!data || !data.success) {
         return {
           success: false,
           error: 'Invalid response from authentication service'
@@ -190,25 +190,55 @@ By signing this message, you are proving ownership of this wallet address.`;
       }
 
       console.log('[MetaMaskAuth] Authentication successful');
-      
-      // Set the JWT token in Supabase
-      const { data: authData, error: authError } = await supabase.auth.setSession({
-        access_token: data.token,
-        refresh_token: data.token // Using same token for simplicity
+      console.log('[MetaMaskAuth] Response data:', {
+        success: data.success,
+        user_id: data.user_id,
+        email: data.email,
+        use_password_signin: data.use_password_signin
       });
+      
+      // Use password-based signin since we verified ownership via signature
+      if (data.use_password_signin) {
+        console.log('[MetaMaskAuth] Using password signin for verified user...');
+        
+        try {
+          const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+            email: data.email,
+            password: 'metamask-verified-user' // We'll set this as the password for all MetaMask users
+          });
 
-      if (authError) {
-        console.error('[MetaMaskAuth] Failed to set session:', authError);
-        return {
-          success: false,
-          error: 'Failed to establish session'
-        };
+          if (authError) {
+            console.error('[MetaMaskAuth] Password signin failed:', authError);
+            return {
+              success: false,
+              error: 'Failed to establish session'
+            };
+          }
+
+          console.log('[MetaMaskAuth] Session established successfully:', {
+            user: authData.user?.id,
+            session: !!authData.session
+          });
+          
+          return {
+            success: true,
+            user: authData.user,
+            session: authData.session
+          };
+          
+        } catch (sessionError) {
+          console.error('[MetaMaskAuth] Exception during signin:', sessionError);
+          return {
+            success: false,
+            error: 'Session setup failed'
+          };
+        }
       }
 
+      // Fallback for other response formats
       return {
-        success: true,
-        user: authData.user,
-        session: authData.session
+        success: false,
+        error: 'Unsupported authentication response format'
       };
 
     } catch (error: any) {
