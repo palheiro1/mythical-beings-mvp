@@ -123,10 +123,10 @@ export function useGameInitialization(
     const setupGame = async () => {
       console.log(`[setupGame] Starting setup logic for game: ${gameId}, player: ${currentPlayerId}`);
       try {
-        // 1. Fetch game details (including selected creatures)
+        // 1. Fetch game details (including selected creatures from state or columns)
         const { data: gameDetails, error: detailsError } = await supabase
           .from('games')
-          .select('player1_id, player2_id, player1_selected_creatures, player2_selected_creatures') // Fetch selected creatures
+          .select('player1_id, player2_id, player1_selected_creatures, player2_selected_creatures, state') // Fetch selected creatures and state
           .eq('id', gameId)
           .single();
 
@@ -144,9 +144,23 @@ export function useGameInitialization(
         }
         const player1Id = gameDetails.player1_id;
         const player2Id = gameDetails.player2_id;
-        // --- Get selected creature IDs ---
-        const player1SelectedIds = gameDetails.player1_selected_creatures;
-        const player2SelectedIds = gameDetails.player2_selected_creatures;
+        
+        // --- Get selected creature IDs from columns or state ---
+        let player1SelectedIds = gameDetails.player1_selected_creatures;
+        let player2SelectedIds = gameDetails.player2_selected_creatures;
+        
+        // If not in columns, try to get from NFT selection state
+        if ((!player1SelectedIds || !player2SelectedIds) && gameDetails.state) {
+            const state = gameDetails.state as any;
+            if (state.player1SelectedCreatures) {
+                player1SelectedIds = state.player1SelectedCreatures;
+                console.log(`[setupGame] Retrieved player1 selected creatures from state:`, player1SelectedIds);
+            }
+            if (state.player2SelectedCreatures) {
+                player2SelectedIds = state.player2SelectedCreatures;
+                console.log(`[setupGame] Retrieved player2 selected creatures from state:`, player2SelectedIds);
+            }
+        }
         // --- End get selected creature IDs ---
 
         if (!player2Id) {

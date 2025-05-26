@@ -108,6 +108,9 @@ const NFTSelection: React.FC = () => {
       // Create a new state object to update or initialize if needed
       const currentState = currentGameData?.state || {};
       
+      console.log(`[NFTSelection] Current state before update:`, currentState);
+      console.log(`[NFTSelection] Player ${isPlayer1 ? '1' : '2'} confirming selection:`, selected);
+      
       // Create an update that merges new values into existing state
       const newState = {
         ...currentState,
@@ -123,6 +126,13 @@ const NFTSelection: React.FC = () => {
         )
       };
       
+      console.log(`[NFTSelection] New state after merge:`, newState);
+      console.log(`[NFTSelection] Both players complete?`, {
+        player1Complete: newState.player1SelectionComplete,
+        player2Complete: newState.player2SelectionComplete,
+        bothComplete: newState.player1SelectionComplete && newState.player2SelectionComplete
+      });
+      
       // Create the payload for the update
       const updatePayload = { 
         state: newState 
@@ -136,6 +146,14 @@ const NFTSelection: React.FC = () => {
       if (updateError) throw updateError;
 
       console.log("[NFTSelection] Selection confirmed successfully in DB.");
+      
+      // Check if both players have now completed selection and navigate immediately
+      if (newState.player1SelectionComplete && newState.player2SelectionComplete) {
+        console.log("[NFTSelection] Both players have completed selection! Navigating to game immediately.");
+        navigate(`/game/${gameId}`);
+        return; // Don't set waiting state if we're navigating
+      }
+      
       setWaiting(true);
 
     } catch (err) {

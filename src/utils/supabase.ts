@@ -241,9 +241,20 @@ export async function getGameState(gameId: string): Promise<GameState | null> {
     }
 
     if (data && data.state && typeof data.state === 'object') {
-        console.log(`[getGameState] Fetched state phase: ${ (data.state as GameState).phase}`);
-        // You might want to add validation here to ensure data.state matches GameState structure
-        return data.state as GameState;
+        // Check if this is a full GameState or just NFT selection state
+        const state = data.state as any;
+        if (state.phase && state.players && state.gameId) {
+            // This is a full GameState
+            console.log(`[getGameState] Fetched full game state phase: ${state.phase}`);
+            return data.state as GameState;
+        } else if (state.player1SelectionComplete !== undefined || state.player2SelectionComplete !== undefined) {
+            // This is just NFT selection state, not a full game state
+            console.log(`[getGameState] Found NFT selection state, but no full game state for ${gameId}`);
+            return null;
+        } else {
+            console.warn(`[getGameState] Found unknown state format for ${gameId}:`, state);
+            return null;
+        }
     } else {
         console.warn(`[getGameState] No state data found or invalid format for ${gameId}. Data:`, data);
         return null;

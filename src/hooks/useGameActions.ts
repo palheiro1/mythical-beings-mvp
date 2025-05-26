@@ -77,6 +77,10 @@ export function useGameActions(
                 } else {
                     console.log(`[handleAction] State successfully persisted for action ${action.type}.`);
                 }
+
+                // CRITICAL FIX: Dispatch the action to update local React state
+                console.log(`[handleAction] Dispatching action ${action.type} to update local state.`);
+                dispatch(action);
             } else {
                 console.log(`[handleAction] Dispatching received SET_GAME_STATE.`);
                 dispatch(action);
