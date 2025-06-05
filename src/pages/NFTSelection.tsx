@@ -32,6 +32,7 @@ const NFTSelection: React.FC = () => {
   const realtimeChannelRef = useRef<RealtimeChannel | null>(null);
   const fetchIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const pollingRef = useRef<NodeJS.Timeout | null>(null); // Fallback polling
+  const gameIdRef = useRef<string | null>(null); // Track current game ID
 
   // Timer logic
   useEffect(() => {
@@ -136,6 +137,14 @@ const NFTSelection: React.FC = () => {
       if (updateError) throw updateError;
 
       console.log("[NFTSelection] Selection confirmed successfully in DB.");
+      
+      // Clear the polling interval immediately when selection is confirmed
+      if (fetchIntervalRef.current) {
+        clearInterval(fetchIntervalRef.current);
+        fetchIntervalRef.current = null;
+        console.log('[NFTSelection] Cleared hand fetch interval after selection confirmation.');
+      }
+      
       setWaiting(true);
 
     } catch (err) {
@@ -202,6 +211,9 @@ const NFTSelection: React.FC = () => {
       return;
     }
 
+    // Update the gameId ref for safety checks
+    gameIdRef.current = gameId;
+
     console.log(`[NFTSelection] useEffect for gameId: ${gameId}, currentPlayerId: ${currentPlayerId}`);
     setIsLoadingHand(true);
     setError(null);
@@ -245,6 +257,17 @@ const NFTSelection: React.FC = () => {
           // Poll for hand data if not immediately available
           const pollHand = async () => {
             console.log(`[NFTSelection] Polling for hand data - gameId: ${gameId}, player: ${isPlayer1 ? '1' : '2'}`);
+            
+            // Safety check - ensure we're still in the right game
+            if (!gameId || gameId !== gameIdRef.current) {
+              console.log('[NFTSelection] Game ID mismatch during polling, stopping poll.');
+              if (fetchIntervalRef.current) {
+                clearInterval(fetchIntervalRef.current);
+                fetchIntervalRef.current = null;
+              }
+              return;
+            }
+            
             const { data: updatedGameData, error: pollError } = await supabase
               .from('games')
               .select('player1_dealt_hand, player2_dealt_hand') // Fetch both hands
@@ -266,7 +289,13 @@ const NFTSelection: React.FC = () => {
               setDealtCreatures(creatures);
               console.log(`[NFTSelection] Hand data received via polling for player ${isPlayer1 ? '1' : '2'}:`, creatures);
               setIsLoadingHand(false);
-              if (fetchIntervalRef.current) clearInterval(fetchIntervalRef.current);
+              
+              // Clear the polling interval since we got the data
+              if (fetchIntervalRef.current) {
+                clearInterval(fetchIntervalRef.current);
+                fetchIntervalRef.current = null;
+                console.log('[NFTSelection] Cleared hand fetch interval after successful data retrieval.');
+              }
             } else {
               console.log(`[NFTSelection] Hand data still not available for player ${isPlayer1 ? '1' : '2'}. Will poll again.`);
             }
@@ -278,6 +307,12 @@ const NFTSelection: React.FC = () => {
         if (gameData.state) {
             const playerStateKey = isPlayer1 ? 'player1SelectionComplete' : 'player2SelectionComplete';
             if (gameData.state[playerStateKey]) {
+                // Clear polling interval if player has already completed selection
+                if (fetchIntervalRef.current) {
+                  clearInterval(fetchIntervalRef.current);
+                  fetchIntervalRef.current = null;
+                  console.log('[NFTSelection] Cleared hand fetch interval - player already completed selection.');
+                }
                 setWaiting(true); // Already selected, now waiting for opponent
                 console.log(`[NFTSelection] Player ${isPlayer1 ? '1' : '2'} has already completed selection. Setting to waiting.`);
             }
@@ -297,8 +332,44 @@ const NFTSelection: React.FC = () => {
 
     fetchInitialData();
 
-    // Realtime subscription for game updates
-    const channel = supabase.channel(`game-${gameId}`);
+    // Single realtime subscription for game updates - handles both current player completion and navigation
+    const handleGameUpdate = (payload: any) => {
+      console.log('[NFTSelection] Realtime game update received:', payload);
+      const updatedGame = payload.new as any;
+
+      if (updatedGame.state) {
+        const hasPlayer1Completed = updatedGame.state.player1SelectionComplete;
+        const hasPlayer2Completed = updatedGame.state.player2SelectionComplete;
+        console.log(`[NFTSelection] Selection status - Player1: ${hasPlayer1Completed}, Player2: ${hasPlayer2Completed}`);
+
+        // Check if both players have completed selection - navigate to game
+        if (hasPlayer1Completed && hasPlayer2Completed) {
+          console.log('[NFTSelection] 🎯 NAVIGATION TRIGGER: Both players completed selection via realtime. Navigating to game.');
+          if (realtimeChannelRef.current) {
+            supabase.removeChannel(realtimeChannelRef.current);
+            realtimeChannelRef.current = null;
+          }
+          navigate(`/game/${gameId}`);
+          return;
+        }
+
+        // Check if current player has completed selection - set waiting state
+        if (updatedGame.player1_id && currentPlayerId) {
+          const isPlayer1 = updatedGame.player1_id === currentPlayerId;
+          const currentPlayerCompleted = isPlayer1 ? hasPlayer1Completed : hasPlayer2Completed;
+          console.log(`[NFTSelection] Current player check - isPlayer1: ${isPlayer1}, completed: ${currentPlayerCompleted}, currently waiting: ${waiting}`);
+          
+          if (currentPlayerCompleted && !waiting) {
+            console.log(`[NFTSelection] ⏳ WAITING STATE: Current player's selection completion detected via realtime. Setting waiting to true.`);
+            setWaiting(true);
+          }
+        }
+      } else {
+        console.log('[NFTSelection] Game update received but no state data found');
+      }
+    };
+
+    const channel = supabase.channel(`game-${gameId}-updates`);
     channel
       .on('postgres_changes', { 
           event: 'UPDATE', 
@@ -306,30 +377,7 @@ const NFTSelection: React.FC = () => {
           table: 'games', 
           filter: `id=eq.${gameId}` 
         }, 
-        (payload) => {
-          console.log('[NFTSelection] Realtime game update received:', payload);
-          const updatedGame = payload.new as any; // Cast to any to access properties
-
-          if (updatedGame.state && 
-              updatedGame.state.player1SelectionComplete && 
-              updatedGame.state.player2SelectionComplete) {
-            console.log('[NFTSelection] Both players completed selection via realtime. Navigating to game.');
-            if (realtimeChannelRef.current) { // Ensure unsubscription before navigation
-              supabase.removeChannel(realtimeChannelRef.current);
-              realtimeChannelRef.current = null;
-            }
-            navigate(`/game/${gameId}`);
-          } else if (updatedGame.state && updatedGame.player1_id) { // Ensure player1_id exists before using it
-            // Check if current player has completed selection
-            const isPlayer1Realtime = updatedGame.player1_id === currentPlayerId; // Direct comparison now
-            const playerSelectionCompleteKey = isPlayer1Realtime ? 'player1SelectionComplete' : 'player2SelectionComplete';
-            
-            if (updatedGame.state[playerSelectionCompleteKey] && !waiting) {
-                console.log(`[NFTSelection] Current player's selection completion detected via realtime. Setting waiting to true.`);
-                setWaiting(true); // Current player's selection is now complete, wait for opponent
-            }
-          }
-        }
+        handleGameUpdate
       )
       .subscribe((status, err) => {
         if (status === 'SUBSCRIBED') {
@@ -345,10 +393,16 @@ const NFTSelection: React.FC = () => {
     realtimeChannelRef.current = channel;
 
     return () => {
+      // Clear all intervals and subscriptions on cleanup
       if (fetchIntervalRef.current) {
         clearInterval(fetchIntervalRef.current);
         fetchIntervalRef.current = null;
-        console.log('[NFTSelection] Cleared hand fetch interval.');
+        console.log('[NFTSelection] Cleared hand fetch interval on cleanup.');
+      }
+      if (pollingRef.current) {
+        clearInterval(pollingRef.current);
+        pollingRef.current = null;
+        console.log('[NFTSelection] Cleared polling interval on cleanup.');
       }
       if (realtimeChannelRef.current) {
         supabase.removeChannel(realtimeChannelRef.current)
@@ -356,22 +410,23 @@ const NFTSelection: React.FC = () => {
           .catch(unsubError => console.error('[NFTSelection] Error unsubscribing realtime channel on cleanup:', unsubError));
         realtimeChannelRef.current = null;
       }
+      // Clear the gameId ref
+      gameIdRef.current = null;
     };
-  }, [gameId, currentPlayerId, playerError, navigate, waiting]); // Added waiting to dependency array
+  }, [gameId, currentPlayerId, playerError, navigate]); // Removed waiting from dependencies since we handle it in the callback
 
   useEffect(() => {
     if (!waiting || !gameId) return;
     let cancelled = false;
+    
+    // Immediate check when entering waiting state
     const checkImmediateCompletion = async () => {
       try {
-        // Prefix unused fetchError with underscore
         const { data: gameData, error: _fetchError } = await supabase
           .from('games')
           .select('state')
           .eq('id', gameId)
           .single();
-        // Use _fetchError here if needed for error handling
-        if (_fetchError) console.warn("[NFTSelection] Error during immediate completion check:", _fetchError.message); // Example usage
 
         if (!cancelled && gameData?.state && 
             gameData.state.player1SelectionComplete && 
@@ -379,61 +434,12 @@ const NFTSelection: React.FC = () => {
           navigate(`/game/${gameId}`);
         }
       } catch (err) {
-        // Optionally log error
         console.warn("[NFTSelection] Exception during immediate completion check:", err);
       }
     };
+    
     checkImmediateCompletion();
     return () => { cancelled = true; };
-  }, [waiting, gameId, navigate]);
-
-  useEffect(() => {
-    if (!waiting || !gameId) {
-      return;
-    }
-
-    console.log(`[NFTSelection] Waiting state entered. Subscribing to game ${gameId} for opponent completion.`);
-
-    const handleGameUpdate = (payload: any) => {
-      console.log('[NFTSelection] Realtime game update received:', payload);
-      const game = payload.new;
-      if (game.state && 
-          game.state.player1SelectionComplete && 
-          game.state.player2SelectionComplete) {
-        console.log('[NFTSelection] Both players confirmed! Navigating to game screen.');
-        if (realtimeChannelRef.current) {
-          supabase.removeChannel(realtimeChannelRef.current);
-          realtimeChannelRef.current = null;
-        }
-        navigate(`/game/${gameId}`);
-      }
-    };
-
-    realtimeChannelRef.current = supabase
-      .channel(`game-${gameId}-selection`)
-      .on(
-        'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'games', filter: `id=eq.${gameId}` },
-        handleGameUpdate
-      )
-      .subscribe((status, err) => {
-        if (status === 'SUBSCRIBED') {
-          console.log(`[NFTSelection] Successfully subscribed to game ${gameId} updates.`);
-        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-          console.error(`[NFTSelection] Realtime subscription error for game ${gameId}:`, status, err);
-          setError(`Failed to listen for opponent completion (${status}). Please refresh or retry.`);
-          setRealtimeFailed(true);
-        }
-      });
-
-    return () => {
-      if (realtimeChannelRef.current) {
-        console.log(`[NFTSelection] Cleaning up realtime subscription for game ${gameId}.`);
-        supabase.removeChannel(realtimeChannelRef.current);
-        realtimeChannelRef.current = null;
-      }
-    };
-
   }, [waiting, gameId, navigate]);
 
 

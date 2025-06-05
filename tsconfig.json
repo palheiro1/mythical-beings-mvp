@@ -1,8 +1,18 @@
 {
   "references": [
-    { "path": "./tsconfig.app.json" },
-    { "path": "./tsconfig.node.json" }
+    {
+      "path": "./tsconfig.app.json"
+    },
+    {
+      "path": "./tsconfig.node.json"
+    }
   ],
-  "exclude": ["node_modules", "tests", "dist"],
-  "files": [] // Explicitly tell the root config not to compile files directly
+  "exclude": [
+    "node_modules",
+    "tests",
+    "dist"
+  ],
+  "files": [],
+  "compilerOptions": {},
+  "extends": "expo/tsconfig.base"
 }

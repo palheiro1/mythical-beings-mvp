@@ -1,24 +1,21 @@
 import { useEffect } from 'react';
-import { supabase } from '../utils/supabase';
+import { useAuth } from '../context/AuthProvider.js';
+import { supabase } from '../utils/supabase.js';
 
 export function useAuthProfileSync() {
+  const { user } = useAuth();
+
   useEffect(() => {
-    const { data: authListener } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (event === 'SIGNED_IN' && session) {
-          await ensureProfileExists(session.user.id, session.user.user_metadata?.eth_address);
-        }
-      }
-    );
-    return () => {
-      authListener?.subscription.unsubscribe();
-    };
-  }, []);
+    // Only sync profile when user exists and is different from previous
+    if (user) {
+      ensureProfileExists(user.id, user.user_metadata?.eth_address);
+    }
+  }, [user?.id]); // Only trigger when user ID changes
 }
 
 async function ensureProfileExists(userId: string, ethAddress?: string) {
   try {
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from('profiles')
       .select('id')
       .eq('id', userId)

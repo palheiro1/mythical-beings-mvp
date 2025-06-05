@@ -1,7 +1,7 @@
 // Global Authentication Provider for React StrictMode Compatibility
 // This prevents multiple useAuth instances from conflicting and causing loading state issues
 
-import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '../utils/supabase.js';
 import { metamaskAuth, AuthenticationResult } from '../services/metamaskAuth.js';
@@ -25,25 +25,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const initializedRef = useRef(false);
 
   useEffect(() => {
-    console.log('[AuthProvider] Initializing authentication state...');
+    console.log('[AuthProvider] Initializing...');
+    
+    let isMounted = true;
 
-    // Prevent double initialization in React StrictMode
-    if (initializedRef.current) {
-      console.log('[AuthProvider] Already initialized, skipping...');
-      return;
-    }
-    initializedRef.current = true;
-
-    // Get initial session
+    // Get initial session with timeout for Chrome compatibility
     const getInitialSession = async () => {
       try {
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        console.log('[AuthProvider] Getting initial session...');
+        
+        const sessionPromise = supabase.auth.getSession();
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('getSession timeout')), 3000)
+        );
+        
+        const { data: { session }, error: sessionError } = await Promise.race([
+          sessionPromise,
+          timeoutPromise
+        ]) as any;
+        
+        if (!isMounted) return;
         
         if (sessionError) {
-          console.error('[AuthProvider] Error getting initial session:', sessionError);
+          console.error('[AuthProvider] Session error:', sessionError);
           setError(sessionError.message);
         } else {
           console.log('[AuthProvider] Initial session:', session ? 'Found' : 'Not found');
@@ -51,32 +57,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setUser(session?.user ?? null);
         }
       } catch (error: any) {
-        console.error('[AuthProvider] Error in getInitialSession:', error);
-        setError(error.message);
+        console.error('[AuthProvider] Session check failed:', error);
+        if (isMounted) {
+          if (error.message === 'getSession timeout') {
+            console.warn('[AuthProvider] Session timeout, assuming no session');
+            setSession(null);
+            setUser(null);
+          } else {
+            setError(error.message);
+          }
+        }
       } finally {
-        console.log('[AuthProvider] Setting loading to false after initial session check');
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
 
     getInitialSession();
 
-    // Listen for auth changes
+    // Single auth state listener with simple debouncing
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
+        if (!isMounted) return;
+        
         console.log('[AuthProvider] Auth state changed:', event, session ? 'Session exists' : 'No session');
-        console.log('[AuthProvider] Auth state change details:', {
-          event,
-          userId: session?.user?.id,
-          hasSession: !!session
-        });
-        console.log('[AuthProvider] Setting loading to false due to auth state change');
         
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
         
-        // Clear error on successful auth
         if (session) {
           setError(null);
         }
@@ -84,10 +94,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     );
 
     return () => {
-      console.log('[AuthProvider] Cleaning up auth listener');
+      console.log('[AuthProvider] Cleanup');
+      isMounted = false;
       subscription.unsubscribe();
     };
-  }, []); // Empty dependency array to only run once
+  }, []); // No dependencies to prevent re-initialization
 
   const signInWithMetaMask = async (): Promise<AuthenticationResult> => {
     console.log('[AuthProvider] Starting MetaMask authentication...');

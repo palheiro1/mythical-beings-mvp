@@ -1,11 +1,17 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth.js';
-import { supabase, getAvailableGames, createGame, joinGame, getProfile } from '../utils/supabase.js';
-import { AvailableGame } from '../game/types.js';
-import { v4 as uuidv4 } from 'uuid';
-import { RealtimeChannel, RealtimePresenceState } from '@supabase/supabase-js';
-import NavBar from '../components/NavBar.js'; // Import NavBar
+import React, { useState, useEffect, useCallback, useRef } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../hooks/useAuth.js";
+import {
+  supabase,
+  getAvailableGames,
+  createGame,
+  joinGame,
+  getProfile,
+} from "../utils/supabase.js";
+import { AvailableGame } from "../game/types.js";
+import { v4 as uuidv4 } from "uuid";
+import { RealtimeChannel, RealtimePresenceState } from "@supabase/supabase-js";
+import NavBar from "../components/NavBar.js"; // Import NavBar
 
 // Define the combined type for games with creator's username
 interface GameWithUsername extends AvailableGame {
@@ -21,11 +27,14 @@ interface OnlineUserInfo {
 // Add this function to authenticate with wallet
 const authenticateWithWallet = async (walletAddress: string) => {
   if (!walletAddress) {
-    console.error('[authenticateWithWallet] No wallet address provided');
-    throw new Error('No wallet address provided');
+    console.error("[authenticateWithWallet] No wallet address provided");
+    throw new Error("No wallet address provided");
   }
 
-  console.log('[authenticateWithWallet] Attempting to authenticate with wallet:', walletAddress);
+  console.log(
+    "[authenticateWithWallet] Attempting to authenticate with wallet:",
+    walletAddress,
+  );
 
   try {
     // Option 2: Sign in anonymously but associate the wallet address
@@ -41,53 +50,68 @@ const authenticateWithWallet = async (walletAddress: string) => {
 
     if (error) {
       // If user already exists, try signing in instead
-      if (error.message.includes('already registered')) {
-        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-          email: `${walletAddress.toLowerCase().substring(2, 12)}@ethereum.player`,
-          password: `pw_${walletAddress.toLowerCase()}`,
-        });
+      if (error.message.includes("already registered")) {
+        const { data: signInData, error: signInError } =
+          await supabase.auth.signInWithPassword({
+            email: `${walletAddress.toLowerCase().substring(2, 12)}@ethereum.player`,
+            password: `pw_${walletAddress.toLowerCase()}`,
+          });
 
         if (signInError) {
-          console.error('[authenticateWithWallet] Sign in error:', signInError);
+          console.error("[authenticateWithWallet] Sign in error:", signInError);
           throw signInError;
         }
 
-        console.log('[authenticateWithWallet] Successfully signed in existing user');
+        console.log(
+          "[authenticateWithWallet] Successfully signed in existing user",
+        );
         return signInData;
       }
 
-      console.error('[authenticateWithWallet] Authentication error:', error);
+      console.error("[authenticateWithWallet] Authentication error:", error);
       throw error;
     }
 
-    console.log('[authenticateWithWallet] Authentication successful:', data);
-    
+    console.log("[authenticateWithWallet] Authentication successful:", data);
+
     // Phase 2 Enhancement: Create/update profile immediately after authentication
     if (data && data.user) {
       try {
         const userId = data.user.id;
-        console.log('[Wallet Auth] Creating/updating profile for user:', userId);
-        const { error } = await supabase.from('profiles').upsert({
-          id: userId,
-          username: `Player_${userId.substring(0, 6)}`,
-          eth_address: walletAddress,
-          updated_at: new Date().toISOString(),
-          created_at: new Date().toISOString()
-        }, { onConflict: 'id' });
-        
+        console.log(
+          "[Wallet Auth] Creating/updating profile for user:",
+          userId,
+        );
+        const { error } = await supabase.from("profiles").upsert(
+          {
+            id: userId,
+            username: `Player_${userId.substring(0, 6)}`,
+            eth_address: walletAddress,
+            updated_at: new Date().toISOString(),
+            created_at: new Date().toISOString(),
+          },
+          { onConflict: "id" },
+        );
+
         if (error) {
-          console.error('[Wallet Auth] Error ensuring profile exists:', error.message);
+          console.error(
+            "[Wallet Auth] Error ensuring profile exists:",
+            error.message,
+          );
         } else {
-          console.log('[Wallet Auth] Profile created/updated successfully');
+          console.log("[Wallet Auth] Profile created/updated successfully");
         }
       } catch (e) {
-        console.error('[Wallet Auth] Exception while creating profile:', e instanceof Error ? e.message : String(e));
+        console.error(
+          "[Wallet Auth] Exception while creating profile:",
+          e instanceof Error ? e.message : String(e),
+        );
       }
     }
-    
+
     return data;
   } catch (error) {
-    console.error('[authenticateWithWallet] Authentication failed:', error);
+    console.error("[authenticateWithWallet] Authentication failed:", error);
     throw error;
   }
 };
@@ -104,51 +128,77 @@ const Lobby: React.FC = () => {
   const [betAmount, setBetAmount] = useState(0);
   const [notification, setNotification] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
-  const [userProfile, setUserProfile] = useState<OnlineUserInfo>({ username: null, avatar_url: null });
-  const [onlineUsers, setOnlineUsers] = useState<Record<string, OnlineUserInfo>>({});
+  const [userProfile, setUserProfile] = useState<OnlineUserInfo>({
+    username: null,
+    avatar_url: null,
+  });
+  const [onlineUsers, setOnlineUsers] = useState<
+    Record<string, OnlineUserInfo>
+  >({});
   const presenceChannelRef = useRef<RealtimeChannel | null>(null);
 
   const isLoading = idLoading || loadingGames;
 
-  console.log('[Lobby] Rendering component...', { isLoading, error, gamesCount: availableGames.length, playerId });
+  console.log("[Lobby] Rendering component...", {
+    isLoading,
+    error,
+    gamesCount: availableGames.length,
+    playerId,
+  });
 
   const fetchGamesAndProfiles = useCallback(async () => {
-    console.log('[Lobby] fetchGamesAndProfiles: Fetching games...');
+    console.log("[Lobby] fetchGamesAndProfiles: Fetching games...");
     setLoadingGames(true);
     setError(null);
     try {
       const fetchedGames = await getAvailableGames();
       if (fetchedGames) {
-        console.log('[Lobby] fetchGamesAndProfiles: Fetched games data:', fetchedGames);
+        console.log(
+          "[Lobby] fetchGamesAndProfiles: Fetched games data:",
+          fetchedGames,
+        );
 
         const gamesWithUsernames: GameWithUsername[] = await Promise.all(
           fetchedGames.map(async (game) => {
             let creatorUsername = null;
-            if (game.player1_id) { // game.player1_id should be a UUID
+            if (game.player1_id) {
+              // game.player1_id should be a UUID
               try {
                 const profile = await getProfile(game.player1_id); // Ensure this is called with UUID
-                creatorUsername = profile?.username || game.player1_id.substring(0, 8);
+                creatorUsername =
+                  profile?.username || game.player1_id.substring(0, 8);
               } catch (profileError) {
-                console.error(`[Lobby] Error fetching profile for player1_id ${game.player1_id}:`, profileError);
-                creatorUsername = 'Error Fetching Name'; // Or some placeholder
+                console.error(
+                  `[Lobby] Error fetching profile for player1_id ${game.player1_id}:`,
+                  profileError,
+                );
+                creatorUsername = "Error Fetching Name"; // Or some placeholder
               }
             }
             return { ...game, creatorUsername };
-          })
+          }),
         );
 
-        console.log('[Lobby] fetchGamesAndProfiles: Games with usernames:', gamesWithUsernames);
+        console.log(
+          "[Lobby] fetchGamesAndProfiles: Games with usernames:",
+          gamesWithUsernames,
+        );
         setAvailableGames(gamesWithUsernames);
       } else {
         setAvailableGames([]);
       }
       setError(null);
     } catch (error) {
-      console.error('[Lobby] fetchGamesAndProfiles: Error fetching games or profiles:', error);
-      setError('Failed to fetch games or creator profiles');
+      console.error(
+        "[Lobby] fetchGamesAndProfiles: Error fetching games or profiles:",
+        error,
+      );
+      setError("Failed to fetch games or creator profiles");
       setAvailableGames([]);
     } finally {
-      console.log('[Lobby] fetchGamesAndProfiles: Setting loadingGames to false.');
+      console.log(
+        "[Lobby] fetchGamesAndProfiles: Setting loadingGames to false.",
+      );
       setLoadingGames(false);
     }
   }, []);
@@ -162,10 +212,12 @@ const Lobby: React.FC = () => {
 
   useEffect(() => {
     if (playerError) {
-      console.warn('[Lobby] Player identification error:', playerError);
+      console.warn("[Lobby] Player identification error:", playerError);
       // Only set notification if it's a persistent error (not just loading)
       if (playerId === null && !idLoading) {
-        setNotification(`Error identifying player: ${playerError}. Please refresh.`);
+        setNotification(
+          `Error identifying player: ${playerError}. Please refresh.`,
+        );
       }
       const timer = setTimeout(() => setNotification(null), 5000);
       return () => clearTimeout(timer);
@@ -177,87 +229,118 @@ const Lobby: React.FC = () => {
     if (playerId) {
       getProfile(playerId)
         .then((profile: any) => {
-          setUserProfile({ username: profile?.username || null, avatar_url: profile?.avatar_url || null });
+          setUserProfile({
+            username: profile?.username || null,
+            avatar_url: profile?.avatar_url || null,
+          });
         })
         .catch((err: any) => {
-          console.error(`[Lobby] Error fetching own profile using EVM address ${playerId}:`, err);
+          console.error(
+            `[Lobby] Error fetching own profile using EVM address ${playerId}:`,
+            err,
+          );
           // Optionally set a default/error state for userProfile if needed
         });
     } else if (!idLoading && !playerError) {
-      console.warn(`[Lobby] Own EVM address (playerId) not available for profile fetch.`);
+      console.warn(
+        `[Lobby] Own EVM address (playerId) not available for profile fetch.`,
+      );
     }
   }, [playerId, idLoading, playerError]);
 
   useEffect(() => {
     if (!supabase) return;
 
-    console.log('[Lobby Realtime] Setting up games subscription.');
+    console.log("[Lobby Realtime] Setting up games subscription.");
     const gamesChannel = supabase
-      .channel('public:games')
+      .channel("public:games")
       .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'games', filter: 'status=eq.waiting' },
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "games",
+          filter: "status=eq.waiting",
+        },
         async (payload: any) => {
-          console.log('[Lobby Realtime] New game detected:', payload.new);
+          console.log("[Lobby Realtime] New game detected:", payload.new);
           const newGame = payload.new as AvailableGame;
 
           let creatorUsername = null;
-          if (newGame.player1_id) { // newGame.player1_id should be a UUID
+          if (newGame.player1_id) {
+            // newGame.player1_id should be a UUID
             try {
               const profile = await getProfile(newGame.player1_id); // Ensure this is called with UUID
-              creatorUsername = profile?.username || newGame.player1_id.substring(0, 8);
+              creatorUsername =
+                profile?.username || newGame.player1_id.substring(0, 8);
             } catch (err: any) {
-              console.error('[Lobby Realtime] Error fetching profile for new game creator:', err);
+              console.error(
+                "[Lobby Realtime] Error fetching profile for new game creator:",
+                err,
+              );
               creatorUsername = newGame.player1_id.substring(0, 8); // Fallback, but ideally handle error
             }
           }
 
-          const gameWithUsername: GameWithUsername = { ...newGame, creatorUsername };
+          const gameWithUsername: GameWithUsername = {
+            ...newGame,
+            creatorUsername,
+          };
 
           setAvailableGames((currentGames) => {
-            if (currentGames.some(game => game.id === gameWithUsername.id)) {
+            if (currentGames.some((game) => game.id === gameWithUsername.id)) {
               return currentGames;
             }
             return [...currentGames, gameWithUsername];
           });
-        }
+        },
       )
       .on(
-        'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'games' },
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "games" },
         (payload: any) => {
-          console.log('[Lobby Realtime] Game update detected:', payload.new);
+          console.log("[Lobby Realtime] Game update detected:", payload.new);
           const updatedGame = payload.new as AvailableGame;
           setAvailableGames((currentGames) =>
-            currentGames.map((game) =>
-              game.id === updatedGame.id ? { ...game, ...updatedGame, creatorUsername: game.creatorUsername } : game
-            ).filter(game => game.status === 'waiting')
+            currentGames
+              .map((game) =>
+                game.id === updatedGame.id
+                  ? {
+                      ...game,
+                      ...updatedGame,
+                      creatorUsername: game.creatorUsername,
+                    }
+                  : game,
+              )
+              .filter((game) => game.status === "waiting"),
           );
-        }
+        },
       )
       .on(
-        'postgres_changes',
-        { event: 'DELETE', schema: 'public', table: 'games' },
+        "postgres_changes",
+        { event: "DELETE", schema: "public", table: "games" },
         (payload: any) => {
-          console.log('[Lobby Realtime] Game delete detected:', payload.old);
+          console.log("[Lobby Realtime] Game delete detected:", payload.old);
           const deletedGameId = payload.old.id;
           setAvailableGames((currentGames) =>
-            currentGames.filter((game) => game.id !== deletedGameId)
+            currentGames.filter((game) => game.id !== deletedGameId),
           );
-        }
+        },
       )
       .subscribe((status: any, err: any) => {
-        if (status === 'SUBSCRIBED') {
-          console.log('[Lobby Realtime] Successfully subscribed to games channel.');
-        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-          console.error('[Lobby Realtime] Subscription error:', err);
-          setError('Realtime connection error for game list.');
+        if (status === "SUBSCRIBED") {
+          console.log(
+            "[Lobby Realtime] Successfully subscribed to games channel.",
+          );
+        } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+          console.error("[Lobby Realtime] Subscription error:", err);
+          setError("Realtime connection error for game list.");
         }
       });
 
     return () => {
       if (gamesChannel) {
-        console.log('[Lobby Realtime] Unsubscribing from games channel.');
+        console.log("[Lobby Realtime] Unsubscribing from games channel.");
         supabase.removeChannel(gamesChannel);
       }
     };
@@ -267,11 +350,16 @@ const Lobby: React.FC = () => {
     // Use Supabase UUID (playerId) for presence key
     const supabaseUserIdForPresence = playerId;
     if (!supabase || !supabaseUserIdForPresence) {
-      console.log('[Lobby Presence] Waiting for Supabase client or Supabase User ID (playerId) before subscribing to presence.');
+      console.log(
+        "[Lobby Presence] Waiting for Supabase client or Supabase User ID (playerId) before subscribing to presence.",
+      );
       return;
     }
-    console.log('[Lobby Presence] Setting up presence channel for Supabase user:', supabaseUserIdForPresence);
-    const channel = supabase.channel('lobby-presence', {
+    console.log(
+      "[Lobby Presence] Setting up presence channel for Supabase user:",
+      supabaseUserIdForPresence,
+    );
+    const channel = supabase.channel("lobby-presence", {
       config: {
         presence: {
           key: supabaseUserIdForPresence, // Supabase UUID
@@ -283,7 +371,7 @@ const Lobby: React.FC = () => {
       if (!onlineUsers[userId]) {
         try {
           const profile = await getProfile(userId);
-          setOnlineUsers(prev => ({
+          setOnlineUsers((prev) => ({
             ...prev,
             [userId]: {
               username: profile?.username || `User (${userId.substring(0, 6)})`,
@@ -291,25 +379,31 @@ const Lobby: React.FC = () => {
             },
           }));
         } catch (err: any) {
-          console.error(`[Lobby Presence] Error fetching profile for ${userId}:`, err);
-          setOnlineUsers(prev => ({
+          console.error(
+            `[Lobby Presence] Error fetching profile for ${userId}:`,
+            err,
+          );
+          setOnlineUsers((prev) => ({
             ...prev,
-            [userId]: { username: `User (${userId.substring(0, 6)})`, avatar_url: null },
+            [userId]: {
+              username: `User (${userId.substring(0, 6)})`,
+              avatar_url: null,
+            },
           }));
         }
       }
     };
 
     channel
-      .on('presence', { event: 'sync' }, () => {
-        console.log('[Lobby Presence] Sync event received.');
+      .on("presence", { event: "sync" }, () => {
+        console.log("[Lobby Presence] Sync event received.");
         const newState: RealtimePresenceState = channel.presenceState();
-        console.log('[Lobby Presence] Current presence state:', newState);
+        console.log("[Lobby Presence] Current presence state:", newState);
         const userIds = Object.keys(newState);
         userIds.forEach(fetchProfileForUser);
-        setOnlineUsers(currentUsers => {
+        setOnlineUsers((currentUsers) => {
           const updatedUsers: Record<string, OnlineUserInfo> = {};
-          userIds.forEach(id => {
+          userIds.forEach((id) => {
             if (currentUsers[id]) {
               updatedUsers[id] = currentUsers[id];
             }
@@ -317,32 +411,47 @@ const Lobby: React.FC = () => {
           return updatedUsers;
         });
       })
-      .on('presence', { event: 'join' }, ({ key, newPresences }: { key: string; newPresences: any }) => {
-        console.log('[Lobby Presence] Join event:', { key, newPresences });
-        fetchProfileForUser(key);
-      })
-      .on('presence', { event: 'leave' }, ({ key, leftPresences }: { key: string; leftPresences: any }) => {
-        console.log('[Lobby Presence] Leave event:', { key, leftPresences });
-        setOnlineUsers(prev => {
-          const updated = { ...prev };
-          delete updated[key];
-          return updated;
-        });
-      })
+      .on(
+        "presence",
+        { event: "join" },
+        ({ key, newPresences }: { key: string; newPresences: any }) => {
+          console.log("[Lobby Presence] Join event:", { key, newPresences });
+          fetchProfileForUser(key);
+        },
+      )
+      .on(
+        "presence",
+        { event: "leave" },
+        ({ key, leftPresences }: { key: string; leftPresences: any }) => {
+          console.log("[Lobby Presence] Leave event:", { key, leftPresences });
+          setOnlineUsers((prev) => {
+            const updated = { ...prev };
+            delete updated[key];
+            return updated;
+          });
+        },
+      )
       .subscribe(async (status: any) => {
-        if (status === 'SUBSCRIBED') {
-          console.log('[Lobby Presence] Successfully subscribed to presence channel.');
+        if (status === "SUBSCRIBED") {
+          console.log(
+            "[Lobby Presence] Successfully subscribed to presence channel.",
+          );
           // Track with their Supabase UUID as key. Additional info can be passed.
           await channel.track({
             user_id: supabaseUserIdForPresence,
-            username: userProfile.username || `User (${supabaseUserIdForPresence.substring(0,6)})`,
+            username:
+              userProfile.username ||
+              `User (${supabaseUserIdForPresence.substring(0, 6)})`,
           });
-          console.log('[Lobby Presence] User tracked with key:', supabaseUserIdForPresence);
-        } else if (status === 'CLOSED') {
-          console.log('[Lobby Presence] Channel closed.');
+          console.log(
+            "[Lobby Presence] User tracked with key:",
+            supabaseUserIdForPresence,
+          );
+        } else if (status === "CLOSED") {
+          console.log("[Lobby Presence] Channel closed.");
         } else {
-          console.error('[Lobby Presence] Subscription error/status:', status);
-          setError('Realtime connection error for online players.');
+          console.error("[Lobby Presence] Subscription error/status:", status);
+          setError("Realtime connection error for online players.");
         }
       });
 
@@ -350,7 +459,7 @@ const Lobby: React.FC = () => {
 
     return () => {
       if (presenceChannelRef.current) {
-        console.log('[Lobby Presence] Unsubscribing and removing channel.');
+        console.log("[Lobby Presence] Unsubscribing and removing channel.");
         presenceChannelRef.current.untrack();
         supabase.removeChannel(presenceChannelRef.current);
         presenceChannelRef.current = null;
@@ -361,72 +470,124 @@ const Lobby: React.FC = () => {
   const handleJoinGame = async (gameId: string) => {
     // playerId from usePlayerIdentification should be the EVM address.
     if (!playerId) {
-      setNotification('Cannot join game: User (EVM address) not identified. Please ensure you are fully logged in.');
+      setNotification(
+        "Cannot join game: User (EVM address) not identified. Please ensure you are fully logged in.",
+      );
       setTimeout(() => setNotification(null), 3000);
-      console.error('[Lobby] Attempted to join game without a valid EVM address (playerId).');
+      console.error(
+        "[Lobby] Attempted to join game without a valid EVM address (playerId).",
+      );
       return;
     }
-    console.log(`[Lobby] Player ${playerId} (EVM address) attempting to join game: ${gameId}`);
+    console.log(
+      `[Lobby] Player ${playerId} (EVM address) attempting to join game: ${gameId}`,
+    );
     setNotification(`Joining game ${gameId}...`);
     try {
       // Must use the EVM address (playerId)
       const joinedGame = await joinGame(gameId, playerId);
       if (joinedGame) {
-        console.log(`[Lobby] Successfully joined game ${gameId} as player ${playerId}. Triggering card dealing...`);
-        setNotification('Game joined! Dealing cards...');
-        const { error: functionError } = await supabase.functions.invoke('deal-cards', {
-          body: { gameId },
-        });
+        console.log(
+          `[Lobby] Successfully joined game ${gameId} as player ${playerId}. Triggering card dealing...`,
+        );
+        setNotification("Game joined! Dealing cards...");
+        const { error: functionError } = await supabase.functions.invoke(
+          "deal-cards",
+          {
+            body: { gameId },
+          },
+        );
 
         if (functionError) {
-          console.error('[Lobby] Error calling deal-cards function:', functionError);
-          let errorMsg = 'Joined game, but failed to deal cards.';
-          if (functionError.message.includes('already dealt') || functionError.message.includes('status')) {
-            errorMsg = 'Game setup issue. Cards might already be dealt or status incorrect.';
-          } else if (functionError.message.includes('Not enough creatures')) {
-            errorMsg = 'Game configuration error: Not enough creatures defined.';
+          console.error(
+            "[Lobby] Error calling deal-cards function:",
+            functionError,
+          );
+          let errorMsg = "Joined game, but failed to deal cards.";
+          if (
+            functionError.message.includes("already dealt") ||
+            functionError.message.includes("status")
+          ) {
+            errorMsg =
+              "Game setup issue. Cards might already be dealt or status incorrect.";
+          } else if (functionError.message.includes("Not enough creatures")) {
+            errorMsg =
+              "Game configuration error: Not enough creatures defined.";
           }
-          setNotification(`${errorMsg} Please try rejoining or contact support.`);
+          setNotification(
+            `${errorMsg} Please try rejoining or contact support.`,
+          );
           setTimeout(() => setNotification(null), 6000);
         } else {
-          console.log('[Lobby] deal-cards function invoked successfully. Navigating to NFT Selection...');
-          setNotification('Cards dealt! Starting selection...');
+          console.log(
+            "[Lobby] deal-cards function invoked successfully. Navigating to NFT Selection...",
+          );
+          setNotification("Cards dealt! Starting selection...");
           navigate(`/nft-selection/${gameId}`);
         }
       } else {
-        const { data: gameData, error: fetchError } = await supabase.from('games').select('player1_id, player2_id, status, player1_dealt_hand').eq('id', gameId).single();
+        const { data: gameData, error: fetchError } = await supabase
+          .from("games")
+          .select("player1_id, player2_id, status, player1_dealt_hand")
+          .eq("id", gameId)
+          .single();
 
         if (fetchError) throw fetchError;
 
         // Direct comparison since we're using Supabase user IDs now
-        if (gameData && (gameData.player1_id === playerId || gameData.player2_id === playerId)) {
-          console.log(`[Lobby] User is already in game ${gameId}. Checking status...`);
-          if (gameData.status === 'selecting' || gameData.status === 'active' || (gameData.player1_dealt_hand && gameData.player1_dealt_hand.length > 0)) {
-            console.log(`[Lobby] Game status is '${gameData.status}'. Navigating to NFT Selection...`);
+        if (
+          gameData &&
+          (gameData.player1_id === playerId || gameData.player2_id === playerId)
+        ) {
+          console.log(
+            `[Lobby] User is already in game ${gameId}. Checking status...`,
+          );
+          if (
+            gameData.status === "selecting" ||
+            gameData.status === "active" ||
+            (gameData.player1_dealt_hand &&
+              gameData.player1_dealt_hand.length > 0)
+          ) {
+            console.log(
+              `[Lobby] Game status is '${gameData.status}'. Navigating to NFT Selection...`,
+            );
             navigate(`/nft-selection/${gameId}`);
-          } else if (gameData.status === 'waiting' && gameData.player2_id === playerId) {
-            setNotification('You seem to be in the game, but setup might be incomplete. Trying to initiate setup...');
+          } else if (
+            gameData.status === "waiting" &&
+            gameData.player2_id === playerId
+          ) {
+            setNotification(
+              "You seem to be in the game, but setup might be incomplete. Trying to initiate setup...",
+            );
             setTimeout(() => setNotification(null), 4000);
-            await supabase.functions.invoke('deal-cards', { body: { gameId } });
+            await supabase.functions.invoke("deal-cards", { body: { gameId } });
             navigate(`/nft-selection/${gameId}`);
           } else {
-            setNotification('Already in game, but current status is unclear. Refreshing...');
+            setNotification(
+              "Already in game, but current status is unclear. Refreshing...",
+            );
             setTimeout(() => setNotification(null), 4000);
             fetchGamesAndProfiles();
           }
-        } else if (gameData && gameData.status !== 'waiting') {
-          setNotification('Failed to join: Game is already full or in progress.');
+        } else if (gameData && gameData.status !== "waiting") {
+          setNotification(
+            "Failed to join: Game is already full or in progress.",
+          );
           setTimeout(() => setNotification(null), 4000);
           fetchGamesAndProfiles();
         } else {
-          setNotification('Failed to join game. It might no longer be available.');
+          setNotification(
+            "Failed to join game. It might no longer be available.",
+          );
           setTimeout(() => setNotification(null), 4000);
           fetchGamesAndProfiles();
         }
       }
     } catch (error: any) {
       console.error(`[Lobby] Error joining game ${gameId}:`, error);
-      setNotification(`Error joining game: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      setNotification(
+        `Error joining game: ${error instanceof Error ? error.message : "Unknown error"}`,
+      );
       setTimeout(() => setNotification(null), 4000);
       fetchGamesAndProfiles();
     }
@@ -434,7 +595,7 @@ const Lobby: React.FC = () => {
 
   const handleCreateGame = async () => {
     if (!playerId) {
-      setNotification('Please connect your wallet to create a game.');
+      setNotification("Please connect your wallet to create a game.");
       return;
     }
 
@@ -442,13 +603,13 @@ const Lobby: React.FC = () => {
     const { data: sessionData } = await supabase.auth.getSession();
     if (!sessionData?.session) {
       // Try to sign in the user with their wallet
-      setNotification('Authenticating with Supabase...');
+      setNotification("Authenticating with Supabase...");
       await authenticateWithWallet(playerId);
 
       // Check again after authentication attempt
       const { data: newSession } = await supabase.auth.getSession();
       if (!newSession?.session) {
-        setNotification('Authentication failed. Please try again.');
+        setNotification("Authentication failed. Please try again.");
         return;
       }
     }
@@ -456,19 +617,27 @@ const Lobby: React.FC = () => {
     // Create profile record if needed
     try {
       // Use Supabase user ID directly now
-      setNotification('Setting up player profile...');
-      await supabase.from('profiles').upsert({
-        id: playerId,
-        username: `Player_${playerId.substring(0, 6)}`,
-        updated_at: new Date().toISOString()
-      }, { onConflict: 'id' });
+      setNotification("Setting up player profile...");
+      await supabase.from("profiles").upsert(
+        {
+          id: playerId,
+          username: `Player_${playerId.substring(0, 6)}`,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "id" },
+      );
     } catch (profileError) {
-      console.error('[Lobby] Error creating profile:', profileError);
+      console.error("[Lobby] Error creating profile:", profileError);
       // Continue anyway - the error might be that the profile already exists
     }
 
     // Now proceed with game creation
-    console.log('[Lobby] Creating game with bet amount:', betAmount, 'by player (EVM address):', playerId);
+    console.log(
+      "[Lobby] Creating game with bet amount:",
+      betAmount,
+      "by player (EVM address):",
+      playerId,
+    );
     setIsCreating(true);
     const newGameId = uuidv4();
     try {
@@ -476,27 +645,39 @@ const Lobby: React.FC = () => {
       const createdGame = await createGame(newGameId, playerId, betAmount);
       if (createdGame) {
         setShowCreateModal(false);
-        setNotification('Game created successfully! Proceeding to NFT Selection...');
+        setNotification(
+          "Game created successfully! Proceeding to NFT Selection...",
+        );
         navigate(`/nft-selection/${newGameId}`);
       } else {
-        setNotification('Failed to create game. The game ID might already exist or another error occurred.');
+        setNotification(
+          "Failed to create game. The game ID might already exist or another error occurred.",
+        );
         setTimeout(() => setNotification(null), 4000);
       }
     } catch (error: any) {
-      console.error('[Lobby] Error creating game:', error);
-      setNotification(`Failed to create game: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      console.error("[Lobby] Error creating game:", error);
+      setNotification(
+        `Failed to create game: ${error instanceof Error ? error.message : "Unknown error"}`,
+      );
       setTimeout(() => setNotification(null), 4000);
     } finally {
       setIsCreating(false);
     }
   };
 
-  console.log('[Lobby] Preparing to return JSX...', { isLoading, error, playerId });
+  console.log("[Lobby] Preparing to return JSX...", {
+    isLoading,
+    error,
+    playerId,
+  });
 
   // Redirect if user is not authenticated and loading is complete
   if (!idLoading && !playerId) {
-    console.log('[Lobby] User not signed in (no playerId), redirecting to home.');
-    navigate('/');
+    console.log(
+      "[Lobby] User not signed in (no playerId), redirecting to home.",
+    );
+    navigate("/");
     return null;
   }
 
@@ -507,11 +688,18 @@ const Lobby: React.FC = () => {
         <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 to-cyan-400/10 pointer-events-none -z-10" />
 
         {isLoading ? (
-          <div className="text-center text-gray-400 py-10">Loading Lobby...</div>
+          <div className="text-center text-gray-400 py-10">
+            Loading Lobby...
+          </div>
         ) : playerError && !playerId && !idLoading ? (
-          <div className="text-center text-red-400 py-10">Error: {playerError}. Please refresh or check URL parameters if testing.</div>
+          <div className="text-center text-red-400 py-10">
+            Error: {playerError}. Please refresh or check URL parameters if
+            testing.
+          </div>
         ) : error ? (
-          <div className="text-center text-red-400 py-10">Error loading games: {error}</div>
+          <div className="text-center text-red-400 py-10">
+            Error loading games: {error}
+          </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
             <div className="bg-gray-800 bg-opacity-70 p-6 rounded-xl shadow-xl flex flex-col gap-4">
@@ -522,19 +710,29 @@ const Lobby: React.FC = () => {
               <div className="space-y-3 overflow-y-auto max-h-60 pr-2">
                 {Object.entries(onlineUsers).length > 0 ? (
                   Object.entries(onlineUsers).map(([userId, profile]) => (
-                    <div key={userId} className="flex items-center space-x-3 p-2 bg-gray-700 rounded-md">
+                    <div
+                      key={userId}
+                      className="flex items-center space-x-3 p-2 bg-gray-700 rounded-md"
+                    >
                       <img
                         width={32}
                         height={32}
-                        src={profile.avatar_url || `/api/placeholder-avatar?text=${profile.username?.charAt(0).toUpperCase() || '?'}`}
-                        alt={profile.username || 'User Avatar'}
+                        src={
+                          profile.avatar_url ||
+                          `/api/placeholder-avatar?text=${profile.username?.charAt(0).toUpperCase() || "?"}`
+                        }
+                        alt={profile.username || "User Avatar"}
                         className="h-8 w-8 rounded-full object-cover border border-gray-500"
                       />
-                      <span className="text-sm font-medium text-gray-200 truncate">{profile.username || `User (${userId.substring(0, 6)})`}</span>
+                      <span className="text-sm font-medium text-gray-200 truncate">
+                        {profile.username || `User (${userId.substring(0, 6)})`}
+                      </span>
                     </div>
                   ))
                 ) : (
-                  <div className="text-center text-gray-400 py-4">No other players currently online.</div>
+                  <div className="text-center text-gray-400 py-4">
+                    No other players currently online.
+                  </div>
                 )}
               </div>
             </div>
@@ -545,34 +743,53 @@ const Lobby: React.FC = () => {
                 Available Games
               </h2>
               <div className="space-y-4 overflow-y-auto max-h-[400px] pr-2">
-                {availableGames.length > 0 ? availableGames.map((game) => (
-                  <div key={game.id} className="bg-gray-700 p-4 rounded-lg flex justify-between items-center shadow-md">
-                    <div>
-                      <p className="text-lg font-semibold">{game.creatorUsername || 'Unknown Creator'}</p>
-                      <p className="text-sm text-gray-400">Bet: {game.bet_amount} GEM</p>
-                      <p className={`text-sm font-medium ${game.status === 'waiting' ? 'text-yellow-400' : 'text-green-400'}`}>
-                        {game.status === 'waiting' ? 'Waiting...' : game.status.charAt(0).toUpperCase() + game.status.slice(1)}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      {game.status === 'waiting' && game.player1_id !== playerId && (
-                        <button
-                          onClick={() => handleJoinGame(game.id)}
-                          className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold py-1 px-3 rounded-md transition-colors duration-200"
+                {availableGames.length > 0 ? (
+                  availableGames.map((game) => (
+                    <div
+                      key={game.id}
+                      className="bg-gray-700 p-4 rounded-lg flex justify-between items-center shadow-md"
+                    >
+                      <div>
+                        <p className="text-lg font-semibold">
+                          {game.creatorUsername || "Unknown Creator"}
+                        </p>
+                        <p className="text-sm text-gray-400">
+                          Bet: {game.bet_amount} GEM
+                        </p>
+                        <p
+                          className={`text-sm font-medium ${game.status === "waiting" ? "text-yellow-400" : "text-green-400"}`}
                         >
-                          Join Game
-                        </button>
-                      )}
+                          {game.status === "waiting"
+                            ? "Waiting..."
+                            : game.status.charAt(0).toUpperCase() +
+                              game.status.slice(1)}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        {game.status === "waiting" &&
+                          game.player1_id !== playerId && (
+                            <button
+                              onClick={() => handleJoinGame(game.id)}
+                              className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold py-1 px-3 rounded-md transition-colors duration-200"
+                            >
+                              Join Game
+                            </button>
+                          )}
+                      </div>
                     </div>
+                  ))
+                ) : (
+                  <div className="text-center text-gray-400 py-4">
+                    No available games right now.
                   </div>
-                )) : (
-                  <div className="text-center text-gray-400 py-4">No available games right now.</div>
                 )}
               </div>
             </div>
 
             <div className="bg-gray-800 bg-opacity-70 p-6 rounded-xl shadow-xl flex flex-col items-center gap-5">
-              <h2 className="text-2xl font-semibold mb-3 text-center text-gray-100">Actions</h2>
+              <h2 className="text-2xl font-semibold mb-3 text-center text-gray-100">
+                Actions
+              </h2>
               {playerId ? (
                 <button
                   onClick={() => setShowCreateModal(true)}
@@ -581,7 +798,9 @@ const Lobby: React.FC = () => {
                   Create Game
                 </button>
               ) : (
-                <p className="text-gray-400 text-center">Please connect your wallet to create a game.</p>
+                <p className="text-gray-400 text-center">
+                  Please connect your wallet to create a game.
+                </p>
               )}
             </div>
           </div>
@@ -593,29 +812,42 @@ const Lobby: React.FC = () => {
       )}
       {showCreateModal && (
         <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-gray-800 p-6 rounded-lg shadow-lg max-w-md z-50">
-          <h2 className="text-xl font-semibold text-center mb-4">Create New Game</h2>
+          <h2 className="text-xl font-semibold text-center mb-4">
+            Create New Game
+          </h2>
           <div className="flex flex-col gap-4">
-            <label htmlFor="bet-amount" className="block text-sm font-medium text-gray-400 mb-1">Bet Amount (0 for Free)</label>
+            <label
+              htmlFor="bet-amount"
+              className="block text-sm font-medium text-gray-400 mb-1"
+            >
+              Bet Amount (0 for Free)
+            </label>
             <div className="flex items-center bg-gray-700 rounded-md border border-gray-600">
               <input
                 id="bet-amount"
                 type="number"
                 min="0"
                 value={betAmount}
-                onChange={(e) => setBetAmount(Math.max(0, Number(e.target.value)))}
+                onChange={(e) =>
+                  setBetAmount(Math.max(0, Number(e.target.value)))
+                }
                 className="flex-grow p-3 rounded-l-md bg-transparent text-white focus:outline-none"
                 placeholder="Enter bet amount"
               />
-              <img src="/images/assets/gem.png" alt="GEM" className="h-6 w-6 mx-3" />
+              <img
+                src="/images/assets/gem.png"
+                alt="GEM"
+                className="h-6 w-6 mx-3"
+              />
             </div>
 
             <div className="flex gap-4 mt-4">
               <button
                 onClick={handleCreateGame}
                 disabled={isCreating}
-                className={`flex-1 py-3 px-6 rounded-md text-white font-semibold ${isCreating ? 'bg-gray-600 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700 transition-colors duration-200'}`}
+                className={`flex-1 py-3 px-6 rounded-md text-white font-semibold ${isCreating ? "bg-gray-600 cursor-not-allowed" : "bg-green-600 hover:bg-green-700 transition-colors duration-200"}`}
               >
-                {isCreating ? 'Creating...' : 'Confirm & Create'}
+                {isCreating ? "Creating..." : "Confirm & Create"}
               </button>
               <button
                 onClick={() => setShowCreateModal(false)}
