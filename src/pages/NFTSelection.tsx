@@ -124,10 +124,21 @@ const NFTSelection: React.FC = () => {
         )
       };
       
-      // Create the payload for the update
-      const updatePayload = { 
+      // Create the payload for the update - include both state and column updates
+      const updatePayload: any = { 
         state: newState 
       };
+      
+      // Also update the dedicated columns for creature selections AND completion flags
+      if (isPlayer1) {
+        updatePayload.player1_selected_creatures = selected;
+        updatePayload.player1_selection_complete = true;
+      } else {
+        updatePayload.player2_selected_creatures = selected;
+        updatePayload.player2_selection_complete = true;
+      }
+
+      console.log("[NFTSelection] Updating database with payload:", updatePayload);
 
       const { error: updateError } = await supabase
         .from('games')
@@ -163,18 +174,22 @@ const NFTSelection: React.FC = () => {
   const pollForOpponentCompletion = async () => {
     if (!gameId) return;
     try {
-      // Prefix unused fetchError with underscore
+      // Check both the boolean columns AND the JSONB state for completion
       const { data: gameData, error: _fetchError } = await supabase
         .from('games')
-        .select('state')
+        .select('player1_selection_complete, player2_selection_complete, state')
         .eq('id', gameId)
         .single();
       // Use _fetchError here if needed for error handling
       if (_fetchError) throw _fetchError;
-      if (gameData?.state && 
-          gameData.state.player1SelectionComplete && 
-          gameData.state.player2SelectionComplete) {
-        navigate(`/game/${gameId}`);
+      
+      // Check both boolean columns AND JSONB state for completion
+      const p1Complete = gameData?.player1_selection_complete || gameData?.state?.player1SelectionComplete;
+      const p2Complete = gameData?.player2_selection_complete || gameData?.state?.player2SelectionComplete;
+      
+      if (p1Complete && p2Complete) {
+        console.log('[NFTSelection] 🎯 POLLING CHECK: Both players completed. Navigating to game initialization...');
+        navigate(`/game-initializing/${gameId}`);
       }
     } catch (err) {
       console.warn("[NFTSelection] Error in pollForOpponentCompletion:", err);
@@ -223,7 +238,7 @@ const NFTSelection: React.FC = () => {
         console.log(`[NFTSelection] Fetching initial game data for game ${gameId}`);
         const { data: gameData, error: gameError } = await supabase
           .from('games')
-          .select('player1_id, player2_id, player1_dealt_hand, player2_dealt_hand, state, status')
+          .select('player1_id, player2_id, player1_dealt_hand, player2_dealt_hand, player1_selection_complete, player2_selection_complete, state, status')
           .eq('id', gameId)
           .single();
 
@@ -337,35 +352,33 @@ const NFTSelection: React.FC = () => {
       console.log('[NFTSelection] Realtime game update received:', payload);
       const updatedGame = payload.new as any;
 
-      if (updatedGame.state) {
-        const hasPlayer1Completed = updatedGame.state.player1SelectionComplete;
-        const hasPlayer2Completed = updatedGame.state.player2SelectionComplete;
-        console.log(`[NFTSelection] Selection status - Player1: ${hasPlayer1Completed}, Player2: ${hasPlayer2Completed}`);
+      // Check completion status from both boolean columns AND JSONB state
+      const hasPlayer1Completed = updatedGame.player1_selection_complete || updatedGame.state?.player1SelectionComplete;
+      const hasPlayer2Completed = updatedGame.player2_selection_complete || updatedGame.state?.player2SelectionComplete;
+      console.log(`[NFTSelection] Selection status - Player1: ${hasPlayer1Completed}, Player2: ${hasPlayer2Completed}`);
 
-        // Check if both players have completed selection - navigate to game
-        if (hasPlayer1Completed && hasPlayer2Completed) {
-          console.log('[NFTSelection] 🎯 NAVIGATION TRIGGER: Both players completed selection via realtime. Navigating to game.');
-          if (realtimeChannelRef.current) {
-            supabase.removeChannel(realtimeChannelRef.current);
-            realtimeChannelRef.current = null;
-          }
-          navigate(`/game/${gameId}`);
-          return;
+      // Check if both players have completed selection - navigate to game
+      if (hasPlayer1Completed && hasPlayer2Completed) {
+        console.log('[NFTSelection] 🎯 BOTH PLAYERS COMPLETED: Navigating to game initialization...');
+        
+        if (realtimeChannelRef.current) {
+          supabase.removeChannel(realtimeChannelRef.current);
+          realtimeChannelRef.current = null;
         }
+        navigate(`/game-initializing/${gameId}`);
+        return;
+      }
 
-        // Check if current player has completed selection - set waiting state
-        if (updatedGame.player1_id && currentPlayerId) {
-          const isPlayer1 = updatedGame.player1_id === currentPlayerId;
-          const currentPlayerCompleted = isPlayer1 ? hasPlayer1Completed : hasPlayer2Completed;
-          console.log(`[NFTSelection] Current player check - isPlayer1: ${isPlayer1}, completed: ${currentPlayerCompleted}, currently waiting: ${waiting}`);
-          
-          if (currentPlayerCompleted && !waiting) {
-            console.log(`[NFTSelection] ⏳ WAITING STATE: Current player's selection completion detected via realtime. Setting waiting to true.`);
-            setWaiting(true);
-          }
+      // Check if current player has completed selection - set waiting state
+      if (updatedGame.player1_id && currentPlayerId) {
+        const isPlayer1 = updatedGame.player1_id === currentPlayerId;
+        const currentPlayerCompleted = isPlayer1 ? hasPlayer1Completed : hasPlayer2Completed;
+        console.log(`[NFTSelection] Current player check - isPlayer1: ${isPlayer1}, completed: ${currentPlayerCompleted}, currently waiting: ${waiting}`);
+        
+        if (currentPlayerCompleted && !waiting) {
+          console.log(`[NFTSelection] ⏳ WAITING STATE: Current player's selection completion detected via realtime. Setting waiting to true.`);
+          setWaiting(true);
         }
-      } else {
-        console.log('[NFTSelection] Game update received but no state data found');
       }
     };
 
@@ -422,16 +435,22 @@ const NFTSelection: React.FC = () => {
     // Immediate check when entering waiting state
     const checkImmediateCompletion = async () => {
       try {
+        // Check both boolean columns AND JSONB state for completion
         const { data: gameData, error: _fetchError } = await supabase
           .from('games')
-          .select('state')
+          .select('player1_selection_complete, player2_selection_complete, state')
           .eq('id', gameId)
           .single();
 
-        if (!cancelled && gameData?.state && 
-            gameData.state.player1SelectionComplete && 
-            gameData.state.player2SelectionComplete) {
-          navigate(`/game/${gameId}`);
+        if (!cancelled) {
+          // Check both boolean columns AND JSONB state for completion
+          const p1Complete = gameData?.player1_selection_complete || gameData?.state?.player1SelectionComplete;
+          const p2Complete = gameData?.player2_selection_complete || gameData?.state?.player2SelectionComplete;
+          
+          if (p1Complete && p2Complete) {
+            console.log('[NFTSelection] 🎯 IMMEDIATE CHECK: Both players completed. Navigating to game initialization...');
+            navigate(`/game-initializing/${gameId}`);
+          }
         }
       } catch (err) {
         console.warn("[NFTSelection] Exception during immediate completion check:", err);

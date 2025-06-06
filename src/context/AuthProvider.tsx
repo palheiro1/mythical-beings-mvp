@@ -20,147 +20,172 @@ interface AuthContextType extends AuthState {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
+// Singleton pattern to prevent React StrictMode race conditions
+let authStateManager: AuthStateManager | null = null;
 
-  useEffect(() => {
-    console.log('[AuthProvider] Initializing...');
+class AuthStateManager {
+  private listeners: Set<(state: AuthState) => void> = new Set();
+  private currentState: AuthState = { user: null, session: null, loading: true, error: null };
+  private initialized = false;
+
+  constructor() {
+    this.initialize();
+  }
+
+  private async initialize() {
+    if (this.initialized) return;
+    this.initialized = true;
+
+    console.log('[AuthStateManager] Initializing...');
+
+    try {
+      // Get initial session with timeout
+      const sessionPromise = supabase.auth.getSession();
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('getSession timeout')), 3000)
+      );
+      
+      const { data: { session }, error: sessionError } = await Promise.race([
+        sessionPromise,
+        timeoutPromise
+      ]) as any;
+      
+      if (sessionError) {
+        console.error('[AuthStateManager] Session error:', sessionError);
+        this.updateState({ error: sessionError.message, loading: false });
+      } else {
+        console.log('[AuthStateManager] Initial session:', session ? 'Found' : 'Not found');
+        this.updateState({ 
+          session, 
+          user: session?.user ?? null, 
+          loading: false,
+          error: null 
+        });
+      }
+    } catch (error: any) {
+      console.error('[AuthStateManager] Session check failed:', error);
+      if (error.message === 'getSession timeout') {
+        console.warn('[AuthStateManager] Session timeout, assuming no session');
+        this.updateState({ session: null, user: null, loading: false, error: null });
+      } else {
+        this.updateState({ error: error.message, loading: false });
+      }
+    }
+
+    // Set up auth state listener (only once)
+    supabase.auth.onAuthStateChange((event, session) => {
+      console.log('[AuthStateManager] Auth state changed:', event, session ? 'Session exists' : 'No session');
+      
+      this.updateState({
+        session,
+        user: session?.user ?? null,
+        loading: false,
+        error: session ? null : this.currentState.error // Keep error if no session
+      });
+    });
+  }
+
+  private updateState(newState: Partial<AuthState>) {
+    this.currentState = { ...this.currentState, ...newState };
+    this.listeners.forEach(listener => listener(this.currentState));
+  }
+
+  subscribe(listener: (state: AuthState) => void) {
+    this.listeners.add(listener);
+    // Immediately call with current state
+    listener(this.currentState);
     
-    let isMounted = true;
-
-    // Get initial session with timeout for Chrome compatibility
-    const getInitialSession = async () => {
-      try {
-        console.log('[AuthProvider] Getting initial session...');
-        
-        const sessionPromise = supabase.auth.getSession();
-        const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('getSession timeout')), 3000)
-        );
-        
-        const { data: { session }, error: sessionError } = await Promise.race([
-          sessionPromise,
-          timeoutPromise
-        ]) as any;
-        
-        if (!isMounted) return;
-        
-        if (sessionError) {
-          console.error('[AuthProvider] Session error:', sessionError);
-          setError(sessionError.message);
-        } else {
-          console.log('[AuthProvider] Initial session:', session ? 'Found' : 'Not found');
-          setSession(session);
-          setUser(session?.user ?? null);
-        }
-      } catch (error: any) {
-        console.error('[AuthProvider] Session check failed:', error);
-        if (isMounted) {
-          if (error.message === 'getSession timeout') {
-            console.warn('[AuthProvider] Session timeout, assuming no session');
-            setSession(null);
-            setUser(null);
-          } else {
-            setError(error.message);
-          }
-        }
-      } finally {
-        if (isMounted) {
-          setLoading(false);
-        }
-      }
-    };
-
-    getInitialSession();
-
-    // Single auth state listener with simple debouncing
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        if (!isMounted) return;
-        
-        console.log('[AuthProvider] Auth state changed:', event, session ? 'Session exists' : 'No session');
-        
-        setSession(session);
-        setUser(session?.user ?? null);
-        setLoading(false);
-        
-        if (session) {
-          setError(null);
-        }
-      }
-    );
-
     return () => {
-      console.log('[AuthProvider] Cleanup');
-      isMounted = false;
-      subscription.unsubscribe();
+      this.listeners.delete(listener);
     };
-  }, []); // No dependencies to prevent re-initialization
+  }
 
-  const signInWithMetaMask = async (): Promise<AuthenticationResult> => {
-    console.log('[AuthProvider] Starting MetaMask authentication...');
-    setLoading(true);
-    setError(null);
+  async signInWithMetaMask(): Promise<AuthenticationResult> {
+    console.log('[AuthStateManager] Starting MetaMask authentication...');
+    this.updateState({ loading: true, error: null });
 
     try {
       const result = await metamaskAuth.authenticate();
       
       if (!result.success) {
-        setError(result.error || 'Authentication failed');
-        setLoading(false);
+        this.updateState({ error: result.error || 'Authentication failed', loading: false });
         return result;
       }
 
-      console.log('[AuthProvider] MetaMask authentication successful');
+      console.log('[AuthStateManager] MetaMask authentication successful');
       
-      // Update state immediately and let the auth listener handle it later
+      // Update state immediately - auth listener will handle the final state
       if (result.user && result.session) {
-        console.log('[AuthProvider] Updating state immediately with user:', result.user.id);
-        setUser(result.user);
-        setSession(result.session);
-        setLoading(false);
+        this.updateState({ 
+          user: result.user, 
+          session: result.session, 
+          loading: false,
+          error: null 
+        });
       }
       
-      // The auth state will be updated automatically via the auth listener
       return result;
 
     } catch (error: any) {
-      console.error('[AuthProvider] MetaMask authentication error:', error);
+      console.error('[AuthStateManager] MetaMask authentication error:', error);
       const errorMessage = error.message || 'Authentication failed';
-      setError(errorMessage);
-      setLoading(false);
+      this.updateState({ error: errorMessage, loading: false });
       
       return {
         success: false,
         error: errorMessage
       };
     }
-  };
+  }
 
-  const signOut = async (): Promise<void> => {
-    console.log('[AuthProvider] Signing out...');
-    setLoading(true);
-    setError(null);
+  async signOut(): Promise<void> {
+    console.log('[AuthStateManager] Signing out...');
+    this.updateState({ loading: true, error: null });
 
     try {
       await metamaskAuth.signOut();
-      // The auth state will be updated automatically via the auth listener
+      // Auth listener will handle state update
     } catch (error: any) {
-      console.error('[AuthProvider] Sign out error:', error);
-      setError(error.message);
-    } finally {
-      setLoading(false);
+      console.error('[AuthStateManager] Sign out error:', error);
+      this.updateState({ error: error.message, loading: false });
     }
+  }
+}
+
+function getAuthStateManager(): AuthStateManager {
+  if (!authStateManager) {
+    authStateManager = new AuthStateManager();
+  }
+  return authStateManager;
+}
+
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [authState, setAuthState] = useState<AuthState>({ 
+    user: null, 
+    session: null, 
+    loading: true, 
+    error: null 
+  });
+
+  useEffect(() => {
+    const manager = getAuthStateManager();
+    const unsubscribe = manager.subscribe(setAuthState);
+    
+    return unsubscribe;
+  }, []);
+
+  const signInWithMetaMask = async (): Promise<AuthenticationResult> => {
+    const manager = getAuthStateManager();
+    return manager.signInWithMetaMask();
+  };
+
+  const signOut = async (): Promise<void> => {
+    const manager = getAuthStateManager();
+    return manager.signOut();
   };
 
   const value: AuthContextType = {
-    user,
-    session,
-    loading,
-    error,
+    ...authState,
     signInWithMetaMask,
     signOut
   };

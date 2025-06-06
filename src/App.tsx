@@ -3,7 +3,8 @@ import { AuthProvider } from './context/AuthProvider.js';
 import Home from './pages/Home.js';
 import Lobby from './pages/Lobby.js';
 import GameScreen from './pages/GameScreen.js';
-import NFTSelection from './pages/NFTSelection.js';
+import NFTSelectionSimplified from './pages/NFTSelectionSimplified.js';
+import GameInitializing from './pages/GameInitializing.js';
 import ProfilePage from './pages/Profile.js';
 import HowToPlay from './pages/HowToPlay.js';
 import Leaderboard from './pages/Leaderboard.js';
@@ -29,8 +30,9 @@ function AppContent() {
         <Route element={<ProtectedRoute />}>
           <Route path="/lobby" element={<Lobby />} />
           <Route path="/game/:gameId" element={<GameScreen />} />
+          <Route path="/game-initializing/:gameId" element={<GameInitializing />} />
           <Route path="/profile" element={<ProfilePage />} />
-          <Route path="/nft-selection/:gameId" element={<NFTSelection />} />
+          <Route path="/nft-selection/:gameId" element={<NFTSelectionSimplified />} />
           <Route path="/how-to-play" element={<HowToPlay />} />
           <Route path="/leaderboard" element={<Leaderboard />} />
           <Route path="/waiting/:gameId" element={<WaitingScreen />} />
