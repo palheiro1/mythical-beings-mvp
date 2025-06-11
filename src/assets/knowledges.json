@@ -15,7 +15,7 @@
     "name": "Blue Sky",
     "type": "spell",
     "cost": 2,
-    "effect": "Gain [1, 2, 3] power point, according rotation.",
+    "effect": "Gain [1, 2, 3] power points, according to rotation.",
     "image": "/images/spells/aerial2.jpg",
     "maxRotations": 3,
     "element": "air"
