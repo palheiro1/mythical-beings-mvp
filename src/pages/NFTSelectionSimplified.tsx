@@ -218,9 +218,9 @@ const NFTSelectionSimplified: React.FC = () => {
       await navigationManagerRef.current.updatePlayerSelection(selected);
       console.log('[NFTSelection] Selection confirmed successfully');
 
-      // Add a direct check after a short delay as backup
+  // Add a direct check after a short delay as backup
       setTimeout(async () => {
-        if (!gameId || waiting) return;
+    if (!gameId || waiting) return;
         
         try {
           console.log('[NFTSelection] Backup check: Verifying both players completed');
@@ -233,8 +233,8 @@ const NFTSelectionSimplified: React.FC = () => {
           if (!error && gameData?.state) {
             const state = gameData.state as any;
             if (state.player1SelectionComplete && state.player2SelectionComplete) {
-              console.log('[NFTSelection] 🎯 BACKUP NAVIGATION: Both players completed, navigating...');
-              navigate(`/game/${gameId}`);
+      console.log('[NFTSelection] 🎯 BACKUP NAVIGATION: Both players completed, navigating...');
+      navigate(`/game-initializing/${gameId}`);
             }
           }
         } catch (err) {
@@ -242,9 +242,9 @@ const NFTSelectionSimplified: React.FC = () => {
         }
       }, 1000);
 
-      // Add a second backup check with longer delay
+  // Add a second backup check with longer delay
       setTimeout(async () => {
-        if (!gameId || waiting) return;
+    if (!gameId || waiting) return;
         
         try {
           console.log('[NFTSelection] Extended backup check: Final verification');
@@ -257,8 +257,8 @@ const NFTSelectionSimplified: React.FC = () => {
           if (!error && gameData?.state) {
             const state = gameData.state as any;
             if (state.player1SelectionComplete && state.player2SelectionComplete) {
-              console.log('[NFTSelection] 🎯 EXTENDED BACKUP NAVIGATION: Both players completed, navigating...');
-              navigate(`/game/${gameId}`);
+      console.log('[NFTSelection] 🎯 EXTENDED BACKUP NAVIGATION: Both players completed, navigating...');
+      navigate(`/game-initializing/${gameId}`);
             }
           }
         } catch (err) {

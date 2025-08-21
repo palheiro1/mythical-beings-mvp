@@ -164,89 +164,47 @@ By signing this message, you are proving ownership of this wallet address.`;
    */
   public async authenticateWithSignature(message: string, signature: string): Promise<AuthenticationResult> {
     try {
-      console.log('[MetaMaskAuth] Verifying signature with Supabase...');
-      
-      // Call the simplified-moralis-auth edge function for signature verification
-      const { data, error } = await supabase.functions.invoke('simplified-moralis-auth', {
-        body: {
-          message,
-          signature
-        }
+      console.log('[MetaMaskAuth] Verifying signature via Edge Function (moralis-auth)...');
+
+      // Prefer the verified Moralis flow which does not require a pre-existing JWT
+      const { data, error } = await supabase.functions.invoke('moralis-auth', {
+        body: { message, signature }
       });
 
       if (error) {
-        console.error('[MetaMaskAuth] Authentication error:', error);
-        return {
-          success: false,
-          error: error.message || 'Authentication failed'
-        };
+        console.error('[MetaMaskAuth] Edge Function error:', error);
+        return { success: false, error: error.message || 'Authentication failed' };
       }
 
-      if (!data || !data.success) {
-        return {
-          success: false,
-          error: 'Invalid response from authentication service'
-        };
+      // Expecting { token, user }
+  const token: string | undefined = (data as any)?.token;
+
+      if (!token) {
+        console.error('[MetaMaskAuth] No token returned from Edge Function');
+        return { success: false, error: 'No token returned from auth service' };
       }
 
-      console.log('[MetaMaskAuth] Authentication successful');
-      console.log('[MetaMaskAuth] Response data:', {
-        success: data.success,
-        user_id: data.user_id,
-        email: data.email,
-        use_password_signin: data.use_password_signin
+      // Establish Supabase session with returned JWT
+      const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
+        access_token: token,
+        refresh_token: token
       });
-      
-      // Use password-based signin since we verified ownership via signature
-      if (data.use_password_signin) {
-        console.log('[MetaMaskAuth] Using password signin for verified user...');
-        
-        try {
-          const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-            email: data.email,
-            password: 'metamask-verified-user' // We'll set this as the password for all MetaMask users
-          });
 
-          if (authError) {
-            console.error('[MetaMaskAuth] Password signin failed:', authError);
-            return {
-              success: false,
-              error: 'Failed to establish session'
-            };
-          }
-
-          console.log('[MetaMaskAuth] Session established successfully:', {
-            user: authData.user?.id,
-            session: !!authData.session
-          });
-          
-          return {
-            success: true,
-            user: authData.user,
-            session: authData.session
-          };
-          
-        } catch (sessionError) {
-          console.error('[MetaMaskAuth] Exception during signin:', sessionError);
-          return {
-            success: false,
-            error: 'Session setup failed'
-          };
-        }
+      if (sessionError || !sessionData?.session) {
+        console.error('[MetaMaskAuth] Failed to set session:', sessionError);
+        return { success: false, error: 'Failed to establish session' };
       }
 
-      // Fallback for other response formats
-      return {
-        success: false,
-        error: 'Unsupported authentication response format'
-      };
+      console.log('[MetaMaskAuth] Session established. User:', sessionData.user?.id);
 
+      return {
+        success: true,
+        user: sessionData.user,
+        session: sessionData.session
+      };
     } catch (error: any) {
       console.error('[MetaMaskAuth] Authentication error:', error);
-      return {
-        success: false,
-        error: error.message || 'Authentication failed'
-      };
+      return { success: false, error: error.message || 'Authentication failed' };
     }
   }
 

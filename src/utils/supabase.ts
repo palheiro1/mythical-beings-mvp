@@ -167,7 +167,7 @@ export async function joinGame(gameId: string, player2Id: string): Promise<any |
       .from('games')
       .update({
           player2_id: effectivePlayerId,
-          status: 'active',
+          // Do NOT set status to 'active' here; keep existing status (should be 'waiting').
           updated_at: new Date().toISOString()
       })
       .eq('id', gameId)
@@ -183,7 +183,7 @@ export async function joinGame(gameId: string, player2Id: string): Promise<any |
         }
         throw error;
     }
-    console.log(`[joinGame] Player ${player2Id} successfully joined game ${gameId}. Status set to active.`); // Updated log
+    console.log(`[joinGame] Player ${player2Id} successfully joined game ${gameId}.`);
     return data;
   } catch (error) {
     console.error('Error joining game:', error);
