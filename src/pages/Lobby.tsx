@@ -730,8 +730,8 @@ const Lobby: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-900 text-white relative overflow-hidden pt-16">
       <div className="max-w-7xl mx-auto px-6 md:px-8 py-8">
-        <div className="flex justify-center mb-6">
-          <img src="/images/banner.png" alt="Mythical Beings" className="w-full max-w-3xl h-auto rounded-lg shadow-lg" />
+        <div className="flex justify-center mb-4">
+          <img src="/images/banner.png" alt="Mythical Beings" className="w-full max-w-xl h-auto rounded-lg shadow-lg object-contain max-h-40 sm:max-h-48 md:max-h-56 lg:max-h-64" />
         </div>
         <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 to-cyan-400/10 pointer-events-none -z-10" />
 
@@ -749,7 +749,7 @@ const Lobby: React.FC = () => {
             Error loading games: {error}
           </div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="bg-gray-800 bg-opacity-70 p-6 rounded-xl shadow-xl flex flex-col gap-4">
               <h2 className="text-2xl font-semibold mb-3 text-center text-gray-100 flex items-center justify-center gap-2">
                 <span className="text-purple-400 text-2xl">👥</span>
@@ -790,7 +790,7 @@ const Lobby: React.FC = () => {
                 <span className="text-yellow-400 text-2xl">🎮</span>
                 Available Games
               </h2>
-              <div className="space-y-4 overflow-y-auto max-h-[400px] pr-2">
+              <div className="space-y-4 overflow-y-auto max-h-[320px] pr-2">
                 {availableGames.length > 0 ? (
                   availableGames.map((game) => (
                     <div
@@ -838,7 +838,7 @@ const Lobby: React.FC = () => {
                 <span className="text-green-400 text-xl">👀</span>
                 Watch live
               </h3>
-              <div className="space-y-4 overflow-y-auto max-h-[300px] pr-2">
+              <div className="space-y-4 overflow-y-auto max-h-[240px] pr-2">
                 {activeGames.length > 0 ? (
                   activeGames.map((game) => (
                     <div

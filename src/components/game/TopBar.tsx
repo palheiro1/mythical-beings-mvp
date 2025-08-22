@@ -61,7 +61,7 @@ const TopBar: React.FC<TopBarProps> = ({
   };
 
   return (
-    <div className="relative z-20 h-16 px-4 py-2 bg-gradient-to-r from-gray-950/95 via-gray-900/90 to-gray-950/95 backdrop-blur-xl text-white shadow-[0_10px_20px_-10px_rgba(0,0,0,0.7)] border-b border-white/10 flex items-center">
+  <div className="relative z-20 h-16 px-4 py-2 bg-gradient-to-r from-gray-950/90 via-gray-900/85 to-gray-950/90 backdrop-blur-xl text-white shadow-[0_10px_20px_-10px_rgba(0,0,0,0.7)] border-b border-white/10 flex items-center">
       {/* Left: Player 1 */}
       <div className="flex items-center gap-3 min-w-0">
         {player1Profile.avatar_url ? (
@@ -90,11 +90,11 @@ const TopBar: React.FC<TopBarProps> = ({
         <div className="text-[18px] leading-5 font-extrabold tracking-wide bg-clip-text text-transparent bg-gradient-to-r from-white via-white to-white/70">
           Turn {turn}
         </div>
-        <div className="mt-1 text-[11px] font-semibold text-yellow-300/90 px-2 py-0.5 rounded bg-yellow-900/30 inline-block tracking-widest">
+        <div className="mt-1 text-[11px] font-semibold text-yellow-200/90 px-2 py-0.5 rounded bg-yellow-900/30 inline-block tracking-widest">
           {phase.toUpperCase()} PHASE
         </div>
         <div className="mt-1 flex justify-center">
-          <img src="/images/banner.png" alt="Mythical Beings" className="h-6 w-auto opacity-80" />
+          <img src="/images/banner.png" alt="Mythical Beings" className="h-5 w-auto opacity-70" />
         </div>
       </div>
 

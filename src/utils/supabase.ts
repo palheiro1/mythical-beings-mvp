@@ -203,11 +203,13 @@ export async function getAvailableGames(): Promise<any[] | null> {
  */
 export async function getActiveGames(): Promise<any[] | null> {
   try {
+    const thirtyMinutesAgoIso = new Date(Date.now() - 30 * 60 * 1000).toISOString();
     const { data, error } = await supabase
       .from('games')
-      .select('id, player1_id, bet_amount, created_at, status')
+      .select('id, player1_id, bet_amount, created_at, updated_at, status')
       .eq('status', 'active')
       .not('player2_id', 'is', null)
+      .gt('updated_at', thirtyMinutesAgoIso)
       .order('updated_at', { ascending: false });
 
     if (error) throw error;

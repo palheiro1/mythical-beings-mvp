@@ -6,7 +6,6 @@ import { useAuth } from '../hooks/useAuth.js';
 interface ProfileData {
   username: string | null;
   avatar_url: string | null;
-  website: string | null;
   games_won: number;
   games_played: number;
 }
@@ -18,12 +17,10 @@ const ProfilePage: React.FC = () => {
   const [profileData, setProfileData] = useState<ProfileData>({
     username: null,
     avatar_url: null,
-    website: null,
     games_won: 0,
     games_played: 0,
   });
   const [newUsername, setNewUsername] = useState('');
-  const [newWebsite, setNewWebsite] = useState('');
   const [uploading, setUploading] = useState(false);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [notification, setNotification] = useState<string | null>(null);
@@ -35,7 +32,7 @@ const ProfilePage: React.FC = () => {
         try {
           const { data, error, status } = await supabase
             .from('profiles')
-            .select(`username, website, avatar_url, games_won, games_played`)
+            .select(`username, avatar_url, games_won, games_played`)
             .eq('id', playerId)
             .single();
 
@@ -47,12 +44,10 @@ const ProfilePage: React.FC = () => {
             setProfileData({
               username: data.username,
               avatar_url: data.avatar_url,
-              website: data.website,
               games_won: data.games_won ?? 0,
               games_played: data.games_played ?? 0,
             });
             setNewUsername(data.username || '');
-            setNewWebsite(data.website || '');
           }
         } catch (error) {
           console.error('Error fetching profile:', error);
@@ -86,21 +81,21 @@ const ProfilePage: React.FC = () => {
         }
       }
 
-      const updates = {
-        id: playerId,
-        username: newUsername,
-        website: newWebsite,
-        avatar_url: avatarUrl,
-        updated_at: new Date(),
-      };
-
-      const { error } = await supabase.from('profiles').upsert(updates);
+      // Use direct UPDATE to comply with RLS (users can UPDATE their own row, INSERT may be blocked)
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          username: newUsername,
+          avatar_url: avatarUrl,
+          updated_at: new Date(),
+        })
+        .eq('id', playerId);
 
       if (error) {
         throw error;
       }
 
-      setProfileData(prev => ({ ...prev, username: newUsername, website: newWebsite, avatar_url: avatarUrl }));
+  setProfileData(prev => ({ ...prev, username: newUsername, avatar_url: avatarUrl }));
       setNotification('Profile updated successfully!');
     } catch (error) {
       console.error('Error updating profile:', error);
@@ -211,18 +206,7 @@ const ProfilePage: React.FC = () => {
               />
             </div>
 
-            {/* Website */}
-            <div>
-              <label htmlFor="website" className="block text-sm font-medium text-gray-300 mb-1">Website</label>
-              <input
-                id="website"
-                type="url"
-                value={newWebsite}
-                onChange={(e) => setNewWebsite(e.target.value)}
-                className="w-full p-3 rounded-md bg-gray-700 border border-gray-600 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
-                placeholder="https://your-website.com"
-              />
-            </div>
+            {/* Website removed by request */}
 
             {/* Stats Display */}
             <div className="flex justify-around pt-4 border-t border-gray-700">

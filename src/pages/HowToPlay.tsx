@@ -38,8 +38,8 @@ const HowToPlay: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-900 text-white pb-10 pt-16"> {/* pt-16 for sticky app-level NavBar */}
       <div className="container mx-auto px-4 py-8">
-        <div className="flex justify-center mb-6">
-          <img src="/images/banner.png" alt="Mythical Beings" className="w-full max-w-3xl h-auto rounded-lg shadow-lg" />
+        <div className="flex justify-center mb-4">
+          <img src="/images/banner.png" alt="Mythical Beings" className="w-full max-w-xl h-auto rounded-lg shadow-lg object-contain max-h-40 sm:max-h-48 md:max-h-56 lg:max-h-64" />
         </div>
         <h1 className="text-4xl font-bold text-center mb-8 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-cyan-300">
           How to Play Mythical Arena
