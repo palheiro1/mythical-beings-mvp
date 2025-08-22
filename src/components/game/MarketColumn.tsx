@@ -1,6 +1,7 @@
 import React from 'react';
-import { Knowledge } from '../../game/types';
-import Card from '../Card'; // Adjust path if needed
+import { Knowledge } from '../../game/types.js';
+import Card from '../Card.js'; // Adjust path if needed
+import { useCardRegistry } from '../../context/CardRegistry.js';
 
 interface MarketColumnProps {
     marketCards: Knowledge[];
@@ -17,6 +18,7 @@ const MarketColumn: React.FC<MarketColumnProps> = ({
     phase,
     onDrawKnowledge
 }) => {
+    const registry = useCardRegistry();
     return (
         <div className="h-full flex flex-col items-center space-y-2 py-4 px-2 bg-blue-900/20 rounded-lg overflow-hidden">
             {/* Deck */}
@@ -32,7 +34,13 @@ const MarketColumn: React.FC<MarketColumnProps> = ({
                     const isDisabled = !isMyTurn || phase !== 'action';
                     return (
                         // Container defines size and aspect ratio
-                        <div key={card.instanceId || `${card.id}-${idx}`} className="w-[90%] max-w-[120px] aspect-[2/3] flex-shrink-0">
+                        <div
+                            key={card.instanceId || `${card.id}-${idx}`}
+                            className={`w-[90%] max-w-[120px] aspect-[2/3] flex-shrink-0 ${!isDisabled ? 'transition-transform hover:scale-[1.03]' : ''}`}
+                            ref={(el) => {
+                                if (card.instanceId) registry.register(`market:${card.instanceId}`, el as unknown as HTMLElement | null);
+                            }}
+                        >
                             <Card
                                 card={card}
                                 onClick={!isDisabled ? () => onDrawKnowledge(card.id) : undefined}

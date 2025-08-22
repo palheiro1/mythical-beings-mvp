@@ -1,5 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthProvider.js';
+import { CardRegistryProvider } from './context/CardRegistry.js';
 import Home from './pages/Home.js';
 import Lobby from './pages/Lobby.js';
 import GameScreen from './pages/GameScreen.js';
@@ -47,7 +48,9 @@ function AppContent() {
 function App() {
   return (
     <AuthProvider>
-      <AppContent />
+      <CardRegistryProvider>
+        <AppContent />
+      </CardRegistryProvider>
     </AuthProvider>
   );
 }

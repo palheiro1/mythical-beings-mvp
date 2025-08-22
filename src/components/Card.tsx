@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useCardRegistry } from '../context/CardRegistry.js';
 import { Creature, Knowledge } from '../game/types.js';
 
 interface CardProps {
@@ -17,6 +18,7 @@ const BASE_CARD_WIDTH_PX = 100; // Example base width in pixels
 const BASE_CARD_HEIGHT_PX = BASE_CARD_WIDTH_PX * (3.5 / 2.5); // Assuming standard card aspect ratio
 
 const Card: React.FC<CardProps> = ({ card, onClick, isSelected, rotation = 0, showBack = false, isDisabled = false }) => {
+  const registry = useCardRegistry();
   // No isHovering state needed if it's only used for zoom logic
   const [isZoomed, setIsZoomed] = useState(false);
   const [zoomPosition, setZoomPosition] = useState({ top: '50%', left: '50%', transform: 'translate(-50%, -50%)' });
@@ -118,14 +120,22 @@ const Card: React.FC<CardProps> = ({ card, onClick, isSelected, rotation = 0, sh
         className={`
           relative w-full h-full
           bg-gray-700 rounded-[10px] shadow-md overflow-hidden
-          transition-transform duration-300 ease-in-out
-          ${onClick && !isDisabled ? 'cursor-pointer' : 'cursor-default'}
+          transition-transform duration-200 ease-out
+          ${onClick && !isDisabled ? 'cursor-pointer hover:scale-[1.02]' : 'cursor-default'}
           ${isSelected ? 'border-yellow-400 border-2 ring-2 ring-yellow-400' : 'border-2 border-gray-500'}
-          z-10 /* Keep base card at z-10 */
+          ${isDisabled ? 'opacity-80' : ''}
+          z-10
         `}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeaveOriginalCard} // Use the specific handler for leaving the original card
         onClick={handleClick}
+        onLoadCapture={() => {
+          // Best-effort registration by instanceId if present on knowledge
+          const maybeInstance = (card as any).instanceId as string | undefined;
+          if (maybeInstance && cardRef.current) {
+            registry.register(`card:${maybeInstance}`, cardRef.current);
+          }
+        }}
       >
         {/* Using a wrapper div for card content that rotates */}
         <div

@@ -12,6 +12,10 @@ import HandsColumn from '../components/game/HandsColumn.js';
 import MarketColumn from '../components/game/MarketColumn.js';
 import Logs from '../components/game/Logs.js'; // Import the Logs component
 import { getProfile } from '../utils/supabase.js';
+import GameAnnouncer from '../components/game/GameAnnouncer.js';
+import CardMoveLayer from '../components/game/CardMoveLayer.js';
+import CombatFloaters from '../components/game/CombatFloaters.js';
+import { useCardRegistry } from '../context/CardRegistry.js';
 
 interface ProfileInfo {
   username: string | null;
@@ -39,6 +43,13 @@ const GameScreen: React.FC = () => {
     handleCreatureClickForSummon,
     handleEndTurn, // Get handleEndTurn from useGameActions
   } = useGameActions(gameState, gameId || null, dispatch, currentPlayerId || null, selectedKnowledgeId);
+
+  // Animation overlay state
+  const [moveEvent, setMoveEvent] = useState<import('../types/vfx.js').MoveEvent | null>(null);
+  const [damageEvent, setDamageEvent] = useState<{ x: number; y: number; damage?: number; blocked?: number; crit?: boolean; bypass?: boolean } | null>(null);
+  const registry = useCardRegistry();
+  const prevPowersRef = React.useRef<{ p0: number; p1: number } | null>(null);
+  const prevFieldRef = React.useRef<{ my: string[]; opp: string[]; idToCard: Record<string, { image: string }> } | null>(null);
 
   // --- Turn Timer --- 
   const TURN_DURATION_SECONDS = 30;
@@ -156,6 +167,120 @@ const GameScreen: React.FC = () => {
     }
   }, [gameState?.currentPlayerIndex, gameState?.phase, gameState?.winner, gameState?.actionsTakenThisTurn, gameState?.actionsPerTurn, currentPlayerId, gameState?.players, isMyTurn]);
 
+  // Compute player/opponent indices and objects early so all hooks can safely run before any early returns
+  const playerIndex = gameState?.players?.[0]?.id === currentPlayerId ? 0 : (gameState?.players?.[1]?.id === currentPlayerId ? 1 : -1);
+  const opponentIndex = playerIndex === 0 ? 1 : 0;
+  const player: PlayerState | undefined = playerIndex !== -1 && gameState ? gameState.players[playerIndex] : undefined;
+  const opponent: PlayerState | undefined = gameState ? gameState.players[opponentIndex] : undefined;
+
+  // Helper: parse defense info from latest logs for a target player
+  const parseDefenseFromLogs = (targetId: string): { blocked?: number; bypass?: boolean } => {
+    const logs = gameState?.log || [];
+    for (let i = logs.length - 1; i >= Math.max(0, logs.length - 10); i--) {
+      const line = logs[i];
+      if (!line) continue;
+      if (line.includes('deals') && line.includes(targetId)) {
+        const defMatch = line.match(/Defense:\s*(\d+)/i);
+        const bypass = /bypass(ed)?/i.test(line);
+        const blocked = defMatch ? parseInt(defMatch[1], 10) : undefined;
+        return { blocked, bypass };
+      }
+    }
+    return {};
+  };
+
+  // Damage floater: watch power changes (must run every render to keep hook order stable)
+  useEffect(() => {
+    if (!gameState) return;
+    const p0 = gameState.players[0]?.power ?? 0;
+    const p1 = gameState.players[1]?.power ?? 0;
+    const prev = prevPowersRef.current;
+    if (prev) {
+      const deltas: Array<{ idx: 0 | 1; delta: number }> = [];
+      if (p0 < prev.p0) deltas.push({ idx: 0, delta: prev.p0 - p0 });
+      if (p1 < prev.p1) deltas.push({ idx: 1, delta: prev.p1 - p1 });
+      if (deltas.length > 0) {
+        const first = deltas[0];
+        const rect = registry.getRect(`power:${first.idx}`);
+        if (rect) {
+          const targetId = gameState.players[first.idx]?.id || '';
+          const { blocked, bypass } = parseDefenseFromLogs(targetId);
+          setDamageEvent({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2, damage: first.delta, blocked, bypass });
+        }
+      }
+    }
+    prevPowersRef.current = { p0, p1 };
+  }, [gameState?.players?.[0]?.power, gameState?.players?.[1]?.power]);
+
+  // Discard animation: detect knowledge leaving field (must run every render to keep hook order stable)
+  useEffect(() => {
+    if (!gameState) return;
+    const me = playerIndex !== -1 ? gameState.players[playerIndex] : null;
+    const opp = opponent;
+    const currentMy = me ? me.field.map(s => s.knowledge?.instanceId).filter(Boolean) as string[] : [];
+    const currentOpp = opp ? opp.field.map(s => s.knowledge?.instanceId).filter(Boolean) as string[] : [];
+
+    const idToCard: Record<string, { image: string }> = {};
+    gameState.players.forEach(pl => pl.field.forEach(s => { if (s.knowledge?.instanceId) idToCard[s.knowledge.instanceId] = { image: s.knowledge.image }; }));
+
+    const prev = prevFieldRef.current;
+    if (prev) {
+      const removed: string[] = [];
+      prev.my.forEach(id => { if (!currentMy.includes(id)) removed.push(id); });
+      prev.opp.forEach(id => { if (!currentOpp.includes(id)) removed.push(id); });
+      if (removed.length > 0) {
+        const id = removed[0];
+        const fromId = `table:${id}`;
+        const toId = `discard:anchor`;
+        if (registry.has(fromId) && registry.has(toId)) {
+          const image = prev.idToCard[id]?.image || idToCard[id]?.image || '/images/spells/back.jpg';
+          setMoveEvent({ id, fromId, toId, image });
+        }
+      }
+    }
+
+    prevFieldRef.current = { my: currentMy, opp: currentOpp, idToCard };
+  }, [gameState?.players]);
+
+  // Knowledge-phase damage floater: react to new log lines mentioning deals <n> damage
+  const lastLogIndexRef = React.useRef<number>(-1);
+  useEffect(() => {
+    if (!gameState) return;
+    const logs = gameState.log || [];
+    const lastSeen = lastLogIndexRef.current;
+    if (logs.length === 0 || logs.length - 1 === lastSeen) return;
+    const newIdx = logs.length - 1;
+    lastLogIndexRef.current = newIdx;
+    const line = logs[newIdx];
+    if (!line) return;
+    // Try to extract target player id and damage number
+    const dmgMatch = line.match(/deals\s+(\d+)\s+damage\s+to\s+([0-9a-f\-]{36})/i);
+    if (dmgMatch) {
+      const amount = parseInt(dmgMatch[1], 10);
+      const targetId = dmgMatch[2];
+      // choose the power anchor based on which player id matches
+      const idx: 0 | 1 | null = gameState.players[0]?.id === targetId ? 0 : (gameState.players[1]?.id === targetId ? 1 : null);
+      if (idx !== null) {
+        const rect = registry.getRect(`power:${idx}`);
+        if (rect) {
+          setDamageEvent({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2, damage: amount });
+        } else {
+          // Fallback to screen center if anchors are missing
+          setDamageEvent({ x: window.innerWidth / 2, y: 80, damage: amount });
+        }
+        // Attempt a quick attack motion from a random player table slot towards the damaged power anchor
+        const sourceSlots = idx === 0 ? gameState.players[1].field : gameState.players[0].field; // attacker likely opposite of target
+        const src = sourceSlots.find(s => s.knowledge?.instanceId);
+        const attackerId = src?.knowledge?.instanceId;
+        const targetAnchor = `power:${idx}`;
+        if (attackerId && registry.has(`table:${attackerId}`) && registry.has(targetAnchor)) {
+          const image = src!.knowledge!.image;
+          setMoveEvent({ id: attackerId, fromId: `table:${attackerId}`, toId: targetAnchor, image });
+        }
+      }
+    }
+  }, [gameState?.log]);
+
   if (authLoading || idLoading || gameLoading || profilesLoading) {
     console.log(`[Render] Showing Loading Game... (auth: ${authLoading}, id: ${idLoading}, game: ${gameLoading}, profiles: ${profilesLoading})`);
     return <div className="flex justify-center items-center h-screen bg-gray-900 text-white">Loading Game...</div>;
@@ -175,12 +300,6 @@ const GameScreen: React.FC = () => {
     return <div className="flex justify-center items-center h-screen bg-gray-900 text-gray-400">Error: Invalid game data received. <button onClick={() => navigate('/lobby')} className="ml-2 underline">Back to Lobby</button></div>;
   }
 
-  const playerIndex = gameState.players[0].id === currentPlayerId ? 0 : (gameState.players[1].id === currentPlayerId ? 1 : -1);
-  const opponentIndex = playerIndex === 0 ? 1 : 0;
-
-  const player: PlayerState | undefined = playerIndex !== -1 ? gameState.players[playerIndex] : undefined;
-  const opponent: PlayerState | undefined = gameState.players[opponentIndex];
-
   const playerProfileId = player?.id || '';
   const opponentProfileId = opponent?.id || '';
   const playerProfile = playerProfiles[playerProfileId] || { username: `Player ${playerIndex !== -1 ? playerIndex + 1 : '?'}`, avatar_url: null };
@@ -188,6 +307,22 @@ const GameScreen: React.FC = () => {
 
   const handleMarketClick = (knowledgeId: string) => {
     if (handleDrawKnowledge) {
+      // Try to build a move event from market to player's hand area
+      const src = gameState?.market.find(k => k.id === knowledgeId);
+      const instanceId = src?.instanceId;
+      if (instanceId) {
+        setTimeout(() => {
+          let fromId = `market:${instanceId}`;
+          // Prefer the dedicated player-hand anchor at the bottom
+          let toId = `hand:player`;
+          if (!registry.has(fromId)) fromId = 'market:anchor';
+          if (!registry.has(toId)) {
+            // Fallback to per-user hand anchor if available
+            toId = currentPlayerId ? `hand:${currentPlayerId}` : 'hand:player';
+          }
+          if (registry.has(fromId) && registry.has(toId)) setMoveEvent({ id: instanceId, fromId, toId, image: src!.image });
+        }, 0);
+      }
       handleDrawKnowledge(knowledgeId);
     } else {
       console.error("handleDrawKnowledge function not available from useGameActions");
@@ -207,6 +342,14 @@ const GameScreen: React.FC = () => {
 
   const handleCreatureClick = (creatureId: string) => {
     if (selectedKnowledgeId && handleCreatureClickForSummon) {
+      // Build move event from hand:selected to table:creatureId
+      const handCard = gameState?.players.find(p => p.id === currentPlayerId)?.hand.find(k => k.instanceId === selectedKnowledgeId);
+      if (handCard?.instanceId) {
+        const fromId = `hand:${handCard.instanceId}`;
+  let toId = `tableSlot:${creatureId}`;
+  if (!registry.has(toId)) toId = `table:${creatureId}`;
+  if (registry.has(fromId) && registry.has(toId)) setMoveEvent({ id: handCard.instanceId, fromId, toId, image: handCard.image });
+      }
       handleCreatureClickForSummon(creatureId);
       setSelectedKnowledgeId(null);
     } else if (!selectedKnowledgeId && handleRotateCreature) {
@@ -216,23 +359,36 @@ const GameScreen: React.FC = () => {
     }
   };
 
+
   console.log('[Render] Rendering main game screen.');
   return (
-    <div className="flex flex-col h-screen bg-gradient-to-br from-gray-800 via-gray-900 to-black text-white overflow-hidden">
-      <TopBar
-        player1Profile={playerIndex === 0 ? playerProfile : opponentProfile}
-        player2Profile={playerIndex === 1 ? playerProfile : opponentProfile}
+    <div className="flex flex-col h-[calc(100vh-56px)] bg-gradient-to-br from-gray-800 via-gray-900 to-black text-white overflow-hidden">
+  {/* Overlay layers for animations */}
+  <CardMoveLayer event={moveEvent} onDone={() => setMoveEvent(null)} />
+  <CombatFloaters event={damageEvent ? { key: Math.random().toString(36).slice(2), x: damageEvent.x, y: damageEvent.y, damage: damageEvent.damage, blocked: damageEvent.blocked, bypass: damageEvent.bypass } : null} onDone={() => setDamageEvent(null)} />
+      {/* Announcer overlay */}
+      <GameAnnouncer
+        turn={gameState.turn}
+        phase={mapPhaseForTableArea(gameState.phase)}
+        isMyTurn={isMyTurn}
+        playerName={playerProfile.username || undefined}
+        opponentName={opponentProfile.username || undefined}
+      />
+  <TopBar
+        player1Profile={playerIndex === 0 ? { ...playerProfile, username: 'You' } : opponentProfile}
+        player2Profile={playerIndex === 1 ? { ...playerProfile, username: 'You' } : opponentProfile}
         player1Mana={gameState.players[0]?.power || 0}
         player2Mana={gameState.players[1]?.power || 0}
         turn={gameState.turn}
         phase={gameState.phase}
-        onLobbyReturn={() => navigate('/lobby')}
+  currentPlayerId={currentPlayerId || undefined}
+  gameState={gameState}
       />
 
-      {/* Main Content Area - Now 4 columns */}
-      <div className="flex-grow flex flex-row overflow-hidden p-2 gap-2">
+    {/* Main Content Area - Now 4 columns */}
+    <div className="flex-grow min-h-0 flex flex-row overflow-hidden p-2 gap-2">
         {/* Hands Column - Adjusted width */}
-        <div className="w-1/6 h-full">
+  <div className="w-1/6 h-full min-h-0" id={`hand-anchor-${currentPlayerId || 'unknown'}`} ref={(el) => { if (el && currentPlayerId) registry.register(`hand:${currentPlayerId}`, el); }}>
           {player && opponent ? (
             <HandsColumn
               currentPlayerHand={player.hand}
@@ -247,8 +403,8 @@ const GameScreen: React.FC = () => {
           )}
         </div>
 
-        {/* Table Area - Adjusted width */}
-        <div className="w-3/6 h-full"> {/* Adjusted from 3/5 */}
+    {/* Table Area - Adjusted width */}
+  <div className="w-3/6 h-full min-h-0"> {/* Adjusted from 3/5 */}
           {player && opponent ? (
             <TableArea
               currentPlayer={player}
@@ -264,8 +420,8 @@ const GameScreen: React.FC = () => {
           )}
         </div>
 
-        {/* Market Column - Adjusted width */}
-        <div className="w-1/6 h-full"> {/* Adjusted from 1/5 */}
+    {/* Market Column - Adjusted width */}
+  <div className="w-1/6 h-full min-h-0" ref={(el) => { if (el) registry.register('market:anchor', el); }}> {/* Adjusted from 1/5 */}
           <MarketColumn
             marketCards={gameState.market}
             deckCount={gameState.knowledgeDeck.length}
@@ -275,9 +431,9 @@ const GameScreen: React.FC = () => {
           />
         </div>
 
-        {/* Logs Column - New dedicated column */}
-        <div className="w-1/6 h-full"> {/* New column for logs */}
-           <Logs logs={gameState.log} />
+    {/* Logs Column - New dedicated column */}
+  <div className="w-1/6 h-full min-h-0" ref={(el) => { if (el) registry.register('discard:anchor', el); }}> {/* New column for logs and discard anchor */}
+     <Logs logs={gameState.log} />
         </div>
       </div>
 

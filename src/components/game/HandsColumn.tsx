@@ -1,6 +1,7 @@
-import React from 'react';
-import { Knowledge } from '../../game/types';
-import Card from '../Card';
+import React, { useRef, useEffect } from 'react';
+import { Knowledge } from '../../game/types.js';
+import Card from '../Card.js';
+import { useCardRegistry } from '../../context/CardRegistry.js';
 
 interface HandsColumnProps {
     currentPlayerHand: Knowledge[];
@@ -20,11 +21,23 @@ const HandsColumn: React.FC<HandsColumnProps> = ({
     onHandCardClick
 }) => {
     const maxVisibleCards = 5; // Keep this logic for now
+    const registry = useCardRegistry();
+    const oppHandRef = useRef<HTMLDivElement | null>(null);
+    const myHandRef = useRef<HTMLDivElement | null>(null);
+
+    useEffect(() => {
+        if (oppHandRef.current) registry.register('hand:opponent', oppHandRef.current);
+        if (myHandRef.current) registry.register('hand:player', myHandRef.current);
+        return () => {
+            registry.register('hand:opponent', null as unknown as HTMLElement | null);
+            registry.register('hand:player', null as unknown as HTMLElement | null);
+        };
+    }, [registry]);
 
     return (
-        <div className="h-full w-full flex flex-col overflow-hidden rounded-lg">
+        <div className="h-full min-h-0 w-full flex flex-col overflow-hidden rounded-lg">
             {/* Opponent Hand Area - reduced from flex-1 to flex-none with fixed height */}
-            <div className="flex-none h-1/5 flex flex-col items-center justify-center p-2 overflow-hidden relative">
+            <div className="flex-none h-1/5 flex flex-col items-center justify-center p-2 overflow-hidden relative" ref={oppHandRef}>
                 <span className="text-gray-200 text-sm font-medium absolute top-1 left-1/2 transform -translate-x-1/2 px-2 py-1 bg-black/30 rounded-full">
                     Opponent ({opponentPlayerHand.length})
                 </span>
@@ -67,7 +80,7 @@ const HandsColumn: React.FC<HandsColumnProps> = ({
             <hr className="border-white/20 w-full mx-auto" />
 
             {/* Player Hand Area - reduced from flex-1 to flex-none with fixed height */}
-            <div className="flex-none h-1/5 flex flex-col items-center justify-center p-2 overflow-hidden relative">
+            <div className="flex-none h-1/5 flex flex-col items-center justify-center p-2 overflow-hidden relative" ref={myHandRef}>
                 <span className="text-gray-200 text-sm font-medium absolute bottom-1 left-1/2 transform -translate-x-1/2 px-2 py-1 bg-black/30 rounded-full">
                     Your Hand ({currentPlayerHand.length}/5)
                 </span>
@@ -90,6 +103,9 @@ const HandsColumn: React.FC<HandsColumnProps> = ({
                                 <div
                                     key={instanceId} // Use instanceId for key
                                     className={`h-[85%] aspect-[2/3] transition-all ${selectedKnowledgeId === instanceId ? 'ring-2 ring-yellow-400 scale-105' : ''}`} // Compare with instanceId
+                                    ref={(el) => {
+                                        if (card.instanceId) registry.register(`hand:${card.instanceId}`, el as unknown as HTMLElement | null);
+                                    }}
                                     onClick={!isDisabled ? () => onHandCardClick(instanceId) : undefined} // Pass instanceId
                                 >
                                     <Card

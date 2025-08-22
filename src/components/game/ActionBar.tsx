@@ -62,16 +62,25 @@ const ActionBar: React.FC<ActionBarProps> = ({
 
   return (
     <div className="flex items-center justify-between p-3 bg-gray-800/90 text-white h-16 border-t border-gray-700">
-      <div className="flex-1 text-left pl-4"> {/* Placeholder for potential left-side content */}
-      </div>
+      <div className="flex-1 pl-4" />
       <div className="flex-1 text-center">
-        <span className="text-lg font-semibold">{getPhaseMessage()}</span>
+        <span className="text-lg font-semibold">
+          {getPhaseMessage()}
+        </span>
       </div>
-      <div className="flex-1 text-right pr-4"> {/* Container for the button */}
+      <div className="flex-1 pr-4 flex items-center justify-end gap-3">
+        {isMyTurn && phase === 'action' && (
+          <div className="h-2 w-24 bg-gray-700 rounded overflow-hidden" aria-hidden>
+            <div
+              className="h-full bg-gradient-to-r from-emerald-400 to-emerald-600 transition-all duration-500"
+              style={{ width: `${Math.max(0, Math.min(100, (turnTimer / (actionsPerTurn > 0 ? 30 : 30)) * 100))}%` }}
+            />
+          </div>
+        )}
         {canEndTurn && (
           <button
             onClick={onEndTurnClick}
-            className="px-4 py-2 bg-red-600 hover:bg-red-700 rounded text-white font-semibold transition-colors duration-150"
+            className="px-4 py-2 bg-red-600 hover:bg-red-500 active:scale-[0.98] rounded-md text-white font-semibold transition-all duration-150 shadow-sm hover:shadow-red-500/20"
           >
             End Turn
           </button>

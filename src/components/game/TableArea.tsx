@@ -1,6 +1,7 @@
 import React from 'react';
-import { Creature, Knowledge, PlayerState } from '../../game/types';
-import Card from '../Card'; // Adjust path if needed
+import { Creature, Knowledge, PlayerState } from '../../game/types.js';
+import Card from '../Card.js'; // Adjust path if needed
+import { useCardRegistry } from '../../context/CardRegistry.js';
 
 interface TableAreaProps {
     currentPlayer: PlayerState;
@@ -21,6 +22,7 @@ const TableArea: React.FC<TableAreaProps> = ({
     onCreatureClickForSummon,
     onRotateCreature
 }) => {
+    const registry = useCardRegistry();
     const handlePlayerCreatureClick = (creatureId: string) => {
         if (isMyTurn && phase === 'action') {
             if (selectedKnowledgeId) {
@@ -34,9 +36,9 @@ const TableArea: React.FC<TableAreaProps> = ({
     // Helper to render a slot (either a card or an empty placeholder)
     const renderSlot = (cardData: Creature | Knowledge | null, key: string, rotation = 0, onClick?: () => void, isSelected?: boolean, isDisabled?: boolean) => (
         // Outer div fills the grid cell and centers content
-        <div key={key} className="w-full h-full flex items-center justify-center p-0.5">
+        <div key={key} className="w-full h-full flex items-center justify-center p-0.5" ref={(el) => { if (el) registry.register(`table:${key}`, el as unknown as HTMLElement | null); }}>
             {/* Inner div enforces aspect ratio and takes full height of the cell */}
-            <div className="h-full aspect-[2/3]">
+            <div className={`h-full aspect-[2/3] ${onClick && !isDisabled ? 'transition-transform hover:scale-[1.02]' : ''}`}>
                 {cardData ? (
                     <Card
                         card={cardData}
@@ -58,7 +60,7 @@ const TableArea: React.FC<TableAreaProps> = ({
         // Explicitly define rows with minmax(0, 1fr) to allow shrinking
         <div className="grid grid-cols-3 grid-rows-[repeat(4,minmax(0,1fr))] gap-1 justify-items-center items-center w-full h-full bg-black/10 rounded p-1">
             {/* Row 1: Opponent Beings */}
-            {opponentPlayer.creatures.map((creature) => renderSlot(
+            {opponentPlayer.creatures.map((creature: Creature) => renderSlot(
                 creature,
                 creature.id,
                 (creature.rotation ?? 0) + 180, // Add 180 to flip opponent cards, but respect their rotation
@@ -68,27 +70,35 @@ const TableArea: React.FC<TableAreaProps> = ({
             ))}
 
             {/* Row 2: Opponent Spells */}
-            {opponentPlayer.field.map((slot) => renderSlot(
-                slot.knowledge,
-                slot.knowledge ? slot.knowledge.instanceId! : `empty-op-${slot.creatureId}`,
-                 180,
-                undefined,
-                false,
-                true // Opponent cards are always disabled
-            ))}
+                        {opponentPlayer.field.map((slot: { creatureId: string; knowledge: Knowledge | null }) => (
+                                <div key={`op-slot-${slot.creatureId}`} className="w-full h-full" ref={(el) => { if (el) registry.register(`tableSlot:${slot.creatureId}`, el as unknown as HTMLElement | null); }}>
+                                    {renderSlot(
+                                        slot.knowledge,
+                                        slot.knowledge ? slot.knowledge.instanceId! : `empty-op-${slot.creatureId}`,
+                                        180,
+                                        undefined,
+                                        false,
+                                        true
+                                    )}
+                                </div>
+                        ))}
 
             {/* Row 3: Player Spells */}
-            {currentPlayer.field.map((slot) => renderSlot(
-                slot.knowledge,
-                slot.knowledge ? slot.knowledge.instanceId! : `empty-my-${slot.creatureId}`,
-                0,
-                undefined, // No onClick for field spells (usually)
-                false,
-                true // Field spells are usually not directly clickable
-            ))}
+                        {currentPlayer.field.map((slot: { creatureId: string; knowledge: Knowledge | null }) => (
+                                <div key={`my-slot-${slot.creatureId}`} className="w-full h-full" ref={(el) => { if (el) registry.register(`tableSlot:${slot.creatureId}`, el as unknown as HTMLElement | null); }}>
+                                    {renderSlot(
+                                        slot.knowledge,
+                                        slot.knowledge ? slot.knowledge.instanceId! : `empty-my-${slot.creatureId}`,
+                                        0,
+                                        undefined,
+                                        false,
+                                        true
+                                    )}
+                                </div>
+                        ))}
 
             {/* Row 4: Player Beings */}
-            {currentPlayer.creatures.map((creature) => {
+            {currentPlayer.creatures.map((creature: Creature) => {
                 const isDisabled = !isMyTurn || phase !== 'action';
                 return renderSlot(
                     creature,
