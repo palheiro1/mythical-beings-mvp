@@ -16,6 +16,7 @@ export const useGameTimer = ({
   const [timeLeft, setTimeLeft] = useState(initialTime);
   const [isActive, setIsActive] = useState(autoStart);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const expiredRef = useRef(false);
 
   const start = useCallback(() => {
     setIsActive(true);
@@ -23,17 +24,24 @@ export const useGameTimer = ({
 
   const pause = useCallback(() => {
     setIsActive(false);
-  }, []);
-
-  const reset = useCallback((newTime?: number) => {
-    setIsActive(false);
-    const resetTime = newTime !== undefined ? newTime : initialTime;
-    setTimeLeft(resetTime);
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
       intervalRef.current = null;
     }
-  }, [initialTime]);
+  }, []);
+
+  const reset = useCallback((newTime?: number) => {
+    setIsActive(false);
+    expiredRef.current = false;
+    const resetTime = newTime !== undefined ? newTime : initialTime;
+    const clamped = Math.max(0, resetTime);
+    setTimeLeft(clamped);
+    if (onTimeUpdate) onTimeUpdate(clamped);
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+  }, [initialTime, onTimeUpdate]);
 
   const addTime = useCallback((seconds: number) => {
     setTimeLeft(current => Math.max(0, current + seconds));
@@ -44,19 +52,17 @@ export const useGameTimer = ({
     if (isActive && timeLeft > 0) {
       intervalRef.current = setInterval(() => {
         setTimeLeft(current => {
-          const newTime = current - 1;
-          
+          const newTime = Math.max(0, current - 1);
           if (onTimeUpdate) {
             onTimeUpdate(newTime);
           }
-
-          if (newTime <= 0) {
+          if (newTime === 0 && !expiredRef.current) {
+            expiredRef.current = true;
             setIsActive(false);
             if (onTimeExpired) {
               onTimeExpired();
             }
           }
-
           return newTime;
         });
       }, 1000);
@@ -85,6 +91,31 @@ export const useGameTimer = ({
     };
   }, []);
 
+  const stop = useCallback(() => {
+    setIsActive(false);
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+  }, []);
+
+  const setTime = useCallback((seconds: number) => {
+    const clamped = Math.max(0, seconds);
+    setTimeLeft(clamped);
+    if (onTimeUpdate) onTimeUpdate(clamped);
+    if (clamped === 0 && !expiredRef.current) {
+      expiredRef.current = true;
+      setIsActive(false);
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+      if (onTimeExpired) onTimeExpired();
+    } else if (clamped > 0) {
+      expiredRef.current = false;
+    }
+  }, [onTimeUpdate, onTimeExpired]);
+
   return {
     timeLeft,
     isActive,
@@ -92,6 +123,8 @@ export const useGameTimer = ({
     pause,
     reset,
     addTime,
+    stop,
+    setTime,
     isExpired: timeLeft <= 0,
     formattedTime: `${Math.floor(timeLeft / 60)}:${(timeLeft % 60).toString().padStart(2, '0')}`
   };

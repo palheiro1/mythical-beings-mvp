@@ -13,10 +13,10 @@ export interface SelectionStatus {
   count: number;
   isMaxReached: boolean;
   canSelectMore: boolean;
-  maxCards: number;
-  remaining: number;
-  percentage: number;
-  isComplete: boolean;
+  maxCards?: number;
+  remaining?: number;
+  percentage?: number;
+  isComplete?: boolean;
 }
 
 export function useCardSelection(options: UseCardSelectionOptions) {
@@ -81,19 +81,12 @@ export function useCardSelection(options: UseCardSelectionOptions) {
     const count = selectedCards.length;
     const isMaxReached = count >= maxCards;
     const canSelectMore = count < maxCards;
-    const remaining = Math.max(0, maxCards - count);
-    const percentage = maxCards > 0 ? (count / maxCards) * 100 : 0;
-    const isComplete = count >= maxCards;
 
     return {
       selectedCards: [...selectedCards],
       count,
       isMaxReached,
-      canSelectMore,
-      maxCards,
-      remaining,
-      percentage,
-      isComplete
+      canSelectMore
     };
   }, [selectedCards, maxCards]);
 

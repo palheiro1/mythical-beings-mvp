@@ -44,7 +44,7 @@ const Home: React.FC = () => {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900 text-white p-4">
-      <img src="/images/assets/LogoXogoBrancoTransparenteEN.png" alt="Mythical Beings Logo" className="w-1/3 h-auto mb-8" />
+  <img src="/images/banner.png" alt="Mythical Beings" className="w-full max-w-2xl h-auto mb-8 rounded-lg shadow-xl" />
       <h1 className="text-4xl font-bold mb-2">Welcome to Mythical Beings</h1>
       
       {!user && (

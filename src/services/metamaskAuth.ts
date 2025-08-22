@@ -166,20 +166,53 @@ By signing this message, you are proving ownership of this wallet address.`;
     try {
       console.log('[MetaMaskAuth] Verifying signature via Edge Function (moralis-auth)...');
 
-      // Prefer the verified Moralis flow which does not require a pre-existing JWT
-      const { data, error } = await supabase.functions.invoke('moralis-auth', {
-        body: { message, signature }
-      });
-
-      if (error) {
-        console.error('[MetaMaskAuth] Edge Function error:', error);
-        return { success: false, error: error.message || 'Authentication failed' };
+      // Try primary function first
+      let data: any | null = null;
+      try {
+        const res = await supabase.functions.invoke('moralis-auth', {
+          body: { message, signature }
+        });
+        data = res.data;
+        if (res.error) throw res.error;
+      } catch (primaryErr: any) {
+        console.warn('[MetaMaskAuth] moralis-auth failed, trying fallback simplified-moralis-auth...', primaryErr);
+        // Fallback to simplified function (more permissive) if available
+        const fallback = await supabase.functions.invoke('simplified-moralis-auth', {
+          body: { message, signature }
+        });
+        if (fallback.error) {
+          console.error('[MetaMaskAuth] Fallback simplified-moralis-auth failed:', fallback.error);
+          return { success: false, error: fallback.error.message || primaryErr?.message || 'Authentication failed' };
+        }
+        data = fallback.data;
       }
 
       // Expecting { token, user }
-  const token: string | undefined = (data as any)?.token;
+      const token: string | undefined = (data as any)?.token;
 
       if (!token) {
+        // Some edge functions (simplified) return instructions to sign in with password
+        if ((data as any)?.use_password_signin && (data as any)?.email) {
+          console.log('[MetaMaskAuth] No token returned; attempting password sign-in as instructed by fallback...');
+          const email: string = (data as any).email;
+          const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+            email,
+            password: 'metamask-verified-user'
+          });
+
+          if (signInError || !signInData?.session) {
+            console.error('[MetaMaskAuth] Password sign-in failed:', signInError);
+            return { success: false, error: 'Failed to establish session via password sign-in' };
+          }
+
+          console.log('[MetaMaskAuth] Session established via password sign-in. User:', signInData.user?.id);
+          return {
+            success: true,
+            user: signInData.user,
+            session: signInData.session
+          };
+        }
+
         console.error('[MetaMaskAuth] No token returned from Edge Function');
         return { success: false, error: 'No token returned from auth service' };
       }

@@ -150,6 +150,8 @@ export async function joinGame(gameId: string, player2Id: string): Promise<any |
           updated_at: new Date().toISOString()
       })
       .eq('id', gameId)
+  .eq('status', 'waiting')
+  .gt('created_at', new Date(Date.now() - 10 * 60 * 1000).toISOString())
       .is('player2_id', null)
       // Only select known columns to avoid missing-field errors
       .select('id, player1_id, player2_id, status, bet_amount, created_at, updated_at')
@@ -175,21 +177,46 @@ export async function joinGame(gameId: string, player2Id: string): Promise<any |
  * @returns An array of available/active games or null on error.
  */
 export async function getAvailableGames(): Promise<any[] | null> {
-    try {
-        const { data, error } = await supabase
-            .from('games')
-            .select('id, player1_id, bet_amount, created_at, status') // Select relevant fields
-            // Fetch games that are either 'waiting' or 'active'
-            .in('status', ['waiting', 'active'])
-            .order('created_at', { ascending: false }); // Show newest first
+  try {
+    // Only show truly joinable games: status='waiting' and not expired (created within last 10 minutes)
+    const tenMinutesAgoIso = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+    const { data, error } = await supabase
+      .from('games')
+      .select('id, player1_id, bet_amount, created_at, status')
+      .eq('status', 'waiting')
+      .is('player2_id', null)
+      .gt('created_at', tenMinutesAgoIso)
+      .order('created_at', { ascending: false });
 
-        if (error) throw error;
-        console.log('[getAvailableGames] Fetched available/active games:', data);
-        return data || []; // Return data or empty array if null
-    } catch (error) {
-        console.error('Error fetching available/active games:', error);
-        return null;
-    }
+    if (error) throw error;
+    console.log('[getAvailableGames] Fetched joinable games (waiting, not expired):', data);
+    return data || [];
+  } catch (error) {
+    console.error('Error fetching joinable games:', error);
+    return null;
+  }
+}
+
+/**
+ * Fetches games that are currently active (spectatable).
+ * @returns An array of active games or null on error.
+ */
+export async function getActiveGames(): Promise<any[] | null> {
+  try {
+    const { data, error } = await supabase
+      .from('games')
+      .select('id, player1_id, bet_amount, created_at, status')
+      .eq('status', 'active')
+      .not('player2_id', 'is', null)
+      .order('updated_at', { ascending: false });
+
+    if (error) throw error;
+    console.log('[getActiveGames] Fetched active games (spectatable):', data);
+    return data || [];
+  } catch (error) {
+    console.error('Error fetching active games:', error);
+    return null;
+  }
 }
 
 /**
@@ -421,76 +448,17 @@ export async function recordGameOutcomeAndUpdateStats(
 ): Promise<void> {
   console.log(`[recordGameOutcome] Initiated for game ${gameId}. Winner: ${winnerId}, P1: ${player1Id}, P2: ${player2Id}`);
   try {
-    // 1. Update game status to 'finished'
-    console.log(`[recordGameOutcome] Attempting to update game ${gameId} status to 'finished'.`);
+    // Update only the game record; DB trigger will handle stats and earned_gem aggregation
     const { error: gameUpdateError } = await supabase
       .from('games')
-      .update({ status: 'finished', updated_at: new Date().toISOString() })
+      .update({ status: 'finished', winner_id: winnerId, updated_at: new Date().toISOString() })
       .eq('id', gameId);
 
     if (gameUpdateError) {
-      console.error(`[recordGameOutcome] Error updating game status for ${gameId}:`, gameUpdateError);
-      // Not returning here, will still attempt to update stats
-    } else {
-      console.log(`[recordGameOutcome] Successfully updated game ${gameId} status to 'finished'.`);
+      console.error(`[recordGameOutcome] Error updating game ${gameId}:`, gameUpdateError);
+      return;
     }
-
-    // 2. Update stats for both players
-    const playersToUpdate = [player1Id, player2Id];
-    console.log(`[recordGameOutcome] Players to update stats for:`, playersToUpdate);
-
-    for (const playerId of playersToUpdate) {
-      if (!playerId) {
-        console.warn(`[recordGameOutcome] Skipping update for a null/undefined playerId.`);
-        continue;
-      }
-      console.log(`[recordGameOutcome] Processing stats for player ${playerId}.`);
-
-      // Fetch current stats
-      console.log(`[recordGameOutcome] Fetching current profile for player ${playerId}.`);
-      const { data: profile, error: fetchError } = await supabase
-        .from('profiles')
-        .select('games_played, games_won')
-        .eq('id', playerId)
-        .single();
-
-      if (fetchError) {
-        console.error(`[recordGameOutcome] Error fetching profile for player ${playerId}:`, fetchError);
-        continue; // Skip this player if profile fetch fails
-      }
-
-      if (!profile) {
-        console.warn(`[recordGameOutcome] No profile found for player ${playerId}. Skipping stats update.`);
-        continue;
-      }
-
-      console.log(`[recordGameOutcome] Current profile for ${playerId}:`, profile);
-
-      const currentGamesPlayed = profile.games_played ?? 0;
-      const currentGamesWon = profile.games_won ?? 0;
-      console.log(`[recordGameOutcome] Player ${playerId} - Current stats: Played=${currentGamesPlayed}, Won=${currentGamesWon}`);
-
-      const newGamesPlayed = currentGamesPlayed + 1;
-      const newGamesWon = (playerId === winnerId) ? currentGamesWon + 1 : currentGamesWon;
-      console.log(`[recordGameOutcome] Player ${playerId} - New stats: Played=${newGamesPlayed}, Won=${newGamesWon}`);
-
-      console.log(`[recordGameOutcome] Attempting to update profile for player ${playerId} with new stats.`);
-      const { error: statsUpdateError } = await supabase
-        .from('profiles')
-        .update({
-          games_played: newGamesPlayed,
-          games_won: newGamesWon,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', playerId);
-
-      if (statsUpdateError) {
-        console.error(`[recordGameOutcome] Error updating stats for player ${playerId}:`, statsUpdateError);
-      } else {
-        console.log(`[recordGameOutcome] Successfully updated stats for player ${playerId}.`);
-      }
-    }
-    console.log(`[recordGameOutcome] Finished processing for game ${gameId}.`);
+    console.log(`[recordGameOutcome] Game ${gameId} marked as finished. Stats will be updated via DB trigger.`);
   } catch (error) {
     console.error(`[recordGameOutcome] Unexpected error during execution for game ${gameId}:`, error);
   }

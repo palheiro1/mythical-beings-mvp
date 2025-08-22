@@ -4,6 +4,7 @@ import { useAuth } from "../hooks/useAuth.js";
 import {
   supabase,
   getAvailableGames,
+  getActiveGames,
   createGame,
   joinGame,
   getProfile,
@@ -122,6 +123,7 @@ const Lobby: React.FC = () => {
   const playerId = user?.id;
   const playerError = authError;
   const [availableGames, setAvailableGames] = useState<GameWithUsername[]>([]);
+  const [activeGames, setActiveGames] = useState<GameWithUsername[]>([]);
   const [loadingGames, setLoadingGames] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -151,42 +153,40 @@ const Lobby: React.FC = () => {
     setLoadingGames(true);
     setError(null);
     try {
-      const fetchedGames = await getAvailableGames();
-      if (fetchedGames) {
-        console.log(
-          "[Lobby] fetchGamesAndProfiles: Fetched games data:",
-          fetchedGames,
-        );
+      const [fetchedJoinable, fetchedActive] = await Promise.all([
+        getAvailableGames(),
+        getActiveGames(),
+      ]);
 
-        const gamesWithUsernames: GameWithUsername[] = await Promise.all(
-          fetchedGames.map(async (game) => {
+      const enrich = async (games: any[] | null): Promise<GameWithUsername[]> => {
+        if (!games) return [];
+        return Promise.all(
+          games.map(async (game) => {
             let creatorUsername = null;
             if (game.player1_id) {
-              // game.player1_id should be a UUID
               try {
-                const profile = await getProfile(game.player1_id); // Ensure this is called with UUID
-                creatorUsername =
-                  profile?.username || game.player1_id.substring(0, 8);
+                const profile = await getProfile(game.player1_id);
+                creatorUsername = profile?.username || game.player1_id.substring(0, 8);
               } catch (profileError) {
                 console.error(
                   `[Lobby] Error fetching profile for player1_id ${game.player1_id}:`,
                   profileError,
                 );
-                creatorUsername = "Error Fetching Name"; // Or some placeholder
+                creatorUsername = game.player1_id.substring(0, 8);
               }
             }
             return { ...game, creatorUsername };
-          }),
+          })
         );
+      };
 
-        console.log(
-          "[Lobby] fetchGamesAndProfiles: Games with usernames:",
-          gamesWithUsernames,
-        );
-        setAvailableGames(gamesWithUsernames);
-      } else {
-        setAvailableGames([]);
-      }
+      const [joinableWithNames, activeWithNames] = await Promise.all([
+        enrich(fetchedJoinable),
+        enrich(fetchedActive),
+      ]);
+
+      setAvailableGames(joinableWithNames);
+      setActiveGames(activeWithNames);
       setError(null);
     } catch (error) {
       console.error(
@@ -195,6 +195,7 @@ const Lobby: React.FC = () => {
       );
       setError("Failed to fetch games or creator profiles");
       setAvailableGames([]);
+      setActiveGames([]);
     } finally {
       console.log(
         "[Lobby] fetchGamesAndProfiles: Setting loadingGames to false.",
@@ -260,7 +261,7 @@ const Lobby: React.FC = () => {
           event: "INSERT",
           schema: "public",
           table: "games",
-          filter: "status=eq.waiting",
+          filter: "status=in.(waiting,active)",
         },
         async (payload: any) => {
           console.log("[Lobby Realtime] New game detected:", payload.new);
@@ -287,12 +288,21 @@ const Lobby: React.FC = () => {
             creatorUsername,
           };
 
-          setAvailableGames((currentGames) => {
-            if (currentGames.some((game) => game.id === gameWithUsername.id)) {
-              return currentGames;
-            }
-            return [...currentGames, gameWithUsername];
-          });
+          if (newGame.status === "waiting") {
+            setAvailableGames((currentGames) => {
+              if (currentGames.some((game) => game.id === gameWithUsername.id)) {
+                return currentGames;
+              }
+              return [...currentGames, gameWithUsername];
+            });
+          } else if (newGame.status === "active") {
+            setActiveGames((currentGames) => {
+              if (currentGames.some((game) => game.id === gameWithUsername.id)) {
+                return currentGames;
+              }
+              return [gameWithUsername, ...currentGames];
+            });
+          }
         },
       )
       .on(
@@ -314,6 +324,24 @@ const Lobby: React.FC = () => {
               )
               .filter((game) => game.status === "waiting"),
           );
+          setActiveGames((current) => {
+            const exists = current.some((g) => g.id === updatedGame.id);
+            // If game turned active, move it to active list
+            if (updatedGame.status === "active") {
+              const without = current.filter((g) => g.id !== updatedGame.id);
+              const incoming: GameWithUsername = {
+                ...(exists ? (current.find((g) => g.id === updatedGame.id) as GameWithUsername) : (updatedGame as any)),
+                ...updatedGame,
+              } as GameWithUsername;
+              return [incoming, ...without];
+            }
+            // If game left active, remove it
+            if (exists) {
+              return current.filter((g) => g.id !== updatedGame.id);
+            }
+            // Else update in place
+            return current.map((g) => (g.id === updatedGame.id ? { ...g, ...updatedGame } : g));
+          });
         },
       )
       .on(
@@ -323,6 +351,9 @@ const Lobby: React.FC = () => {
           console.log("[Lobby Realtime] Game delete detected:", payload.old);
           const deletedGameId = payload.old.id;
           setAvailableGames((currentGames) =>
+            currentGames.filter((game) => game.id !== deletedGameId),
+          );
+          setActiveGames((currentGames) =>
             currentGames.filter((game) => game.id !== deletedGameId),
           );
         },
@@ -699,6 +730,9 @@ const Lobby: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-900 text-white relative overflow-hidden pt-16">
       <div className="max-w-7xl mx-auto px-6 md:px-8 py-8">
+        <div className="flex justify-center mb-6">
+          <img src="/images/banner.png" alt="Mythical Beings" className="w-full max-w-3xl h-auto rounded-lg shadow-lg" />
+        </div>
         <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 to-cyan-400/10 pointer-events-none -z-10" />
 
         {isLoading ? (
@@ -795,6 +829,41 @@ const Lobby: React.FC = () => {
                 ) : (
                   <div className="text-center text-gray-400 py-4">
                     No available games right now.
+                  </div>
+                )}
+              </div>
+
+              <div className="border-t border-gray-700 my-4" />
+              <h3 className="text-xl font-semibold mb-2 text-center text-gray-100 flex items-center justify-center gap-2">
+                <span className="text-green-400 text-xl">👀</span>
+                Watch live
+              </h3>
+              <div className="space-y-4 overflow-y-auto max-h-[300px] pr-2">
+                {activeGames.length > 0 ? (
+                  activeGames.map((game) => (
+                    <div
+                      key={game.id}
+                      className="bg-gray-700 p-4 rounded-lg flex justify-between items-center shadow-md"
+                    >
+                      <div>
+                        <p className="text-lg font-semibold">
+                          {game.creatorUsername || "Unknown Creator"}
+                        </p>
+                        <p className="text-sm text-gray-400">In progress</p>
+                      </div>
+                      <div className="text-right">
+                        <button
+                          onClick={() => navigate(`/game/${game.id}`)}
+                          className="bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold py-1 px-3 rounded-md transition-colors duration-200"
+                        >
+                          Spectate
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center text-gray-400 py-2">
+                    No live games at the moment.
                   </div>
                 )}
               </div>

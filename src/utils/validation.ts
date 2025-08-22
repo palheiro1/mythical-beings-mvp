@@ -8,6 +8,10 @@ export interface ValidationResult {
 
 // UUID validation regex
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+export const isValidUUID = (value: string | null | undefined): boolean => {
+  if (!value || typeof value !== 'string') return false;
+  return UUID_REGEX.test(value.trim());
+};
 
 /**
  * Validates game ID format (must be a valid UUID)
@@ -84,6 +88,14 @@ export function validateAuthState(user: User | null): ValidationResult {
     };
   }
 
+  // Require valid UUID id and an email
+  if (!isValidUUID((user as any).id)) {
+    return {
+      isValid: false,
+      error: 'Invalid user ID'
+    };
+  }
+
   if (!user.email) {
     return {
       isValid: false,
@@ -106,12 +118,13 @@ export function sanitizeInput(input: string): string {
   }
 
   // Remove script, iframe, object, embed, and style tags
-  return input
+  const cleaned = input
     .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
     .replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '')
     .replace(/<object\b[^<]*(?:(?!<\/object>)<[^<]*)*<\/object>/gi, '')
     .replace(/<embed\b[^<]*(?:(?!<\/embed>)<[^<]*)*<\/embed>/gi, '')
     .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '');
+  return cleaned.trim();
 }
 
 /**
@@ -165,3 +178,12 @@ export function createRateLimiter(maxRequests: number, windowMs: number): RateLi
 // Pre-configured rate limiters
 export const gameUpdateLimiter = createRateLimiter(5, 10000); // 5 requests per 10 seconds
 export const selectionLimiter = createRateLimiter(20, 60000); // 20 requests per minute
+
+// Simple debounce utility
+export function debounce<T extends (...args: any[]) => void>(fn: T, delay = 300) {
+  let t: ReturnType<typeof setTimeout> | null = null;
+  return (...args: Parameters<T>) => {
+    if (t) clearTimeout(t);
+    t = setTimeout(() => fn(...args), delay);
+  };
+}

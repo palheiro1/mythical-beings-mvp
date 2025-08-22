@@ -93,6 +93,9 @@ const TopBar: React.FC<TopBarProps> = ({
         <div className="mt-1 text-[11px] font-semibold text-yellow-300/90 px-2 py-0.5 rounded bg-yellow-900/30 inline-block tracking-widest">
           {phase.toUpperCase()} PHASE
         </div>
+        <div className="mt-1 flex justify-center">
+          <img src="/images/banner.png" alt="Mythical Beings" className="h-6 w-auto opacity-80" />
+        </div>
       </div>
 
       {/* Right: Player 2 + Resign */}

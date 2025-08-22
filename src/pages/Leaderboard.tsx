@@ -7,6 +7,7 @@ interface LeaderboardEntry {
   avatar_url: string | null;
   games_won: number;
   games_played: number;
+  earned_gem?: number | null;
 }
 
 const Leaderboard: React.FC = () => {
@@ -23,7 +24,7 @@ const Leaderboard: React.FC = () => {
         // Order by games_won descending, then games_played ascending as a tie-breaker
         const { data, error: fetchError } = await supabase
           .from('profiles')
-          .select('id, username, avatar_url, games_won, games_played')
+          .select('id, username, avatar_url, games_won, games_played, earned_gem')
           .order('games_won', { ascending: false })
           .order('games_played', { ascending: true }) // Optional tie-breaker
           .limit(100); // Limit results if needed
@@ -37,6 +38,7 @@ const Leaderboard: React.FC = () => {
           ...entry,
           games_won: entry.games_won ?? 0,
           games_played: entry.games_played ?? 0,
+          earned_gem: entry.earned_gem ?? 0,
         }));
 
         setLeaderboardData(processedData);
@@ -55,6 +57,9 @@ const Leaderboard: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-900 text-white pt-16">
       <div className="container mx-auto px-4 py-8">
+        <div className="flex justify-center mb-6">
+          <img src="/images/banner.png" alt="Mythical Beings" className="w-full max-w-3xl h-auto rounded-lg shadow-lg" />
+        </div>
         <h1 className="text-4xl font-bold text-center mb-8 text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-400">
           Leaderboard
         </h1>
@@ -71,6 +76,7 @@ const Leaderboard: React.FC = () => {
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Player</th>
                   <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-300 uppercase tracking-wider">Games Won</th>
                   <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-300 uppercase tracking-wider">Games Played</th>
+                  <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-300 uppercase tracking-wider">Earned GEM</th>
                 </tr>
               </thead>
               <tbody className="bg-gray-800 divide-y divide-gray-700">
@@ -97,11 +103,12 @@ const Leaderboard: React.FC = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300 text-center">{entry.games_won}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300 text-center">{entry.games_played}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300 text-center">{Number(entry.earned_gem || 0)}</td>
                   </tr>
                 ))}
                 {leaderboardData.length === 0 && (
                   <tr>
-                    <td colSpan={4} className="px-6 py-10 text-center text-gray-400">No players found on the leaderboard yet.</td>
+                    <td colSpan={5} className="px-6 py-10 text-center text-gray-400">No players found on the leaderboard yet.</td>
                   </tr>
                 )}
               </tbody>

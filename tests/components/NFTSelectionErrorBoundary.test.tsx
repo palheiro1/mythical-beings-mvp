@@ -2,6 +2,7 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { NFTSelectionErrorBoundary } from '../../src/components/NFTSelectionErrorBoundary.js';
 
 // Component that throws an error for testing
@@ -106,14 +107,9 @@ describe('NFTSelectionErrorBoundary', () => {
 
   it('should provide navigation back to home', () => {
     const mockNavigate = vi.fn();
-    
-    // Mock useNavigate
-    vi.mock('react-router-dom', () => ({
-      useNavigate: () => mockNavigate,
-    }));
 
     render(
-      <NFTSelectionErrorBoundary>
+      <NFTSelectionErrorBoundary navigateFn={mockNavigate}>
         <ThrowError shouldThrow={true} />
       </NFTSelectionErrorBoundary>
     );
@@ -189,7 +185,7 @@ describe('NFTSelectionErrorBoundary', () => {
     expect(screen.getByText(/Something went wrong/i)).toBeInTheDocument();
   });
 
-  it('should reset error state when retry is clicked', () => {
+  it('should reset error state when retry is clicked', async () => {
     const TestComponent: React.FC<{ shouldError: boolean }> = ({ shouldError }) => {
       if (shouldError) {
         throw new Error('Test error');
@@ -210,18 +206,22 @@ describe('NFTSelectionErrorBoundary', () => {
       );
     };
 
-    render(<ParentComponent />);
+  render(<ParentComponent />);
 
     // Should show error initially
     expect(screen.getByText(/Something went wrong/i)).toBeInTheDocument();
 
-    // Fix the error condition
-    screen.getByText('Fix Error').click();
+  const user = userEvent.setup();
+  // Fix the error condition
+  await user.click(screen.getByText('Fix Error'));
 
-    // Click retry
-    screen.getByText(/Try Again/i).click();
+  // Allow state to settle before retrying
+  await Promise.resolve();
 
-    // Should show normal content
-    expect(screen.getByText('No error')).toBeInTheDocument();
+  // Click retry
+  await user.click(screen.getByText(/Try Again/i));
+
+  // Should show normal content
+  expect(await screen.findByText('No error')).toBeInTheDocument();
   });
 });

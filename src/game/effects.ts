@@ -537,6 +537,15 @@ export const knowledgeEffects: Record<string, KnowledgeEffectFn> = {
       const baseDamage = baseValue;
       const { finalDamage, logs } = calculateDamage(newState, opponentIndex, baseDamage, playerIndex, knowledge, fieldSlotIndex);
       newState.log.push(...logs); // Add damage calculation logs immediately
+      if (finalDamage > 0 && newState.players[opponentIndex]) {
+        newState.players[opponentIndex].power -= finalDamage;
+        combinedLog.push(`${knowledge.name} deals ${finalDamage} damage (Rotation: ${rotation}º).`);
+      }
+    } else if (baseValue < 0) { // Negative value = Defense potential
+      combinedLog.push(`${knowledge.name} provides ${-baseValue} potential defense this rotation (${rotation}º).`);
+      // Actual defense is applied by calculateDamage when this card is targeted
+    } else {
+      combinedLog.push(`${knowledge.name} causes no damage or defense this rotation (${rotation}º).`);
     }
 
     // --- Extra Action Logic (Final Rotation Only) ---
