@@ -528,7 +528,9 @@ const Lobby: React.FC = () => {
       } else {
         const { data: gameData, error: fetchError } = await supabase
           .from("games")
-          .select("player1_id, player2_id, status, player1_dealt_hand")
+          .select(
+            "player1_id, player2_id, status, player1_dealt_hand, player2_dealt_hand",
+          )
           .eq("id", gameId)
           .single();
 
@@ -542,7 +544,20 @@ const Lobby: React.FC = () => {
           console.log(
             `[Lobby] User is already in game ${gameId}. Checking status...`,
           );
-          if (
+          const noHandsDealt =
+            (!gameData.player1_dealt_hand || gameData.player1_dealt_hand.length === 0) &&
+            (!gameData.player2_dealt_hand || gameData.player2_dealt_hand.length === 0);
+          if (gameData.status === "active" && noHandsDealt) {
+            console.log(
+              "[Lobby] Game is active but hands are empty. Invoking deal-cards for recovery...",
+            );
+            try {
+              await supabase.functions.invoke("deal-cards", { body: { gameId } });
+            } catch (e) {
+              console.warn("[Lobby] deal-cards recovery attempt failed:", e);
+            }
+            navigate(`/nft-selection/${gameId}`);
+          } else if (
             gameData.status === "selecting" ||
             gameData.status === "active" ||
             (gameData.player1_dealt_hand &&

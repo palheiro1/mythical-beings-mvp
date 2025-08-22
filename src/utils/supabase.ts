@@ -76,27 +76,8 @@ export async function getGameDetails(gameId: string): Promise<MatchDetails | nul
  * @param betAmount The amount of GEMs bet for the game (0 for free play).
  * @returns The newly created game data or null on error.
  */
-// Helper function to ensure profile exists before game operations
-async function ensureProfileExists(userId: string, ethAddress?: string) {
-  try {
-    console.log('[Game Creation] Ensuring profile exists for:', userId);
-    const { error } = await supabase.from('profiles').upsert({
-      id: userId,
-      username: `Player_${userId.substring(0, 6)}`,
-      eth_address: ethAddress?.startsWith('0x') ? ethAddress : null,
-      updated_at: new Date().toISOString(),
-      created_at: new Date().toISOString()
-    }, { onConflict: 'id' });
-    
-    if (error) {
-      console.error('[Game Creation] Error ensuring profile exists:', error.message);
-    } else {
-      console.log('[Game Creation] Profile confirmed for user:', userId);
-    }
-  } catch (e) {
-    console.error('[Game Creation] Exception in ensureProfileExists:', e instanceof Error ? e.message : String(e));
-  }
-}
+// Client-side profile creation/updating is disabled to respect RLS.
+// Profiles are ensured server-side via the moralis-auth edge function (ensure_user_profile_exists).
 
 export async function createGame(gameId: string, player1Id: string, betAmount: number): Promise<any | null> {
   try {
@@ -109,8 +90,7 @@ export async function createGame(gameId: string, player1Id: string, betAmount: n
     
     console.log(`[createGame] Creating game ${gameId} by player ${player1Id} (using ID: ${effectivePlayerId}) with bet ${betAmount}`);
     
-    // Ensure profile exists before creating game
-    await ensureProfileExists(effectivePlayerId, player1Id);
+  // Profile is ensured server-side during auth; no client profile writes here
     
     // Rest of your existing code using effectivePlayerId instead of formattedPlayerId
     const gameRecord = {
@@ -161,8 +141,7 @@ export async function joinGame(gameId: string, player2Id: string): Promise<any |
     
     console.log(`[joinGame] Joining game ${gameId} as player ${player2Id} (using ID: ${effectivePlayerId})`);
     
-    // Ensure profile exists before joining game
-    await ensureProfileExists(effectivePlayerId, player2Id);
+  // Profile is ensured server-side during auth; no client profile writes here
     const { data, error } = await supabase
       .from('games')
       .update({
@@ -284,17 +263,15 @@ export async function updateGameState(gameId: string, newState: GameState): Prom
     }
 
     try {
-        const { data, error } = await supabase
+    const { error } = await supabase
             .from('games')
             .update({
                 state: newState,
                 updated_at: new Date().toISOString(), // Explicitly set updated_at
              })
-            .eq('id', gameId) // *** Use the validated gameId string ***
-            .select('id') // Select something small to confirm success
-            .single(); // Ensure only one row is updated
+      .eq('id', gameId); // *** Use the validated gameId string ***
 
-        if (error) {
+    if (error) {
             console.error(`[updateGameState] Error updating game state for ${gameId}:`, error);
             // Log details that might help debug (like invalid state structure)
             if (error.message.includes('invalid input syntax')) {
@@ -303,13 +280,8 @@ export async function updateGameState(gameId: string, newState: GameState): Prom
             return false;
         }
 
-        if (data) {
-             console.log(`[updateGameState] Successfully updated state for game ${gameId}.`);
-             return true;
-        } else {
-             console.warn(`[updateGameState] Update call succeeded but returned no data for ${gameId}.`);
-             return false; // Or true depending on whether no data is acceptable
-        }
+    console.log(`[updateGameState] Successfully updated state for game ${gameId}.`);
+    return true;
 
     } catch (err) {
          console.error(`[updateGameState] Unexpected error updating state for ${gameId}:`, err);

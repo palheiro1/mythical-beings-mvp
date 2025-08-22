@@ -74,8 +74,13 @@ export function useGameActions(
 
                 if (!updateSuccessful) {
                     console.error(`[handleAction] Failed to persist state update to Supabase for action ${action.type}. Local state might be ahead.`);
+                    // Optional: still optimistically update local state so UI doesn't feel stuck
+                    // dispatch({ type: 'SET_GAME_STATE', payload: nextState });
                 } else {
-                    console.log(`[handleAction] State successfully persisted for action ${action.type}.`);
+                    console.log(`[handleAction] State successfully persisted for action ${action.type}. Dispatching local SET_GAME_STATE for immediate UI update.`);
+                    // Optimistically update local state right after a successful persist.
+                    // Realtime will reconcile if there's any drift.
+                    dispatch({ type: 'SET_GAME_STATE', payload: nextState });
                 }
             } else {
                 console.log(`[handleAction] Dispatching received SET_GAME_STATE.`);

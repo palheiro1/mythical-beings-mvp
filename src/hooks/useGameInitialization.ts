@@ -64,6 +64,11 @@ export function useGameInitialization(
   const [loading, setLoading] = useState(true);
   const isInitializing = useRef(false); // Ref to prevent concurrent initializations
   const currentInitializedGameId = useRef<string | null>(null); // Ref to track the gameId being initialized/initialized
+  const lastRealtimeAtRef = useRef<number>(0);
+  const lastDispatchAtRef = useRef<number>(0);
+  const pollingTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const POLL_INTERVAL_MS = 2500;
+  const REALTIME_STALE_MS = 3000;
 
   useEffect(() => {
     // Clear state and reset if gameId or currentPlayerId changes/becomes invalid
@@ -110,6 +115,7 @@ export function useGameInitialization(
            return;
        }
       console.log(`[Realtime] Received state update for game ${gameId}. Phase: ${newState?.phase}`);
+      lastRealtimeAtRef.current = Date.now();
       // Optional: Add validation if needed
       // if (newState.players[0]?.id?.startsWith('p') || newState.players[1]?.id?.startsWith('p')) { ... }
       dispatch({ type: 'SET_GAME_STATE', payload: assignInstanceIds(newState) });
@@ -118,6 +124,7 @@ export function useGameInitialization(
           console.log("[Realtime] Setting loading to false after receiving update.");
           setLoading(false);
       }
+      lastDispatchAtRef.current = Date.now();
     };
 
     const setupGame = async () => {
@@ -254,6 +261,7 @@ export function useGameInitialization(
                 dispatch({ type: 'SET_GAME_STATE', payload: initializedState });
                 console.log(`[setupGame] Dispatched ${isNewGameInitialization ? 'new' : 'existing'} SET_GAME_STATE. Setting loading to false.`);
                 setLoading(false); // Set loading false *after* dispatching state
+                lastDispatchAtRef.current = Date.now();
             } else if (currentPlayerId !== player1Id && !gameState) {
                 // Player 2 is still waiting, do nothing here, loading remains true
                 console.log(`[setupGame] Player 2 still waiting for initial state, keeping loading=true.`);
@@ -278,6 +286,32 @@ export function useGameInitialization(
                 subscription = subscribeToGameState(gameId, handleRealtimeUpdate, "GameInitialization"); // Added subscriberId
             } else {
                 console.log(`[setupGame] Already subscribed to ${gameId} via useGameInitialization.`);
+            }
+            // Start polling fallback if not already running
+            if (!pollingTimerRef.current) {
+              console.log('[useGameInit] Starting polling fallback for missed realtime updates.');
+              pollingTimerRef.current = setInterval(async () => {
+                if (!isMounted || currentInitializedGameId.current !== gameId) return;
+                const now = Date.now();
+                const tooLongSinceRealtime = now - lastRealtimeAtRef.current > REALTIME_STALE_MS;
+                const tooLongSinceDispatch = now - lastDispatchAtRef.current > REALTIME_STALE_MS;
+                if (tooLongSinceRealtime && tooLongSinceDispatch) {
+                  try {
+                    const latest = await getGameState(gameId);
+                    if (!latest) return;
+                    // Compare a few key fields to avoid redundant dispatches
+                    const cur = state;
+                    const changed = !cur || cur.turn !== latest.turn || cur.currentPlayerIndex !== latest.currentPlayerIndex || cur.phase !== latest.phase;
+                    if (changed) {
+                      console.log('[useGameInit] Polling detected newer state. Dispatching SET_GAME_STATE.');
+                      dispatch({ type: 'SET_GAME_STATE', payload: assignInstanceIds(latest) });
+                      lastDispatchAtRef.current = Date.now();
+                    }
+                  } catch (e) {
+                    console.warn('[useGameInit] Polling fetch failed:', e);
+                  }
+                }
+              }, POLL_INTERVAL_MS);
             }
         } else {
              console.log(`[setupGame] Aborting subscription: isMounted=${isMounted}, gameId mismatch.`);
@@ -316,6 +350,10 @@ export function useGameInitialization(
         subscription = null; // Clear subscription variable
       } else {
           console.log(`[useGameInit] No unsubscription needed (no subscription object or gameId mismatch).`);
+      }
+      if (pollingTimerRef.current) {
+        clearInterval(pollingTimerRef.current);
+        pollingTimerRef.current = null;
       }
       // Reset initialization flag *only if* this cleanup is for the gameId that was being initialized
       if (isInitializing.current && currentInitializedGameId.current === gameId) {

@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthProvider.js';
 import Home from './pages/Home.js';
 import Lobby from './pages/Lobby.js';
@@ -25,6 +25,8 @@ function AppContent() {
       <Routes>
         {/* Public Route */}
         <Route path="/" element={<Home />} />
+  {/* Handle legacy/auth callback route by redirecting to lobby */}
+  <Route path="/auth" element={<Navigate to="/lobby" replace />} />
 
         {/* Protected Routes */}
         <Route element={<ProtectedRoute />}>

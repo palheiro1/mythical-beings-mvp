@@ -66,7 +66,12 @@ serve(async (req) => {
         (!game.player1_dealt_hand || game.player1_dealt_hand.length === 0) &&
         (!game.player2_dealt_hand || game.player2_dealt_hand.length === 0));
 
-    if (!statusAllowsDealing) {
+    // Allow dealing in 'waiting' or 'selecting'. If 'active', allow only if hands are empty (backward compatibility).
+    const p1HasHand = Array.isArray(game.player1_dealt_hand) && game.player1_dealt_hand.length > 0;
+    const p2HasHand = Array.isArray(game.player2_dealt_hand) && game.player2_dealt_hand.length > 0;
+    const handsEmpty = !p1HasHand && !p2HasHand;
+
+    if (!(['waiting', 'selecting'].includes(game.status) || (game.status === 'active' && handsEmpty))) {
       return new Response(
         JSON.stringify({ error: `Game not in correct status to deal (status=${game.status})` }),
         {
@@ -109,7 +114,7 @@ serve(async (req) => {
       .update({
         player1_dealt_hand: player1Hand,
         player2_dealt_hand: player2Hand,
-        status: 'selecting',
+    status: 'selecting', // This line remains unchanged
         updated_at: new Date().toISOString(),
       })
       .eq('id', gameId)
