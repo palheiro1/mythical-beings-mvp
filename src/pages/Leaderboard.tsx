@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import NavBar from '../components/NavBar';
-import { supabase } from '../utils/supabase'; // Assuming supabase client is exported
+import { supabase } from '../utils/supabase.js'; // Assuming supabase client is exported
 
 interface LeaderboardEntry {
   id: string;
@@ -34,7 +33,7 @@ const Leaderboard: React.FC = () => {
         }
 
         // Ensure games_won and games_played are numbers, default to 0 if null/undefined
-        const processedData = data.map(entry => ({
+  const processedData = data.map((entry: any) => ({
           ...entry,
           games_won: entry.games_won ?? 0,
           games_played: entry.games_played ?? 0,
@@ -54,8 +53,7 @@ const Leaderboard: React.FC = () => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white">
-      <NavBar />
+    <div className="min-h-screen bg-gray-900 text-white pt-16">
       <div className="container mx-auto px-4 py-8">
         <h1 className="text-4xl font-bold text-center mb-8 text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-400">
           Leaderboard

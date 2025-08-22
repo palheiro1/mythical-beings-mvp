@@ -1,7 +1,6 @@
 // File: src/pages/Profile.tsx
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../utils/supabase.js';
-import NavBar from '../components/NavBar.js'; // Import NavBar
 import { useAuth } from '../hooks/useAuth.js';
 
 interface ProfileData {
@@ -162,8 +161,7 @@ const ProfilePage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white">
-      <NavBar /> {/* Add NavBar */}
+    <div className="min-h-screen bg-gray-900 text-white pt-16">
       <div className="container mx-auto px-4 py-8">
         <h1 className="text-3xl font-bold text-center mb-8 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-cyan-300">
           Your Profile

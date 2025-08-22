@@ -1,9 +1,8 @@
 import React from 'react';
-import NavBar from '../components/NavBar.js';
 import Card from '../components/Card.js';
 import { Creature, Knowledge } from '../game/types.js';
-import creatureData from '../assets/creatures.json';
-import knowledgeData from '../assets/knowledges.json';
+import creatureData from '../assets/creatures.json' with { type: 'json' };
+import knowledgeData from '../assets/knowledges.json' with { type: 'json' };
 
 const ALL_CREATURES: Creature[] = creatureData as Creature[];
 const ALL_KNOWLEDGES: Knowledge[] = knowledgeData as Knowledge[];
@@ -37,8 +36,7 @@ const HowToPlay: React.FC = () => {
   }, [] as Knowledge[]);
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white pb-10 pt-16"> {/* Added pt-16 for fixed NavBar */}
-      <NavBar />
+    <div className="min-h-screen bg-gray-900 text-white pb-10 pt-16"> {/* pt-16 for sticky app-level NavBar */}
       <div className="container mx-auto px-4 py-8">
         <h1 className="text-4xl font-bold text-center mb-8 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-cyan-300">
           How to Play Mythical Arena

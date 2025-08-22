@@ -11,7 +11,7 @@ import {
 import { AvailableGame } from "../game/types.js";
 import { v4 as uuidv4 } from "uuid";
 import { RealtimeChannel, RealtimePresenceState } from "@supabase/supabase-js";
-import NavBar from "../components/NavBar.js"; // Import NavBar
+// NavBar is provided at the app level
 
 // Define the combined type for games with creator's username
 interface GameWithUsername extends AvailableGame {
@@ -697,8 +697,7 @@ const Lobby: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white relative overflow-hidden">
-      <NavBar />
+    <div className="min-h-screen bg-gray-900 text-white relative overflow-hidden pt-16">
       <div className="max-w-7xl mx-auto px-6 md:px-8 py-8">
         <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 to-cyan-400/10 pointer-events-none -z-10" />
 
