@@ -874,12 +874,20 @@ const Lobby: React.FC = () => {
                 Actions
               </h2>
               {playerId ? (
-                <button
-                  onClick={() => setShowCreateModal(true)}
-                  className="bg-green-600 hover:bg-green-700 text-white text-lg font-semibold py-3 px-6 rounded-md transition-colors duration-200 w-full max-w-[200px]"
-                >
-                  Create Game
-                </button>
+                <div className="w-full flex flex-col gap-3 items-center">
+                  <button
+                    onClick={() => setShowCreateModal(true)}
+                    className="bg-green-600 hover:bg-green-700 text-white text-lg font-semibold py-3 px-6 rounded-md transition-colors duration-200 w-full max-w-[220px]"
+                  >
+                    Create Game
+                  </button>
+                  <button
+                    onClick={() => navigate('/bot-game')}
+                    className="bg-blue-600 hover:bg-blue-700 text-white text-lg font-semibold py-3 px-6 rounded-md transition-colors duration-200 w-full max-w-[220px]"
+                  >
+                    Train with a bot
+                  </button>
+                </div>
               ) : (
                 <p className="text-gray-400 text-center">
                   Please connect your wallet to create a game.

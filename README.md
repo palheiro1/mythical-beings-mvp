@@ -1,115 +1,138 @@
-# 🔮 Mythical Beings: A Strategic Card Game of Wisdom and Elemental Power 🔮
-
-## 🌊 🌲 💨 Welcome to the Realm of Mythical Beings! 🌊 🌲 💨
+# 🔮 Mythical Beings: A Strategic Card Game of Wisdom and Elemental Power
 
 ![Game Banner](public/images/kukul.png)
 
-> *"In the ancient chronicles, mythical creatures from across the world gather to contest their wisdom and elemental powers. Only those who master both strategy and mystical knowledge shall prevail!"*
+Enter a world where legendary creatures wield elemental knowledge. Build a team, rotate your beings to gather wisdom, and unleash powerful effects to outmaneuver your opponent.
 
-## 🎮 Game Overview
+— Learn the rules in minutes. Master them over many duels.
 
-**Mythical Beings** is a strategic card game where players harness the powers of legendary creatures from global folklore. Each player controls three mythical beings, each with unique passive abilities tied to elemental forces - Water, Earth, and Air.
+## What Is Mythical Beings?
 
-Players take turns drawing Knowledge cards from the Market, summoning them onto their creatures, and rotating their creatures to gain wisdom. The ultimate goal is to outlast your opponent by preserving your power points while depleting theirs.
+Mythical Beings is a fast, tactical, turn-based card game for two players. Each player commands three creatures (mythical beings) and equips them with Knowledge cards (spells/skills) from the Market. Rotate beings to gain wisdom and pay knowledge costs, trigger card effects and passives, and whittle down your opponent’s power to win.
 
-## ✨ Key Features
+## Objective
 
-- **Mythical Creatures**: 15 diverse mythical beings from world folklore, each with unique passive abilities
-- **Elemental Knowledge**: Knowledge cards across three elements (Water, Earth, Air) with varying wisdom costs
-- **Strategic Gameplay**: Balance creature rotation, knowledge acquisition, and tactical card placement
-- **Real-time Multiplayer**: Challenge other players in live matches
-- **Profile Customization**: Personalize your avatar and username
-- **Game Logs**: Track all game actions with our detailed logging system
+- Reduce your opponent’s power to 0; or
+- When the knowledge deck is exhausted, have more power than your opponent.
 
-## 🎲 How to Play
+## Components At A Glance
 
-1. **Select Your Team**: Choose 3 mythical beings to form your team
-2. **Gain Knowledge**: Draw Knowledge cards from the Market during the Knowledge Phase
-3. **Rotate & Summon**: Rotate your creatures to gain wisdom, then use that wisdom to summon Knowledge cards
-4. **Trigger Abilities**: Utilize your creatures' passive abilities to gain advantages
-5. **Victory**: Reduce your opponent's power to zero or have more power when the knowledge deck is depleted
+- Creatures: Your three beings on the battlefield. Each has a passive ability and gains wisdom by rotating.
+- Knowledge Cards: Elemental cards (Aquatic/Water, Terrestrial/Earth, Aerial/Air). Played onto a specific creature’s slot. Each has a cost, an effect that depends on rotation, and eventually leaves play after a number of rotations.
+- Market: The shared row where players draw knowledge from.
+- Power: Your life total. When it reaches 0, you lose.
+- Hand: Knowledge cards you’re holding (max size 5).
 
-## 🚀 Getting Started
+## Turn Structure (2 Actions Per Turn)
 
-### Prerequisites
+Every turn flows through clear phases:
 
-- Node.js (v16+)
-- npm or yarn
+1) Knowledge Phase
+- All knowledge cards on the field rotate +90°.
+- Their effects trigger according to the card’s value cycle (see below).
+- Cards that reach their final rotation leave play (discard). “Leaves play” can trigger passives.
 
-### Installation
+2) Action Phase
+- You have 2 actions by default. Typical actions:
+  - Draw 1 knowledge from the Market (if space in hand).
+  - Summon 1 knowledge from your hand onto one of your creatures.
+  - Rotate one of your creatures 90° to increase its wisdom.
+  - End Turn (always allowed when it’s your turn).
 
+3) End Turn
+- Any end-of-turn effects resolve. Turn passes to your opponent.
+
+Notes
+- You can’t take actions if it’s not your Action Phase.
+- Some passives can make specific summons free (don’t consume actions) or modify normal rules.
+
+## Core Mechanics
+
+Creatures and Wisdom
+- Each creature has a current wisdom value that increases with rotation.
+- Wisdom pays the cost to summon knowledge onto that creature’s slot.
+
+Summoning Knowledge
+- A creature may hold at most one knowledge card on its slot.
+- To summon: the creature’s current wisdom must be ≥ the knowledge cost.
+- Some slots may be blocked by effects (you can’t summon there while blocked).
+
+Rotation & Value Cycles
+- Each knowledge has a valueCycle, mapping rotation (0°/90°/180°/270°) to the effect’s strength or behavior.
+- During the Knowledge Phase, the effect uses the pre-increment rotation to determine values, then rotates +90°.
+- After a number of rotations (maxRotations), the knowledge leaves play (goes to discard).
+
+Leaves Play Triggers
+- When a knowledge leaves play, some creatures’ passives react. Example: Lisovik deals 1 damage to the opponent when its owner’s earth knowledge leaves play.
+
+Damage, Defense, and Power
+- Many effects deal damage directly to the opposing player’s power.
+- Some knowledge provides defense or modifies how damage is applied.
+- If multiple effects/passives trigger, the game resolves them deterministically and logs the sequence.
+
+Market & Hand
+- Draw from the Market into your hand (max hand size: 5).
+- The Market refills according to the game rules (see logs/effects for specifics in edge cases).
+
+## Example Turn
+
+Setup: You control Lisovik and two other beings. You’ve summoned an Earth knowledge onto one creature.
+
+1) Knowledge Phase
+- Your Earth knowledge triggers at its current rotation and then rotates. If it reaches its final rotation, it’s discarded. If it was yours and Earth, Lisovik may deal 1 damage on leave.
+
+2) Action Phase (2 actions)
+- Action 1: Rotate your second creature to gain wisdom.
+- Action 2: Summon an Air knowledge from your hand (you meet the cost thanks to the rotation).
+
+3) End Turn
+- Any pending effects resolve. It’s now your opponent’s turn.
+
+## Passives & Signature Interactions (Examples)
+
+- Lisovik (Earth synergy): When your Earth knowledge leaves play, deal 1 damage to the opponent.
+- Kappa: Summoning Aquatic knowledge can be a free action on Kappa (does not consume actions).
+- Dudugera: Summoning onto Dudugera can be free (specific conditions apply).
+- Zhar-Ptitsa: Start-of-turn draw; aerial damage may bypass defense in specific checks.
+- Tarasca: Punishes opponents when they summon terrestrial knowledge.
+- Lafaic: Rotates another friendly knowledge when you summon Aquatic onto Lafaic.
+
+These examples illustrate how passives shape your plan: time rotations, line up leaves-play triggers, and pressure your opponent’s power.
+
+## Strategy Tips
+
+- Plan around rotations: many effects peak at specific angles. Don’t waste a strong tick.
+- Prepare for leaves-play: set up passives that benefit when your cards rotate out.
+- Deny the opponent: block, discard, or rotate their board to disrupt timing.
+- Hand discipline: keep space for pivotal Market draws (max 5).
+
+## Learn the Cards
+
+- Rulebook PDF: public/RULEBOOK.pdf (visual reference of creatures and knowledges)
+- Tests as specs: the tests in `tests/gameReducer` document edge cases and intended behaviors.
+
+## Play Locally
+
+Prerequisites
+- Node.js 16+
+- npm (or yarn)
+
+Install & Run
 ```bash
-# Clone the repository
 git clone https://github.com/YourUsername/CardGame.git
-
-# Navigate to the project directory
 cd CardGame/mythical-beings-mvp
-
-# Install dependencies
 npm install
-
-# Start the development server
 npm run dev
 ```
 
-### Environment Setup
-
-Create a `.env` file in the root directory with the following:
-
+Environment
+Create a `.env` in the project root:
 ```
 VITE_SUPABASE_URL=your_supabase_url
 VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
 ```
 
-## 🧙‍♂️ Game Elements
-
-### Creatures
-
-Each mythical being has:
-- An elemental affinity (Water, Earth, Air)
-- A unique passive ability
-- A wisdom cycle that changes with rotation
-
-### Knowledge Cards
-
-Knowledge cards represent magical skills and wisdom:
-- **Types**: Spells, Allies
-- **Elements**: Water (Aquatic), Earth (Terrestrial), Air (Aerial)
-- **Costs**: Varying wisdom costs (1-5)
-- **Effects**: Various gameplay effects like damage, healing, or special abilities
-
-## 🛠️ Technical Implementation
-
-- **Frontend**: React with TypeScript, styled with Tailwind CSS
-- **State Management**: React hooks and context API
-- **Realtime**: Supabase for authentication and realtime game state synchronization
-- **Testing**: Comprehensive Jest test suite
-
-## 📚 Project Structure
-
-- `/src/components`: UI components including Card, CreatureZone, and Market
-- `/src/game`: Core game logic including state, rules, and actions
-- `/src/pages`: Main application pages for different game screens
-- `/src/context`: Authentication and global state contexts
-- `/src/hooks`: Custom React hooks for game functionality
-- `/src/utils`: Utility functions for Supabase integration
-
-## 🎯 Future Enhancements
-
-- Mobile responsiveness improvements
-- Additional mythical beings from more cultural traditions
-- Tournament mode with leaderboards
-- Deck builder for custom creature selections
-- Enhanced visual effects and animations
-
-## 📝 Technical Documentation
-
-- [Authentication & Profile Sync](AUTH_PROFILE_SYNC.md): Details on the authentication and profile synchronization implementation
-- [RLS Policies](supabase/migrations/20250519_auth_profile_sync.sql): Database security policies
-- [Repair Utility](scripts/repair-orphaned-accounts.ts): Tool for fixing orphaned accounts
-
-## 💻 Development Commands
-
+Useful Commands
 ```bash
 # Run development server
 npm run dev
@@ -127,28 +150,30 @@ node reset-game.js
 ./apply-auth-profile-sync.sh
 ```
 
-## 🤝 Contributing
+## Project Structure (Short)
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+- src/game: core rules, state, actions, effects, passives
+- src/components: UI components (Card, CreatureZone, Market, etc.)
+- src/pages: app screens (Home, Lobby, GameScreen, etc.)
+- tests: comprehensive unit/integration tests for rules, effects, passives
 
-1. Fork the project
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+## Contributing
 
-## 📜 License
+Contributions are welcome! Open an issue or PR with a clear description, and include tests for logic changes.
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+1) Fork the project
+2) Create a feature branch: `git checkout -b feature/your-feature`
+3) Commit: `git commit -m "Add your feature"`
+4) Push: `git push origin feature/your-feature`
+5) Open a Pull Request
 
-## 🙏 Acknowledgements
+## License
 
-- All the amazing folklore and mythologies that inspired our creatures
-- The incredible team of developers and artists who brought this game to life
-- Our dedicated players and testers who provided valuable feedback
+MIT — see LICENSE.
 
----
+## Acknowledgements
 
-<p align="center">
-  <em>May the wisest being win! 🏆</em>
-</p>
+- Inspired by global folklore and mythologies
+- Thanks to contributors, playtesters, and artists
+
+<p align="center"><em>May the wisest being win! 🏆</em></p>

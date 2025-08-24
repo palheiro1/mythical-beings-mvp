@@ -10,6 +10,7 @@ import ProfilePage from './pages/Profile.js';
 import HowToPlay from './pages/HowToPlay.js';
 import Leaderboard from './pages/Leaderboard.js';
 import WaitingScreen from './pages/WaitingScreen.js';
+import BotGame from './pages/BotGame.js';
 import ProtectedRoute from './components/ProtectedRoute.js';
 import NavBar from './components/NavBar.js';
 import { useAuthProfileSync } from './hooks/useAuthProfileSync.js';
@@ -32,6 +33,7 @@ function AppContent() {
         {/* Protected Routes */}
         <Route element={<ProtectedRoute />}>
           <Route path="/lobby" element={<Lobby />} />
+          <Route path="/bot-game" element={<BotGame />} />
           <Route path="/game/:gameId" element={<GameScreen />} />
           <Route path="/game-initializing/:gameId" element={<GameInitializing />} />
           <Route path="/profile" element={<ProfilePage />} />
