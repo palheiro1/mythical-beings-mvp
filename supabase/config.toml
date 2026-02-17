@@ -9,3 +9,18 @@ entrypoint = "./functions/moralis-auth/index.ts"
 # Specifies static files to be bundled with the function. Supports glob patterns.
 # For example, if you want to serve static HTML pages in your function:
 # static_files = [ "./functions/moralis-auth/*.html" ]
+
+[functions.simplified-moralis-auth]
+enabled = true
+verify_jwt = false
+entrypoint = "./functions/simplified-moralis-auth/index.ts"
+
+[functions.create-game]
+enabled = true
+verify_jwt = false
+entrypoint = "./functions/create-game/index.ts"
+
+[functions.deal-cards]
+enabled = true
+verify_jwt = false
+entrypoint = "./functions/deal-cards/index.ts"

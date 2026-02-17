@@ -1,6 +1,6 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 // Router is optional in tests; import lazily to avoid hard coupling
-import { useNavigate } from 'react-router-dom';
+import { useInRouterContext, useNavigate } from 'react-router-dom';
 
 interface InnerProps {
   children: ReactNode;
@@ -94,29 +94,56 @@ class NFTSelectionErrorBoundaryInner extends Component<InnerProps, State> {
   }
 }
 
+const RouterNavigateBridge: React.FC<{
+  children: ReactNode;
+  onError?: (error: Error, errorInfo: ErrorInfo) => void;
+  fallback?: ReactNode;
+}> = ({ children, onError, fallback }) => {
+  const navigate = useNavigate();
+  return (
+    <NFTSelectionErrorBoundaryInner navigate={navigate} onError={onError} fallback={fallback}>
+      {children}
+    </NFTSelectionErrorBoundaryInner>
+  );
+};
+
 export const NFTSelectionErrorBoundary: React.FC<{
   children: ReactNode;
   onError?: (error: Error, errorInfo: ErrorInfo) => void;
   fallback?: ReactNode;
   navigateFn?: (path: string) => void;
 }> = ({ children, onError, fallback, navigateFn }) => {
+  const inRouter = useInRouterContext();
+
   // Try to get navigate from router if available; tests may inject navigateFn
-  let navigate: ((path: string) => void) | undefined = navigateFn;
+  let navigate: ((path: string) => void) | undefined;
+  if (navigateFn) navigate = navigateFn;
+
   // Allow tests to set a global navigate spy when not using Router
   const globalAny: any = globalThis as any;
   if (!navigate && typeof globalAny.__TEST_NAVIGATE__ === 'function') {
     navigate = globalAny.__TEST_NAVIGATE__;
   }
-  try {
-    if (!navigate) {
-      navigate = useNavigate();
-    }
-  } catch {
-    // Not in a Router context; keep undefined so inner uses window.location fallback
-    navigate = navigateFn;
+
+  if (navigate) {
+    return (
+      <NFTSelectionErrorBoundaryInner navigate={navigate} onError={onError} fallback={fallback}>
+        {children}
+      </NFTSelectionErrorBoundaryInner>
+    );
   }
+
+  if (inRouter) {
+    return (
+      <RouterNavigateBridge onError={onError} fallback={fallback}>
+        {children}
+      </RouterNavigateBridge>
+    );
+  }
+
+  // Not in a Router context; allow inner to use window.location fallback.
   return (
-    <NFTSelectionErrorBoundaryInner navigate={navigate} onError={onError} fallback={fallback}>
+    <NFTSelectionErrorBoundaryInner onError={onError} fallback={fallback}>
       {children}
     </NFTSelectionErrorBoundaryInner>
   );

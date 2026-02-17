@@ -1,5 +1,5 @@
 // Test utility to debug navigation issue
-import { supabase } from './supabase.js';
+import { supabase } from '../utils/supabase.js';
 
 export async function testNavigationFix() {
   console.log('🔍 Testing navigation fix...');

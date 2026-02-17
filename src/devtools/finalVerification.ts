@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { supabase } from '../utils/supabase.js';
 
 export async function verifyCompleteSuccess(gameId: string) {
   console.log('🏆 FINAL VERIFICATION: Complete NFT selection bug fix...');

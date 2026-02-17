@@ -36,7 +36,7 @@ export const useRealtimeGameUpdates = ({
   const updateConnectionState = useCallback((newState: ConnectionState) => {
     // Ensure synchronous visibility in tests by immediate setState + callback
   // Debug: trace state transitions in tests
-  try { console.debug('[useRealtimeGameUpdates] state ->', newState); } catch {}
+  try { console.debug('[useRealtimeGameUpdates] state ->', newState); } catch { /* ignore */ }
     setConnectionState(newState);
     onConnectionChange?.(newState);
   }, [onConnectionChange]);
@@ -147,7 +147,7 @@ export const useRealtimeGameUpdates = ({
   }, [gameId, onGameUpdate, stopPolling, updateConnectionState, handleError, startPolling, retryCount]);
 
   const connect = useCallback(() => {
-  try { console.debug('[useRealtimeGameUpdates] connect() called. current:', connectionState); } catch {}
+  try { console.debug('[useRealtimeGameUpdates] connect() called. current:', connectionState); } catch { /* ignore */ }
     // If we're in polling fallback, don't auto-switch unless explicitly forced
     if (connectionState === 'polling') {
       return;

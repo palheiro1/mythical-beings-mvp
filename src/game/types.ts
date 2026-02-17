@@ -72,8 +72,8 @@ export interface GameState {
   actionsPerTurn: number; // Max actions allowed per turn
   winner: string | null; // ID of the winning player, or null
   log: string[]; // History of game events/actions
-  blockedSlots?: Record<number, number[]>; // Tracks which field slots are blocked for each player index
-  extraActionsNextTurn?: { 0: number; 1: number }; // Actions granted by aquatic5
+  blockedSlots: Record<number, number[]>; // Tracks which field slots are blocked for each player index
+  extraActionsNextTurn: { 0: number; 1: number }; // Actions granted by aquatic5
   pendingEffects?: { type: 'damage' | 'defense'; amount: number }[]; // Change pendingEffects type
 }
 
@@ -95,6 +95,8 @@ export type GameAction =
   | { type: 'END_TURN'; payload: { playerId: string } }
   | { type: 'INITIALIZE_GAME'; payload: { gameId: string; player1Id: string; player2Id: string; player1SelectedIds: string[]; player2SelectedIds: string[] } }
   | { type: 'SET_GAME_STATE'; payload: GameState | null }; // Allow null payload for setting/clearing state
+
+export type SummonKnowledgePayload = Extract<GameAction, { type: 'SUMMON_KNOWLEDGE' }>['payload'];
 
 // Passive Ability Trigger Types
 export type PassiveTriggerType =

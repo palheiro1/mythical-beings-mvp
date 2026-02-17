@@ -1,5 +1,5 @@
 // Debug utility to test the actual NFT selection confirmation flow
-import { supabase } from './supabase.js';
+import { supabase } from '../utils/supabase.js';
 
 export async function simulatePlayerConfirmSelection(gameId: string, playerId: string, selectedCreatures: string[]) {
   console.log('🧪 SIMULATING PLAYER CONFIRM SELECTION...');

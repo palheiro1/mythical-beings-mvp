@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { supabase } from '../utils/supabase.js';
 
 export async function debugGameStateAfterNavigation(gameId: string) {
   console.log('🔍 DEBUG: Investigating game state after navigation...');

@@ -3,7 +3,7 @@
  * This tests the updated NavigationManager with proper game initialization sequencing.
  */
 
-import { supabase } from './supabase.js';
+import { supabase } from '../utils/supabase.js';
 
 declare global {
   interface Window {
@@ -141,7 +141,7 @@ export async function testRaceConditionFix(): Promise<void> {
   console.log('🚀 Testing navigation readiness...');
   
   try {
-    const { getGameState } = await import('./supabase.js');
+    const { getGameState } = await import('../utils/supabase.js');
     const gameState = await getGameState(gameId);
     
     if (gameState && gameState.phase === 'action') {

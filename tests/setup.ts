@@ -51,10 +51,14 @@ vi.mock('../src/utils/supabase.js', () => ({
 }));
 
 // Mock React Router
-vi.mock('react-router-dom', () => ({
-  useNavigate: () => vi.fn(),
-  useParams: () => ({ gameId: 'test-game-id' }),
-}));
+vi.mock('react-router-dom', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('react-router-dom')>();
+  return {
+    ...actual,
+    useNavigate: () => vi.fn(),
+    useParams: () => ({ gameId: 'test-game-id' }),
+  };
+});
 
 // Mock crypto for UUID generation
 Object.defineProperty(global, 'crypto', {

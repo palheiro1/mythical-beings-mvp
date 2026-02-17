@@ -1,7 +1,6 @@
-import { GameState, Knowledge, PlayerState, SummonKnowledgePayload, KnowledgeEffect } from './types'; // Added KnowledgeEffect
-import { getCreatureWisdom, getPlayerState, getOpponentState } from './utils.js';
+import { GameState, Knowledge, PlayerState, SummonKnowledgePayload } from './types';
+import { getCreatureWisdom, getPlayerState } from './utils.js';
 import { v4 as uuidv4 } from 'uuid';
-import { applyKnowledgeEffect } from './effects.js'; // Import the new effect handler
 
 // Define a return type that includes info about leaving knowledge
 export type SummonKnowledgeResult = {
@@ -143,15 +142,6 @@ export function summonKnowledge(state: GameState, payload: SummonKnowledgePayloa
   player.hand.splice(knowledgeIndex, 1);
 
   workingState.log = [...workingState.log, `${playerId} summoned ${knowledgeToSummon.name} onto ${creatureId}.`];
-
-  // --- Apply Immediate Effect (if any) ---
-  if (knowledgeToSummon.effect) {
-    console.log(`[Action] summonKnowledge: Applying immediate effect for ${knowledgeToSummon.name}:`, knowledgeToSummon.effect);
-    // Apply the effect using the helper function
-    workingState = applyKnowledgeEffect(workingState, knowledgeToSummon.effect as KnowledgeEffect, playerId, knowledgeToSummon.name);
-    // Note: applyKnowledgeEffect handles logging and state updates internally
-  }
-  // --- End Effect Application ---
 
   // Return the modified state and the info about any knowledge that left
   return { newState: workingState, leavingKnowledgeInfo: null };

@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { supabase } from '../utils/supabase.js';
 
 export async function updateTestGameWithRealCreatures(gameId: string) {
   console.log('🔧 UPDATING: Test game with real creature IDs...');

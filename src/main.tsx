@@ -1,42 +1,52 @@
-// Import polyfills first to ensure they're available globally
-import './polyfills.js';
-
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import './index.css'; // Ensure index.css is imported
 import App from './App.js'; // Add .js extension
-import Moralis from 'moralis';
 
-// Import test functions for debugging
-import { testNavigationFix, triggerNavigationTest } from './utils/testNavigationFix.js';
-import { simulateNavigationBug } from './utils/simulateNavigationTest.js';
-import { checkNavigationState, forceNavigationTest, testCompleteGameFlow, resetGameToSelectionPhase } from './utils/navigationDebug.js';
-import { testNavigationBugFix, verifyEnumValues } from './utils/testNavigationFinal.js';
-import { runComprehensiveNavigationTest, quickNavigationTest } from './utils/finalNavigationTest.js';
-import './utils/testCompleteFix.js';
-import './utils/testCompleteFlow.js';
-import './utils/testRealCreatures.js'; // Import real creature testing functions
-import './utils/testRaceConditionFix.js'; // Import race condition fix test
+async function loadDevTools() {
+  const [
+    navFix,
+    simNav,
+    navDebug,
+    navFinal,
+    finalNav,
+  ] = await Promise.all([
+    import('./devtools/testNavigationFix.js'),
+    import('./devtools/simulateNavigationTest.js'),
+    import('./devtools/navigationDebug.js'),
+    import('./devtools/testNavigationFinal.js'),
+    import('./devtools/finalNavigationTest.js'),
+  ]);
 
-// Import debug functions
-import './utils/debugGameState.js';
+  // Side-effect-only dev helpers (keep out of production bundles).
+  await Promise.all([
+    import('./devtools/testCompleteFix.js'),
+    import('./devtools/testCompleteFlow.js'),
+    import('./devtools/testRealCreatures.js'),
+    import('./devtools/testRaceConditionFix.js'),
+    import('./devtools/debugGameState.js'),
+  ]);
 
-// Expose test functions globally for browser console access
-(window as any).testNavigationFix = testNavigationFix;
-(window as any).triggerNavigationTest = triggerNavigationTest;
-(window as any).simulateNavigationBug = simulateNavigationBug;
-(window as any).checkNavigationState = checkNavigationState;
-(window as any).forceNavigationTest = forceNavigationTest;
-(window as any).testCompleteGameFlow = testCompleteGameFlow;
-(window as any).resetGameToSelectionPhase = resetGameToSelectionPhase;
-(window as any).testNavigationBugFix = testNavigationBugFix;
-(window as any).verifyEnumValues = verifyEnumValues;
-(window as any).runComprehensiveNavigationTest = runComprehensiveNavigationTest;
-(window as any).quickNavigationTest = quickNavigationTest;
+  // Expose test functions globally for browser console access in dev.
+  const w = window as any;
+  w.testNavigationFix = navFix.testNavigationFix;
+  w.triggerNavigationTest = navFix.triggerNavigationTest;
+  w.simulateNavigationBug = simNav.simulateNavigationBug;
+  w.checkNavigationState = navDebug.checkNavigationState;
+  w.forceNavigationTest = navDebug.forceNavigationTest;
+  w.testCompleteGameFlow = navDebug.testCompleteGameFlow;
+  w.resetGameToSelectionPhase = navDebug.resetGameToSelectionPhase;
+  w.testNavigationBugFix = navFinal.testNavigationBugFix;
+  w.verifyEnumValues = navFinal.verifyEnumValues;
+  w.runComprehensiveNavigationTest = finalNav.runComprehensiveNavigationTest;
+  w.quickNavigationTest = finalNav.quickNavigationTest;
+}
 
-// Initialize Moralis only if API key is available
-if (import.meta.env.VITE_MORALIS_API_KEY) {
-  Moralis.start({ apiKey: import.meta.env.VITE_MORALIS_API_KEY });
+if (import.meta.env.DEV) {
+  loadDevTools().catch((err) => {
+    // Don't hard-fail app startup on dev helper issues.
+    console.warn('[devtools] Failed to load dev tools:', err);
+  });
 }
 
 createRoot(document.getElementById('root')!).render(

@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { supabase } from '../utils/supabase.js';
 
 export async function testCompleteFlow(gameId: string) {
   console.log('🧪 TESTING: Complete flow from navigation to game initialization...');

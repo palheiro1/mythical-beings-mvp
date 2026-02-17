@@ -17,6 +17,27 @@ export interface WalletConnectionResult {
   error?: string;
 }
 
+function getSupabaseConnectivityHint(err: unknown): string | null {
+  const msg = (err && typeof err === 'object' && 'message' in err) ? String((err as any).message) : String(err);
+  const looksLikeNetwork =
+    msg.includes('Failed to send a request to the Edge Function') ||
+    msg.includes('Failed to fetch') ||
+    msg.includes('NetworkError');
+  if (!looksLikeNetwork) return null;
+
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
+  if (!supabaseUrl) {
+    return 'Supabase URL is not configured (VITE_SUPABASE_URL).';
+  }
+
+  try {
+    const host = new URL(supabaseUrl).host;
+    return `Unable to reach Supabase Edge Functions (${host}). Check that the project is running and the host resolves (DNS).`;
+  } catch {
+    return `Unable to reach Supabase Edge Functions. Check VITE_SUPABASE_URL (${supabaseUrl}).`;
+  }
+}
+
 class MetaMaskAuthService {
   private static instance: MetaMaskAuthService;
   private isConnecting = false;
@@ -182,15 +203,17 @@ By signing this message, you are proving ownership of this wallet address.`;
         });
         if (fallback.error) {
           console.error('[MetaMaskAuth] Fallback simplified-moralis-auth failed:', fallback.error);
-          return { success: false, error: fallback.error.message || primaryErr?.message || 'Authentication failed' };
+          const hint = getSupabaseConnectivityHint(fallback.error) || getSupabaseConnectivityHint(primaryErr);
+          return { success: false, error: hint || fallback.error.message || primaryErr?.message || 'Authentication failed' };
         }
         data = fallback.data;
       }
 
-      // Expecting { token, user }
-      const token: string | undefined = (data as any)?.token;
+      // Expecting { access_token, refresh_token, user } (preferred) or legacy { token, user }
+      const accessToken: string | undefined = (data as any)?.access_token ?? (data as any)?.token;
+      const refreshToken: string | undefined = (data as any)?.refresh_token ?? (data as any)?.refreshToken ?? accessToken;
 
-      if (!token) {
+      if (!accessToken) {
         // Some edge functions (simplified) return instructions to sign in with password
         if ((data as any)?.use_password_signin && (data as any)?.email) {
           console.log('[MetaMaskAuth] No token returned; attempting password sign-in as instructed by fallback...');
@@ -219,8 +242,8 @@ By signing this message, you are proving ownership of this wallet address.`;
 
       // Establish Supabase session with returned JWT
       const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
-        access_token: token,
-        refresh_token: token
+        access_token: accessToken,
+        refresh_token: refreshToken || accessToken
       });
 
       if (sessionError || !sessionData?.session) {
@@ -237,7 +260,8 @@ By signing this message, you are proving ownership of this wallet address.`;
       };
     } catch (error: any) {
       console.error('[MetaMaskAuth] Authentication error:', error);
-      return { success: false, error: error.message || 'Authentication failed' };
+      const hint = getSupabaseConnectivityHint(error);
+      return { success: false, error: hint || error.message || 'Authentication failed' };
     }
   }
 

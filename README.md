@@ -12,8 +12,8 @@ Mythical Beings is a fast, tactical, turn-based card game for two players. Each 
 
 ## Objective
 
-- Reduce your opponent’s power to 0; or
-- When the knowledge deck is exhausted, have more power than your opponent.
+- Reduce your opponent’s power to 0.
+- If both players reach 0 power or less simultaneously, the game is a draw.
 
 ## Components At A Glance
 
@@ -36,7 +36,7 @@ Every turn flows through clear phases:
 - You have 2 actions by default. Typical actions:
   - Draw 1 knowledge from the Market (if space in hand).
   - Summon 1 knowledge from your hand onto one of your creatures.
-  - Rotate one of your creatures 90° to increase its wisdom.
+  - Rotate one of your creatures 90° to change its wisdom.
   - End Turn (always allowed when it’s your turn).
 
 3) End Turn
@@ -49,12 +49,13 @@ Notes
 ## Core Mechanics
 
 Creatures and Wisdom
-- Each creature has a current wisdom value that increases with rotation.
+- Each creature has a current wisdom value determined by its rotation (wisdom cycle).
 - Wisdom pays the cost to summon knowledge onto that creature’s slot.
 
 Summoning Knowledge
 - A creature may hold at most one knowledge card on its slot.
 - To summon: the creature’s current wisdom must be ≥ the knowledge cost.
+- Knowledge replacement is not allowed: you can’t summon onto an occupied slot.
 - Some slots may be blocked by effects (you can’t summon there while blocked).
 
 Rotation & Value Cycles
@@ -109,12 +110,13 @@ These examples illustrate how passives shape your plan: time rotations, line up 
 ## Learn the Cards
 
 - Rulebook PDF: public/RULEBOOK.pdf (visual reference of creatures and knowledges)
+- Digital rules (matches engine): docs/rules/RULES.md
 - Tests as specs: the tests in `tests/gameReducer` document edge cases and intended behaviors.
 
 ## Play Locally
 
 Prerequisites
-- Node.js 16+
+- Node.js 18+
 - npm (or yarn)
 
 Install & Run
@@ -126,7 +128,7 @@ npm run dev
 ```
 
 Environment
-Create a `.env` in the project root:
+Create a `.env.local` in the project root (see `.env.example`):
 ```
 VITE_SUPABASE_URL=your_supabase_url
 VITE_SUPABASE_ANON_KEY=your_supabase_anon_key

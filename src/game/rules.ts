@@ -85,7 +85,7 @@ export function isValidAction(state: GameState, action: GameAction): ValidationR
       if (!knowledgeCardInHand) {
         return { isValid: false, reason: 'Knowledge card not in hand.' };
       }
-      if (creature.currentWisdom < knowledgeCardInHand.cost) {
+      if ((creature.currentWisdom ?? 0) < knowledgeCardInHand.cost) {
         return { isValid: false, reason: 'Creature does not have enough wisdom.' };
       }
       return { isValid: true };
@@ -157,26 +157,22 @@ export function executeKnowledgePhase(state: GameState): GameState {
         const nextRotation = currentRotation + 90;
         const willBeDiscarded = nextRotation >= maxRotationDegrees;
 
-        const effectFn = knowledgeEffects[originalKnowledge.id];
-        if (effectFn) {
-          // Prepare a state snapshot *before* this specific effect runs
-          // Use cloneDeep for the snapshot as well, though maybe unnecessary if effects always clone
-          let stateForEffect = cloneDeep(phaseState);
-
-          effectStates.push({
-            playerIndex,
-            slotIndex,
-            state: stateForEffect
-          });
-        }
+        // Prepare a state snapshot *before* this specific effect runs
+        // (effects are applied sequentially to the evolving state later).
+        const stateForEffect = cloneDeep(phaseState);
+        effectStates.push({
+          playerIndex,
+          slotIndex,
+          state: stateForEffect,
+        });
 
         if (willBeDiscarded) {
           knowledgeToDiscard.push({ playerIndex, slotIndex, card: { ...originalKnowledge } });
         }
 
         const knowledgeInMainState = phaseState.players[playerIndex]?.field[slotIndex]?.knowledge;
-        if (knowledgeInMainState?.instanceId === originalKnowledge.instanceId) {
-           knowledgeInMainState.rotation = nextRotation;
+        if (knowledgeInMainState && knowledgeInMainState.instanceId === originalKnowledge.instanceId) {
+          knowledgeInMainState.rotation = nextRotation;
         }
       }
     }
@@ -194,19 +190,17 @@ export function executeKnowledgePhase(state: GameState): GameState {
           const nextRotation = currentRotation + 90;
           const willBeDiscarded = nextRotation >= maxRotationDegrees;
 
-          if (effectFn) {
-              // Apply effect to the *currentState*
-              // The effect function itself now uses cloneDeep internally
-              currentState = effectFn({
-                  state: currentState,
-                  playerIndex: playerIndex,
-                  fieldSlotIndex: slotIndex,
-                  knowledge: knowledgeForEffect,
-                  rotation: currentRotation,
-                  isFinalRotation: willBeDiscarded,
-                  trigger: 'onPhase',
-              });
-          }
+          // Apply effect to the *currentState*
+          // The effect function itself uses cloneDeep internally.
+          currentState = effectFn({
+            state: currentState,
+            playerIndex: playerIndex,
+            fieldSlotIndex: slotIndex,
+            knowledge: knowledgeForEffect,
+            rotation: currentRotation,
+            isFinalRotation: willBeDiscarded,
+            trigger: 'onPhase',
+          });
       }
   }
   phaseState = currentState; // Update phaseState with the result of all effects
@@ -234,16 +228,16 @@ function processKnowledgeDiscards(
   discards: { playerIndex: number; slotIndex: number; card: Knowledge }[]
 ): GameState {
   let newState = state; // Start with the current state (already a clone from executeKnowledgePhase)
-  const discardedInstanceIds = new Set(discards.map(d => d.card.instanceId));
 
   for (const { playerIndex, slotIndex, card } of discards) {
     const player = newState.players[playerIndex];
     const fieldSlot = player?.field[slotIndex];
 
     // Double-check if the card is still there and matches the instanceId before discarding
-    if (fieldSlot?.knowledge?.instanceId === card.instanceId) {
+    if (fieldSlot && fieldSlot.knowledge && fieldSlot.knowledge.instanceId === card.instanceId) {
       newState.log.push(`[Knowledge Phase] ${card.name} (Player ${playerIndex + 1}, Slot ${slotIndex}) reached max rotations and is discarded.`);
-      newState.discardPile.push(fieldSlot.knowledge);
+      const leavingKnowledge = fieldSlot.knowledge;
+      newState.discardPile.push(leavingKnowledge);
       fieldSlot.knowledge = null;
 
       // Apply KNOWLEDGE_LEAVE passives

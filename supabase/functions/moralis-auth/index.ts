@@ -1,7 +1,6 @@
 // MetaMask auth Edge Function with local signature verification (no Moralis dependency)
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { create, type JoseHeader } from "https://deno.land/x/djwt@v2.8/mod.ts"; // Deno JWT library
 import { utils as ethersUtils } from "https://esm.sh/ethers@5.7.2";
 
 // Base CORS headers, primarily for preflight (OPTIONS) requests
@@ -36,6 +35,50 @@ function errorResponse(message, status = 400) {
       "Content-Type": "application/json", // Add Content-Type for responses with a JSON body
     }
   });
+}
+
+function bytesToBase64(bytes: Uint8Array): string {
+  let binary = "";
+  for (const b of bytes) binary += String.fromCharCode(b);
+  return btoa(binary);
+}
+
+async function derivePassword(secret: string, evmAddress: string): Promise<string> {
+  const cryptoKey = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"]
+  );
+
+  const signature = await crypto.subtle.sign(
+    "HMAC",
+    cryptoKey,
+    new TextEncoder().encode(evmAddress.toLowerCase())
+  );
+
+  // URL-safe base64 for use as a password
+  const b64 = bytesToBase64(new Uint8Array(signature))
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/g, "");
+
+  return `mb_${b64}`;
+}
+
+async function findAuthUserIdByEmail(supabaseAdmin: any, userEmail: string): Promise<string | null> {
+  // Supabase JS admin API does not provide a direct get-by-email helper.
+  // Paginate until found (kept bounded for safety).
+  const perPage = 1000;
+  for (let page = 1; page <= 50; page++) {
+    const { data, error } = await supabaseAdmin.auth.admin.listUsers({ page, perPage });
+    if (error) throw error;
+    const found = data?.users?.find((u: any) => u.email === userEmail);
+    if (found?.id) return found.id;
+    if (!data?.users || data.users.length < perPage) break;
+  }
+  return null;
 }
 
 serve(async (req) => {
@@ -95,19 +138,105 @@ serve(async (req) => {
     // Get Supabase configuration
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY");
+    const authPasswordSecret = Deno.env.get("AUTH_PASSWORD_SECRET");
 
-    if (!supabaseUrl || !serviceRoleKey) {
+    if (!supabaseUrl || !serviceRoleKey || !supabaseAnonKey) {
       console.error("[moralis-auth] ERROR: Supabase URL or Service Role Key not configured");
       return errorResponse("Internal server error: Supabase config missing", 500);
     }
+    if (!authPasswordSecret) {
+      console.error("[moralis-auth] ERROR: AUTH_PASSWORD_SECRET not configured");
+      return errorResponse("Internal server error: Auth secret missing", 500);
+    }
 
-    // Create Supabase client
-    const supabase = createClient(supabaseUrl, serviceRoleKey);
+    // Create Supabase clients:
+    // - admin client (service role): user admin + profile writes
+    // - anon client: password sign-in to get proper session tokens
+    const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
+    const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey);
 
-    // Ensure user profile exists (creates a profile and returns it, creating user row if needed)
+    // Create or retrieve Supabase Auth user (by email derived from wallet)
+    const userEmail = `${evmAddress}@metamask.local`;
+    const password = await derivePassword(authPasswordSecret, evmAddress);
+
+    // Prefer profile lookup by wallet for scale, fallback to admin listUsers by email.
+    let authUserId: string | null = null;
+    try {
+      const { data: existingProfile } = await supabaseAdmin
+        .from("profiles")
+        .select("id")
+        .eq("eth_address", evmAddress)
+        .maybeSingle();
+      if (existingProfile?.id) authUserId = existingProfile.id;
+    } catch (e) {
+      console.warn("[moralis-auth] WARN: profile lookup failed:", e);
+    }
+
+    if (!authUserId) {
+      authUserId = await findAuthUserIdByEmail(supabaseAdmin, userEmail);
+    }
+
+    // Ensure auth user exists + has the derived password
+    if (!authUserId) {
+      const { data: createData, error: createErr } = await supabaseAdmin.auth.admin.createUser({
+        email: userEmail,
+        password,
+        email_confirm: true,
+        user_metadata: {
+          eth_address: evmAddress,
+          username: `Player_${evmAddress.substring(2, 8)}`,
+          avatar_url: null,
+        },
+      });
+      if (createErr) {
+        const msg = String((createErr as any)?.message ?? createErr);
+        // Race/retry: if the user already exists, fall back to lookup+update.
+        if (msg.toLowerCase().includes("already")) {
+          try {
+            authUserId = await findAuthUserIdByEmail(supabaseAdmin, userEmail);
+            if (authUserId) {
+              await supabaseAdmin.auth.admin.updateUserById(authUserId, {
+                password,
+                user_metadata: { eth_address: evmAddress },
+              });
+            }
+          } catch (e) {
+            console.error("[moralis-auth] ERROR: Failed to recover existing user after createUser conflict:", e);
+          }
+          if (!authUserId) {
+            console.error("[moralis-auth] ERROR: User already exists but could not be located:", createErr);
+            return errorResponse("Failed to locate existing user", 500);
+          }
+        } else {
+          console.error("[moralis-auth] ERROR: Failed to create user:", createErr);
+          return errorResponse(`Failed to create user: ${msg}`, 500);
+        }
+      }
+      if (!createErr) {
+        authUserId = createData.user?.id ?? null;
+        console.log("[moralis-auth] INFO: New user created:", authUserId);
+      } else {
+        console.log("[moralis-auth] INFO: Using existing user:", authUserId);
+      }
+    } else {
+      // Ensure metadata stays in sync
+      await supabaseAdmin.auth.admin.updateUserById(authUserId, {
+        password,
+        user_metadata: {
+          eth_address: evmAddress,
+        },
+      });
+    }
+
+    if (!authUserId) {
+      return errorResponse("Failed to create or retrieve user", 500);
+    }
+
+    // Ensure profile exists (server-side only)
     console.log("[moralis-auth] INFO: Ensuring user profile exists for:", evmAddress);
-    const { data: profileData, error: profileError } = await supabase
-      .rpc("ensure_user_profile_exists", { p_evm_address: evmAddress });
+    const { data: profileData, error: profileError } = await supabaseAdmin
+      .rpc("ensure_user_profile_exists", { p_evm_address: evmAddress, p_user_id: authUserId });
 
     if (profileError) {
       console.error("[moralis-auth] ERROR: Error calling ensure_user_profile_exists:", JSON.stringify(profileError));
@@ -118,96 +247,22 @@ serve(async (req) => {
       return errorResponse("Profile creation or retrieval failed", 500);
     }
 
-    // Create or retrieve Supabase Auth user (by email derived from wallet)
-    const userEmail = `${evmAddress}@metamask.local`;
-    let authUser = (await supabase.auth.admin.listUsers()).data?.users?.find((u: any) => u.email === userEmail);
-    if (!authUser) {
-      const { data: createData, error: createErr } = await supabase.auth.admin.createUser({
-        email: userEmail,
-        password: "metamask-verified-user",
-        email_confirm: true,
-        user_metadata: {
-          eth_address: evmAddress,
-          username: profileData[0]?.username || `Player_${evmAddress.substring(2, 8)}`,
-          avatar_url: profileData[0]?.avatar_url || null,
-        },
-      });
-      if (createErr) {
-        console.error("[moralis-auth] ERROR: Failed to create user:", createErr);
-        return errorResponse(`Failed to create user: ${createErr.message}`, 500);
-      }
-      authUser = createData.user;
-      console.log("[moralis-auth] INFO: New user created:", authUser?.id);
-    } else {
-      // Ensure metadata stays in sync
-      await supabase.auth.admin.updateUserById(authUser.id, {
-        user_metadata: {
-          ...(authUser.user_metadata || {}),
-          eth_address: evmAddress,
-        },
-      });
+    // Create a proper session via GoTrue (no JWT secret required)
+    const { data: signInData, error: signInError } = await supabaseAuth.auth.signInWithPassword({
+      email: userEmail,
+      password,
+    });
+
+    if (signInError || !signInData?.session) {
+      console.error("[moralis-auth] ERROR: Failed to sign in after verification:", signInError);
+      return errorResponse("Failed to establish session", 500);
     }
 
-    if (!authUser) {
-      return errorResponse("Failed to create or retrieve user", 500);
-    }
+    const access_token = signInData.session.access_token;
+    const refresh_token = signInData.session.refresh_token;
 
-    // Update profile with the Supabase Auth user ID (id column)
-    const { error: profileUpsertErr } = await supabase
-      .from("profiles")
-      .upsert({
-        id: authUser.id,
-        eth_address: evmAddress,
-        username: profileData[0]?.username || `Player_${evmAddress.substring(2, 8)}`,
-        avatar_url: profileData[0]?.avatar_url || null,
-        updated_at: new Date().toISOString(),
-      });
-    if (profileUpsertErr) {
-      console.error("[moralis-auth] ERROR: Failed to upsert profile with auth user id:", profileUpsertErr);
-      return errorResponse("Profile sync failed", 500);
-    }
-
-    // Generate JWT token signed with project secret
-    const jwtSecret = Deno.env.get("JWT_SECRET") || Deno.env.get("SUPABASE_JWT_SECRET");
-    if (!jwtSecret) {
-      console.error("[moralis-auth] ERROR: JWT_SECRET not configured");
-      return errorResponse("Internal server error: JWT secret missing", 500);
-    }
-
-  const expirationTime = Math.floor(Date.now() / 1000) + (60 * 60 * 24 * 7); // 7 days
-  const payload = {
-      sub: authUser.id, // Use the actual Supabase Auth user ID
-      role: "authenticated",
-      email: authUser.email || userEmail,
-      user_metadata: {
-    username: authUser.user_metadata?.username || profileData[0]?.username,
-    avatar_url: authUser.user_metadata?.avatar_url || profileData[0]?.avatar_url,
-        eth_address: evmAddress, // Store the actual ETH address in metadata
-      },
-      aud: "authenticated",
-      iss: supabaseUrl,
-      exp: expirationTime,
-    };
-
-    // Convert the secret to a CryptoKey
-    const cryptoKey = await crypto.subtle.importKey(
-      "raw",
-      new TextEncoder().encode(jwtSecret),
-      { name: "HMAC", hash: "SHA-256" },
-      false,
-      ["sign", "verify"]
-    );
-
-    const header: JoseHeader = {
-      alg: "HS256",
-      typ: "JWT",
-    };
-
-  const token = await create(header, payload, cryptoKey);
-    console.log("[moralis-auth] INFO: JWT token generated successfully");
-
-  // Return successful response with token and user data
-  return new Response(JSON.stringify({ token, user: profileData[0] }), {
+    // Return successful response with tokens and user profile
+    return new Response(JSON.stringify({ access_token, refresh_token, user: profileData[0] }), {
       status: 200,
       headers: {
         ...baseCorsHeaders, // Include base CORS headers

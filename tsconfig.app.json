@@ -1,32 +1,25 @@
 {
   "compilerOptions": {
-    "composite": true, // Added for project references
-    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
     "target": "ES2020",
     "useDefineForClassFields": true,
     "lib": ["ES2020", "DOM", "DOM.Iterable"],
-    "module": "NodeNext", // Set to NodeNext for strict NodeNext compatibility
+    "module": "ESNext",
     "skipLibCheck": true,
 
     /* Bundler mode */
-    "moduleResolution": "NodeNext", // Changed from "bundler"
-    "resolveJsonModule": true, // Added from TODO
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
     "isolatedModules": true,
-    "moduleDetection": "force",
     "jsx": "react-jsx",
-
-    /* Output */
-    "declaration": true, // Explicitly enable declaration files
-    "declarationMap": true, // Optional: Generate source maps for declarations
-    "outDir": "dist", // Specify output directory
-    "rootDir": "src", // Specify root directory of source files
+    "noEmit": true,
 
     /* Linting */
     "strict": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
     "noFallthroughCasesInSwitch": true,
     "forceConsistentCasingInFileNames": true // Added from TODO
   },
-  "include": ["src", "src/**/*.json"] // Keep include as is, rootDir handles the base
+  "include": ["src"],
+  "exclude": ["src/devtools", "docs", "dist", "node_modules"]
 }

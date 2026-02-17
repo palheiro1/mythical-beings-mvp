@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { supabase } from '../utils/supabase.js';
 
 export async function testCompleteNavigationFix(gameId?: string) {
   console.log('🧪 COMPREHENSIVE TEST: Testing complete navigation fix...');
@@ -161,10 +161,11 @@ export async function testCompleteNavigationFix(gameId?: string) {
     }
 
   } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
     console.error('❌ Test failed:', error);
     return {
       success: false,
-      error: error.message,
+      error: message,
       message: 'Test failed with error'
     };
   }

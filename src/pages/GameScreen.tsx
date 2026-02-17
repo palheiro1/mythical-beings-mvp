@@ -254,7 +254,7 @@ const GameScreen: React.FC = () => {
     const line = logs[newIdx];
     if (!line) return;
     // Try to extract target player id and damage number
-    const dmgMatch = line.match(/deals\s+(\d+)\s+damage\s+to\s+([0-9a-f\-]{36})/i);
+    const dmgMatch = line.match(/deals\s+(\d+)\s+damage\s+to\s+([0-9a-f-]{36})/i);
     if (dmgMatch) {
       const amount = parseInt(dmgMatch[1], 10);
       const targetId = dmgMatch[2];
