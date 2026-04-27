@@ -80,10 +80,10 @@ export interface GameState {
 // Type for games listed in the lobby
 export interface AvailableGame {
   id: string;
-  player1_id: string;
-  bet_amount: number;
+  code: string;
+  host_id: string;
   created_at: string;
-  status: 'waiting' | 'active' | 'finished' | 'cancelled'; // Match possible statuses
+  status: 'waiting' | 'playing' | 'finished' | 'cancelled';
 }
 
 // Action types for game updates

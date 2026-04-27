@@ -2,7 +2,7 @@ import type { Dispatch } from 'react';
 import { useCallback, useRef } from 'react';
 import { GameState, GameAction } from '../game/types.js';
 import { gameReducer } from '../game/state.js';
-import { updateGameState } from '../utils/supabase.js';
+import { recordGameOutcomeAndUpdateStats, updateGameState } from '../utils/supabase.js';
 import { isValidAction } from '../game/rules.js';
 
 export function useGameActions(
@@ -81,6 +81,13 @@ export function useGameActions(
                     // Optimistically update local state right after a successful persist.
                     // Realtime will reconcile if there's any drift.
                     dispatch({ type: 'SET_GAME_STATE', payload: nextState });
+                    if (nextState.phase === 'gameOver') {
+                        const p1 = nextState.players[0]?.id;
+                        const p2 = nextState.players[1]?.id;
+                        if (p1 && p2) {
+                            await recordGameOutcomeAndUpdateStats(nextState.gameId, nextState.winner, p1, p2, nextState);
+                        }
+                    }
                 }
             } else {
                 console.log(`[handleAction] Dispatching received SET_GAME_STATE.`);

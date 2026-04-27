@@ -1,7 +1,6 @@
 import { useEffect, useReducer, useState, useRef } from 'react';
 import { useParams } from 'react-router-dom';
-// Remove getGameDetails, add supabase
-import { getGameState, subscribeToGameState, unsubscribeFromGameState, updateGameState, RealtimeChannel, supabase } from '../utils/supabase.js';
+import { getGameDetails, getGameState, subscribeToGameState, unsubscribeFromGameState, updateGameState, RealtimeChannel } from '../utils/supabase.js';
 // Remove unused Creature import
 import { GameState, GameAction, Knowledge, PlayerState } from '../game/types.js';
 import { initializeGame, gameReducer as originalGameReducer } from '../game/state.js';
@@ -130,14 +129,8 @@ export function useGameInitialization(
     const setupGame = async () => {
       console.log(`[setupGame] Starting setup logic for game: ${gameId}, player: ${currentPlayerId}`);
       try {
-        // 1. Fetch game details (including selected creatures from state or columns)
-        const { data: gameDetails, error: detailsError } = await supabase
-          .from('games')
-          .select('player1_id, player2_id, player1_selected_creatures, player2_selected_creatures, state') // Fetch selected creatures and state
-          .eq('id', gameId)
-          .single();
-
-        if (detailsError) throw detailsError;
+        // 1. Fetch session details and selected creatures.
+        const gameDetails = await getGameDetails(gameId);
 
         // Check mount status and if the gameId hasn't changed since the effect started
         if (!isMounted || currentInitializedGameId.current !== gameId) {
@@ -153,22 +146,8 @@ export function useGameInitialization(
         const player2Id = gameDetails.player2_id;
         
         // --- Get selected creature IDs from columns or state ---
-        let player1SelectedIds = gameDetails.player1_selected_creatures;
-        let player2SelectedIds = gameDetails.player2_selected_creatures;
-        
-        // If not in columns, try to get from NFT selection state
-        if ((!player1SelectedIds || !player2SelectedIds) && gameDetails.state) {
-            const state = gameDetails.state as any;
-            if (state.player1SelectedCreatures) {
-                player1SelectedIds = state.player1SelectedCreatures;
-                console.log(`[setupGame] Retrieved player1 selected creatures from state:`, player1SelectedIds);
-            }
-            if (state.player2SelectedCreatures) {
-                player2SelectedIds = state.player2SelectedCreatures;
-                console.log(`[setupGame] Retrieved player2 selected creatures from state:`, player2SelectedIds);
-            }
-        }
-        // --- End get selected creature IDs ---
+        const player1SelectedIds = gameDetails.player1_selected_creatures;
+        const player2SelectedIds = gameDetails.player2_selected_creatures;
 
         if (!player2Id) {
             // If second player hasn't joined yet, retry after a delay

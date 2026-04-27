@@ -52,9 +52,9 @@ const TopBar: React.FC<TopBarProps> = ({
       const p2 = gameState.players[1]?.id;
       if (!p1 || !p2) return;
       const winner = currentPlayerId === p1 ? p2 : p1;
-      const next: GameState = { ...gameState, winner, phase: 'end', log: [...gameState.log, `[Game] ${currentPlayerId} resigns. ${winner} wins!`] };
+      const next: GameState = { ...gameState, winner, phase: 'gameOver', log: [...gameState.log, `[Game] ${currentPlayerId} resigns. ${winner} wins!`] };
       await updateGameState(gameState.gameId, next);
-      await recordGameOutcomeAndUpdateStats(gameState.gameId, winner, p1, p2);
+      await recordGameOutcomeAndUpdateStats(gameState.gameId, winner, p1, p2, next);
     } catch (e) {
       console.error('[TopBar] Resign failed', e);
     }

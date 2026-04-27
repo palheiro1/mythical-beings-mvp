@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { supabase, getGameState, updateGameState } from '../utils/supabase';
+import { getGameDetails, getGameState, updateGameState } from '../utils/supabase';
 import { initializeGame } from '../game/state';
 
 const GameInitializing: React.FC = () => {
@@ -21,14 +21,8 @@ const GameInitializing: React.FC = () => {
       try {
         console.log('[GameInitializing] Starting initialization flow for game:', gameId);
         
-        // 1. Get game details and determine player roles
-        const { data: gameDetails, error: detailsError } = await supabase
-          .from('games')
-          .select('player1_id, player2_id, player1_selected_creatures, player2_selected_creatures, state')
-          .eq('id', gameId)
-          .single();
-
-        if (detailsError) throw detailsError;
+        // 1. Get session details and determine player roles
+        const gameDetails = await getGameDetails(gameId);
         if (!gameDetails) throw new Error('Game not found');
 
         const isPlayer1 = gameDetails.player1_id === user.id;
@@ -53,19 +47,16 @@ const GameInitializing: React.FC = () => {
           setStatus('Initializing game state...');
           console.log('[GameInitializing] Player 1 initializing game state');
 
-          // Get selected creatures
-          let player1SelectedIds = gameDetails.player1_selected_creatures;
-          let player2SelectedIds = gameDetails.player2_selected_creatures;
-          
-          if ((!player1SelectedIds || !player2SelectedIds) && gameDetails.state) {
-            const state = gameDetails.state as any;
-            player1SelectedIds = player1SelectedIds || state.player1SelectedCreatures;
-            player2SelectedIds = player2SelectedIds || state.player2SelectedCreatures;
-          }
+          // Get selected creatures from the card_game_session_state row.
+          const player1SelectedIds = gameDetails.player1_selected_creatures;
+          const player2SelectedIds = gameDetails.player2_selected_creatures;
 
           if (!player1SelectedIds || !player2SelectedIds || 
               player1SelectedIds.length !== 3 || player2SelectedIds.length !== 3) {
             throw new Error('Selected creature data is missing or incomplete');
+          }
+          if (!gameDetails.player1_id || !gameDetails.player2_id) {
+            throw new Error('Session participant data is incomplete');
           }
 
           // Initialize the full game state

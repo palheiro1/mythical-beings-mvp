@@ -50,7 +50,7 @@ describe('useRealtimeGameUpdates', () => {
 
   // We don't assert the transient state synchronously since it may flip to connected quickly.
   expect(onConnectionChange).toHaveBeenCalledWith('connecting');
-    expect(mockSupabase.channel).toHaveBeenCalledWith('game-test-game');
+    expect(mockSupabase.channel).toHaveBeenCalledWith('card-game-state-test-game');
   });
 
   it('should handle successful connection', async () => {
@@ -133,7 +133,7 @@ describe('useRealtimeGameUpdates', () => {
       select: vi.fn().mockReturnValue({
         eq: vi.fn().mockReturnValue({
           single: vi.fn().mockResolvedValue({
-            data: { id: 'test-game', status: 'active' },
+            data: { session_id: 'test-game', state: { status: 'playing' } },
             error: null
           })
         })
@@ -169,7 +169,7 @@ describe('useRealtimeGameUpdates', () => {
       await Promise.resolve();
     });
 
-    expect(onGameUpdate).toHaveBeenCalledWith({ id: 'test-game', status: 'active' });
+    expect(onGameUpdate).toHaveBeenCalledWith({ session_id: 'test-game', state: { status: 'playing' } });
   });
 
   it('should handle game update messages', () => {

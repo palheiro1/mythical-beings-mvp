@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import Card from '../components/Card.js';
 import GameStateDebug from '../components/GameStateDebug.js';
 import { Creature } from '../game/types.js';
-import { supabase } from '../utils/supabase.js';
+import { getCardGameSessionState, getGameDetails } from '../utils/supabase.js';
 import { useAuth } from '../context/AuthProvider.js';
 import { NFTSelectionNavigationManager } from '../utils/NavigationManager.js';
 // --- Import the base creature data ---
@@ -93,17 +93,17 @@ const NFTSelectionSimplified: React.FC = () => {
         setIsLoadingHand(true);
         setError(null);
 
-        const { data: gameData, error: gameError } = await supabase
-          .from('games')
-          .select('player1_id, player2_id, player1_dealt_hand, player2_dealt_hand, state')
-          .eq('id', gameId)
-          .single();
+        const [gameData, cardState] = await Promise.all([
+          getGameDetails(gameId),
+          getCardGameSessionState(gameId),
+        ]);
 
-        if (gameError) throw gameError;
-        if (!gameData) throw new Error('Game not found');
+        if (!gameData || !cardState) throw new Error('Session not found');
 
-        const isPlayer1 = gameData.player1_id === currentPlayerId;
-        const hand = isPlayer1 ? gameData.player1_dealt_hand : gameData.player2_dealt_hand;
+        const participant = gameData.participants?.find(p => p.player_id === currentPlayerId);
+        if (!participant) throw new Error('You are not part of this session');
+
+        const hand = cardState.dealt_hands?.[String(participant.slot)];
 
         if (hand && hand.length > 0) {
           const creatures = hand.map((id: string) => 
@@ -115,17 +115,14 @@ const NFTSelectionSimplified: React.FC = () => {
           console.log('[NFTSelection] Hand loaded:', creatures.length, 'cards');
 
           // Check if player already completed selection
-          const state = gameData.state as any;
-          if (state) {
-            const playerComplete = isPlayer1 ? state.player1SelectionComplete : state.player2SelectionComplete;
-            if (playerComplete) {
-              console.log('[NFTSelection] Player already completed selection');
-              setWaiting(true);
-            }
+          const playerComplete = cardState.selected_creatures?.[String(participant.slot)]?.length === 3;
+          if (playerComplete) {
+            console.log('[NFTSelection] Player already completed selection');
+            setWaiting(true);
           }
         } else {
           console.log('[NFTSelection] No hand data, starting polling');
-          startHandPolling(isPlayer1);
+          startHandPolling(participant.slot);
         }
 
       } catch (error: any) {
@@ -145,22 +142,16 @@ const NFTSelectionSimplified: React.FC = () => {
     };
   }, [gameId, currentPlayerId]);
 
-  const startHandPolling = (isPlayer1: boolean) => {
+  const startHandPolling = (slot: number) => {
     if (handPollIntervalRef.current) return;
 
     console.log('[NFTSelection] Starting hand polling');
     
     handPollIntervalRef.current = setInterval(async () => {
       try {
-        const { data: gameData, error } = await supabase
-          .from('games')
-          .select('player1_dealt_hand, player2_dealt_hand')
-          .eq('id', gameId)
-          .single();
-
-        if (error) throw error;
-
-        const hand = isPlayer1 ? gameData?.player1_dealt_hand : gameData?.player2_dealt_hand;
+        if (!gameId) return;
+        const cardState = await getCardGameSessionState(gameId);
+        const hand = cardState?.dealt_hands?.[String(slot)];
         
         if (hand && hand.length > 0) {
           const creatures = hand.map((id: string) => 
@@ -224,15 +215,9 @@ const NFTSelectionSimplified: React.FC = () => {
         
         try {
           console.log('[NFTSelection] Backup check: Verifying both players completed');
-          const { data: gameData, error } = await supabase
-            .from('games')
-            .select('state')
-            .eq('id', gameId)
-            .single();
-          
-          if (!error && gameData?.state) {
-            const state = gameData.state as any;
-            if (state.player1SelectionComplete && state.player2SelectionComplete) {
+          const cardState = await getCardGameSessionState(gameId);
+          if (cardState) {
+            if (cardState.selected_creatures?.['0']?.length === 3 && cardState.selected_creatures?.['1']?.length === 3) {
       console.log('[NFTSelection] 🎯 BACKUP NAVIGATION: Both players completed, navigating...');
       navigate(`/game-initializing/${gameId}`);
             }
@@ -248,15 +233,9 @@ const NFTSelectionSimplified: React.FC = () => {
         
         try {
           console.log('[NFTSelection] Extended backup check: Final verification');
-          const { data: gameData, error } = await supabase
-            .from('games')
-            .select('state')
-            .eq('id', gameId)
-            .single();
-          
-          if (!error && gameData?.state) {
-            const state = gameData.state as any;
-            if (state.player1SelectionComplete && state.player2SelectionComplete) {
+          const cardState = await getCardGameSessionState(gameId);
+          if (cardState) {
+            if (cardState.selected_creatures?.['0']?.length === 3 && cardState.selected_creatures?.['1']?.length === 3) {
       console.log('[NFTSelection] 🎯 EXTENDED BACKUP NAVIGATION: Both players completed, navigating...');
       navigate(`/game-initializing/${gameId}`);
             }

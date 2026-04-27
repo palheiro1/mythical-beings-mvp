@@ -38,6 +38,25 @@ function getSupabaseConnectivityHint(err: unknown): string | null {
   }
 }
 
+async function getFunctionErrorMessage(err: unknown): Promise<string | null> {
+  const context = (err as any)?.context;
+  if (!context || typeof context.clone !== 'function') return null;
+
+  try {
+    const text = await context.clone().text();
+    if (!text) return null;
+
+    try {
+      const parsed = JSON.parse(text);
+      return parsed.error || parsed.message || text;
+    } catch {
+      return text;
+    }
+  } catch {
+    return null;
+  }
+}
+
 class MetaMaskAuthService {
   private static instance: MetaMaskAuthService;
   private isConnecting = false;
@@ -189,6 +208,7 @@ By signing this message, you are proving ownership of this wallet address.`;
 
       // Try primary function first
       let data: any | null = null;
+      let primaryMessage: string | null = null;
       try {
         const res = await supabase.functions.invoke('moralis-auth', {
           body: { message, signature }
@@ -196,6 +216,7 @@ By signing this message, you are proving ownership of this wallet address.`;
         data = res.data;
         if (res.error) throw res.error;
       } catch (primaryErr: any) {
+        primaryMessage = await getFunctionErrorMessage(primaryErr);
         console.warn('[MetaMaskAuth] moralis-auth failed, trying fallback simplified-moralis-auth...', primaryErr);
         // Fallback to simplified function (more permissive) if available
         const fallback = await supabase.functions.invoke('simplified-moralis-auth', {
@@ -204,7 +225,11 @@ By signing this message, you are proving ownership of this wallet address.`;
         if (fallback.error) {
           console.error('[MetaMaskAuth] Fallback simplified-moralis-auth failed:', fallback.error);
           const hint = getSupabaseConnectivityHint(fallback.error) || getSupabaseConnectivityHint(primaryErr);
-          return { success: false, error: hint || fallback.error.message || primaryErr?.message || 'Authentication failed' };
+          const fallbackMessage = await getFunctionErrorMessage(fallback.error);
+          return {
+            success: false,
+            error: hint || fallbackMessage || primaryMessage || fallback.error.message || primaryErr?.message || 'Authentication failed',
+          };
         }
         data = fallback.data;
       }
@@ -220,7 +245,7 @@ By signing this message, you are proving ownership of this wallet address.`;
           const email: string = (data as any).email;
           const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
             email,
-            password: 'metamask-verified-user'
+            password: (data as any).signin_password ?? 'metamask-verified-user'
           });
 
           if (signInError || !signInData?.session) {

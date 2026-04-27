@@ -3,7 +3,8 @@
 
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { create, type JoseHeader } from "https://deno.land/x/djwt@v2.8/mod.ts";
+import { utils as ethersUtils } from "https://esm.sh/ethers@5.7.2";
+import { ensureWalletProfile, playerNameFromAddress } from "../_shared/wallet-profile.ts";
 
 // CORS headers for all responses
 const corsHeaders = {
@@ -33,37 +34,67 @@ function errorResponse(message: string, status = 400) {
   });
 }
 
-// Simple signature validation (for development - in production you'd want full cryptographic verification)
 function validateSignature(message: string, signature: string): string | null {
   try {
-    // Extract wallet address from message
-    const addressMatch = message.match(/Wallet address: (0x[a-fA-F0-9]{40})/);
+    const addressMatch = message.match(/Wallet address:\s*(0x[a-fA-F0-9]{40})/);
     if (!addressMatch) {
       console.error("[simplified-auth] No wallet address found in message");
       return null;
     }
     
     const claimedAddress = addressMatch[1].toLowerCase();
-    
-    // Basic signature format validation
-    const cleanSignature = signature.startsWith('0x') ? signature.slice(2) : signature;
-    if (cleanSignature.length !== 130) {
-      console.error("[simplified-auth] Invalid signature length");
+    const recoveredAddress = ethersUtils.verifyMessage(message, signature).toLowerCase();
+
+    if (recoveredAddress !== claimedAddress) {
+      console.error("[simplified-auth] Signature address mismatch", { recoveredAddress, claimedAddress });
       return null;
     }
     
-    // Validate hex format
-    if (!/^[a-fA-F0-9]+$/.test(cleanSignature)) {
-      console.error("[simplified-auth] Invalid signature format");
-      return null;
-    }
-    
-    console.log("[simplified-auth] Basic signature validation passed for address:", claimedAddress);
-    return claimedAddress;
+    console.log("[simplified-auth] Signature validation passed for address:", recoveredAddress);
+    return recoveredAddress;
   } catch (error) {
     console.error("[simplified-auth] Signature validation error:", error);
     return null;
   }
+}
+
+function createSessionPassword(): string {
+  const bytes = new Uint8Array(32);
+  crypto.getRandomValues(bytes);
+  return `mm_${Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("")}`;
+}
+
+async function findAuthUserForWallet(supabase: any, userEmail: string, verifiedAddress: string): Promise<any | null> {
+  try {
+    const { data: existingProfile } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("eth_address", verifiedAddress.toLowerCase())
+      .maybeSingle();
+
+    if (existingProfile?.id) {
+      const { data, error } = await supabase.auth.admin.getUserById(existingProfile.id);
+      if (!error && data?.user) return data.user;
+    }
+  } catch (error) {
+    console.warn("[simplified-auth] Wallet profile lookup failed:", error);
+  }
+
+  const perPage = 1000;
+  for (let page = 1; page <= 50; page++) {
+    const { data, error } = await supabase.auth.admin.listUsers({ page, perPage });
+    if (error) throw error;
+
+    const found = data?.users?.find((user: any) =>
+      user.email === userEmail ||
+      user.user_metadata?.eth_address?.toLowerCase() === verifiedAddress.toLowerCase()
+    );
+
+    if (found) return found;
+    if (!data?.users || data.users.length < perPage) break;
+  }
+
+  return null;
 }
 
 serve(async (req) => {
@@ -103,15 +134,13 @@ serve(async (req) => {
     // Get environment variables
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    const jwtSecret = Deno.env.get("JWT_SECRET") || Deno.env.get("SUPABASE_JWT_SECRET");
 
     console.log("[simplified-auth] Environment check:", { 
       hasSupabaseUrl: !!supabaseUrl, 
       hasServiceRoleKey: !!serviceRoleKey,
-      hasJwtSecret: !!jwtSecret
     });
 
-    if (!supabaseUrl || !serviceRoleKey || !jwtSecret) {
+    if (!supabaseUrl || !serviceRoleKey) {
       console.error("[simplified-auth] Missing environment variables");
       return errorResponse("Server configuration error", 500);
     }
@@ -132,26 +161,25 @@ serve(async (req) => {
 
     // Create unique email for this ETH address
     const userEmail = `${verifiedAddress.toLowerCase()}@metamask.local`;
+    const displayName = playerNameFromAddress(verifiedAddress);
+    const sessionPassword = createSessionPassword();
     
     console.log("[simplified-auth] Creating/retrieving Supabase Auth user");
 
     // Try to get existing user first
-    const { data: existingUsers } = await supabase.auth.admin.listUsers();
-    let authUser = existingUsers?.users?.find(user => 
-      user.email === userEmail || 
-      user.user_metadata?.eth_address?.toLowerCase() === verifiedAddress.toLowerCase()
-    );
+    let authUser = await findAuthUserForWallet(supabase, userEmail, verifiedAddress);
 
     if (!authUser) {
       // Create new user
       console.log("[simplified-auth] Creating new Supabase Auth user");
       const { data: newUserData, error: createError } = await supabase.auth.admin.createUser({
         email: userEmail,
-        password: 'metamask-verified-user', // Consistent password for all MetaMask users
+        password: sessionPassword,
         email_confirm: true,
         user_metadata: {
           eth_address: verifiedAddress.toLowerCase(),
-          username: `Player_${verifiedAddress.substring(2, 8)}`,
+          username: displayName,
+          display_name: displayName,
           authentication_method: 'metamask'
         }
       });
@@ -166,14 +194,21 @@ serve(async (req) => {
     } else {
       console.log("[simplified-auth] Existing user found:", authUser.id);
       
-      // Ensure the existing user has the correct password for signin
+      // Rotate a temporary password for this verified wallet login.
       const { error: updateError } = await supabase.auth.admin.updateUserById(authUser.id, {
-        password: 'metamask-verified-user'
+        password: sessionPassword,
+        user_metadata: {
+          ...authUser.user_metadata,
+          eth_address: verifiedAddress.toLowerCase(),
+          username: authUser.user_metadata?.username ?? displayName,
+          display_name: authUser.user_metadata?.display_name ?? displayName,
+          authentication_method: 'metamask',
+        }
       });
       
       if (updateError) {
         console.error("[simplified-auth] Failed to update user password:", updateError);
-        // Don't fail here, just log the warning
+        return errorResponse("Failed to prepare wallet sign-in", 500);
       }
     }
 
@@ -183,92 +218,32 @@ serve(async (req) => {
 
     // Create/update profile in profiles table
     console.log("[simplified-auth] Ensuring profile exists");
-    const { error: profileError } = await supabase
-      .from('profiles')
-      .upsert({
-        id: authUser.id,
-        username: authUser.user_metadata?.username || `Player_${verifiedAddress.substring(2, 8)}`,
-        eth_address: verifiedAddress.toLowerCase(),
-        updated_at: new Date().toISOString()
-      });
-
-    if (profileError) {
+    let profile: any;
+    try {
+      profile = await ensureWalletProfile(supabase, authUser.id, verifiedAddress);
+    } catch (profileError: any) {
       console.error("[simplified-auth] Profile creation failed:", profileError);
-      return errorResponse(`Profile creation failed: ${profileError.message}`, 500);
+      return errorResponse(`Profile creation failed: ${profileError?.message ?? "profile upsert failed"}`, 500);
     }
 
     console.log("[simplified-auth] Profile ensured for user:", authUser.id);
 
-    // Use Supabase's native session creation instead of manual JWT
-    console.log("[simplified-auth] Creating session using Supabase admin methods");
-    
-    try {
-      // Use admin.signInWithPassword to create a proper session
-      const { data: sessionData, error: sessionError } = await supabase.auth.admin.generateLink({
-        type: 'invite',
-        email: authUser.email,
-        options: {
-          data: authUser.user_metadata
-        }
-      });
-
-      if (sessionError) {
-        console.error("[simplified-auth] Failed to generate session link:", sessionError);
-        
-        // Fallback: try to create a session manually with simpler approach
-        console.log("[simplified-auth] Trying manual session creation...");
-        
-        // Create a simple session using admin updateUserById
-        const { data: updatedUser, error: updateError } = await supabase.auth.admin.updateUserById(
-          authUser.id,
-          {
-            user_metadata: authUser.user_metadata
-          }
-        );
-
-        if (updateError) {
-          console.error("[simplified-auth] Failed to update user:", updateError);
-          return errorResponse("Failed to create session", 500);
-        }
-
-        // Return a simplified response that we'll handle differently
-        return new Response(JSON.stringify({
-          success: true,
-          user_id: authUser.id,
-          email: authUser.email,
-          user_metadata: authUser.user_metadata,
-          // Signal that we should use signInWithPassword on client side
-          use_password_signin: true
-        }), {
-          status: 200,
-          headers: {
-            ...corsHeaders,
-            "Content-Type": "application/json",
-          }
-        });
+    // The client will establish the session with Supabase Auth using this verified local account.
+    return new Response(JSON.stringify({
+      success: true,
+      user_id: authUser.id,
+      email: authUser.email,
+      user_metadata: authUser.user_metadata,
+      profile,
+      use_password_signin: true,
+      signin_password: sessionPassword,
+    }), {
+      status: 200,
+      headers: {
+        ...corsHeaders,
+        "Content-Type": "application/json",
       }
-
-      console.log("[simplified-auth] Session link generated successfully");
-
-      // Return simplified response for client to handle
-      return new Response(JSON.stringify({
-        success: true,
-        user_id: authUser.id,
-        email: authUser.email,
-        user_metadata: authUser.user_metadata,
-        // Signal that we should use signInWithPassword on client side
-        use_password_signin: true        }), {
-        status: 200,
-        headers: {
-          ...corsHeaders,
-          "Content-Type": "application/json",
-        }
-      });
-
-    } catch (sessionCreationError) {
-      console.error("[simplified-auth] Session creation failed:", sessionCreationError);
-      return errorResponse("Session creation failed", 500);
-    }
+    });
 
   } catch (error: any) {
     console.error("[simplified-auth] Critical error:", error);

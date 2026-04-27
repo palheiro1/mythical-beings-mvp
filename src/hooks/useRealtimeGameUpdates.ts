@@ -51,9 +51,9 @@ export const useRealtimeGameUpdates = ({
   const pollGameState = useCallback(async () => {
     try {
       const { data: game, error } = await supabase
-        .from('games')
+        .from('card_game_session_state')
         .select('*')
-        .eq('id', gameId)
+        .eq('session_id', gameId)
         .single();
 
       if (error) {
@@ -88,7 +88,7 @@ export const useRealtimeGameUpdates = ({
       // Mark as connecting here as well for idempotency
       updateConnectionState('connecting');
       // Create channel first and store it, then subscribe
-      const channel: any = supabase.channel(`game-${gameId}`);
+      const channel: any = supabase.channel(`card-game-state-${gameId}`);
       // Attach handler; support both real and simplified test signatures
       if (typeof channel.on === 'function') {
         // Prefer two-arg signature used in tests when arity < 3
@@ -101,7 +101,7 @@ export const useRealtimeGameUpdates = ({
         } else {
           channel.on(
             'postgres_changes',
-            { event: '*', schema: 'public', table: 'games', filter: `id=eq.${gameId}` },
+            { event: '*', schema: 'public', table: 'card_game_session_state', filter: `session_id=eq.${gameId}` },
             (payload: any) => {
               updateConnectionState('connected');
               setRetryCount(0);

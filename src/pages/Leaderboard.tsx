@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../utils/supabase.js'; // Assuming supabase client is exported
+import { PLAYHUB_SEASON_ID, supabase } from '../utils/supabase.js';
 
 interface LeaderboardEntry {
   id: string;
   username: string | null;
   avatar_url: string | null;
-  games_won: number;
+  points: number;
+  wins: number;
   games_played: number;
-  earned_gem?: number | null;
+  best_score: number;
 }
 
 const Leaderboard: React.FC = () => {
@@ -20,26 +21,32 @@ const Leaderboard: React.FC = () => {
       setLoading(true);
       setError(null);
       try {
-        // Fetch profiles, ensuring games_won and games_played are selected
-        // Order by games_won descending, then games_played ascending as a tie-breaker
         const { data, error: fetchError } = await supabase
-          .from('profiles')
-          .select('id, username, avatar_url, games_won, games_played, earned_gem')
-          .order('games_won', { ascending: false })
-          .order('games_played', { ascending: true }) // Optional tie-breaker
-          .limit(100); // Limit results if needed
+          .from('leaderboard_entries')
+          .select('player_id, points, wins, games_played, best_score, updated_at, profiles(display_name, avatar_url)')
+          .eq('season_id', PLAYHUB_SEASON_ID)
+          .order('points', { ascending: false })
+          .order('wins', { ascending: false })
+          .order('best_score', { ascending: false })
+          .order('updated_at', { ascending: true })
+          .limit(100);
 
         if (fetchError) {
           throw fetchError;
         }
 
-        // Ensure games_won and games_played are numbers, default to 0 if null/undefined
-  const processedData = data.map((entry: any) => ({
-          ...entry,
-          games_won: entry.games_won ?? 0,
+        const processedData = (data ?? []).map((entry: any) => {
+          const profile = Array.isArray(entry.profiles) ? entry.profiles[0] : entry.profiles;
+          return {
+            id: entry.player_id,
+            username: profile?.display_name ?? `User (${entry.player_id.substring(0, 6)})`,
+            avatar_url: profile?.avatar_url ?? null,
+            points: entry.points ?? 0,
+            wins: entry.wins ?? 0,
           games_played: entry.games_played ?? 0,
-          earned_gem: entry.earned_gem ?? 0,
-        }));
+            best_score: entry.best_score ?? 0,
+          };
+        });
 
         setLeaderboardData(processedData);
 
@@ -74,9 +81,10 @@ const Leaderboard: React.FC = () => {
                 <tr>
                   <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider w-16">Rank</th>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Player</th>
-                  <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-300 uppercase tracking-wider">Games Won</th>
+                  <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-300 uppercase tracking-wider">Points</th>
+                  <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-300 uppercase tracking-wider">Wins</th>
                   <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-300 uppercase tracking-wider">Games Played</th>
-                  <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-300 uppercase tracking-wider">Earned GEM</th>
+                  <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-300 uppercase tracking-wider">Best Score</th>
                 </tr>
               </thead>
               <tbody className="bg-gray-800 divide-y divide-gray-700">
@@ -101,14 +109,15 @@ const Leaderboard: React.FC = () => {
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300 text-center">{entry.games_won}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300 text-center">{entry.points}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300 text-center">{entry.wins}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300 text-center">{entry.games_played}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300 text-center">{Number(entry.earned_gem || 0)}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300 text-center">{entry.best_score}</td>
                   </tr>
                 ))}
                 {leaderboardData.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="px-6 py-10 text-center text-gray-400">No players found on the leaderboard yet.</td>
+                    <td colSpan={6} className="px-6 py-10 text-center text-gray-400">No players found on the leaderboard yet.</td>
                   </tr>
                 )}
               </tbody>

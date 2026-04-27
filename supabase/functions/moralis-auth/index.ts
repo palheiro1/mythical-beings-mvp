@@ -2,6 +2,7 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { utils as ethersUtils } from "https://esm.sh/ethers@5.7.2";
+import { ensureWalletProfile, playerNameFromAddress } from "../_shared/wallet-profile.ts";
 
 // Base CORS headers, primarily for preflight (OPTIONS) requests
 const baseCorsHeaders = {
@@ -65,6 +66,12 @@ async function derivePassword(secret: string, evmAddress: string): Promise<strin
     .replace(/=+$/g, "");
 
   return `mb_${b64}`;
+}
+
+function createSessionPassword(): string {
+  const bytes = new Uint8Array(32);
+  crypto.getRandomValues(bytes);
+  return `mm_${Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("")}`;
 }
 
 async function findAuthUserIdByEmail(supabaseAdmin: any, userEmail: string): Promise<string | null> {
@@ -146,8 +153,7 @@ serve(async (req) => {
       return errorResponse("Internal server error: Supabase config missing", 500);
     }
     if (!authPasswordSecret) {
-      console.error("[moralis-auth] ERROR: AUTH_PASSWORD_SECRET not configured");
-      return errorResponse("Internal server error: Auth secret missing", 500);
+      console.warn("[moralis-auth] WARN: AUTH_PASSWORD_SECRET not configured; using a temporary wallet session password");
     }
 
     // Create Supabase clients:
@@ -158,7 +164,10 @@ serve(async (req) => {
 
     // Create or retrieve Supabase Auth user (by email derived from wallet)
     const userEmail = `${evmAddress}@metamask.local`;
-    const password = await derivePassword(authPasswordSecret, evmAddress);
+    const password = authPasswordSecret
+      ? await derivePassword(authPasswordSecret, evmAddress)
+      : createSessionPassword();
+    const displayName = playerNameFromAddress(evmAddress);
 
     // Prefer profile lookup by wallet for scale, fallback to admin listUsers by email.
     let authUserId: string | null = null;
@@ -185,8 +194,10 @@ serve(async (req) => {
         email_confirm: true,
         user_metadata: {
           eth_address: evmAddress,
-          username: `Player_${evmAddress.substring(2, 8)}`,
+          username: displayName,
+          display_name: displayName,
           avatar_url: null,
+          authentication_method: "metamask",
         },
       });
       if (createErr) {
@@ -198,7 +209,12 @@ serve(async (req) => {
             if (authUserId) {
               await supabaseAdmin.auth.admin.updateUserById(authUserId, {
                 password,
-                user_metadata: { eth_address: evmAddress },
+                user_metadata: {
+                  eth_address: evmAddress,
+                  username: displayName,
+                  display_name: displayName,
+                  authentication_method: "metamask",
+                },
               });
             }
           } catch (e) {
@@ -225,6 +241,9 @@ serve(async (req) => {
         password,
         user_metadata: {
           eth_address: evmAddress,
+          username: displayName,
+          display_name: displayName,
+          authentication_method: "metamask",
         },
       });
     }
@@ -233,18 +252,15 @@ serve(async (req) => {
       return errorResponse("Failed to create or retrieve user", 500);
     }
 
-    // Ensure profile exists (server-side only)
+    // Ensure profile exists (server-side only). The Play Hub schema uses display_name/is_guest,
+    // while older deployments used username/eth_address; the helper supports both shapes.
     console.log("[moralis-auth] INFO: Ensuring user profile exists for:", evmAddress);
-    const { data: profileData, error: profileError } = await supabaseAdmin
-      .rpc("ensure_user_profile_exists", { p_evm_address: evmAddress, p_user_id: authUserId });
-
-    if (profileError) {
-      console.error("[moralis-auth] ERROR: Error calling ensure_user_profile_exists:", JSON.stringify(profileError));
-      return errorResponse(`Failed to ensure user profile: ${profileError.message}`, 500);
-    }
-    if (!profileData || profileData.length === 0) {
-      console.error("[moralis-auth] ERROR: Profile data not returned from ensure_user_profile_exists", JSON.stringify(profileData));
-      return errorResponse("Profile creation or retrieval failed", 500);
+    let profileData: any;
+    try {
+      profileData = await ensureWalletProfile(supabaseAdmin, authUserId, evmAddress);
+    } catch (profileError: any) {
+      console.error("[moralis-auth] ERROR: Error ensuring wallet profile:", JSON.stringify(profileError));
+      return errorResponse(`Failed to ensure user profile: ${profileError?.message ?? "profile upsert failed"}`, 500);
     }
 
     // Create a proper session via GoTrue (no JWT secret required)
@@ -262,7 +278,7 @@ serve(async (req) => {
     const refresh_token = signInData.session.refresh_token;
 
     // Return successful response with tokens and user profile
-    return new Response(JSON.stringify({ access_token, refresh_token, user: profileData[0] }), {
+    return new Response(JSON.stringify({ access_token, refresh_token, user: profileData }), {
       status: 200,
       headers: {
         ...baseCorsHeaders, // Include base CORS headers

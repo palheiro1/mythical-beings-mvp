@@ -14,9 +14,9 @@ export const GameStateDebug: React.FC<GameStateDebugProps> = ({ gameId, classNam
     setLoading(true);
     try {
       const { data, error } = await supabase
-        .from('games')
+        .from('card_game_session_state')
         .select('*')
-        .eq('id', gameId)
+        .eq('session_id', gameId)
         .single();
 
       if (error) {
@@ -42,8 +42,8 @@ export const GameStateDebug: React.FC<GameStateDebugProps> = ({ gameId, classNam
       .on('postgres_changes', {
         event: 'UPDATE',
         schema: 'public',
-        table: 'games',
-        filter: `id=eq.${gameId}`
+        table: 'card_game_session_state',
+        filter: `session_id=eq.${gameId}`
       }, (payload) => {
         console.log('Debug: Realtime update:', payload);
         setGameState(payload.new);
@@ -64,18 +64,17 @@ export const GameStateDebug: React.FC<GameStateDebugProps> = ({ gameId, classNam
   }
 
   const state = gameState.state || {};
+  const selected = gameState.selected_creatures || {};
 
   return (
     <div className={`bg-blue-900 text-white p-2 rounded text-xs space-y-1 ${className}`}>
       <div className="font-bold">🐛 Game Debug</div>
-      <div>Game ID: {gameState.id}</div>
-      <div>Status: {gameState.status}</div>
-      <div>Player 1: {gameState.player1_id}</div>
-      <div>Player 2: {gameState.player2_id}</div>
-      <div>P1 Complete: {state.player1SelectionComplete ? '✅' : '❌'}</div>
-      <div>P2 Complete: {state.player2SelectionComplete ? '✅' : '❌'}</div>
-      <div>P1 Creatures: {state.player1SelectedCreatures?.length || 0}</div>
-      <div>P2 Creatures: {state.player2SelectedCreatures?.length || 0}</div>
+      <div>Session ID: {gameState.session_id}</div>
+      <div>State phase: {state.phase || 'selection'}</div>
+      <div>P1 Complete: {selected['0']?.length === 3 ? 'yes' : 'no'}</div>
+      <div>P2 Complete: {selected['1']?.length === 3 ? 'yes' : 'no'}</div>
+      <div>P1 Creatures: {selected['0']?.length || 0}</div>
+      <div>P2 Creatures: {selected['1']?.length || 0}</div>
       <button 
         onClick={fetchGameState}
         className="bg-blue-700 hover:bg-blue-600 px-2 py-1 rounded text-xs mt-1"

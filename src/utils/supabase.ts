@@ -3,527 +3,593 @@ import { GameState } from '../game/types.js';
 
 export type RealtimeChannel = SupabaseRealtimeChannel;
 
-// Load Supabase URL and Anon Key from environment variables
+export const PLAYHUB_GAME_ID = 'card_game';
+export const PLAYHUB_MODE_ID = 'casual';
+export const PLAYHUB_SEASON_ID = 'card_game_casual_season_1';
+
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
 if (!supabaseUrl) {
-  throw new Error("VITE_SUPABASE_URL is not set. Please check your .env.local file.");
+  throw new Error('VITE_SUPABASE_URL is not set. Please check your .env.local file.');
 }
 if (!supabaseAnonKey) {
-  throw new Error("VITE_SUPABASE_ANON_KEY is not set. Please check your .env.local file.");
+  throw new Error('VITE_SUPABASE_ANON_KEY is not set. Please check your .env.local file.');
 }
 
-// Legacy functions removed - using Supabase Auth user IDs directly
-
-// Create Supabase client with default authentication
 export const supabase: SupabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     autoRefreshToken: true,
-    persistSession: true, // Enable session persistence
+    persistSession: true,
     detectSessionInUrl: true,
-    // Custom lock function removed, reverting to default
   },
 });
 
-// Type for match details - adjust based on your actual table structure
-// Added status and other potential fields based on select('*')
-interface MatchDetails {
-    id: string;
-    created_at: string;
-    updated_at: string;
-    player1_id: string;
-    player2_id: string | null;
-    status: 'waiting' | 'selecting' | 'active' | 'finished' | 'cancelled'; // Added 'selecting'
-    bet_amount: number;
-    state: GameState | null; // State might also be included
-    winner_id?: string | null; // Optional winner field
+export type PlayHubSessionStatus = 'waiting' | 'playing' | 'finished' | 'cancelled';
+
+export interface ProfileInfo {
+  id: string;
+  username: string | null;
+  display_name: string | null;
+  avatar_url: string | null;
+  is_guest?: boolean | null;
 }
 
-/**
- * Fetches the player IDs and details associated with a specific game.
- * Assumes a 'games' table exists with 'id' (matching gameId), 'player1_id', and 'player2_id'.
- * @param gameId The ID of the game.
- * @returns An object with player1_id and player2_id, or null if not found or error.
- */
-export async function getGameDetails(gameId: string): Promise<MatchDetails | null> {
-    console.log(`[Supabase] Fetching game details for game ${gameId}...`);
-    const { data, error } = await supabase
-        .from('games')
-        .select('*')
-        .eq('id', gameId)
-        .single();
-
-    if (error) {
-        console.error(`[Supabase] Error fetching game details for game ${gameId}:`, error);
-        return null;
-    }
-
-    if (!data) {
-        console.warn(`[Supabase] No game details found for game ${gameId}.`);
-        return null;
-    }
-
-    console.log(`[Supabase] Successfully fetched game details for game ${gameId}:`, data);
-    return data as MatchDetails;
+export interface SessionParticipant {
+  session_id: string;
+  player_id: string;
+  slot: number;
+  is_ready: boolean;
+  joined_at?: string | null;
 }
 
-// --- Basic Supabase Functions ---
+export interface PlayHubSession {
+  id: string;
+  code: string;
+  status: PlayHubSessionStatus;
+  game_id: string;
+  mode_id: string;
+  host_id: string;
+  min_players: number;
+  max_players: number;
+  created_at: string;
+  updated_at?: string | null;
+  participants?: SessionParticipant[];
+}
 
-/**
- * Creates a new game entry in the 'games' table, waiting for a second player.
- * @param gameId Unique ID for the game.
- * @param player1Id ID of the player creating the game.
- * @param betAmount The amount of GEMs bet for the game (0 for free play).
- * @returns The newly created game data or null on error.
- */
-// Client-side profile creation/updating is disabled to respect RLS.
-// Profiles are ensured server-side via the moralis-auth edge function (ensure_user_profile_exists).
+export interface CardGameSessionState {
+  session_id: string;
+  dealt_hands: Record<string, string[]>;
+  selected_creatures: Record<string, string[]>;
+  state: GameState | null;
+  created_at: string;
+  updated_at: string;
+}
 
-export async function createGame(gameId: string, player1Id: string, betAmount: number): Promise<any | null> {
-  try {
-    // Get current session info
-    const { data: sessionData } = await supabase.auth.getSession();
-    const sessionUserId = sessionData?.session?.user?.id;
-    
-    // Use session user ID if available, otherwise use provided player ID directly
-    const effectivePlayerId = sessionUserId || player1Id;
-    
-    console.log(`[createGame] Creating game ${gameId} by player ${player1Id} (using ID: ${effectivePlayerId}) with bet ${betAmount}`);
-    
-  // Profile is ensured server-side during auth; no client profile writes here
-    
-    // Rest of your existing code using effectivePlayerId instead of formattedPlayerId
-    const gameRecord = {
-      id: gameId,
-      player1_id: effectivePlayerId,
-      player2_id: null, // Player 2 joins later
-      state: null,      // State initialized when game starts
-      status: 'waiting', // Initial status
-      bet_amount: betAmount, // Store the bet amount
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    };
-    
-    const { data, error } = await supabase
-      .from('games')
-      .insert([gameRecord])
-      .select()
-      .single();
+export interface MatchDetails extends PlayHubSession {
+  player1_id: string | null;
+  player2_id: string | null;
+  player1_selected_creatures?: string[] | null;
+  player2_selected_creatures?: string[] | null;
+  state?: GameState | null;
+}
 
-    if (error) {
-      console.error('[createGame] Error with standard client:', error);
-      return null;
-    }
-    
-    console.log('[createGame] Successfully created game entry. Returned data:', data);
-    return data;
-  } catch (error) {
-    console.error('Error creating game:', error);
+function firstRow<T>(data: T | T[] | null): T | null {
+  if (!data) return null;
+  return Array.isArray(data) ? (data[0] ?? null) : data;
+}
+
+function normalizeProfile(row: any): ProfileInfo | null {
+  if (!row) return null;
+  const displayName = row.display_name ?? row.username ?? null;
+  return {
+    id: row.id,
+    username: displayName,
+    display_name: displayName,
+    avatar_url: row.avatar_url ?? null,
+    is_guest: row.is_guest ?? null,
+  };
+}
+
+function normalizeSession(row: any, participants?: SessionParticipant[]): PlayHubSession {
+  return {
+    id: row.session_id ?? row.id,
+    code: row.session_code ?? row.code,
+    status: row.session_status ?? row.status,
+    game_id: row.game_id,
+    mode_id: row.mode_id,
+    host_id: row.host_id,
+    min_players: row.min_players,
+    max_players: row.max_players,
+    created_at: row.created_at,
+    updated_at: row.updated_at ?? null,
+    participants,
+  };
+}
+
+function normalizeCardGameState(row: any): CardGameSessionState | null {
+  if (!row) return null;
+  return {
+    session_id: row.session_id,
+    dealt_hands: (row.dealt_hands ?? {}) as Record<string, string[]>,
+    selected_creatures: (row.selected_creatures ?? {}) as Record<string, string[]>,
+    state: (row.state ?? null) as GameState | null,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+  };
+}
+
+function isFullGameState(value: unknown): value is GameState {
+  const state = value as GameState | null;
+  return Boolean(state && typeof state === 'object' && state.phase && state.players && state.gameId);
+}
+
+export async function getOrCreatePlayHubProfile(displayName?: string | null): Promise<ProfileInfo | null> {
+  const { data, error } = await supabase.rpc('playhub_get_or_create_profile', {
+    p_display_name: displayName ?? null,
+  });
+
+  if (error) {
+    console.error('[playhub_get_or_create_profile] failed:', error);
     return null;
   }
+
+  return normalizeProfile(firstRow(data as any));
 }
 
-/**
- * Allows a player to join an existing game.
- * Updates the player2_id and status in the 'games' table.
- * @param gameId The ID of the game to join.
- * @param player2Id The ID of the player joining.
- * @returns The updated game data or null on error.
- */
-export async function joinGame(gameId: string, player2Id: string): Promise<any | null> {
-  try {
-    // Get current session info
-    const { data: sessionData } = await supabase.auth.getSession();
-    const sessionUserId = sessionData?.session?.user?.id;
-    
-    // Use session user ID if available, otherwise use provided player ID directly
-    const effectivePlayerId = sessionUserId || player2Id;
-    
-    console.log(`[joinGame] Joining game ${gameId} as player ${player2Id} (using ID: ${effectivePlayerId})`);
-    
-  // Profile is ensured server-side during auth; no client profile writes here
-    const { data, error } = await supabase
-      .from('games')
-      .update({
-          player2_id: effectivePlayerId,
-          // Do NOT set status to 'active' here; keep existing status (should be 'waiting').
-          updated_at: new Date().toISOString()
-      })
-      .eq('id', gameId)
-  .eq('status', 'waiting')
-  .gt('created_at', new Date(Date.now() - 10 * 60 * 1000).toISOString())
-      .is('player2_id', null)
-      // Only select known columns to avoid missing-field errors
-      .select('id, player1_id, player2_id, status, bet_amount, created_at, updated_at')
-      .single();
+export async function createPlayHubSession(): Promise<PlayHubSession | null> {
+  const { data, error } = await supabase.rpc('playhub_create_session', {
+    p_game_id: PLAYHUB_GAME_ID,
+    p_mode_id: PLAYHUB_MODE_ID,
+  });
 
-    if (error) {
-        if (error.code === 'PGRST116') { // PostgREST code for "No rows found"
-            console.warn(`[joinGame] Game ${gameId} not found or already full.`);
-            return null;
-        }
-        throw error;
-    }
-    console.log(`[joinGame] Player ${player2Id} successfully joined game ${gameId}.`);
-    return data;
-  } catch (error) {
-    console.error('Error joining game:', error);
+  if (error) {
+    console.error('[playhub_create_session] failed:', error);
     return null;
   }
+
+  const row = firstRow(data as any);
+  return row ? normalizeSession(row) : null;
 }
 
-/**
- * Fetches games that are available to join (status = 'waiting') or are currently active.
- * @returns An array of available/active games or null on error.
- */
-export async function getAvailableGames(): Promise<any[] | null> {
-  try {
-    // Only show truly joinable games: status='waiting' and not expired (created within last 10 minutes)
-    const tenMinutesAgoIso = new Date(Date.now() - 10 * 60 * 1000).toISOString();
-    const { data, error } = await supabase
-      .from('games')
-      .select('id, player1_id, bet_amount, created_at, status')
-      .eq('status', 'waiting')
-      .is('player2_id', null)
-      .gt('created_at', tenMinutesAgoIso)
-      .order('created_at', { ascending: false });
+export async function joinPlayHubSession(code: string): Promise<PlayHubSession | null> {
+  const { data, error } = await supabase.rpc('playhub_join_session', {
+    p_code: code.trim().toUpperCase(),
+  });
 
-    if (error) throw error;
-    console.log('[getAvailableGames] Fetched joinable games (waiting, not expired):', data);
-    return data || [];
-  } catch (error) {
-    console.error('Error fetching joinable games:', error);
+  if (error) {
+    console.error('[playhub_join_session] failed:', error);
     return null;
   }
+
+  const row = firstRow(data as any);
+  return row ? normalizeSession(row) : null;
 }
 
-/**
- * Fetches games that are currently active (spectatable).
- * @returns An array of active games or null on error.
- */
-export async function getActiveGames(): Promise<any[] | null> {
-  try {
-    const thirtyMinutesAgoIso = new Date(Date.now() - 30 * 60 * 1000).toISOString();
-    const { data, error } = await supabase
-      .from('games')
-      .select('id, player1_id, bet_amount, created_at, updated_at, status')
-      .eq('status', 'active')
-      .not('player2_id', 'is', null)
-      .gt('updated_at', thirtyMinutesAgoIso)
-      .order('updated_at', { ascending: false });
+export async function leavePlayHubSession(sessionId: string): Promise<boolean> {
+  const { error } = await supabase.rpc('playhub_leave_session', {
+    p_session_id: sessionId,
+  });
 
-    if (error) throw error;
-    console.log('[getActiveGames] Fetched active games (spectatable):', data);
-    return data || [];
-  } catch (error) {
-    console.error('Error fetching active games:', error);
+  if (error) {
+    console.error('[playhub_leave_session] failed:', error);
+    return false;
+  }
+
+  return true;
+}
+
+export async function setPlayHubReady(sessionId: string, ready: boolean): Promise<boolean> {
+  const { error } = await supabase.rpc('playhub_set_ready', {
+    p_session_id: sessionId,
+    p_ready: ready,
+  });
+
+  if (error) {
+    console.error('[playhub_set_ready] failed:', error);
+    return false;
+  }
+
+  return true;
+}
+
+export async function startPlayHubSession(sessionId: string): Promise<boolean> {
+  const { error } = await supabase.rpc('playhub_start_session', {
+    p_session_id: sessionId,
+  });
+
+  if (error) {
+    console.error('[playhub_start_session] failed:', error);
+    return false;
+  }
+
+  return true;
+}
+
+export async function finishPlayHubSession(sessionId: string, results: any[]): Promise<boolean> {
+  const { error } = await supabase.rpc('playhub_finish_session', {
+    p_session_id: sessionId,
+    p_results: results,
+  });
+
+  if (error) {
+    console.error('[playhub_finish_session] failed:', error);
+    return false;
+  }
+
+  return true;
+}
+
+export async function getSessionParticipants(sessionId: string): Promise<SessionParticipant[]> {
+  const { data, error } = await supabase
+    .from('session_participants')
+    .select('session_id, player_id, slot, is_ready, joined_at')
+    .eq('session_id', sessionId)
+    .order('slot', { ascending: true });
+
+  if (error) {
+    console.error('[getSessionParticipants] failed:', error);
+    return [];
+  }
+
+  return (data ?? []) as SessionParticipant[];
+}
+
+export async function getPlayHubSession(sessionId: string): Promise<PlayHubSession | null> {
+  const { data, error } = await supabase
+    .from('game_sessions')
+    .select('id, code, status, game_id, mode_id, host_id, min_players, max_players, created_at, updated_at')
+    .eq('id', sessionId)
+    .eq('game_id', PLAYHUB_GAME_ID)
+    .eq('mode_id', PLAYHUB_MODE_ID)
+    .single();
+
+  if (error) {
+    console.error('[getPlayHubSession] failed:', error);
     return null;
   }
+
+  const participants = await getSessionParticipants(sessionId);
+  return normalizeSession(data, participants);
 }
 
-/**
- * Fetches the latest game state from the 'games' table.
- * @param gameId The ID of the game.
- * @returns The latest GameState object or null on error.
- */
-export async function getGameState(gameId: string): Promise<GameState | null> {
-  console.log(`[getGameState] Fetching state for game ${gameId}...`);
-  if (!gameId || typeof gameId !== 'string') { // Add check for valid gameId
-      console.error('[getGameState] Invalid gameId provided:', gameId);
-      return null;
+export async function getAvailableGames(): Promise<PlayHubSession[]> {
+  const { data, error } = await supabase
+    .from('game_sessions')
+    .select('id, code, status, game_id, mode_id, host_id, min_players, max_players, created_at, updated_at')
+    .eq('game_id', PLAYHUB_GAME_ID)
+    .eq('mode_id', PLAYHUB_MODE_ID)
+    .eq('status', 'waiting')
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('[getAvailableGames] failed:', error);
+    return [];
   }
+
+  return Promise.all((data ?? []).map(async (row: any) => normalizeSession(row, await getSessionParticipants(row.id))));
+}
+
+export async function getActiveGames(): Promise<PlayHubSession[]> {
+  const { data, error } = await supabase
+    .from('game_sessions')
+    .select('id, code, status, game_id, mode_id, host_id, min_players, max_players, created_at, updated_at')
+    .eq('game_id', PLAYHUB_GAME_ID)
+    .eq('mode_id', PLAYHUB_MODE_ID)
+    .eq('status', 'playing')
+    .order('updated_at', { ascending: false })
+    .limit(50);
+
+  if (error) {
+    console.error('[getActiveGames] failed:', error);
+    return [];
+  }
+
+  return Promise.all((data ?? []).map(async (row: any) => normalizeSession(row, await getSessionParticipants(row.id))));
+}
+
+export async function getGameDetails(sessionId: string): Promise<MatchDetails | null> {
+  const session = await getPlayHubSession(sessionId);
+  if (!session) return null;
+
+  const cardState = await getCardGameSessionState(sessionId);
+  const participants = session.participants ?? [];
+  const player1 = participants.find((p) => p.slot === 0) ?? null;
+  const player2 = participants.find((p) => p.slot === 1) ?? null;
+
+  return {
+    ...session,
+    player1_id: player1?.player_id ?? null,
+    player2_id: player2?.player_id ?? null,
+    player1_selected_creatures: cardState?.selected_creatures?.['0'] ?? null,
+    player2_selected_creatures: cardState?.selected_creatures?.['1'] ?? null,
+    state: cardState?.state ?? null,
+  };
+}
+
+export async function getCardGameSessionState(sessionId: string): Promise<CardGameSessionState | null> {
+  const { data, error } = await supabase.rpc('card_game_get_session_state', {
+    p_session_id: sessionId,
+  });
+
+  if (error) {
+    console.error('[card_game_get_session_state] failed:', error);
+    return null;
+  }
+
+  return normalizeCardGameState(firstRow(data as any));
+}
+
+export async function setCardGameSelection(sessionId: string, selectedCreatures: string[]): Promise<CardGameSessionState | null> {
+  const { data, error } = await supabase.rpc('card_game_set_selection', {
+    p_session_id: sessionId,
+    p_selected_creatures: selectedCreatures,
+  });
+
+  if (error) {
+    console.error('[card_game_set_selection] failed:', error);
+    return null;
+  }
+
+  return normalizeCardGameState(firstRow(data as any));
+}
+
+export async function getGameState(sessionId: string): Promise<GameState | null> {
+  const cardState = await getCardGameSessionState(sessionId);
+  return isFullGameState(cardState?.state) ? cardState.state : null;
+}
+
+export async function updateGameState(sessionId: string, newState: GameState): Promise<boolean> {
+  const { error } = await supabase.rpc('card_game_set_state', {
+    p_session_id: sessionId,
+    p_state: newState,
+  });
+
+  if (error) {
+    console.error('[card_game_set_state] failed:', error);
+    return false;
+  }
+
+  return true;
+}
+
+export async function getProfile(userId: string): Promise<ProfileInfo | null> {
   try {
     const { data, error } = await supabase
-      .from('games')
-      .select('state')
-      .eq('id', gameId)
-      .single(); // Use single() as gameId should be unique
-
-    if (error) {
-      if (error.code === 'PGRST116') { // PostgREST error code for "Resource not found"
-          console.log(`[getGameState] No existing game state found for ${gameId}.`);
-          return null; // No state found is not necessarily an error here
-      }
-      console.error(`[getGameState] Error fetching game state for ${gameId}:`, error);
-      throw error; // Re-throw other errors
-    }
-
-    if (data && data.state && typeof data.state === 'object') {
-        // Check if this is a full GameState or just NFT selection state
-        const state = data.state as any;
-        if (state.phase && state.players && state.gameId) {
-            // This is a full GameState
-            console.log(`[getGameState] Fetched full game state phase: ${state.phase}`);
-            return data.state as GameState;
-        } else if (state.player1SelectionComplete !== undefined || state.player2SelectionComplete !== undefined) {
-            // This is just NFT selection state, not a full game state
-            console.log(`[getGameState] Found NFT selection state, but no full game state for ${gameId}`);
-            return null;
-        } else {
-            console.warn(`[getGameState] Found unknown state format for ${gameId}:`, state);
-            return null;
-        }
-    } else {
-        console.warn(`[getGameState] No state data found or invalid format for ${gameId}. Data:`, data);
-        return null;
-    }
-  } catch (err) {
-      console.error(`[getGameState] Unexpected error fetching state for ${gameId}:`, err);
-      return null; // Return null on unexpected errors
-  }
-}
-
-/**
- * Updates the game state in the 'games' table.
- * Also updates the status if necessary (e.g., to 'active' or 'finished').
- * @param gameId The ID of the game.
- * @param newState The new GameState object.
- * @returns The result of the update operation.
- */
-export async function updateGameState(gameId: string, newState: GameState): Promise<boolean> {
-    console.log(`[updateGameState] Attempting to save state for turn ${newState.turn}, phase: ${newState.phase}`);
-    if (!gameId || typeof gameId !== 'string') { // *** Add check for valid gameId ***
-        console.error('[updateGameState] Invalid gameId provided:', gameId);
-        return false;
-    }
-     if (!newState || typeof newState !== 'object') {
-        console.error('[updateGameState] Invalid newState provided:', newState);
-        return false;
-    }
-
-    try {
-    const { error } = await supabase
-            .from('games')
-            .update({
-                state: newState,
-                updated_at: new Date().toISOString(), // Explicitly set updated_at
-             })
-      .eq('id', gameId); // *** Use the validated gameId string ***
-
-    if (error) {
-            console.error(`[updateGameState] Error updating game state for ${gameId}:`, error);
-            // Log details that might help debug (like invalid state structure)
-            if (error.message.includes('invalid input syntax')) {
-                 console.error("[updateGameState] Potential issue: State object might not match DB column type.", newState);
-            }
-            return false;
-        }
-
-    console.log(`[updateGameState] Successfully updated state for game ${gameId}.`);
-    return true;
-
-    } catch (err) {
-         console.error(`[updateGameState] Unexpected error updating state for ${gameId}:`, err);
-         return false;
-    }
-}
-
-/**
- * Logs a player's move to the 'moves' table.
- * @param gameId The ID of the game.
- * @param playerId The ID of the player making the move.
- * @param action The action type (e.g., 'ROTATE_CREATURE').
- * @param payload The action payload.
- */
-export async function logMove(gameId: string, playerId: string, action: string, payload: any): Promise<void> {
-  try {
-    const { error } = await supabase
-      .from('moves')
-      .insert([{
-        game_id: gameId,
-        player_id: playerId,
-        action_type: action,
-        payload: payload,
-        timestamp: new Date().toISOString(),
-      }]);
-    if (error) throw error;
-  } catch (error) {
-    console.error('Error logging move:', error);
-  }
-}
-
-// --- Profile Functions ---
-
-/**
- * Fetches a user profile from the 'profiles' table.
- * @param userId The ID of the user whose profile to fetch.
- * @returns The profile data or null if not found or on error.
- */
-export async function getProfile(userId: string): Promise<any | null> {
-  try {
-    console.log(`[getProfile] Fetching profile for ${userId}`);
-    const { data, error, status } = await supabase
       .from('profiles')
-            .select(`username, avatar_url, created_at`)
+      .select('id, display_name, avatar_url, is_guest')
       .eq('id', userId)
       .single();
 
-    if (error && status !== 406) { // 406: No rows found, not necessarily an error here
-      throw error;
+    if (!error) return normalizeProfile(data);
+
+    console.warn('[getProfile] display_name lookup failed, trying legacy username:', error.message);
+    const legacy = await supabase
+      .from('profiles')
+      .select('id, username, avatar_url')
+      .eq('id', userId)
+      .single();
+
+    if (legacy.error) {
+      console.error('[getProfile] failed:', legacy.error);
+      return null;
     }
 
-    console.log(`[getProfile] Fetched profile for ${userId}:`, data);
-    return data;
+    return normalizeProfile(legacy.data);
   } catch (error) {
-    console.error('Error fetching profile:', error);
+    console.error('[getProfile] unexpected failure:', error);
     return null;
   }
 }
 
-/**
- * Updates a user profile in the 'profiles' table.
- * @param userId The ID of the user whose profile to update.
- * @param updates An object containing the fields to update (e.g., { username, avatar_url }).
- * @returns The updated profile data or null on error.
- */
-export async function updateProfile(userId: string, updates: { username?: string; avatar_url?: string }): Promise<any | null> {
-  try {
-    console.log(`[updateProfile] Updating profile for ${userId}`);
-    const profileUpdates = {
-      ...updates,
-      id: userId, // Ensure the ID is included for upsert
+export async function updateProfile(
+  userId: string,
+  updates: { username?: string; avatar_url?: string },
+): Promise<ProfileInfo | null> {
+  const payload = {
+    display_name: updates.username,
+    avatar_url: updates.avatar_url,
+    updated_at: new Date().toISOString(),
+  };
+
+  const { data, error } = await supabase
+    .from('profiles')
+    .update(payload)
+    .eq('id', userId)
+    .select('id, display_name, avatar_url, is_guest')
+    .single();
+
+  if (!error) return normalizeProfile(data);
+
+  console.warn('[updateProfile] display_name update failed, trying legacy username:', error.message);
+  const legacy = await supabase
+    .from('profiles')
+    .update({
+      username: updates.username,
+      avatar_url: updates.avatar_url,
       updated_at: new Date().toISOString(),
-    };
+    })
+    .eq('id', userId)
+    .select('id, username, avatar_url')
+    .single();
 
-    const { data, error } = await supabase
-        .from('profiles')
-        .upsert(profileUpdates)
-        .select()
-        .single();
-
-    if (error) throw error;
-
-    console.log(`[updateProfile] Updated profile for ${userId}:`, data);
-    return data;
-  } catch (error) {
-    console.error('Error updating profile:', error);
+  if (legacy.error) {
+    console.error('[updateProfile] failed:', legacy.error);
     return null;
   }
+
+  return normalizeProfile(legacy.data);
 }
 
-/**
- * Uploads an avatar image to Supabase Storage.
- * @param userId The ID of the user uploading the avatar.
- * @param file The avatar image file.
- * @returns The public URL of the uploaded avatar or null on error.
- */
 export async function uploadAvatar(userId: string, file: File): Promise<string | null> {
   try {
     const fileExt = file.name.split('.').pop();
-    const filePath = `${userId}/${Date.now()}.${fileExt}`; // Use timestamp for uniqueness
-
-    // Upload file
-    const { error: uploadError } = await supabase.storage
-      .from('avatars') // Ensure this matches your bucket name
-      .upload(filePath, file);
+    const filePath = `${userId}/${Date.now()}.${fileExt}`;
+    const { error: uploadError } = await supabase.storage.from('avatars').upload(filePath, file, { upsert: true });
 
     if (uploadError) throw uploadError;
 
-    // Get public URL (assuming public bucket)
-    const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(filePath);
-
-    if (!urlData || !urlData.publicUrl) {
-        throw new Error("Could not get public URL for uploaded avatar.");
-    }
-
-    console.log(`[uploadAvatar] Avatar uploaded for ${userId}. Public URL: ${urlData.publicUrl}`);
-    return urlData.publicUrl;
-
+    const { data } = supabase.storage.from('avatars').getPublicUrl(filePath);
+    return data?.publicUrl ?? null;
   } catch (error) {
-    console.error('Error uploading avatar:', error);
+    console.error('[uploadAvatar] failed:', error);
     return null;
   }
 }
 
-/**
- * Records the game outcome, updates game status to 'finished', and updates player statistics.
- * @param gameId The ID of the game that ended.
- * @param winnerId The ID of the winning player, or null for a draw.
- * @param player1Id The ID of player 1.
- * @param player2Id The ID of player 2.
- */
+function clampScore(value: number): number {
+  if (!Number.isFinite(value)) return 0;
+  return Math.max(0, Math.min(999, Math.round(value)));
+}
+
 export async function recordGameOutcomeAndUpdateStats(
-  gameId: string,
+  sessionId: string,
   winnerId: string | null,
   player1Id: string,
-  player2Id: string
+  player2Id: string,
+  gameState?: GameState | null,
 ): Promise<void> {
-  console.log(`[recordGameOutcome] Initiated for game ${gameId}. Winner: ${winnerId}, P1: ${player1Id}, P2: ${player2Id}`);
-  try {
-    // Update only the game record; DB trigger will handle stats and earned_gem aggregation
-    const { error: gameUpdateError } = await supabase
-      .from('games')
-      .update({ status: 'finished', winner_id: winnerId, updated_at: new Date().toISOString() })
-      .eq('id', gameId);
+  const { data: authData } = await supabase.auth.getSession();
+  const currentUserId = authData.session?.user?.id;
+  if (!currentUserId) return;
 
-    if (gameUpdateError) {
-      console.error(`[recordGameOutcome] Error updating game ${gameId}:`, gameUpdateError);
-      return;
-    }
-    console.log(`[recordGameOutcome] Game ${gameId} marked as finished. Stats will be updated via DB trigger.`);
-  } catch (error) {
-    console.error(`[recordGameOutcome] Unexpected error during execution for game ${gameId}:`, error);
+  const session = await getPlayHubSession(sessionId);
+  if (!session || session.status !== 'playing') return;
+  if (session.host_id !== currentUserId) {
+    console.log('[recordGameOutcome] Skipping finish: only host finalizes Play Hub sessions.');
+    return;
+  }
+
+  const participants = (session.participants ?? []).slice().sort((a, b) => a.slot - b.slot);
+  if (participants.length !== 2) {
+    console.error('[recordGameOutcome] Cannot finish: expected exactly two human participants.', participants);
+    return;
+  }
+
+  const powerByPlayer = new Map<string, number>();
+  gameState?.players?.forEach((player) => powerByPlayer.set(player.id, clampScore(player.power)));
+
+  const isDraw = winnerId === null;
+  const results = participants.map((participant) => {
+    const isWinner = !isDraw && participant.player_id === winnerId;
+    const rank = isDraw ? participant.slot + 1 : (isWinner ? 1 : 2);
+    const score = isDraw ? 0 : clampScore(powerByPlayer.get(participant.player_id) ?? (isWinner ? 1 : 0));
+
+    return {
+      player_id: participant.player_id,
+      rank,
+      score,
+      result_payload: {
+        outcome: isDraw ? 'draw' : (isWinner ? 'win' : 'loss'),
+        slot: participant.slot,
+        reported_by: currentUserId,
+        player1_id: player1Id,
+        player2_id: player2Id,
+      },
+    };
+  });
+
+  const finished = await finishPlayHubSession(sessionId, results);
+  if (finished) {
+    console.log('[recordGameOutcome] Play Hub session finished:', sessionId);
   }
 }
 
-// --- Realtime Subscription ---
+export async function logMove(_sessionId: string, _playerId: string, _action: string, _payload: any): Promise<void> {
+  // The Play Hub core persists authoritative results only. Detailed move logs remain in GameState.log.
+}
 
-/**
- * Subscribes to real-time updates for a specific game's state.
- * @param gameId The ID of the game to subscribe to.
- * @param callback Function to call when a state update is received.
- * @param subscriberId A string identifier for the subscriber (for logging).
- * @returns The Supabase subscription channel.
- */
 export function subscribeToGameState(
-  gameId: string,
+  sessionId: string,
   callback: (newState: GameState) => void,
-  subscriberId?: string // Added subscriberId
+  subscriberId?: string,
 ): RealtimeChannel {
-  const channelName = `game-${gameId}`;
+  const channelName = `card-game-state-${sessionId}`;
   const subIdForLog = subscriberId || 'UnknownSubscriber';
-  console.log(`[Realtime] ${subIdForLog} attempting to subscribe to channel: ${channelName}`);
+  console.log(`[Realtime] ${subIdForLog} subscribing to ${channelName}`);
 
-  const channel = supabase
+  return supabase
     .channel(channelName)
     .on(
       'postgres_changes',
       {
         event: 'UPDATE',
         schema: 'public',
-        table: 'games',
-        filter: `id=eq.${gameId}`,
+        table: 'card_game_session_state',
+        filter: `session_id=eq.${sessionId}`,
       },
-      (payload: { new?: { state?: GameState } }) => {
-        console.log(`[Realtime] Game state change received on channel ${channelName} for ${subIdForLog}:`, payload);
-        if (payload.new && payload.new.state) {
-          callback(payload.new.state as GameState);
+      (payload: { new?: { state?: GameState | null } }) => {
+        if (payload.new?.state && isFullGameState(payload.new.state)) {
+          callback(payload.new.state);
         }
-      }
+      },
     )
     .subscribe((status: string, err?: Error) => {
-      // Log with subscriberId
       if (status === 'SUBSCRIBED') {
-        console.log(`[Realtime] ${subIdForLog} SUBSCRIBED successfully to game ${gameId}`);
+        console.log(`[Realtime] ${subIdForLog} subscribed to card_game_session_state ${sessionId}`);
       } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-        console.error(`[Realtime] ${subIdForLog} subscription error for game ${gameId}:`, err || status);
-      } else {
-        console.log(`[Realtime] ${subIdForLog} subscription status for game ${gameId}: ${status}`);
+        console.error(`[Realtime] ${subIdForLog} subscription error for ${sessionId}:`, err || status);
       }
     });
-
-  return channel;
 }
 
-/**
- * Unsubscribes from game state updates.
- * @param channel The Supabase subscription channel to unsubscribe from.
- */
+export function subscribeToSession(
+  sessionId: string,
+  callback: (session: PlayHubSession) => void,
+): RealtimeChannel {
+  return supabase
+    .channel(`playhub-session-${sessionId}`)
+    .on(
+      'postgres_changes',
+      {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'game_sessions',
+        filter: `id=eq.${sessionId}`,
+      },
+      async (payload: { new?: any }) => {
+        if (payload.new) {
+          callback(normalizeSession(payload.new, await getSessionParticipants(sessionId)));
+        }
+      },
+    )
+    .subscribe();
+}
+
+export function subscribeToParticipants(
+  sessionId: string,
+  callback: (participants: SessionParticipant[]) => void,
+): RealtimeChannel {
+  return supabase
+    .channel(`playhub-participants-${sessionId}`)
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'session_participants',
+        filter: `session_id=eq.${sessionId}`,
+      },
+      async () => {
+        callback(await getSessionParticipants(sessionId));
+      },
+    )
+    .subscribe();
+}
+
 export async function unsubscribeFromGameState(channel: RealtimeChannel): Promise<void> {
   try {
-    const status = await channel.unsubscribe();
-    console.log('[Realtime] Unsubscribed from channel:', status);
+    await channel.unsubscribe();
   } catch (error) {
     console.error('[Realtime] Error unsubscribing:', error);
   }
+}
+
+// Backwards-compatible names used by older call sites during the migration.
+export async function createGame(_gameId?: string, _player1Id?: string, _betAmount?: number): Promise<PlayHubSession | null> {
+  return createPlayHubSession();
+}
+
+export async function joinGame(code: string, _player2Id?: string): Promise<PlayHubSession | null> {
+  return joinPlayHubSession(code);
 }

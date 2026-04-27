@@ -1,7 +1,13 @@
 // Navigation Manager for NFTSelection - prevents race conditions
 // Handles game state updates and navigation in a centralized way
 
-import { supabase, RealtimeChannel } from '../utils/supabase.js';
+import {
+  getCardGameSessionState,
+  getGameDetails,
+  setCardGameSelection,
+  supabase,
+  RealtimeChannel,
+} from '../utils/supabase.js';
 
 export interface GameState {
   player1SelectionComplete?: boolean;
@@ -51,33 +57,30 @@ export class NFTSelectionNavigationManager {
     if (this.destroyed) return;
 
     try {
-      console.log('[NavigationManager] Checking game state for gameId:', this.options.gameId);
-      
-      const { data: gameData, error } = await supabase
-        .from('games')
-        .select('state, player1_id, player2_id')
-        .eq('id', this.options.gameId)
-        .single();
+      console.log('[NavigationManager] Checking card game session state:', this.options.gameId);
 
-      if (error) throw error;
-      if (!gameData || this.destroyed) return;
+      const [sessionDetails, cardState] = await Promise.all([
+        getGameDetails(this.options.gameId),
+        getCardGameSessionState(this.options.gameId),
+      ]);
 
-      const isPlayer1 = gameData.player1_id === this.options.currentPlayerId;
-      const state = gameData.state as GameState || {};
-      
-      const player1Complete = state.player1SelectionComplete || false;
-      const player2Complete = state.player2SelectionComplete || false;
-      const currentPlayerComplete = isPlayer1 ? player1Complete : player2Complete;
+      if (!sessionDetails || !cardState || this.destroyed) return;
+
+      const participant = sessionDetails.participants?.find(p => p.player_id === this.options.currentPlayerId);
+      const slot = participant?.slot;
+      const player1Complete = Boolean(cardState.selected_creatures?.['0']?.length === 3);
+      const player2Complete = Boolean(cardState.selected_creatures?.['1']?.length === 3);
+      const currentPlayerComplete = slot === 0 ? player1Complete : slot === 1 ? player2Complete : false;
 
       console.log('[NavigationManager] Game state check:', {
         player1Complete,
         player2Complete,
         currentPlayerComplete,
-        isPlayer1,
+        slot,
         currentPlayerId: this.options.currentPlayerId,
-        player1_id: gameData.player1_id,
-        player2_id: gameData.player2_id,
-        fullState: state
+        player1_id: sessionDetails.player1_id,
+        player2_id: sessionDetails.player2_id,
+        selectedCreatures: cardState.selected_creatures,
       });
 
       // Both players completed - navigate to game
@@ -113,8 +116,8 @@ export class NFTSelectionNavigationManager {
       .on('postgres_changes', {
         event: 'UPDATE',
         schema: 'public',
-        table: 'games',
-        filter: `id=eq.${this.options.gameId}`
+        table: 'card_game_session_state',
+        filter: `session_id=eq.${this.options.gameId}`
       }, (payload) => {
         if (this.destroyed) return;
         console.log('[NavigationManager] Raw realtime payload:', payload);
@@ -139,20 +142,20 @@ export class NFTSelectionNavigationManager {
 
     console.log('[NavigationManager] Realtime update received:', payload);
     
-    const updatedGame = payload.new;
-    if (!updatedGame?.state) {
-      console.log('[NavigationManager] No state in update payload');
+    const updatedState = payload.new;
+    if (!updatedState) {
+      console.log('[NavigationManager] No state row in update payload');
       return;
     }
 
-    const state = updatedGame.state as GameState;
-    const player1Complete = state.player1SelectionComplete || false;
-    const player2Complete = state.player2SelectionComplete || false;
+    const selectedCreatures = updatedState.selected_creatures || {};
+    const player1Complete = Array.isArray(selectedCreatures['0']) && selectedCreatures['0'].length === 3;
+    const player2Complete = Array.isArray(selectedCreatures['1']) && selectedCreatures['1'].length === 3;
 
     console.log('[NavigationManager] Update status:', { 
       player1Complete, 
       player2Complete,
-      fullState: state 
+      selectedCreatures,
     });
 
     // Both completed - navigate immediately
@@ -164,19 +167,7 @@ export class NFTSelectionNavigationManager {
     }
 
     // Check if current player just completed
-    const isPlayer1 = updatedGame.player1_id === this.options.currentPlayerId;
-    const currentPlayerComplete = isPlayer1 ? player1Complete : player2Complete;
-    
-    console.log('[NavigationManager] Current player status:', {
-      isPlayer1,
-      currentPlayerId: this.options.currentPlayerId,
-      currentPlayerComplete
-    });
-    
-    if (currentPlayerComplete) {
-      console.log('[NavigationManager] ⏳ REALTIME WAITING: Current player completed');
-      this.options.onWaitingStateChange(true);
-    }
+    void this.checkGameState();
   }
 
   private startPolling(): void {
@@ -197,59 +188,8 @@ export class NFTSelectionNavigationManager {
     try {
       console.log('[NavigationManager] Updating player selection');
 
-      // Get current game data to determine player role
-      const { data: gameData, error: gameError } = await supabase
-        .from('games')
-        .select('player1_id, player2_id, state')
-        .eq('id', this.options.gameId)
-        .single();
-
-      if (gameError) throw gameError;
-      if (!gameData) throw new Error('Game not found');
-
-      const isPlayer1 = gameData.player1_id === this.options.currentPlayerId;
-      const currentState = (gameData.state as GameState) || {};
-
-      // Create updated state
-      const newState: GameState = {
-        ...currentState,
-        ...(isPlayer1 ? {
-          player1SelectedCreatures: selectedCreatures,
-          player1SelectionComplete: true
-        } : {
-          player2SelectedCreatures: selectedCreatures,
-          player2SelectionComplete: true
-        })
-      };
-
-      console.log('[NavigationManager] About to update with state:', {
-        isPlayer1,
-        currentState,
-        newState,
-        player1Complete: newState.player1SelectionComplete,
-        player2Complete: newState.player2SelectionComplete
-      });
-
-      // Update database - include both state and column updates
-      const updatePayload: any = { 
-        state: newState 
-      };
-      
-      // Also update the dedicated columns for creature selections
-      if (isPlayer1) {
-        updatePayload.player1_selected_creatures = selectedCreatures;
-      } else {
-        updatePayload.player2_selected_creatures = selectedCreatures;
-      }
-
-      console.log('[NavigationManager] Updating database with payload:', updatePayload);
-
-      const { error: updateError } = await supabase
-        .from('games')
-        .update(updatePayload)
-        .eq('id', this.options.gameId);
-
-      if (updateError) throw updateError;
+      const updated = await setCardGameSelection(this.options.gameId, selectedCreatures);
+      if (!updated) throw new Error('Failed to update selected creatures');
 
       console.log('[NavigationManager] Selection updated successfully');
 
@@ -257,7 +197,9 @@ export class NFTSelectionNavigationManager {
       this.options.onWaitingStateChange(true);
 
       // Check if both players are now complete (immediate check)
-      if (newState.player1SelectionComplete && newState.player2SelectionComplete) {
+      const player1Complete = updated.selected_creatures?.['0']?.length === 3;
+      const player2Complete = updated.selected_creatures?.['1']?.length === 3;
+      if (player1Complete && player2Complete) {
         console.log('[NavigationManager] 🎯 BOTH PLAYERS COMPLETED: Navigating to game initialization');
         
         // Navigate both players to the initialization screen

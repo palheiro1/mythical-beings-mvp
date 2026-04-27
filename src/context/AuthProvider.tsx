@@ -3,7 +3,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, Session } from '@supabase/supabase-js';
-import { supabase } from '../utils/supabase.js';
+import { getOrCreatePlayHubProfile, supabase } from '../utils/supabase.js';
 import { metamaskAuth, AuthenticationResult } from '../services/metamaskAuth.js';
 
 export interface AuthState {
@@ -15,6 +15,7 @@ export interface AuthState {
 
 interface AuthContextType extends AuthState {
   signInWithMetaMask: () => Promise<AuthenticationResult>;
+  signInAsGuest: () => Promise<AuthenticationResult>;
   signOut: () => Promise<void>;
 }
 
@@ -22,6 +23,17 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 // Singleton pattern to prevent React StrictMode race conditions
 let authStateManager: AuthStateManager | null = null;
+
+function getGuestAuthErrorMessage(error: any): string {
+  const message = error?.message || 'Guest authentication failed';
+  const lower = message.toLowerCase();
+
+  if (lower.includes('anonymous') || lower.includes('provider') || lower.includes('disabled')) {
+    return 'Guest login is not enabled in Supabase Auth for this project.';
+  }
+
+  return message;
+}
 
 class AuthStateManager {
   private listeners: Set<(state: AuthState) => void> = new Set();
@@ -138,6 +150,41 @@ class AuthStateManager {
     }
   }
 
+  async signInAsGuest(): Promise<AuthenticationResult> {
+    console.log('[AuthStateManager] Starting guest authentication...');
+    this.updateState({ loading: true, error: null });
+
+    try {
+      const { data, error } = await supabase.auth.signInAnonymously();
+
+      if (error || !data.session || !data.user) {
+        const errorMessage = getGuestAuthErrorMessage(error);
+        this.updateState({ error: errorMessage, loading: false });
+        return { success: false, error: errorMessage };
+      }
+
+      await getOrCreatePlayHubProfile(null);
+
+      this.updateState({
+        user: data.user,
+        session: data.session,
+        loading: false,
+        error: null,
+      });
+
+      return {
+        success: true,
+        user: data.user,
+        session: data.session,
+      };
+    } catch (error: any) {
+      console.error('[AuthStateManager] Guest authentication error:', error);
+      const errorMessage = getGuestAuthErrorMessage(error);
+      this.updateState({ error: errorMessage, loading: false });
+      return { success: false, error: errorMessage };
+    }
+  }
+
   async signOut(): Promise<void> {
     console.log('[AuthStateManager] Signing out...');
     this.updateState({ loading: true, error: null });
@@ -179,6 +226,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return manager.signInWithMetaMask();
   };
 
+  const signInAsGuest = async (): Promise<AuthenticationResult> => {
+    const manager = getAuthStateManager();
+    return manager.signInAsGuest();
+  };
+
   const signOut = async (): Promise<void> => {
     const manager = getAuthStateManager();
     return manager.signOut();
@@ -187,6 +239,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const value: AuthContextType = {
     ...authState,
     signInWithMetaMask,
+    signInAsGuest,
     signOut
   };
 

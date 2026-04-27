@@ -95,7 +95,7 @@ export function useGameStateSync(
 
                 if (currentGameState.gameId && player1Id && player2Id) {
                     console.log(`[useGameStateSync] Game ${currentGameState.gameId} ended. Winner: ${winnerId}. Player1: ${player1Id}, Player2: ${player2Id}. Recording outcome.`);
-                    recordGameOutcomeAndUpdateStats(currentGameState.gameId, winnerId, player1Id, player2Id);
+                    recordGameOutcomeAndUpdateStats(currentGameState.gameId, winnerId, player1Id, player2Id, currentGameState);
                 } else {
                     console.error('[useGameStateSync] Cannot record game outcome: Missing gameId or player IDs.', {
                         gameId: currentGameState.gameId,

@@ -1,6 +1,6 @@
 // File: src/pages/Profile.tsx
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../utils/supabase.js';
+import { getProfile, PLAYHUB_GAME_ID, supabase, updateProfile as saveProfile } from '../utils/supabase.js';
 import { useAuth } from '../hooks/useAuth.js';
 
 interface ProfileData {
@@ -8,6 +8,9 @@ interface ProfileData {
   avatar_url: string | null;
   games_won: number;
   games_played: number;
+  season_points: number;
+  rewards_earned: number;
+  gem_balance: number;
 }
 
 const ProfilePage: React.FC = () => {
@@ -19,6 +22,9 @@ const ProfilePage: React.FC = () => {
     avatar_url: null,
     games_won: 0,
     games_played: 0,
+    season_points: 0,
+    rewards_earned: 0,
+    gem_balance: 0,
   });
   const [newUsername, setNewUsername] = useState('');
   const [uploading, setUploading] = useState(false);
@@ -30,25 +36,34 @@ const ProfilePage: React.FC = () => {
       if (playerId) {
         setLoading(true);
         try {
-          const { data, error, status } = await supabase
-            .from('profiles')
-            .select(`username, avatar_url, games_won, games_played`)
-            .eq('id', playerId)
-            .single();
+          const [profile, statsResult, balanceResult] = await Promise.all([
+            getProfile(playerId),
+            supabase
+              .from('player_game_profiles')
+              .select('games_won, games_played, season_points, rewards_earned')
+              .eq('player_id', playerId)
+              .eq('game_id', PLAYHUB_GAME_ID)
+              .maybeSingle(),
+            supabase
+              .from('player_balances')
+              .select('balance')
+              .eq('player_id', playerId)
+              .eq('currency_id', 'GEM')
+              .maybeSingle(),
+          ]);
 
-          if (error && status !== 406) {
-            throw error;
-          }
-
-          if (data) {
-            setProfileData({
-              username: data.username,
-              avatar_url: data.avatar_url,
-              games_won: data.games_won ?? 0,
-              games_played: data.games_played ?? 0,
-            });
-            setNewUsername(data.username || '');
-          }
+          const stats = statsResult.data as any;
+          const balance = balanceResult.data as any;
+          setProfileData({
+            username: profile?.username ?? null,
+            avatar_url: profile?.avatar_url ?? null,
+            games_won: stats?.games_won ?? 0,
+            games_played: stats?.games_played ?? 0,
+            season_points: stats?.season_points ?? 0,
+            rewards_earned: stats?.rewards_earned ?? 0,
+            gem_balance: balance?.balance ?? 0,
+          });
+          setNewUsername(profile?.username || '');
         } catch (error) {
           console.error('Error fetching profile:', error);
           setNotification('Could not fetch profile data.');
@@ -81,19 +96,12 @@ const ProfilePage: React.FC = () => {
         }
       }
 
-      // Use direct UPDATE to comply with RLS (users can UPDATE their own row, INSERT may be blocked)
-      const { error } = await supabase
-        .from('profiles')
-        .update({
-          username: newUsername,
-          avatar_url: avatarUrl,
-          updated_at: new Date(),
-        })
-        .eq('id', playerId);
+      const updated = await saveProfile(playerId, {
+        username: newUsername,
+        avatar_url: avatarUrl ?? undefined,
+      });
 
-      if (error) {
-        throw error;
-      }
+      if (!updated) throw new Error('Profile update failed');
 
   setProfileData(prev => ({ ...prev, username: newUsername, avatar_url: avatarUrl }));
       setNotification('Profile updated successfully!');
@@ -217,6 +225,14 @@ const ProfilePage: React.FC = () => {
               <div className="text-center">
                 <p className="text-2xl font-bold text-gray-300">{profileData.games_played}</p>
                 <p className="text-sm text-gray-400">Games Played</p>
+              </div>
+              <div className="text-center">
+                <p className="text-2xl font-bold text-yellow-300">{profileData.season_points}</p>
+                <p className="text-sm text-gray-400">Season Points</p>
+              </div>
+              <div className="text-center">
+                <p className="text-2xl font-bold text-purple-300">{profileData.gem_balance}</p>
+                <p className="text-sm text-gray-400">GEM</p>
               </div>
             </div>
 
