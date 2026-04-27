@@ -4,11 +4,11 @@ import { getGameDetails, getGameState, subscribeToGameState, unsubscribeFromGame
 // Remove unused Creature import
 import { GameState, GameAction, Knowledge, PlayerState } from '../game/types.js';
 import { initializeGame, gameReducer as originalGameReducer } from '../game/state.js';
-import { v4 as uuidv4 } from 'uuid';
+
 
 // Assign a unique instanceId to each knowledge card for React keys
 function assignInstanceIds(state: GameState): GameState {
-  const mapCard = (c: Knowledge) => ({ ...c, instanceId: c.instanceId || uuidv4() });
+  const mapCard = (c: Knowledge) => ({ ...c, instanceId: c.instanceId || crypto.randomUUID() });
   return {
     ...state,
     market: state.market.map(mapCard),

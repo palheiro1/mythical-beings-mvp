@@ -1,13 +1,7 @@
 import React, { useRef, useEffect } from 'react';
 import { GameState } from '../../game/types.js';
-import { updateGameState, recordGameOutcomeAndUpdateStats } from '../../utils/supabase.js';
+import { updateGameState, recordGameOutcomeAndUpdateStats, ProfileInfo } from '../../utils/supabase.js';
 import { useCardRegistry } from '../../context/CardRegistry.js';
-
-// Define ProfileInfo type again or import
-interface ProfileInfo {
-    username: string | null;
-    avatar_url: string | null;
-}
 
 interface TopBarProps {
   player1Profile: ProfileInfo;

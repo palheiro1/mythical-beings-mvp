@@ -1,5 +1,4 @@
 import { knowledgeEffects } from './effects.js';
-import { cloneDeep } from 'lodash';
 import { GameState, GameAction, Knowledge, SummonKnowledgePayload } from './types'; // Import SummonKnowledgePayload
 import { applyPassiveAbilities } from './passives.js';
 
@@ -8,7 +7,7 @@ const MAX_HAND_SIZE = 5;
 export const ACTIONS_PER_TURN = 2;
 
 // Define the return type for validation
-interface ValidationResult {
+export interface RuleValidationResult {
     isValid: boolean;
     reason?: string;
 }
@@ -19,7 +18,7 @@ interface ValidationResult {
  * @param action The action to validate.
  * @returns An object indicating if the action is valid and an optional reason if not.
  */
-export function isValidAction(state: GameState, action: GameAction): ValidationResult {
+export function isValidAction(state: GameState, action: GameAction): RuleValidationResult {
   // Allow SET_GAME_STATE and INITIALIZE_GAME without player/turn checks
   if (action.type === 'SET_GAME_STATE' || action.type === 'INITIALIZE_GAME') {
     return { isValid: true };
@@ -139,7 +138,7 @@ export function isValidAction(state: GameState, action: GameAction): ValidationR
  * @returns The updated game state after the knowledge phase.
  */
 export function executeKnowledgePhase(state: GameState): GameState {
-  let phaseState = cloneDeep(state); // Use cloneDeep for initial phase clone
+  let phaseState = structuredClone(state); // Use cloneDeep for initial phase clone
   phaseState.log.push(`Turn ${phaseState.turn}: Knowledge Phase started.`);
 
   const knowledgeToDiscard: { playerIndex: number; slotIndex: number; card: Knowledge }[] = [];
@@ -159,7 +158,7 @@ export function executeKnowledgePhase(state: GameState): GameState {
 
         // Prepare a state snapshot *before* this specific effect runs
         // (effects are applied sequentially to the evolving state later).
-        const stateForEffect = cloneDeep(phaseState);
+        const stateForEffect = structuredClone(phaseState);
         effectStates.push({
           playerIndex,
           slotIndex,

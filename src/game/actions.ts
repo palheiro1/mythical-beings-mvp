@@ -1,6 +1,6 @@
 import { GameState, Knowledge, PlayerState, SummonKnowledgePayload } from './types';
 import { getCreatureWisdom, getPlayerState } from './utils.js';
-import { v4 as uuidv4 } from 'uuid';
+
 
 // Define a return type that includes info about leaving knowledge
 export type SummonKnowledgeResult = {
@@ -87,7 +87,7 @@ export function drawKnowledge(state: GameState, payload: { playerId: string; kno
   if (updatedDeck.length > 0) {
     const nextCard = updatedDeck.shift();
     if (nextCard) {
-      updatedMarket.push({ ...nextCard, instanceId: nextCard.instanceId || uuidv4() });
+      updatedMarket.push({ ...nextCard, instanceId: nextCard.instanceId || crypto.randomUUID() });
     }
   }
 

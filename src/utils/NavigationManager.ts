@@ -9,7 +9,7 @@ import {
   RealtimeChannel,
 } from '../utils/supabase.js';
 
-export interface GameState {
+export interface NFTSelectionState {
   player1SelectionComplete?: boolean;
   player2SelectionComplete?: boolean;
   player1SelectedCreatures?: string[];

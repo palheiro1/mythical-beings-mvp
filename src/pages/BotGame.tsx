@@ -139,8 +139,8 @@ const BotGame: React.FC = () => {
         opponentName={BOT_NAME}
       />
       <TopBar
-        player1Profile={{ username: 'You', avatar_url: null }}
-        player2Profile={{ username: BOT_NAME, avatar_url: null }}
+        player1Profile={{ id: '', username: 'You', display_name: null, avatar_url: null }}
+        player2Profile={{ id: '', username: BOT_NAME, display_name: null, avatar_url: null }}
         player1Mana={player.power}
         player2Mana={opponent.power}
         turn={gameState.turn}

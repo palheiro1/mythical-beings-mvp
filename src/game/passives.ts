@@ -1,5 +1,5 @@
 import { GameState, PassiveTriggerType, PassiveEventData, Knowledge, Creature } from './types.js';
-import { v4 as uuidv4 } from 'uuid';
+
 
 /**
  * Applies passive abilities based on a trigger event.
@@ -69,7 +69,7 @@ export function applyPassiveAbilities(
               // detailed draw log
               newState.log.push(`[Passive Effect] Zhar-Ptitsa (Owner: ${player.id}) draws ${drawnCard.name}. Hand size: ${player.hand.length}`);
               if (newState.knowledgeDeck.length > 0) {
-                const refillCard = { ...newState.knowledgeDeck.shift()!, instanceId: uuidv4() };
+                const refillCard = { ...newState.knowledgeDeck.shift()!, instanceId: crypto.randomUUID() };
                 newState.market.push(refillCard);
                 newState.log.push(`[Passive Effect] Market refilled with ${refillCard.name}.`);
               }
@@ -264,7 +264,7 @@ export function applyPassiveAbilities(
           newState.discardPile.push(cardToDiscard);
           newState.log.push(`[Passive Effect] Inkanyamba (Owner: ${player.id}) discards ${cardToDiscard.name} from Market.`);
           if (newState.knowledgeDeck.length > 0) {
-            const refillCard = { ...newState.knowledgeDeck.shift()!, instanceId: uuidv4() };
+            const refillCard = { ...newState.knowledgeDeck.shift()!, instanceId: crypto.randomUUID() };
             newState.market.push(refillCard);
             newState.log.push(`[Passive Effect] Market refilled with ${refillCard.name}.`);
           }

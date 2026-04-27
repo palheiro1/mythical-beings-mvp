@@ -11,16 +11,11 @@ import TableArea from '../components/game/TableArea.js';
 import HandsColumn from '../components/game/HandsColumn.js';
 import MarketColumn from '../components/game/MarketColumn.js';
 import Logs from '../components/game/Logs.js'; // Import the Logs component
-import { getProfile } from '../utils/supabase.js';
+import { getProfile, ProfileInfo } from '../utils/supabase.js';
 import GameAnnouncer from '../components/game/GameAnnouncer.js';
 import CardMoveLayer from '../components/game/CardMoveLayer.js';
 import CombatFloaters from '../components/game/CombatFloaters.js';
 import { useCardRegistry } from '../context/CardRegistry.js';
-
-interface ProfileInfo {
-  username: string | null;
-  avatar_url: string | null;
-}
 
 const GameScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -103,7 +98,9 @@ const GameScreen: React.FC = () => {
           if (!playerId) return;
           const profile = await getProfile(playerId);
           fetchedProfiles[playerId] = {
+            id: playerId,
             username: profile?.username || `Player (${playerId.substring(0, 6)})`,
+            display_name: profile?.display_name || null,
             avatar_url: profile?.avatar_url || null,
           };
         }));
@@ -113,7 +110,7 @@ const GameScreen: React.FC = () => {
         console.error("Error fetching player profiles:", profileError);
         playerIds.forEach(playerId => {
           if (playerId && !fetchedProfiles[playerId]) {
-            fetchedProfiles[playerId] = { username: `Player (${playerId.substring(0, 6)})`, avatar_url: null };
+            fetchedProfiles[playerId] = { id: playerId, username: `Player (${playerId.substring(0, 6)})`, display_name: null, avatar_url: null };
           }
         });
         setPlayerProfiles(fetchedProfiles);

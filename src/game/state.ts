@@ -5,7 +5,7 @@ import { applyPassiveAbilities } from './passives.js';
 import knowledgeData from '../assets/knowledges.json' assert { type: 'json' };
 import creatureData from '../assets/creatures.json' assert { type: 'json' };
 import { getPlayerState } from './utils.js';
-import { cloneDeep } from 'lodash'; // Import cloneDeep
+
 
 // Constants
 const INITIAL_POWER = 20;
@@ -84,7 +84,7 @@ const lookupCreatures = (ids: string[], allCreatures: Creature[]): Creature[] =>
     throw new Error(`Failed to initialize game: Could not find all selected creatures for IDs: ${ids.join(', ')}`);
   }
   // Use cloneDeep for safer cloning
-  return cloneDeep(foundCreatures);
+  return structuredClone(foundCreatures);
 };
 
 const initialPlayerState = (id: string, creatures: Creature[]): PlayerState => ({
@@ -215,7 +215,7 @@ export function initializeGame(payload: InitializeGamePayload): GameState {
 
 function endTurnSequence(state: GameState): GameState {
   console.log(`[Reducer] Starting endTurnSequence for Player ${state.players[state.currentPlayerIndex].id}`);
-  let workingState = cloneDeep(state); // Use cloneDeep at the beginning of the function
+  let workingState = structuredClone(state); // Use cloneDeep at the beginning of the function
 
   // --- Rotate Creatures (Current player's creatures) ---
   // const currentPlayerId = workingState.players[workingState.currentPlayerIndex].id; // This was unused
@@ -331,7 +331,7 @@ export function gameReducer(state: GameState | null, action: GameAction): GameSt
   }
 
 
-  let intermediateState = cloneDeep(state); // Clone state for modification
+  let intermediateState = structuredClone(state); // Clone state for modification
   let actionConsumed = false; // Flag to track if the action uses one of the player's available actions
 
   if (action.type === 'END_TURN') {

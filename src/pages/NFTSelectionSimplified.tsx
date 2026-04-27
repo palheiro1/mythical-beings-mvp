@@ -292,8 +292,8 @@ const NFTSelectionSimplified: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-900 text-white flex flex-col items-center justify-center p-6">
-      {/* Debug Panel */}
-      <GameStateDebug gameId={gameId || ''} className="fixed top-4 right-4 z-50" />
+      {/* Debug Panel — dev only */}
+      {import.meta.env.DEV && <GameStateDebug gameId={gameId || ''} className="fixed top-4 right-4 z-50" />}
       
       <div className="w-full max-w-4xl bg-gray-800 p-8 rounded-lg shadow-xl relative">
         <div className="flex justify-between items-center mb-6 pb-4 border-b border-gray-700">
