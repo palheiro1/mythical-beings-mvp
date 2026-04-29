@@ -48,6 +48,7 @@ function AppContent() {
             <Route path="/game-initializing/:gameId" element={<GameInitializing />} />
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/nft-selection/:gameId" element={<NFTSelectionSimplified />} />
+            <Route path="/bot-selection" element={<NFTSelectionSimplified mode="bot" />} />
             <Route path="/how-to-play" element={<HowToPlay />} />
             <Route path="/leaderboard" element={<Leaderboard />} />
             <Route path="/waiting/:gameId" element={<WaitingScreen />} />

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, CheckCircle2, Clock3, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, Bot, CheckCircle2, Clock3, Dices, ShieldCheck } from 'lucide-react';
 import Card from '../components/Card.js';
 import GameStateDebug from '../components/GameStateDebug.js';
 import { Creature } from '../game/types.js';
@@ -10,14 +10,29 @@ import { NFTSelectionNavigationManager } from '../utils/NavigationManager.js';
 // --- Import the base creature data ---
 import creatureData from '../assets/creatures.json' with { type: 'json' };
 import { ArenaButton, cn, CopyChip, ErrorRecoveryPanel, Panel, SpinnerEmblem, StatusBadge } from '../components/ui/index.js';
+import { clearBotCreatureSelection, writeBotCreatureSelection } from '../utils/botSelection.js';
 
 // --- Define ALL_CREATURES constant ---
 const ALL_CREATURES: Creature[] = creatureData as Creature[];
 
 const CARD_ASPECT_RATIO = 2.5 / 3.5;
 const CARD_WIDTH_DESKTOP = '160px';
+const TRAINING_HAND_SIZE = 5;
 
-const NFTSelectionSimplified: React.FC = () => {
+type SelectionMode = 'pvp' | 'bot';
+
+interface NFTSelectionSimplifiedProps {
+  mode?: SelectionMode;
+}
+
+function dealTrainingHand(): Creature[] {
+  return [...ALL_CREATURES]
+    .sort(() => Math.random() - 0.5)
+    .slice(0, TRAINING_HAND_SIZE);
+}
+
+const NFTSelectionSimplified: React.FC<NFTSelectionSimplifiedProps> = ({ mode = 'pvp' }) => {
+  const isBotMode = mode === 'bot';
   const [selected, setSelected] = useState<string[]>([]);
   const [timer, setTimer] = useState(60);
   const [waiting, setWaiting] = useState(false);
@@ -50,6 +65,8 @@ const NFTSelectionSimplified: React.FC = () => {
 
   // Initialize navigation manager
   useEffect(() => {
+    if (isBotMode) return;
+
     if (!gameId || !currentPlayerId || authError) {
       if (!gameId) setError("Game ID missing from URL.");
       if (!currentPlayerId && !authError) setError("Identifying player...");
@@ -83,10 +100,22 @@ const NFTSelectionSimplified: React.FC = () => {
         navigationManagerRef.current = null;
       }
     };
-  }, [gameId, currentPlayerId, authError, navigate]);
+  }, [gameId, currentPlayerId, authError, navigate, isBotMode]);
 
   // Load hand data
   useEffect(() => {
+    if (isBotMode) {
+      clearBotCreatureSelection();
+      setSelected([]);
+      setWaiting(false);
+      setLost(false);
+      setTimer(60);
+      setError(null);
+      setDealtCreatures(dealTrainingHand());
+      setIsLoadingHand(false);
+      return;
+    }
+
     if (!gameId || !currentPlayerId) return;
 
     const loadHandData = async () => {
@@ -142,7 +171,7 @@ const NFTSelectionSimplified: React.FC = () => {
         handPollIntervalRef.current = null;
       }
     };
-  }, [gameId, currentPlayerId]);
+  }, [gameId, currentPlayerId, isBotMode]);
 
   const startHandPolling = (slot: number) => {
     if (handPollIntervalRef.current) return;
@@ -191,7 +220,7 @@ const NFTSelectionSimplified: React.FC = () => {
   };
 
   const handleConfirm = async () => {
-    if (selected.length !== 3 || lost || waiting || isConfirming || !navigationManagerRef.current) {
+    if (selected.length !== 3 || lost || waiting || isConfirming) {
       console.warn('[NFTSelection] Confirm conditions not met');
       return;
     }
@@ -200,6 +229,16 @@ const NFTSelectionSimplified: React.FC = () => {
     setError(null);
 
     try {
+      if (isBotMode) {
+        writeBotCreatureSelection(selected);
+        navigate('/bot-game', { state: { selectedCreatures: selected } });
+        return;
+      }
+
+      if (!navigationManagerRef.current) {
+        throw new Error('Selection manager is not ready');
+      }
+
       console.log('[NFTSelection] Confirming selection:', selected);
       
       // Stop hand polling if still active
@@ -259,6 +298,15 @@ const NFTSelectionSimplified: React.FC = () => {
     return `${widthValue / CARD_ASPECT_RATIO}px`;
   };
 
+  const handleShuffleTrainingHand = () => {
+    if (!isBotMode || isConfirming) return;
+    clearBotCreatureSelection();
+    setSelected([]);
+    setLost(false);
+    setTimer(60);
+    setDealtCreatures(dealTrainingHand());
+  };
+
   // Render loading state
   if (authError) {
     return (
@@ -295,7 +343,7 @@ const NFTSelectionSimplified: React.FC = () => {
   return (
     <div className="arena-page min-h-[calc(100vh-var(--navbar-height))] px-4 py-8 text-white sm:px-6 lg:px-8">
       {/* Debug Panel — dev only */}
-      {import.meta.env.DEV && <GameStateDebug gameId={gameId || ''} className="fixed top-4 right-4 z-50" />}
+      {import.meta.env.DEV && !isBotMode && <GameStateDebug gameId={gameId || ''} className="fixed top-4 right-4 z-50" />}
 
       <div className="mx-auto w-full max-w-7xl">
         <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -303,7 +351,13 @@ const NFTSelectionSimplified: React.FC = () => {
             <ArrowLeft className="h-4 w-4" aria-hidden />
             Back
           </button>
-          {gameId && <CopyChip label="Game ID" value={gameId} />}
+          {gameId && !isBotMode && <CopyChip label="Game ID" value={gameId} />}
+          {isBotMode && (
+            <StatusBadge tone="amber">
+              <Bot className="h-3.5 w-3.5" aria-hidden />
+              Training Setup
+            </StatusBadge>
+          )}
         </div>
 
         <Panel className="p-5 sm:p-8" glow>
@@ -313,8 +367,26 @@ const NFTSelectionSimplified: React.FC = () => {
                 <ShieldCheck className="h-3.5 w-3.5" aria-hidden />
                 {selected.length === 3 ? 'Ready' : 'Choose exactly 3'}
               </StatusBadge>
-              <h1 className="font-display text-4xl font-black text-slate-50">Select Your Team (Choose 3)</h1>
-              <p className="mt-3 text-slate-300">Choose exactly 3 creatures to enter the arena. You cannot select more than 3.</p>
+              <h1 className="font-display text-4xl font-black text-slate-50">
+                {isBotMode ? 'Select Your Training Team (Choose 3)' : 'Select Your Team (Choose 3)'}
+              </h1>
+              <p className="mt-3 text-slate-300">
+                {isBotMode
+                  ? 'Choose exactly 3 creatures before facing the bot. Practice mode does not change competitive stats.'
+                  : 'Choose exactly 3 creatures to enter the arena. You cannot select more than 3.'}
+              </p>
+              {isBotMode && (
+                <ArenaButton
+                  type="button"
+                  variant="ghost"
+                  icon={<Dices className="h-4 w-4" aria-hidden />}
+                  onClick={handleShuffleTrainingHand}
+                  className="mt-4"
+                  disabled={isConfirming}
+                >
+                  Shuffle Hand
+                </ArenaButton>
+              )}
             </div>
             <div className={cn('mx-auto grid h-28 w-28 place-items-center rounded-full border-4 bg-cyan-500/10 text-center shadow-[0_0_34px_rgba(34,211,238,0.24)] lg:mx-0', timer <= 10 ? 'border-red-300 text-red-200 animate-pulse' : 'border-cyan-300/50 text-cyan-100')}>
               <div>
@@ -358,7 +430,9 @@ const NFTSelectionSimplified: React.FC = () => {
             <div className="grid gap-5 lg:grid-cols-[1fr_auto_auto] lg:items-center">
               <div>
                 <h2 className="font-display text-2xl font-bold text-amber-200">Your Team ({selected.length}/3)</h2>
-                <p className="mt-1 text-sm text-slate-400">Click a selected mini card to remove it before confirmation.</p>
+                <p className="mt-1 text-sm text-slate-400">
+                  Click a selected mini card to remove it before {isBotMode ? 'starting training' : 'confirmation'}.
+                </p>
                 {selected.length > 0 && (
                   <div className="mt-4 flex flex-wrap gap-3">
                     {dealtCreatures
@@ -391,7 +465,7 @@ const NFTSelectionSimplified: React.FC = () => {
               <div className="text-center">
                 {lost ? (
                   <StatusBadge tone="red">Time Expired - You Lost!</StatusBadge>
-                ) : waiting ? (
+                ) : waiting && !isBotMode ? (
                   <StatusBadge tone="green">Waiting for opponent...</StatusBadge>
                 ) : (
                   <ArenaButton
@@ -401,7 +475,7 @@ const NFTSelectionSimplified: React.FC = () => {
                     loading={isConfirming}
                     size="lg"
                   >
-                    {isConfirming ? 'Confirming...' : `Confirm Selection (${selected.length}/3)`}
+                    {isConfirming ? 'Confirming...' : isBotMode ? `Start Training (${selected.length}/3)` : `Confirm Selection (${selected.length}/3)`}
                   </ArenaButton>
                 )}
               </div>

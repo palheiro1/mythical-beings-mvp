@@ -15,6 +15,7 @@ import {
   supabase,
 } from '../utils/supabase.js';
 import { ArenaButton, CopyChip, EmptyState, Input, PageShell, Panel, Skeleton, StatusBadge, Toast } from '../components/ui/index.js';
+import { clearBotCreatureSelection } from '../utils/botSelection.js';
 
 interface SessionWithHost extends PlayHubSession {
   hostName: string | null;
@@ -277,7 +278,10 @@ const Lobby: React.FC = () => {
               <div className="border-t border-white/10 pt-5">
                 <ArenaButton
                   type="button"
-                  onClick={() => navigate('/bot-game')}
+                  onClick={() => {
+                    clearBotCreatureSelection();
+                    navigate('/bot-selection');
+                  }}
                   variant="ghost"
                   icon={<Bot className="h-4 w-4 text-cyan-200" aria-hidden />}
                   fullWidth

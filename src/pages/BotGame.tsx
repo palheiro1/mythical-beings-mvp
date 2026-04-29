@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-// import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Bot as BotIcon, Info } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth.js';
 import { GameState } from '../game/types.js';
@@ -16,19 +16,27 @@ import { useLocalGameActions } from '../hooks/useLocalGameActions.js';
 import { useCardRegistry } from '../context/CardRegistry.js';
 import GameShell from '../components/game/GameShell.js';
 import { Panel, SpinnerEmblem, StatusBadge } from '../components/ui/index.js';
+import { clearBotCreatureSelection, isValidBotCreatureSelection, readBotCreatureSelection } from '../utils/botSelection.js';
 
 const BOT_ID = 'bot';
 const BOT_NAME = 'Bot';
 
-// Minimal default 3 creatures per player for quick start: first three from selection flow
-const DEFAULT_CREATURES = ['adaro', 'lisovik', 'kappa'];
+const BOT_CREATURES = ['adaro', 'lisovik', 'kappa'];
 
 const BotGame: React.FC = () => {
-  // const navigate = useNavigate();
+  const navigate = useNavigate();
+  const location = useLocation();
   const { user, loading: authLoading } = useAuth();
   const currentPlayerId = user?.id || 'local-user';
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [selectedKnowledgeId, setSelectedKnowledgeId] = useState<string | null>(null);
+  const [playerCreatureIds] = useState<string[] | null>(() => {
+    const state = location.state as { selectedCreatures?: unknown } | null;
+    const selectedCreatures = state?.selectedCreatures;
+    return isValidBotCreatureSelection(selectedCreatures)
+      ? selectedCreatures
+      : readBotCreatureSelection();
+  });
   const registry = useCardRegistry();
 
   // Local actions via reducer with functional setState to avoid stale updates
@@ -43,18 +51,31 @@ const BotGame: React.FC = () => {
   const latestStateRef = useRef<GameState | null>(null);
   useEffect(() => { latestStateRef.current = gameState; }, [gameState]);
 
-  // Initialize a local game on mount
+  // Initialize a local game only after the shared creature selection screen has completed.
   useEffect(() => {
-    const id = `bot-${Date.now()}`;
-    const state = initializeGame({
-      gameId: id,
-      player1Id: currentPlayerId,
-      player2Id: BOT_ID,
-      player1SelectedIds: DEFAULT_CREATURES,
-      player2SelectedIds: DEFAULT_CREATURES,
-    });
-    setGameState(state);
-  }, [currentPlayerId]);
+    if (authLoading) return;
+
+    if (!playerCreatureIds) {
+      navigate('/bot-selection', { replace: true });
+      return;
+    }
+
+    try {
+      const id = `bot-${Date.now()}`;
+      const state = initializeGame({
+        gameId: id,
+        player1Id: currentPlayerId,
+        player2Id: BOT_ID,
+        player1SelectedIds: playerCreatureIds,
+        player2SelectedIds: BOT_CREATURES,
+      });
+      setGameState(state);
+    } catch (error) {
+      console.error('[BotGame] Failed to initialize selected training team:', error);
+      clearBotCreatureSelection();
+      navigate('/bot-selection', { replace: true });
+    }
+  }, [authLoading, currentPlayerId, navigate, playerCreatureIds]);
 
   // Simple Bot AI loop: on bot's action phase, try rotate → play → draw, with small delays
   const botThinking = useRef(false);
