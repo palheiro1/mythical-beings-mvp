@@ -35,7 +35,8 @@ const GameAnnouncer: React.FC<GameAnnouncerProps> = ({
 
     const who = isMyTurn ? (playerName || 'You') : (opponentName || 'Opponent');
     const phaseText = phase === 'knowledge' ? 'Knowledge Phase' : 'Action Phase';
-    const msg = `${who}'s Turn • ${phaseText}`;
+    const ownerText = isMyTurn && who === 'You' ? 'Your Turn' : `${who}'s Turn`;
+    const msg = `${ownerText} - ${phaseText}`;
 
     setMessage(msg);
     setVisible(true);
@@ -48,7 +49,7 @@ const GameAnnouncer: React.FC<GameAnnouncerProps> = ({
 
   return (
     <div className="pointer-events-none fixed inset-0 z-[60] flex items-start justify-center">
-      <div className="mt-16 px-5 py-3 rounded-xl bg-black/70 text-white shadow-2xl backdrop-blur-sm border border-white/10
+      <div className="mt-16 px-6 py-4 rounded-2xl bg-black/75 text-white shadow-2xl backdrop-blur-sm border border-violet-300/25
                       transform transition-all duration-700 ease-out animate-[fadeIn_200ms_ease-out]
                      ">
         <div className="text-sm opacity-80 text-center">Turn {turn}</div>

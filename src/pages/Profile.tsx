@@ -1,7 +1,9 @@
 // File: src/pages/Profile.tsx
 import React, { useState, useEffect } from 'react';
+import { Gem, Trophy, Upload, UserCircle, Zap } from 'lucide-react';
 import { getProfile, PLAYHUB_GAME_ID, supabase, updateProfile as saveProfile } from '../utils/supabase.js';
 import { useAuth } from '../hooks/useAuth.js';
+import { ArenaButton, Input, PageShell, Panel, Skeleton, StatCard, StatusBadge, Toast } from '../components/ui/index.js';
 
 interface ProfileData {
   username: string | null;
@@ -28,6 +30,7 @@ const ProfilePage: React.FC = () => {
   });
   const [newUsername, setNewUsername] = useState('');
   const [uploading, setUploading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [notification, setNotification] = useState<string | null>(null);
 
@@ -84,7 +87,7 @@ const ProfilePage: React.FC = () => {
     event.preventDefault();
     if (!playerId) return;
 
-    setLoading(true);
+    setSaving(true);
     try {
       let avatarUrl = profileData.avatar_url; // Keep existing avatar unless a new one is uploaded
 
@@ -103,13 +106,13 @@ const ProfilePage: React.FC = () => {
 
       if (!updated) throw new Error('Profile update failed');
 
-  setProfileData(prev => ({ ...prev, username: newUsername, avatar_url: avatarUrl }));
+      setProfileData(prev => ({ ...prev, username: newUsername, avatar_url: avatarUrl }));
       setNotification('Profile updated successfully!');
     } catch (error) {
       console.error('Error updating profile:', error);
       setNotification(`Error updating profile: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
-      setLoading(false);
+      setSaving(false);
       setAvatarFile(null); // Clear file input state after attempt
       setTimeout(() => setNotification(null), 3000); // Clear notification
     }
@@ -156,100 +159,104 @@ const ProfilePage: React.FC = () => {
   };
 
   if (authLoading || loading) {
-    return <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">Loading profile...</div>;
+    return (
+      <PageShell contentClassName="max-w-5xl space-y-5">
+        <Skeleton className="h-72" />
+        <div className="grid gap-4 sm:grid-cols-4">
+          <Skeleton className="h-32" />
+          <Skeleton className="h-32" />
+          <Skeleton className="h-32" />
+          <Skeleton className="h-32" />
+        </div>
+      </PageShell>
+    );
   }
 
   if (!playerId) {
-    return <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">Please connect your wallet to view your profile.</div>;
+    return (
+      <PageShell contentClassName="flex min-h-[calc(100vh-var(--navbar-height)-64px)] items-center justify-center">
+        <Panel className="max-w-md p-6 text-center">
+          <UserCircle className="mx-auto h-12 w-12 text-violet-200" aria-hidden />
+          <h1 className="mt-4 font-display text-3xl text-slate-50">Profile unavailable</h1>
+          <p className="mt-2 text-slate-300">Please connect your wallet to view your profile.</p>
+        </Panel>
+      </PageShell>
+    );
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white pt-16">
-      <div className="container mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold text-center mb-8 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-cyan-300">
-          Your Profile
-        </h1>
+    <PageShell contentClassName="max-w-6xl space-y-6 pb-24">
+      <Panel className="arena-banner p-6 sm:p-8" glow>
+        <StatusBadge tone="violet" className="mb-4">Player Identity</StatusBadge>
+        <h1 className="font-display text-4xl font-black text-slate-50">Profile</h1>
+        <p className="mt-2 text-slate-300">Update your public name and avatar. Stats are read-only.</p>
+      </Panel>
 
-        {notification && (
-          <div className={`fixed top-5 right-5 p-3 rounded-md shadow-lg text-white ${notification.startsWith('Error') ? 'bg-red-600' : 'bg-green-600'} z-50`}>
-            {notification}
-          </div>
-        )}
-
-        <div className="max-w-2xl mx-auto bg-gray-800 bg-opacity-70 p-8 rounded-xl shadow-xl">
-          <form onSubmit={updateProfile} className="space-y-6">
-            {/* Avatar Display and Upload */}
-            <div className="flex flex-col items-center space-y-4">
-              <img
-                src={profileData.avatar_url || `/api/placeholder-avatar?text=${profileData.username?.charAt(0).toUpperCase() || '?'}`}
-                alt="Avatar"
-                className="h-24 w-24 rounded-full object-cover border-2 border-purple-500"
-              />
-              <div>
-                <label htmlFor="avatar-upload" className="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold py-2 px-4 rounded-md transition-colors duration-200">
-                  {uploading ? 'Uploading...' : 'Upload New Avatar'}
-                </label>
-                <input
-                  id="avatar-upload"
-                  type="file"
-                  accept="image/*"
-                  onChange={handleAvatarChange}
-                  disabled={uploading}
-                  className="hidden"
+      <form onSubmit={updateProfile} className="grid gap-6 lg:grid-cols-[360px_minmax(0,1fr)]">
+        <Panel className="p-6">
+          <div className="flex flex-col items-center text-center">
+            <div className="relative">
+              {profileData.avatar_url ? (
+                <img
+                  src={profileData.avatar_url}
+                  alt="Avatar"
+                  className="h-36 w-36 rounded-full border-4 border-violet-300/35 object-cover shadow-[0_0_44px_rgba(139,92,246,0.28)]"
                 />
-              </div>
-              {avatarFile && <span className="text-xs text-gray-400 mt-1">{avatarFile.name}</span>}
+              ) : (
+                <div className="grid h-36 w-36 place-items-center rounded-full border-4 border-violet-300/35 bg-violet-500/15 text-5xl font-black text-violet-100 shadow-[0_0_44px_rgba(139,92,246,0.28)]">
+                  {profileData.username?.charAt(0).toUpperCase() || '?'}
+                </div>
+              )}
+              {uploading && <div className="absolute inset-0 grid place-items-center rounded-full bg-black/60 text-sm text-cyan-100">Uploading...</div>}
             </div>
 
-            {/* Username */}
+            <label htmlFor="avatar-upload" className="mt-5 inline-flex cursor-pointer items-center gap-2 rounded-xl border border-cyan-300/35 bg-cyan-500/10 px-4 py-2 text-sm font-bold uppercase tracking-wide text-cyan-100 transition hover:bg-cyan-500/15">
+              <Upload className="h-4 w-4" aria-hidden />
+              {uploading ? 'Uploading...' : 'Upload New Avatar'}
+            </label>
+            <input
+              id="avatar-upload"
+              type="file"
+              accept="image/*"
+              onChange={handleAvatarChange}
+              disabled={uploading}
+              className="hidden"
+            />
+            <p className="mt-3 text-xs text-slate-500">JPG, PNG or WEBP. Square images work best.</p>
+            {avatarFile && <span className="mt-2 max-w-full truncate text-xs text-cyan-200">{avatarFile.name}</span>}
+          </div>
+        </Panel>
+
+        <Panel className="p-6">
+          <div className="space-y-5">
             <div>
-              <label htmlFor="username" className="block text-sm font-medium text-gray-300 mb-1">Username</label>
-              <input
+              <label htmlFor="username" className="mb-2 block text-xs font-bold uppercase tracking-widest text-slate-400">Username</label>
+              <Input
                 id="username"
                 type="text"
                 value={newUsername}
                 onChange={(e) => setNewUsername(e.target.value)}
-                className="w-full p-3 rounded-md bg-gray-700 border border-gray-600 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
                 placeholder="Your public username"
               />
+              <p className="mt-2 text-xs text-slate-500">This is your public name displayed to other players.</p>
             </div>
 
-            {/* Website removed by request */}
+            <ArenaButton type="submit" loading={saving || uploading} fullWidth>
+              {saving || uploading ? 'Saving...' : 'Update Profile'}
+            </ArenaButton>
+          </div>
+        </Panel>
+      </form>
 
-            {/* Stats Display */}
-            <div className="flex justify-around pt-4 border-t border-gray-700">
-              <div className="text-center">
-                <p className="text-2xl font-bold text-green-400">{profileData.games_won}</p>
-                <p className="text-sm text-gray-400">Games Won</p>
-              </div>
-              <div className="text-center">
-                <p className="text-2xl font-bold text-gray-300">{profileData.games_played}</p>
-                <p className="text-sm text-gray-400">Games Played</p>
-              </div>
-              <div className="text-center">
-                <p className="text-2xl font-bold text-yellow-300">{profileData.season_points}</p>
-                <p className="text-sm text-gray-400">Season Points</p>
-              </div>
-              <div className="text-center">
-                <p className="text-2xl font-bold text-purple-300">{profileData.gem_balance}</p>
-                <p className="text-sm text-gray-400">GEM</p>
-              </div>
-            </div>
-
-            {/* Submit Button */}
-            <div>
-              <button
-                type="submit"
-                disabled={loading || uploading}
-                className={`w-full font-bold py-3 px-6 rounded-md transition duration-200 ease-in-out ${loading || uploading ? 'bg-gray-600 cursor-not-allowed' : 'bg-purple-600 hover:bg-purple-700'}`}
-              >
-                {loading || uploading ? 'Saving...' : 'Update Profile'}
-              </button>
-            </div>
-          </form>
-        </div>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard label="Games Won" value={profileData.games_won} tone="amber" icon={<Trophy className="h-5 w-5 text-amber-200" aria-hidden />} />
+        <StatCard label="Games Played" value={profileData.games_played} tone="blue" icon={<UserCircle className="h-5 w-5 text-cyan-200" aria-hidden />} />
+        <StatCard label="Season Points" value={profileData.season_points} tone="violet" icon={<Zap className="h-5 w-5 text-violet-200" aria-hidden />} />
+        <StatCard label="GEM" value={profileData.gem_balance} tone="green" icon={<Gem className="h-5 w-5 text-emerald-200" aria-hidden />} />
       </div>
-    </div>
+
+      <Toast message={notification} tone={notification?.startsWith('Error') ? 'red' : 'green'} className="bottom-auto left-auto right-5 top-20 translate-x-0" />
+    </PageShell>
   );
 };
 

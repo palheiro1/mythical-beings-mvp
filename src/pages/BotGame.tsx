@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 // import { useNavigate } from 'react-router-dom';
+import { Bot as BotIcon, Info } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth.js';
 import { GameState } from '../game/types.js';
 import { initializeGame } from '../game/state.js';
@@ -13,6 +14,8 @@ import GameAnnouncer from '../components/game/GameAnnouncer.js';
 import { useTurnTimer } from '../hooks/useTurnTimer.js';
 import { useLocalGameActions } from '../hooks/useLocalGameActions.js';
 import { useCardRegistry } from '../context/CardRegistry.js';
+import GameShell from '../components/game/GameShell.js';
+import { Panel, SpinnerEmblem, StatusBadge } from '../components/ui/index.js';
 
 const BOT_ID = 'bot';
 const BOT_NAME = 'Bot';
@@ -123,44 +126,68 @@ const BotGame: React.FC = () => {
   });
 
   if (authLoading || !gameState) {
-    return <div className="flex justify-center items-center h-screen bg-gray-900 text-white">Loading Bot Game...</div>;
+    return <div className="arena-page flex h-[calc(100vh-var(--navbar-height))] items-center justify-center"><SpinnerEmblem label="Loading bot game..." /></div>;
   }
 
   const player = gameState.players[0];
   const opponent = gameState.players[1];
 
   return (
-    <div className="flex flex-col h-[calc(100vh-56px)] bg-gradient-to-br from-gray-800 via-gray-900 to-black text-white overflow-hidden">
-      <GameAnnouncer
-        turn={gameState.turn}
-        phase={(gameState.phase === 'action' || gameState.phase === 'knowledge' || gameState.phase === 'end') ? gameState.phase : 'end'}
-        isMyTurn={isMyTurn}
-        playerName={'You'}
-        opponentName={BOT_NAME}
-      />
-      <TopBar
-        player1Profile={{ id: '', username: 'You', display_name: null, avatar_url: null }}
-        player2Profile={{ id: '', username: BOT_NAME, display_name: null, avatar_url: null }}
-        player1Mana={player.power}
-        player2Mana={opponent.power}
-        turn={gameState.turn}
-        phase={gameState.phase}
-        currentPlayerId={player.id}
-        gameState={gameState}
-      />
-  <div className="flex-1 grid grid-cols-1 md:grid-cols-6 gap-2 p-2 min-h-0">
-        <div className="md:col-span-3 min-h-0" ref={(el) => { if (el) registry.register('table:anchor', el); }}>
-          <TableArea
-            currentPlayer={player}
-            opponentPlayer={opponent}
-            isMyTurn={isMyTurn}
-            phase={(gameState.phase === 'action' || gameState.phase === 'knowledge' || gameState.phase === 'end') ? gameState.phase : 'end'}
-            selectedKnowledgeId={selectedKnowledgeId}
-            onCreatureClickForSummon={handleCreatureClickForSummon}
-            onRotateCreature={handleRotateCreature}
-          />
-  </div>
-  <div className="md:col-span-1 min-h-0">
+    <GameShell
+      overlays={(
+        <GameAnnouncer
+          turn={gameState.turn}
+          phase={(gameState.phase === 'action' || gameState.phase === 'knowledge' || gameState.phase === 'end') ? gameState.phase : 'end'}
+          isMyTurn={isMyTurn}
+          playerName={'You'}
+          opponentName={BOT_NAME}
+        />
+      )}
+      topBar={(
+        <TopBar
+          player1Profile={{ id: '', username: 'You', display_name: null, avatar_url: null }}
+          player2Profile={{ id: '', username: BOT_NAME, display_name: null, avatar_url: null }}
+          player1Power={player.power}
+          player2Power={opponent.power}
+          turn={gameState.turn}
+          phase={gameState.phase}
+          currentPlayerId={player.id}
+          gameState={gameState}
+        />
+      )}
+      actionBar={(
+        <ActionBar
+          isMyTurn={isMyTurn}
+          phase={gameState.phase}
+          winner={gameState.winner}
+          actionsTaken={gameState.actionsTakenThisTurn}
+          actionsPerTurn={gameState.actionsPerTurn}
+          turnTimer={remainingTime}
+          isSpectator={false}
+          playerUsername={'You'}
+          opponentUsername={BOT_NAME}
+          onEndTurnClick={handleEndTurn}
+        />
+      )}
+    >
+      <div className="mb-2 grid grid-cols-1 gap-2 lg:grid-cols-[minmax(0,1fr)_360px]">
+        <Panel className="flex items-center justify-between gap-3 px-4 py-3">
+          <div className="flex items-center gap-3">
+            <StatusBadge tone="amber">
+              <BotIcon className="h-3.5 w-3.5" aria-hidden />
+              Training Mode
+            </StatusBadge>
+            <span className="text-sm text-slate-300">Practice against AI</span>
+          </div>
+          <div className="hidden items-center gap-2 text-sm text-cyan-200 sm:flex">
+            <Info className="h-4 w-4" aria-hidden />
+            No competitive rewards are earned.
+          </div>
+        </Panel>
+      </div>
+
+      <div className="grid h-[calc(100%-56px)] min-h-0 grid-cols-[minmax(190px,1fr)_minmax(520px,3fr)_minmax(180px,1fr)_minmax(190px,1fr)] gap-2">
+        <div className="min-h-0">
           <HandsColumn
             currentPlayerHand={player.hand}
             opponentPlayerHand={opponent.hand}
@@ -170,7 +197,18 @@ const BotGame: React.FC = () => {
             onHandCardClick={setSelectedKnowledgeId}
           />
         </div>
-  <div className="md:col-span-1 min-h-0" ref={(el) => { if (el) registry.register('market:anchor', el); }}>
+        <div className="min-h-0" ref={(el) => { if (el) registry.register('table:anchor', el); }}>
+          <TableArea
+            currentPlayer={player}
+            opponentPlayer={opponent}
+            isMyTurn={isMyTurn}
+            phase={(gameState.phase === 'action' || gameState.phase === 'knowledge' || gameState.phase === 'end') ? gameState.phase : 'end'}
+            selectedKnowledgeId={selectedKnowledgeId}
+            onCreatureClickForSummon={handleCreatureClickForSummon}
+            onRotateCreature={handleRotateCreature}
+          />
+        </div>
+        <div className="min-h-0" ref={(el) => { if (el) registry.register('market:anchor', el); }}>
           <MarketColumn
             marketCards={gameState.market}
             deckCount={gameState.knowledgeDeck.length}
@@ -179,23 +217,11 @@ const BotGame: React.FC = () => {
             onDrawKnowledge={handleDrawKnowledge}
           />
         </div>
-  <div className="md:col-span-1 min-h-0" ref={(el) => { if (el) registry.register('discard:anchor', el); }}>
+        <div className="min-h-0" ref={(el) => { if (el) registry.register('discard:anchor', el); }}>
           <Logs logs={gameState.log} />
         </div>
       </div>
-      <ActionBar
-        isMyTurn={isMyTurn}
-        phase={gameState.phase}
-        winner={gameState.winner}
-        actionsTaken={gameState.actionsTakenThisTurn}
-        actionsPerTurn={gameState.actionsPerTurn}
-        turnTimer={remainingTime}
-        isSpectator={false}
-        playerUsername={'You'}
-        opponentUsername={BOT_NAME}
-        onEndTurnClick={handleEndTurn}
-      />
-    </div>
+    </GameShell>
   );
 };
 

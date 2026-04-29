@@ -1,4 +1,6 @@
 import React from 'react';
+import { Clock3, Hourglass, SkipForward } from 'lucide-react';
+import { ArenaButton, StatusBadge } from '../ui/index.js';
 
 interface ActionBarProps {
   isMyTurn: boolean;
@@ -61,30 +63,47 @@ const ActionBar: React.FC<ActionBarProps> = ({
   const canEndTurn = isMyTurn && phase === 'action' && !winner;
 
   return (
-    <div className="flex items-center justify-between p-3 bg-gray-800/90 text-white h-16 border-t border-gray-700">
-      <div className="flex-1 pl-4" />
-      <div className="flex-1 text-center">
-        <span className="text-lg font-semibold">
+    <div className="border-t border-white/10 bg-[#060912]/92 px-3 py-3 text-white shadow-[0_-18px_45px_-30px_rgba(0,0,0,0.95)] backdrop-blur-xl">
+      <div className="grid min-h-16 grid-cols-1 items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 md:grid-cols-[240px_1fr_260px]">
+      <div className="flex items-center gap-2">
+        <StatusBadge tone={winner ? 'red' : isMyTurn ? 'violet' : 'muted'}>
+          {winner ? 'Game Over' : isMyTurn ? 'Your Turn' : isSpectator ? 'Spectating' : 'Opponent Turn'}
+        </StatusBadge>
+      </div>
+      <div className="text-center">
+        <span className="font-display text-lg font-bold text-slate-100">
           {getPhaseMessage()}
         </span>
       </div>
-      <div className="flex-1 pr-4 flex items-center justify-end gap-3">
+      <div className="flex items-center justify-end gap-3">
         {isMyTurn && phase === 'action' && (
-          <div className="h-2 w-24 bg-gray-700 rounded overflow-hidden" aria-hidden>
-            <div
-              className="h-full bg-gradient-to-r from-emerald-400 to-emerald-600 transition-all duration-500"
-              style={{ width: `${Math.max(0, Math.min(100, (turnTimer / (actionsPerTurn > 0 ? 30 : 30)) * 100))}%` }}
-            />
+          <div className="hidden min-w-[136px] items-center gap-2 sm:flex">
+            <Clock3 className="h-4 w-4 text-cyan-200" aria-hidden />
+            <div className="h-2 flex-1 overflow-hidden rounded-full bg-white/10" aria-hidden>
+              <div
+                className="h-full bg-gradient-to-r from-cyan-300 to-violet-400 transition-all duration-500"
+                style={{ width: `${Math.max(0, Math.min(100, (turnTimer / 30) * 100))}%` }}
+              />
+            </div>
+            <span className="w-8 text-right font-mono text-xs text-cyan-100">{turnTimer}s</span>
           </div>
         )}
+        {isMyTurn && phase === 'action' && (
+          <StatusBadge tone="amber">
+            <Hourglass className="h-3.5 w-3.5" aria-hidden />
+            {actionsLeft}/{validActionsPerTurn}
+          </StatusBadge>
+        )}
         {canEndTurn && (
-          <button
+          <ArenaButton
+            type="button"
             onClick={onEndTurnClick}
-            className="px-4 py-2 bg-red-600 hover:bg-red-500 active:scale-[0.98] rounded-md text-white font-semibold transition-all duration-150 shadow-sm hover:shadow-red-500/20"
+            icon={<SkipForward className="h-4 w-4" aria-hidden />}
           >
             End Turn
-          </button>
+          </ArenaButton>
         )}
+      </div>
       </div>
     </div>
   );

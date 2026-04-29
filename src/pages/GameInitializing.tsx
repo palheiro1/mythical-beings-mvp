@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { ArrowLeft, CheckCircle2, Circle, CircleDot, ShieldAlert } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { getGameDetails, getGameState, updateGameState } from '../utils/supabase';
 import { initializeGame } from '../game/state';
+import { ArenaButton, cn, CopyChip, ErrorRecoveryPanel, Panel, SpinnerEmblem, StatusBadge } from '../components/ui/index.js';
 
 const GameInitializing: React.FC = () => {
   const { gameId } = useParams<{ gameId: string }>();
@@ -135,46 +137,85 @@ const GameInitializing: React.FC = () => {
     initializeGameFlow();
   }, [gameId, user?.id, navigate]);
 
+  const steps = [
+    'Checking game status...',
+    'Initializing game state...',
+    'Saving game state...',
+    'Finalizing match setup...',
+  ];
+
+  const statusIndex = (() => {
+    if (status.includes('Checking')) return 0;
+    if (status.includes('Initializing') || status.includes('Waiting')) return 1;
+    if (status.includes('Saving')) return 2;
+    if (status.includes('ready') || status.includes('initialized') || status.includes('Launching')) return 3;
+    return 0;
+  })();
+
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
-        <div className="bg-red-800 border border-red-600 rounded-lg p-6 max-w-md">
-          <h2 className="text-red-200 text-xl font-bold mb-2">Initialization Error</h2>
-          <p className="text-red-300 mb-4">{error}</p>
-          <div className="flex gap-2">
-            <button
-              onClick={() => navigate('/lobby')}
-              className="px-4 py-2 bg-gray-700 text-gray-200 rounded hover:bg-gray-600 transition-colors"
-            >
-              Back to Lobby
-            </button>
-            <button
-              onClick={() => window.location.reload()}
-              className="px-4 py-2 bg-red-700 text-red-200 rounded hover:bg-red-600 transition-colors"
-            >
-              Retry
-            </button>
-          </div>
-        </div>
+      <div className="arena-page flex min-h-[calc(100vh-var(--navbar-height))] items-center justify-center px-4">
+        <ErrorRecoveryPanel
+          title="Initialization Error"
+          message={error}
+          onBack={() => navigate('/lobby')}
+          onRetry={() => window.location.reload()}
+          backLabel="Back to Lobby"
+        />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 flex items-center justify-center">
-      <div className="bg-gray-800 border border-gray-600 rounded-lg p-8 max-w-md text-center">
-        <div className="mb-6">
-          {/* Animated spinner */}
-          <div className="mx-auto w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-        </div>
-        
-        <h2 className="text-blue-200 text-2xl font-bold mb-4">Preparing Game</h2>
-        <p className="text-gray-300 text-lg mb-2">{status}</p>
-        <p className="text-gray-400 text-sm">This should only take a few seconds...</p>
-        
-        <div className="mt-6 pt-4 border-t border-gray-700">
-          <p className="text-gray-500 text-xs">Game ID: {gameId}</p>
-        </div>
+    <div className="arena-page relative flex min-h-[calc(100vh-var(--navbar-height))] items-center justify-center overflow-hidden px-4 py-10">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_25%,rgba(34,211,238,0.14),transparent_32%),radial-gradient(circle_at_28%_70%,rgba(139,92,246,0.12),transparent_28%)]" />
+      <div className="relative z-10 w-full max-w-xl">
+        <button
+          type="button"
+          onClick={() => navigate('/lobby')}
+          className="mb-5 inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-slate-300 transition hover:text-white"
+        >
+          <ArrowLeft className="h-4 w-4" aria-hidden />
+          Back to Lobby
+        </button>
+
+        <Panel className="p-6 text-center sm:p-8" glow>
+          <SpinnerEmblem />
+          <h2 className="mt-5 font-display text-4xl font-black text-slate-50">Preparing Game</h2>
+          <p className="mt-2 text-slate-300">Please wait while we set up your match.</p>
+          {gameId && <CopyChip label="Game ID" value={gameId} className="mx-auto mt-5 max-w-full" />}
+
+          <div className="mt-8 space-y-3 border-y border-white/10 py-6 text-left">
+            {steps.map((step, index) => {
+              const isComplete = statusIndex > index || status.includes('Launching');
+              const isActive = statusIndex === index && !status.includes('Launching');
+              const Icon = isComplete ? CheckCircle2 : isActive ? CircleDot : Circle;
+              return (
+                <div key={step} className="flex items-center justify-between gap-4 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <Icon className={cn('h-5 w-5 shrink-0', isComplete ? 'text-emerald-300' : isActive ? 'text-cyan-300' : 'text-slate-500')} aria-hidden />
+                    <span className={cn('truncate text-sm', isComplete ? 'text-slate-200' : isActive ? 'text-cyan-100' : 'text-slate-500')}>{step}</span>
+                  </div>
+                  <StatusBadge tone={isComplete ? 'green' : isActive ? 'violet' : 'muted'}>
+                    {isComplete ? 'Complete' : isActive ? 'In Progress' : 'Pending'}
+                  </StatusBadge>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="mt-5 flex items-center justify-center gap-2 text-sm text-slate-400">
+            <ShieldAlert className="h-4 w-4 text-violet-200" aria-hidden />
+            <span>Do not close this window. You will be redirected automatically when ready.</span>
+          </div>
+
+          <p className="mt-4 text-sm text-cyan-200">{status}</p>
+
+          <div className="mt-7 flex flex-col justify-center gap-3 sm:flex-row">
+            <ArenaButton type="button" variant="ghost" onClick={() => navigate('/lobby')}>Back to Lobby</ArenaButton>
+            <ArenaButton type="button" variant="secondary" onClick={() => window.location.reload()}>Retry</ArenaButton>
+          </div>
+        </Panel>
       </div>
     </div>
   );

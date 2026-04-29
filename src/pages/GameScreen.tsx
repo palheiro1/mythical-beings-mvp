@@ -16,6 +16,8 @@ import GameAnnouncer from '../components/game/GameAnnouncer.js';
 import CardMoveLayer from '../components/game/CardMoveLayer.js';
 import CombatFloaters from '../components/game/CombatFloaters.js';
 import { useCardRegistry } from '../context/CardRegistry.js';
+import GameShell from '../components/game/GameShell.js';
+import { ErrorRecoveryPanel, SpinnerEmblem } from '../components/ui/index.js';
 
 const GameScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -280,21 +282,21 @@ const GameScreen: React.FC = () => {
 
   if (authLoading || idLoading || gameLoading || profilesLoading) {
     console.log(`[Render] Showing Loading Game... (auth: ${authLoading}, id: ${idLoading}, game: ${gameLoading}, profiles: ${profilesLoading})`);
-    return <div className="flex justify-center items-center h-screen bg-gray-900 text-white">Loading Game...</div>;
+    return <div className="arena-page flex h-[calc(100vh-var(--navbar-height))] items-center justify-center"><SpinnerEmblem label="Loading game..." /></div>;
   }
 
   if (error) {
-    return <div className="flex justify-center items-center h-screen bg-gray-900 text-red-500">Error: {error} <button onClick={() => navigate('/lobby')} className="ml-2 underline">Back to Lobby</button></div>;
+    return <div className="arena-page flex h-[calc(100vh-var(--navbar-height))] items-center justify-center px-4"><ErrorRecoveryPanel message={error} onBack={() => navigate('/lobby')} backLabel="Back to Lobby" /></div>;
   }
 
   if (!gameState) {
     console.warn('[Render] Loading flags false, but game state is null. Error should be displayed.');
-    return <div className="flex justify-center items-center h-screen bg-gray-900 text-red-500">Error: Failed to load game state. <button onClick={() => navigate('/lobby')} className="ml-2 underline">Back to Lobby</button></div>;
+    return <div className="arena-page flex h-[calc(100vh-var(--navbar-height))] items-center justify-center px-4"><ErrorRecoveryPanel message="Failed to load game state." onBack={() => navigate('/lobby')} backLabel="Back to Lobby" /></div>;
   }
 
   if (gameState.players.length < 2) {
     console.warn('[Render] Game state loaded, but players array is invalid.', gameState);
-    return <div className="flex justify-center items-center h-screen bg-gray-900 text-gray-400">Error: Invalid game data received. <button onClick={() => navigate('/lobby')} className="ml-2 underline">Back to Lobby</button></div>;
+    return <div className="arena-page flex h-[calc(100vh-var(--navbar-height))] items-center justify-center px-4"><ErrorRecoveryPanel message="Invalid game data received." onBack={() => navigate('/lobby')} backLabel="Back to Lobby" /></div>;
   }
 
   const playerProfileId = player?.id || '';
@@ -359,33 +361,49 @@ const GameScreen: React.FC = () => {
 
   console.log('[Render] Rendering main game screen.');
   return (
-    <div className="flex flex-col h-[calc(100vh-56px)] bg-gradient-to-br from-gray-800 via-gray-900 to-black text-white overflow-hidden">
-  {/* Overlay layers for animations */}
-  <CardMoveLayer event={moveEvent} onDone={() => setMoveEvent(null)} />
-  <CombatFloaters event={damageEvent ? { key: Math.random().toString(36).slice(2), x: damageEvent.x, y: damageEvent.y, damage: damageEvent.damage, blocked: damageEvent.blocked, bypass: damageEvent.bypass } : null} onDone={() => setDamageEvent(null)} />
-      {/* Announcer overlay */}
-      <GameAnnouncer
-        turn={gameState.turn}
-        phase={mapPhaseForTableArea(gameState.phase)}
-        isMyTurn={isMyTurn}
-        playerName={playerProfile.username || undefined}
-        opponentName={opponentProfile.username || undefined}
-      />
-  <TopBar
+    <GameShell
+      overlays={(
+        <>
+          <CardMoveLayer event={moveEvent} onDone={() => setMoveEvent(null)} />
+          <CombatFloaters event={damageEvent ? { key: Math.random().toString(36).slice(2), x: damageEvent.x, y: damageEvent.y, damage: damageEvent.damage, blocked: damageEvent.blocked, bypass: damageEvent.bypass } : null} onDone={() => setDamageEvent(null)} />
+          <GameAnnouncer
+            turn={gameState.turn}
+            phase={mapPhaseForTableArea(gameState.phase)}
+            isMyTurn={isMyTurn}
+            playerName={playerProfile.username || undefined}
+            opponentName={opponentProfile.username || undefined}
+          />
+        </>
+      )}
+      topBar={(
+        <TopBar
         player1Profile={playerIndex === 0 ? { ...playerProfile, username: 'You' } : opponentProfile}
         player2Profile={playerIndex === 1 ? { ...playerProfile, username: 'You' } : opponentProfile}
-        player1Mana={gameState.players[0]?.power || 0}
-        player2Mana={gameState.players[1]?.power || 0}
+        player1Power={gameState.players[0]?.power || 0}
+        player2Power={gameState.players[1]?.power || 0}
         turn={gameState.turn}
         phase={gameState.phase}
   currentPlayerId={currentPlayerId || undefined}
   gameState={gameState}
       />
+      )}
+      actionBar={(
+        <ActionBar
+          isMyTurn={isMyTurn}
+          phase={gameState.phase}
+          winner={gameState.winner}
+          actionsTaken={gameState.actionsTakenThisTurn}
+          turnTimer={remainingTime}
+          actionsPerTurn={gameState.actionsPerTurn}
+          isSpectator={playerIndex === -1}
+          onEndTurnClick={handleEndTurn}
+        />
+      )}
+    >
 
-    {/* Main Content Area - Now 4 columns */}
-    <div className="flex-grow min-h-0 flex flex-row overflow-hidden p-2 gap-2">
+    <div className="grid h-full min-h-0 grid-cols-[minmax(190px,1fr)_minmax(520px,3fr)_minmax(180px,1fr)_minmax(190px,1fr)] gap-2 overflow-hidden">
         {/* Hands Column - Adjusted width */}
-  <div className="w-1/6 h-full min-h-0" id={`hand-anchor-${currentPlayerId || 'unknown'}`} ref={(el) => { if (el && currentPlayerId) registry.register(`hand:${currentPlayerId}`, el); }}>
+  <div className="h-full min-h-0" id={`hand-anchor-${currentPlayerId || 'unknown'}`} ref={(el) => { if (el && currentPlayerId) registry.register(`hand:${currentPlayerId}`, el); }}>
           {player && opponent ? (
             <HandsColumn
               currentPlayerHand={player.hand}
@@ -401,7 +419,7 @@ const GameScreen: React.FC = () => {
         </div>
 
     {/* Table Area - Adjusted width */}
-  <div className="w-3/6 h-full min-h-0"> {/* Adjusted from 3/5 */}
+  <div className="h-full min-h-0">
           {player && opponent ? (
             <TableArea
               currentPlayer={player}
@@ -418,7 +436,7 @@ const GameScreen: React.FC = () => {
         </div>
 
     {/* Market Column - Adjusted width */}
-  <div className="w-1/6 h-full min-h-0" ref={(el) => { if (el) registry.register('market:anchor', el); }}> {/* Adjusted from 1/5 */}
+  <div className="h-full min-h-0" ref={(el) => { if (el) registry.register('market:anchor', el); }}>
           <MarketColumn
             marketCards={gameState.market}
             deckCount={gameState.knowledgeDeck.length}
@@ -429,23 +447,11 @@ const GameScreen: React.FC = () => {
         </div>
 
     {/* Logs Column - New dedicated column */}
-  <div className="w-1/6 h-full min-h-0" ref={(el) => { if (el) registry.register('discard:anchor', el); }}> {/* New column for logs and discard anchor */}
+  <div className="h-full min-h-0" ref={(el) => { if (el) registry.register('discard:anchor', el); }}>
      <Logs logs={gameState.log} />
         </div>
       </div>
-
-      {/* Action Bar */}
-      <ActionBar
-        isMyTurn={isMyTurn}
-        phase={gameState.phase}
-        winner={gameState.winner}
-        actionsTaken={gameState.actionsTakenThisTurn}
-        turnTimer={remainingTime} // Pass remainingTime to ActionBar
-        actionsPerTurn={gameState.actionsPerTurn}
-        isSpectator={playerIndex === -1}
-        onEndTurnClick={handleEndTurn} // Pass handleEndTurn for the button
-      />
-    </div>
+    </GameShell>
   );
 };
 

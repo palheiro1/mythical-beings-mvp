@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { ArrowLeft, CheckCircle2, Clock3, ShieldCheck } from 'lucide-react';
 import Card from '../components/Card.js';
 import GameStateDebug from '../components/GameStateDebug.js';
 import { Creature } from '../game/types.js';
@@ -8,6 +9,7 @@ import { useAuth } from '../context/AuthProvider.js';
 import { NFTSelectionNavigationManager } from '../utils/NavigationManager.js';
 // --- Import the base creature data ---
 import creatureData from '../assets/creatures.json' with { type: 'json' };
+import { ArenaButton, cn, CopyChip, ErrorRecoveryPanel, Panel, SpinnerEmblem, StatusBadge } from '../components/ui/index.js';
 
 // --- Define ALL_CREATURES constant ---
 const ALL_CREATURES: Creature[] = creatureData as Creature[];
@@ -260,117 +262,152 @@ const NFTSelectionSimplified: React.FC = () => {
   // Render loading state
   if (authError) {
     return (
-      <div className="min-h-screen bg-gray-900 text-red-500 flex items-center justify-center">
-        Error identifying player: {authError}
+      <div className="arena-page flex min-h-[calc(100vh-var(--navbar-height))] items-center justify-center px-4">
+        <ErrorRecoveryPanel title="Could not identify player" message={authError} onBack={() => navigate('/lobby')} backLabel="Back to Lobby" />
       </div>
     );
   }
 
   if (isLoadingHand) {
     return (
-      <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">
-        Loading your hand... (Waiting for cards to be dealt)
+      <div className="arena-page flex min-h-[calc(100vh-var(--navbar-height))] items-center justify-center px-4">
+        <SpinnerEmblem label="Loading your hand... Waiting for cards to be dealt." />
       </div>
     );
   }
 
   if (error && !lost) {
     return (
-      <div className="min-h-screen bg-gray-900 text-red-500 flex flex-col items-center justify-center">
-        <div>Error: {error}</div>
+      <div className="arena-page flex min-h-[calc(100vh-var(--navbar-height))] items-center justify-center px-4">
+        <ErrorRecoveryPanel title="Could not load selection" message={error} onBack={() => navigate('/lobby')} onRetry={() => window.location.reload()} backLabel="Back to Lobby" />
       </div>
     );
   }
 
   if (!lost && dealtCreatures.length === 0) {
     return (
-      <div className="min-h-screen bg-gray-900 text-yellow-500 flex items-center justify-center">
-        Could not load your hand. Please try refreshing.
+      <div className="arena-page flex min-h-[calc(100vh-var(--navbar-height))] items-center justify-center px-4">
+        <ErrorRecoveryPanel title="No cards available" message="Could not load your hand. Please refresh or return to the lobby." onBack={() => navigate('/lobby')} onRetry={() => window.location.reload()} backLabel="Back to Lobby" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white flex flex-col items-center justify-center p-6">
+    <div className="arena-page min-h-[calc(100vh-var(--navbar-height))] px-4 py-8 text-white sm:px-6 lg:px-8">
       {/* Debug Panel — dev only */}
       {import.meta.env.DEV && <GameStateDebug gameId={gameId || ''} className="fixed top-4 right-4 z-50" />}
-      
-      <div className="w-full max-w-4xl bg-gray-800 p-8 rounded-lg shadow-xl relative">
-        <div className="flex justify-between items-center mb-6 pb-4 border-b border-gray-700">
-          <h1 className="text-2xl font-bold text-yellow-400">Select Your Team (Choose 3)</h1>
-          <p className="text-xs text-gray-500">Game ID: {gameId || 'Loading...'}</p>
-          <div className={`text-3xl font-bold px-4 py-1 rounded ${timer <= 10 ? 'text-red-500 animate-pulse' : 'text-white'}`}>
-            {timer}s
-          </div>
+
+      <div className="mx-auto w-full max-w-7xl">
+        <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <button type="button" onClick={() => navigate('/lobby')} className="inline-flex w-fit items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-slate-300 transition hover:text-white">
+            <ArrowLeft className="h-4 w-4" aria-hidden />
+            Back
+          </button>
+          {gameId && <CopyChip label="Game ID" value={gameId} />}
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-6 justify-items-center mb-8">
-          {dealtCreatures.map((card) => (
-            <div
-              key={card.id}
-              style={{ width: CARD_WIDTH_DESKTOP, height: getCardHeight(CARD_WIDTH_DESKTOP) }}
-              className={`relative group transform transition-transform duration-300 ease-in-out m-1
-                ${lost || waiting || isConfirming ? 'cursor-not-allowed opacity-70' : 'cursor-pointer hover:scale-105'}`}
-              onClick={() => toggleSelect(card.id)}
-            >
-              <Card
-                card={card}
-                isSelected={selected.includes(card.id)}
-                isDisabled={lost || waiting || isConfirming}
-              />
-              {selected.includes(card.id) && (
-                <div className="absolute top-2 right-2 bg-yellow-400 text-black rounded-full p-1 leading-none z-10 shadow-lg">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                  </svg>
+        <Panel className="p-5 sm:p-8" glow>
+          <div className="mb-8 grid gap-6 border-b border-white/10 pb-6 lg:grid-cols-[1fr_auto] lg:items-center">
+            <div className="text-center lg:text-left">
+              <StatusBadge tone={selected.length === 3 ? 'green' : 'violet'} className="mb-4">
+                <ShieldCheck className="h-3.5 w-3.5" aria-hidden />
+                {selected.length === 3 ? 'Ready' : 'Choose exactly 3'}
+              </StatusBadge>
+              <h1 className="font-display text-4xl font-black text-slate-50">Select Your Team (Choose 3)</h1>
+              <p className="mt-3 text-slate-300">Choose exactly 3 creatures to enter the arena. You cannot select more than 3.</p>
+            </div>
+            <div className={cn('mx-auto grid h-28 w-28 place-items-center rounded-full border-4 bg-cyan-500/10 text-center shadow-[0_0_34px_rgba(34,211,238,0.24)] lg:mx-0', timer <= 10 ? 'border-red-300 text-red-200 animate-pulse' : 'border-cyan-300/50 text-cyan-100')}>
+              <div>
+                <Clock3 className="mx-auto mb-1 h-5 w-5" aria-hidden />
+                <div className="text-4xl font-black leading-none">{timer}</div>
+                <div className="text-[10px] font-bold uppercase tracking-widest">sec</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="mb-8 grid grid-cols-2 justify-items-center gap-4 sm:grid-cols-3 lg:grid-cols-5">
+            {dealtCreatures.map((card) => {
+              const isSelected = selected.includes(card.id);
+              return (
+                <div
+                  key={card.id}
+                  style={{ width: CARD_WIDTH_DESKTOP, height: getCardHeight(CARD_WIDTH_DESKTOP) }}
+                  className={cn(
+                    'card-readable relative m-1 rounded-[14px] transition duration-300',
+                    lost || waiting || isConfirming ? 'cursor-not-allowed opacity-65' : 'cursor-pointer hover:-translate-y-1 hover:scale-[1.03]',
+                    isSelected && 'shadow-[0_0_28px_rgba(246,184,59,0.45)]',
+                  )}
+                  onClick={() => toggleSelect(card.id)}
+                >
+                  <Card
+                    card={card}
+                    isSelected={isSelected}
+                    isDisabled={lost || waiting || isConfirming}
+                  />
+                  {isSelected && (
+                    <div className="absolute right-2 top-2 z-10 grid h-8 w-8 place-items-center rounded-full border border-amber-200 bg-amber-400 text-black shadow-lg">
+                      <CheckCircle2 className="h-5 w-5" aria-hidden />
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-          ))}
-        </div>
+              );
+            })}
+          </div>
 
-        {selected.length > 0 && (
-          <div className="mt-8 pt-4 border-t border-gray-700">
-            <h2 className="text-xl font-semibold text-center mb-4 text-yellow-300">Your Team ({selected.length}/3)</h2>
-            <div className="flex justify-center items-center gap-4 flex-wrap">
-              {dealtCreatures
-                .filter(card => selected.includes(card.id))
-                .map(card => (
-                  <div
-                    key={`selected-${card.id}`}
-                    style={{ width: '100px', height: getCardHeight('100px') }}
-                    className="relative shadow-md rounded-[10px] overflow-hidden border-2 border-gray-600 cursor-pointer hover:border-red-500 transition-colors"
-                    onClick={() => toggleSelect(card.id)}
-                  >
-                    <Card
-                      card={card}
-                      isSelected={true}
-                      isDisabled={lost || waiting || isConfirming}
-                    />
+          <div className="rounded-2xl border border-white/10 bg-black/25 p-4 sm:p-5">
+            <div className="grid gap-5 lg:grid-cols-[1fr_auto_auto] lg:items-center">
+              <div>
+                <h2 className="font-display text-2xl font-bold text-amber-200">Your Team ({selected.length}/3)</h2>
+                <p className="mt-1 text-sm text-slate-400">Click a selected mini card to remove it before confirmation.</p>
+                {selected.length > 0 && (
+                  <div className="mt-4 flex flex-wrap gap-3">
+                    {dealtCreatures
+                      .filter(card => selected.includes(card.id))
+                      .map(card => (
+                        <div
+                          key={`selected-${card.id}`}
+                          style={{ width: '86px', height: getCardHeight('86px') }}
+                          className="relative cursor-pointer overflow-hidden rounded-[10px] border-2 border-amber-300 shadow-[0_0_18px_rgba(246,184,59,0.28)] transition hover:border-red-300"
+                          onClick={() => toggleSelect(card.id)}
+                        >
+                          <Card
+                            card={card}
+                            isSelected={true}
+                            isDisabled={lost || waiting || isConfirming}
+                          />
+                        </div>
+                      ))}
                   </div>
-                ))}
+                )}
+              </div>
+
+              <div className="grid h-20 w-20 place-items-center rounded-2xl border border-amber-300/30 bg-amber-500/10 text-center">
+                <div>
+                  <div className="text-3xl font-black text-amber-200">{selected.length}/3</div>
+                  <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Selected</div>
+                </div>
+              </div>
+
+              <div className="text-center">
+                {lost ? (
+                  <StatusBadge tone="red">Time Expired - You Lost!</StatusBadge>
+                ) : waiting ? (
+                  <StatusBadge tone="green">Waiting for opponent...</StatusBadge>
+                ) : (
+                  <ArenaButton
+                    type="button"
+                    onClick={handleConfirm}
+                    disabled={selected.length !== 3}
+                    loading={isConfirming}
+                    size="lg"
+                  >
+                    {isConfirming ? 'Confirming...' : `Confirm Selection (${selected.length}/3)`}
+                  </ArenaButton>
+                )}
+              </div>
             </div>
           </div>
-        )}
-
-        <div className="text-center h-16 flex flex-col justify-center items-center mt-12">
-          {lost ? (
-            <p className="text-2xl font-bold text-red-500">Time Expired - You Lost!</p>
-          ) : waiting ? (
-            <p className="text-xl font-semibold text-green-400 animate-pulse">Waiting for opponent...</p>
-          ) : (
-            <button
-              onClick={handleConfirm}
-              disabled={selected.length !== 3 || isConfirming}
-              className={`font-bold py-3 px-10 rounded-md transition duration-200 ease-in-out 
-                ${selected.length !== 3 || isConfirming
-                  ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
-                  : 'bg-red-600 hover:bg-red-700 text-white hover:scale-105 active:scale-100'}`}
-            >
-              {isConfirming ? 'Confirming...' : `Confirm Selection (${selected.length}/3)`}
-            </button>
-          )}
-        </div>
+        </Panel>
       </div>
     </div>
   );

@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useCardRegistry } from '../context/CardRegistry.js';
 import { Creature, Knowledge } from '../game/types.js';
+import { cn } from './ui/index.js';
 
 interface CardProps {
   card: Creature | Knowledge;
@@ -117,15 +118,12 @@ const Card: React.FC<CardProps> = ({ card, onClick, isSelected, rotation = 0, sh
     <>
       <div
         ref={cardRef} // Attach ref to the main card element
-        className={`
-          relative w-full h-full
-          bg-gray-700 rounded-[10px] shadow-md overflow-hidden
-          transition-transform duration-200 ease-out
-          ${onClick && !isDisabled ? 'cursor-pointer hover:scale-[1.02]' : 'cursor-default'}
-          ${isSelected ? 'border-yellow-400 border-2 ring-2 ring-yellow-400' : 'border-2 border-gray-500'}
-          ${isDisabled ? 'opacity-80' : ''}
-          z-10
-        `}
+        className={cn(
+          'relative z-10 h-full w-full overflow-hidden rounded-[12px] bg-slate-800 shadow-[0_12px_28px_rgba(0,0,0,0.34)] transition-transform duration-200 ease-out',
+          onClick && !isDisabled ? 'cursor-pointer hover:scale-[1.02]' : 'cursor-default',
+          isSelected ? 'border-2 border-amber-300 ring-2 ring-amber-300/70' : 'border border-white/15',
+          isDisabled ? 'opacity-80' : '',
+        )}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeaveOriginalCard} // Use the specific handler for leaving the original card
         onClick={handleClick}
@@ -157,11 +155,11 @@ const Card: React.FC<CardProps> = ({ card, onClick, isSelected, rotation = 0, sh
       {/* Zoomed Card Overlay */}
       {isZoomed && (
         <div
-          className="fixed top-0 left-0 w-full h-full bg-black bg-opacity-50 z-40" // Backdrop
+          className="fixed left-0 top-0 z-40 h-full w-full bg-black/60 backdrop-blur-sm" // Backdrop
           onClick={handleCloseZoom} // Use the closing handler
         >
           <div
-            className="fixed bg-gray-700 rounded-[10px] shadow-xl overflow-hidden border-4 border-yellow-500 z-50 pointer-events-auto" // Added pointer-events-auto to ensure leave event fires
+            className="pointer-events-auto fixed z-50 overflow-hidden rounded-[14px] border-4 border-amber-300 bg-slate-800 shadow-[0_0_48px_rgba(246,184,59,0.35)]" // Added pointer-events-auto to ensure leave event fires
             style={{
               ...zoomPosition,
               width: `${BASE_CARD_WIDTH_PX * ZOOM_SCALE}px`,

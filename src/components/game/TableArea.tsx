@@ -2,6 +2,7 @@ import React from 'react';
 import { Creature, Knowledge, PlayerState } from '../../game/types.js';
 import Card from '../Card.js'; // Adjust path if needed
 import { useCardRegistry } from '../../context/CardRegistry.js';
+import { cn } from '../ui/index.js';
 
 interface TableAreaProps {
     currentPlayer: PlayerState;
@@ -38,7 +39,7 @@ const TableArea: React.FC<TableAreaProps> = ({
         // Outer div fills the grid cell and centers content
         <div key={key} className="w-full h-full flex items-center justify-center p-0.5" ref={(el) => { if (el) registry.register(`table:${key}`, el as unknown as HTMLElement | null); }}>
             {/* Inner div enforces aspect ratio and takes full height of the cell */}
-            <div className={`h-full aspect-[2/3] ${onClick && !isDisabled ? 'transition-transform hover:scale-[1.02]' : ''}`}>
+            <div className={cn('h-full aspect-[2/3] rounded-xl', onClick && !isDisabled ? 'transition-transform hover:-translate-y-0.5 hover:scale-[1.02]' : '')}>
                 {cardData ? (
                     <Card
                         card={cardData}
@@ -49,7 +50,9 @@ const TableArea: React.FC<TableAreaProps> = ({
                     />
                 ) : (
                     // Make placeholder also respect aspect ratio
-                    <div className="w-full h-full border border-dashed border-gray-500/50 rounded-lg"></div>
+                    <div className="grid h-full w-full place-items-center rounded-xl border border-dashed border-violet-200/20 bg-white/[0.025]">
+                        <div className="h-10 w-10 rounded-full border border-white/10 bg-violet-500/10 opacity-50" />
+                    </div>
                 )}
             </div>
         </div>
@@ -58,7 +61,7 @@ const TableArea: React.FC<TableAreaProps> = ({
 
     return (
         // Explicitly define rows with minmax(0, 1fr) to allow shrinking
-        <div className="grid grid-cols-3 grid-rows-[repeat(4,minmax(0,1fr))] gap-1 justify-items-center items-center w-full h-full bg-black/10 rounded p-1">
+        <div className="grid h-full w-full grid-cols-3 grid-rows-[repeat(4,minmax(0,1fr))] items-center justify-items-center gap-2 rounded-2xl border border-white/10 bg-[radial-gradient(circle_at_50%_50%,rgba(139,92,246,0.16),transparent_42%),rgba(255,255,255,0.03)] p-3 shadow-inner">
             {/* Row 1: Opponent Beings */}
             {opponentPlayer.creatures.map((creature: Creature) => renderSlot(
                 creature,

@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from 'react';
+import { ScrollText } from 'lucide-react';
 
 interface LogsProps {
   logs: string[];
@@ -24,12 +25,15 @@ const Logs: React.FC<LogsProps> = ({ logs }) => {
   });
 
   return (
-    <div className="w-full h-full bg-gray-900/80 text-white rounded-lg shadow-inner overflow-hidden flex flex-col p-2 border border-gray-600">
-      <h3 className="text-sm font-semibold text-yellow-400 mb-1 px-1 border-b border-gray-700">Game Log</h3>
-      <div className="flex-grow overflow-y-auto text-xs space-y-1 pr-1">
+    <div className="flex h-full w-full flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#070b15]/90 p-3 text-white shadow-inner">
+      <h3 className="mb-2 flex items-center gap-2 border-b border-white/10 px-1 pb-2 text-sm font-bold uppercase tracking-wide text-amber-200">
+        <ScrollText className="h-4 w-4" aria-hidden />
+        Game Log
+      </h3>
+      <div className="arena-scrollbar flex-grow space-y-1 overflow-y-auto pr-1 text-xs">
         {/* Render the filtered logs */} 
         {filteredLogs.map((log, index) => (
-          <p key={index} className="font-mono leading-tight py-0.5 my-0.5">{log}</p>
+          <p key={index} className="my-0.5 rounded-lg bg-white/[0.025] px-2 py-1 font-mono leading-tight text-slate-300">{log}</p>
         ))}
         <div ref={logsEndRef} /> {/* Invisible element to scroll to */}
       </div>

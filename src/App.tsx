@@ -5,6 +5,7 @@ import { CardRegistryProvider } from './context/CardRegistry.js';
 import Home from './pages/Home.js';
 import ProtectedRoute from './components/ProtectedRoute.js';
 import NavBar from './components/NavBar.js';
+import { SpinnerEmblem } from './components/ui/index.js';
 import { useAuthProfileSync } from './hooks/useAuthProfileSync.js';
 
 // Moralis is now initialized in main.tsx to ensure polyfills are loaded first
@@ -26,7 +27,13 @@ function AppContent() {
   return (
     <Router>
       <NavBar />
-      <Suspense fallback={<div className="p-6 text-white">Loading...</div>}>
+      <Suspense
+        fallback={
+          <div className="arena-page grid min-h-[calc(100vh-var(--navbar-height))] place-items-center p-6 text-white">
+            <SpinnerEmblem label="Loading arena..." />
+          </div>
+        }
+      >
         <Routes>
           {/* Public Route */}
           <Route path="/" element={<Home />} />

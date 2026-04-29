@@ -1,6 +1,26 @@
 @import "tailwindcss/theme" layer(theme);
 @import "tailwindcss/utilities" layer(utilities);
 
+:root {
+  --arena-bg-950: #03050b;
+  --arena-bg-900: #060912;
+  --arena-bg-850: #080d19;
+  --arena-bg-800: #0b1020;
+  --arena-bg-700: #11182a;
+  --arena-border: rgba(255, 255, 255, 0.1);
+  --arena-border-strong: rgba(246, 184, 59, 0.7);
+  --arena-amber: #f6b83b;
+  --arena-amber-deep: #d98a18;
+  --arena-violet: #8b5cf6;
+  --arena-cyan: #22d3ee;
+  --arena-green: #22c55e;
+  --arena-red: #ef4444;
+  --arena-text: #f8fafc;
+  --arena-text-soft: #cbd5e1;
+  --arena-text-muted: #64748b;
+  --navbar-height: 60px;
+}
+
 /* Basic reset for consistent box model */
 *,
 *::before,
@@ -11,12 +31,130 @@
 /* Clean base styles */
 html,
 body {
-  height: auto;
-  width: auto;
+  min-height: 100%;
+  width: 100%;
   margin: 0;
   padding: 0;
   color-scheme: dark; /* Force dark mode */
-  background: linear-gradient(to bottom right, #111827, #312e81, #4c1d95); /* Added from index.html */
+  background:
+    radial-gradient(circle at 18% 8%, rgba(139, 92, 246, 0.2), transparent 30%),
+    radial-gradient(circle at 82% 14%, rgba(34, 211, 238, 0.14), transparent 28%),
+    linear-gradient(135deg, var(--arena-bg-950), var(--arena-bg-900) 45%, #090615);
+  color: var(--arena-text);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+::selection {
+  background: rgba(246, 184, 59, 0.35);
+  color: #fff;
+}
+
+.font-display {
+  font-family: Georgia, "Times New Roman", serif;
+  letter-spacing: 0.02em;
+}
+
+.arena-page {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 50% -10%, rgba(139, 92, 246, 0.18), transparent 35%),
+    radial-gradient(circle at 12% 24%, rgba(34, 211, 238, 0.08), transparent 28%),
+    linear-gradient(180deg, rgba(6, 9, 18, 0.98), rgba(3, 5, 11, 0.98));
+}
+
+.arena-surface {
+  background:
+    linear-gradient(180deg, rgba(17, 24, 42, 0.86), rgba(8, 13, 25, 0.9)),
+    radial-gradient(circle at 50% 0%, rgba(139, 92, 246, 0.12), transparent 42%);
+  border: 1px solid var(--arena-border);
+  box-shadow: 0 22px 80px rgba(0, 0, 0, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(14px);
+}
+
+.arena-border-glow {
+  box-shadow:
+    0 0 0 1px rgba(246, 184, 59, 0.28),
+    0 0 36px rgba(139, 92, 246, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.arena-card-backdrop {
+  background:
+    linear-gradient(rgba(6, 9, 18, 0.7), rgba(6, 9, 18, 0.92)),
+    url("/images/kukul.png") center / cover no-repeat;
+}
+
+.arena-banner {
+  background:
+    linear-gradient(90deg, rgba(6, 9, 18, 0.92), rgba(6, 9, 18, 0.44), rgba(6, 9, 18, 0.9)),
+    url("/images/banner.png") center / contain no-repeat,
+    radial-gradient(circle at 70% 20%, rgba(34, 211, 238, 0.15), transparent 35%),
+    linear-gradient(135deg, #121832, #080b16);
+}
+
+.arena-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(139, 92, 246, 0.75) rgba(255, 255, 255, 0.06);
+}
+
+.arena-scrollbar::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.arena-scrollbar::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 999px;
+}
+
+.arena-scrollbar::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, var(--arena-violet), var(--arena-cyan));
+  border-radius: 999px;
+}
+
+.card-readable {
+  filter: drop-shadow(0 12px 24px rgba(0, 0, 0, 0.34));
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes arenaPulse {
+  0%, 100% {
+    box-shadow: 0 0 22px rgba(34, 211, 238, 0.28);
+  }
+  50% {
+    box-shadow: 0 0 42px rgba(139, 92, 246, 0.42);
+  }
+}
+
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
 }
 
 /* Simple dark mode override */

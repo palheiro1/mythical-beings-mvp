@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Bot, Clock, Play, PlusCircle, RefreshCw, Swords, Users } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth.js';
 import {
   createPlayHubSession,
@@ -13,6 +14,7 @@ import {
   setPlayHubReady,
   supabase,
 } from '../utils/supabase.js';
+import { ArenaButton, CopyChip, EmptyState, Input, PageShell, Panel, Skeleton, StatusBadge, Toast } from '../components/ui/index.js';
 
 interface SessionWithHost extends PlayHubSession {
   hostName: string | null;
@@ -182,134 +184,193 @@ const Lobby: React.FC = () => {
   const isLoading = authLoading || loadingSessions;
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white relative overflow-hidden pt-16">
-      <div className="max-w-7xl mx-auto px-6 md:px-8 py-8">
-        <div className="flex justify-center mb-4">
-          <img src="/images/banner.png" alt="Mythical Beings" className="w-full max-w-xl h-auto rounded-lg shadow-lg object-contain max-h-40 sm:max-h-48 md:max-h-56 lg:max-h-64" />
+    <PageShell contentClassName="space-y-6 pb-24">
+      <Panel className="arena-banner overflow-hidden p-6 sm:p-8" glow>
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <StatusBadge tone="violet" className="mb-4">
+              <Swords className="h-3.5 w-3.5" aria-hidden />
+              Play Hub
+            </StatusBadge>
+            <h1 className="font-display text-4xl font-black uppercase text-slate-50 sm:text-5xl">Welcome to Mythical Arena</h1>
+            <p className="mt-3 max-w-2xl text-slate-300">Create a duel, join by code, rejoin an active match, or train locally against the bot.</p>
+          </div>
+          <div className="grid min-w-[220px] gap-3 rounded-2xl border border-white/10 bg-black/25 p-4">
+            <div className="flex items-center justify-between gap-4">
+              <span className="text-sm text-slate-400">Available</span>
+              <strong className="text-2xl text-emerald-300">{availableSessions.length}</strong>
+            </div>
+            <div className="flex items-center justify-between gap-4">
+              <span className="text-sm text-slate-400">Active</span>
+              <strong className="text-2xl text-cyan-300">{activeSessions.length}</strong>
+            </div>
+          </div>
         </div>
+      </Panel>
 
-        {isLoading ? (
-          <div className="text-center text-gray-400 py-10">Loading lobby...</div>
-        ) : authError ? (
-          <div className="text-center text-red-400 py-10">Error: {authError}</div>
-        ) : error ? (
-          <div className="text-center text-red-400 py-10">Error loading sessions: {error}</div>
-        ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="bg-gray-800 bg-opacity-70 p-6 rounded-xl shadow-xl flex flex-col gap-4">
-              <h2 className="text-2xl font-semibold text-center text-gray-100">Create Or Join</h2>
-              <button
-                onClick={handleCreateSession}
-                disabled={isCreating}
-                className={`text-white text-lg font-semibold py-3 px-6 rounded-md transition-colors duration-200 w-full ${isCreating ? 'bg-gray-600 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'}`}
-              >
-                {isCreating ? 'Creating...' : 'Create Session'}
-              </button>
-
-              <div className="border-t border-gray-700 pt-4">
-                <label htmlFor="join-code" className="block text-sm font-medium text-gray-300 mb-2">Session Code</label>
-                <div className="flex gap-2">
-                  <input
-                    id="join-code"
-                    value={joinCode}
-                    onChange={(event) => setJoinCode(event.target.value.toUpperCase())}
-                    onKeyDown={(event) => {
-                      if (event.key === 'Enter') void joinSessionByCode(joinCode);
-                    }}
-                    className="flex-1 p-3 rounded-md bg-gray-700 border border-gray-600 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 uppercase"
-                    placeholder="ABC123"
-                  />
-                  <button
-                    onClick={() => void joinSessionByCode(joinCode)}
-                    disabled={isJoining}
-                    className={`px-4 rounded-md text-white font-semibold ${isJoining ? 'bg-gray-600 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}`}
-                  >
-                    Join
-                  </button>
-                </div>
-              </div>
-
-              <button
-                onClick={() => navigate('/bot-game')}
-                className="bg-blue-600 hover:bg-blue-700 text-white text-lg font-semibold py-3 px-6 rounded-md transition-colors duration-200 w-full"
-              >
-                Train with a bot
-              </button>
+      {isLoading ? (
+        <div className="grid gap-5 lg:grid-cols-[320px_minmax(0,1fr)_380px]">
+          <Skeleton className="h-[420px]" />
+          <Skeleton className="h-[420px]" />
+          <Skeleton className="h-[420px]" />
+        </div>
+      ) : authError ? (
+        <Panel className="p-6 text-center" glow>
+          <StatusBadge tone="red">Authentication</StatusBadge>
+          <p className="mt-4 text-red-100">We could not verify your session. Please sign in again.</p>
+        </Panel>
+      ) : error ? (
+        <Panel className="p-6 text-center" glow>
+          <StatusBadge tone="red">Sessions unavailable</StatusBadge>
+          <p className="mt-4 text-slate-300">We could not load sessions right now.</p>
+          <ArenaButton type="button" variant="secondary" className="mt-5" icon={<RefreshCw className="h-4 w-4" aria-hidden />} onClick={() => void fetchSessions()}>
+            Retry
+          </ArenaButton>
+        </Panel>
+      ) : (
+        <div className="grid gap-5 lg:grid-cols-[320px_minmax(0,1fr)_380px]">
+          <Panel className="p-5">
+            <div className="mb-5 flex items-center gap-3">
+              <Users className="h-5 w-5 text-violet-200" aria-hidden />
+              <h2 className="font-display text-xl font-bold uppercase text-slate-100">Create or Join</h2>
             </div>
 
-            <div className="bg-gray-800 bg-opacity-70 p-6 rounded-xl shadow-xl flex flex-col gap-4">
-              <h2 className="text-2xl font-semibold text-center text-gray-100">Available Sessions</h2>
-              <div className="space-y-4 overflow-y-auto max-h-[420px] pr-2">
-                {availableSessions.length > 0 ? (
-                  availableSessions.map((session) => (
-                    <div key={session.id} className="bg-gray-700 p-4 rounded-lg flex justify-between items-center shadow-md">
-                      <div>
-                        <p className="text-lg font-semibold">{session.hostName || 'Unknown Host'}</p>
-                        <p className="text-sm text-gray-300">Code: <span className="font-mono text-yellow-300">{session.code}</span></p>
-                        <p className="text-sm text-gray-400">{session.participants?.length ?? 0}/{session.max_players} players</p>
+            <div className="space-y-5">
+              <div>
+                <p className="mb-3 text-xs font-bold uppercase tracking-widest text-slate-400">Create your own session</p>
+                <ArenaButton
+                  type="button"
+                  onClick={handleCreateSession}
+                  loading={isCreating}
+                  icon={<PlusCircle className="h-4 w-4" aria-hidden />}
+                  fullWidth
+                >
+                  {isCreating ? 'Creating...' : 'Create Session'}
+                </ArenaButton>
+              </div>
+
+              <div className="border-t border-white/10 pt-5">
+                <label htmlFor="join-code" className="mb-2 block text-xs font-bold uppercase tracking-widest text-slate-400">Join with a session code</label>
+                <Input
+                  id="join-code"
+                  value={joinCode}
+                  onChange={(event) => setJoinCode(event.target.value.toUpperCase())}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') void joinSessionByCode(joinCode);
+                  }}
+                  maxLength={8}
+                  className="font-mono uppercase"
+                  placeholder="ABC123"
+                />
+                <ArenaButton
+                  type="button"
+                  onClick={() => void joinSessionByCode(joinCode)}
+                  loading={isJoining}
+                  variant="secondary"
+                  className="mt-3"
+                  fullWidth
+                >
+                  Join
+                </ArenaButton>
+              </div>
+
+              <div className="border-t border-white/10 pt-5">
+                <ArenaButton
+                  type="button"
+                  onClick={() => navigate('/bot-game')}
+                  variant="ghost"
+                  icon={<Bot className="h-4 w-4 text-cyan-200" aria-hidden />}
+                  fullWidth
+                >
+                  Train with a Bot
+                </ArenaButton>
+                <p className="mt-3 text-xs text-cyan-200">Practice mode. No competitive stats are changed.</p>
+              </div>
+            </div>
+          </Panel>
+
+          <Panel className="flex min-h-[440px] flex-col p-5">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <Swords className="h-5 w-5 text-amber-200" aria-hidden />
+                <h2 className="font-display text-xl font-bold uppercase text-slate-100">Available Sessions</h2>
+              </div>
+              <button type="button" onClick={() => void fetchSessions()} className="rounded-xl border border-white/10 bg-white/[0.04] p-2 text-slate-300 transition hover:text-white" aria-label="Refresh sessions">
+                <RefreshCw className="h-4 w-4" aria-hidden />
+              </button>
+            </div>
+            <div className="arena-scrollbar flex-1 space-y-3 overflow-y-auto pr-1">
+              {availableSessions.length > 0 ? (
+                availableSessions.map((session) => {
+                  const isHost = session.host_id === playerId;
+                  return (
+                    <div key={session.id} className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 transition hover:border-violet-300/35 hover:bg-white/[0.06]">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="min-w-0">
+                          <p className="truncate text-lg font-bold text-slate-100">{session.hostName || 'Unknown Host'}</p>
+                          <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-slate-400">
+                            <CopyChip label="Code" value={session.code} className="max-w-full" />
+                            <StatusBadge tone="green">{session.participants?.length ?? 0}/{session.max_players} players</StatusBadge>
+                          </div>
+                        </div>
+                        <ArenaButton
+                          type="button"
+                          size="sm"
+                          variant={isHost ? 'primary' : 'secondary'}
+                          onClick={() => isHost ? navigate(`/waiting/${session.id}`) : void joinSessionByCode(session.code)}
+                        >
+                          {isHost ? 'Rejoin' : 'Join'}
+                        </ArenaButton>
                       </div>
-                      <div className="text-right">
-                        {session.host_id === playerId ? (
-                          <button
-                            onClick={() => navigate(`/waiting/${session.id}`)}
-                            className="bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold py-1 px-3 rounded-md"
-                          >
+                    </div>
+                  );
+                })
+              ) : (
+                <EmptyState title="No available sessions right now." description="Create a new session or train with the bot while you wait." />
+              )}
+            </div>
+          </Panel>
+
+          <Panel className="flex min-h-[440px] flex-col p-5">
+            <div className="mb-4 flex items-center gap-3">
+              <Clock className="h-5 w-5 text-cyan-200" aria-hidden />
+              <h2 className="font-display text-xl font-bold uppercase text-slate-100">Active Sessions</h2>
+            </div>
+            <div className="arena-scrollbar flex-1 space-y-3 overflow-y-auto pr-1">
+              {activeSessions.length > 0 ? (
+                activeSessions.map((session) => {
+                  const isParticipant = session.participants?.some(participant => participant.player_id === playerId);
+                  return (
+                    <div key={session.id} className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="min-w-0">
+                          <p className="truncate text-lg font-bold text-slate-100">{session.hostName || 'Unknown Host'}</p>
+                          <div className="mt-2 flex flex-wrap items-center gap-2">
+                            <StatusBadge tone="violet">In progress</StatusBadge>
+                            {isParticipant ? <StatusBadge tone="amber">Your match</StatusBadge> : <StatusBadge tone="muted">Playing</StatusBadge>}
+                          </div>
+                        </div>
+                        {isParticipant ? (
+                          <ArenaButton type="button" size="sm" icon={<Play className="h-4 w-4" aria-hidden />} onClick={() => navigate(`/game/${session.id}`)}>
                             Rejoin
-                          </button>
+                          </ArenaButton>
                         ) : (
-                          <button
-                            onClick={() => void joinSessionByCode(session.code)}
-                            className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold py-1 px-3 rounded-md"
-                          >
-                            Join
-                          </button>
+                          <StatusBadge tone="muted">Playing</StatusBadge>
                         )}
                       </div>
                     </div>
-                  ))
-                ) : (
-                  <div className="text-center text-gray-400 py-4">No available sessions right now.</div>
-                )}
-              </div>
+                  );
+                })
+              ) : (
+                <EmptyState title="No live sessions at the moment." description="Active matches you can rejoin will appear here." />
+              )}
             </div>
-
-            <div className="bg-gray-800 bg-opacity-70 p-6 rounded-xl shadow-xl flex flex-col gap-4">
-              <h2 className="text-2xl font-semibold text-center text-gray-100">Active Sessions</h2>
-              <div className="space-y-4 overflow-y-auto max-h-[420px] pr-2">
-                {activeSessions.length > 0 ? (
-                  activeSessions.map((session) => (
-                    <div key={session.id} className="bg-gray-700 p-4 rounded-lg flex justify-between items-center shadow-md">
-                      <div>
-                        <p className="text-lg font-semibold">{session.hostName || 'Unknown Host'}</p>
-                        <p className="text-sm text-gray-400">In progress</p>
-                      </div>
-                      {session.participants?.some(participant => participant.player_id === playerId) ? (
-                        <button
-                          onClick={() => navigate(`/game/${session.id}`)}
-                          className="bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold py-1 px-3 rounded-md"
-                        >
-                          Rejoin
-                        </button>
-                      ) : (
-                        <span className="text-sm text-gray-400">Playing</span>
-                      )}
-                    </div>
-                  ))
-                ) : (
-                  <div className="text-center text-gray-400 py-4">No live sessions at the moment.</div>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {notification && (
-        <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-black bg-opacity-80 text-white px-4 py-2 rounded-full text-sm shadow-lg z-50">
-          {notification}
+          </Panel>
         </div>
       )}
-    </div>
+
+      <Toast message={notification} tone={notification?.toLowerCase().includes('failed') || notification?.toLowerCase().includes('enter') ? 'red' : 'green'} />
+    </PageShell>
   );
 };
 

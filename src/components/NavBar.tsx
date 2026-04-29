@@ -1,5 +1,7 @@
-import { Link } from 'react-router-dom';
+import { Link, NavLink } from 'react-router-dom';
+import { BookOpen, LogIn, LogOut, Swords, Trophy, User, UserCircle } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth.js';
+import { cn } from './ui/index.js';
 
 const NavBar: React.FC = () => {
   const { user, loading, signOut } = useAuth();
@@ -24,45 +26,75 @@ const NavBar: React.FC = () => {
   const ethAddress = user?.user_metadata?.eth_address ?? emailWalletAddress;
   const isGuest = Boolean((user as any)?.is_anonymous);
   const displayName = user?.user_metadata?.display_name ?? user?.user_metadata?.username;
+  const identity = ethAddress ? formatAddress(ethAddress) : isGuest ? 'Guest' : displayName || user?.email || 'Player';
+
+  const navItems = [
+    { to: '/lobby', label: 'Lobby', icon: Swords },
+    { to: '/how-to-play', label: 'How to Play', icon: BookOpen },
+    { to: '/leaderboard', label: 'Leaderboard', icon: Trophy },
+    ...(user ? [{ to: '/profile', label: 'Profile', icon: User }] : []),
+  ];
+
+  const navClass = ({ isActive }: { isActive: boolean }) => cn(
+    'inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold uppercase tracking-wide transition',
+    isActive
+      ? 'border border-violet-300/35 bg-violet-500/15 text-violet-100 shadow-[0_0_22px_rgba(139,92,246,0.18)]'
+      : 'text-slate-300 hover:bg-white/[0.06] hover:text-white',
+  );
 
   return (
-    <nav className="bg-gradient-to-r from-gray-950/90 via-gray-900/80 to-gray-950/90 backdrop-blur-xl text-white px-4 py-2 shadow-[0_10px_20px_-10px_rgba(0,0,0,0.7)] border-b border-white/10 flex justify-between items-center sticky top-0 z-30">
-      <div className="flex items-center gap-4 min-w-0">
-        <Link to="/lobby" className="flex items-center gap-2 group">
-          <img src="/images/banner.png" alt="Mythical Beings" className="h-6 w-auto opacity-90 group-hover:opacity-100 transition-opacity" />
-          <span className="hidden sm:inline text-lg font-extrabold tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-purple-300 via-pink-200 to-cyan-300 group-hover:from-purple-200 group-hover:to-cyan-200">Mythical Arena</span>
+    <nav className="sticky top-0 z-40 flex h-[var(--navbar-height)] items-center justify-between border-b border-white/10 bg-[#060912]/88 px-4 text-white shadow-[0_18px_36px_-24px_rgba(0,0,0,0.9)] backdrop-blur-xl">
+      <div className="flex min-w-0 items-center gap-5">
+        <Link to={user ? '/lobby' : '/'} className="group flex min-w-0 items-center gap-3">
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl border border-violet-300/30 bg-violet-500/10 shadow-[0_0_24px_rgba(139,92,246,0.2)]">
+            <img src="/images/banner.png" alt="Mythical Beings" className="h-7 w-7 object-contain opacity-90 transition group-hover:opacity-100" />
+          </span>
+          <span className="hidden min-w-0 flex-col leading-none sm:flex">
+            <span className="font-display text-lg font-bold uppercase text-slate-100">Mythical</span>
+            <span className="text-[10px] font-bold uppercase tracking-[0.38em] text-violet-300">Arena</span>
+          </span>
         </Link>
-        <div className="hidden md:flex items-center gap-3 text-sm font-medium">
-          <Link to="/lobby" className="text-gray-300 hover:text-white transition-colors px-2 py-1 rounded-md hover:bg-white/5">Lobby</Link>
-          <Link to="/how-to-play" className="text-gray-300 hover:text-white transition-colors px-2 py-1 rounded-md hover:bg-white/5">How to Play</Link>
-          <Link to="/leaderboard" className="text-gray-300 hover:text-white transition-colors px-2 py-1 rounded-md hover:bg-white/5">Leaderboard</Link>
-          {user && (
-            <Link to="/profile" className="text-gray-300 hover:text-white transition-colors px-2 py-1 rounded-md hover:bg-white/5">Profile</Link>
-          )}
+
+        <div className="hidden items-center gap-1 lg:flex">
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            return (
+              <NavLink key={item.to} to={item.to} className={navClass}>
+                <Icon className="h-4 w-4" aria-hidden />
+                {item.label}
+              </NavLink>
+            );
+          })}
         </div>
       </div>
 
       <div className="flex items-center gap-3">
         {loading ? (
-          <div className="h-8 w-24 bg-gray-700 rounded animate-pulse"></div>
+          <div className="h-9 w-32 animate-pulse rounded-xl bg-white/10" />
         ) : (
           <>
             {!user ? (
               <Link to="/">
-                <button className="bg-purple-600 hover:bg-purple-500 text-white text-sm font-semibold py-1.5 px-3 rounded-md transition-all duration-200 shadow-sm hover:shadow-purple-500/20">
+                <button className="inline-flex items-center gap-2 rounded-xl border border-amber-300/40 bg-amber-500/15 px-3 py-2 text-sm font-bold uppercase tracking-wide text-amber-100 transition hover:bg-amber-400/20">
+                  <LogIn className="h-4 w-4" aria-hidden />
                   Sign In
                 </button>
               </Link>
             ) : (
-              <div className="flex items-center gap-2">
-                <Link to="/profile" className="text-xs text-gray-300 hover:text-white underline-offset-2 hover:underline">Profile</Link>
-                <span className="text-sm font-mono bg-white/5 border border-white/10 px-2 py-1 rounded">
-                  {ethAddress ? formatAddress(ethAddress) : isGuest ? 'Guest' : displayName || user.email || 'Player'}
+              <div className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-2 py-1.5">
+                <Link to="/profile" className="hidden items-center gap-2 rounded-xl px-2 py-1 text-sm text-slate-200 transition hover:bg-white/[0.06] md:flex">
+                  <UserCircle className="h-4 w-4 text-cyan-200" aria-hidden />
+                  Profile
+                </Link>
+                <span className="max-w-[150px] truncate rounded-xl border border-cyan-300/20 bg-cyan-500/10 px-2.5 py-1 font-mono text-xs text-cyan-100">
+                  {identity}
                 </span>
                 <button 
                   onClick={handleSignOut}
-                  className="text-gray-300 hover:text-white text-xs px-2 py-1 rounded-md hover:bg-white/5"
+                  className="inline-flex items-center gap-1 rounded-xl px-2 py-1 text-xs font-bold uppercase tracking-wide text-slate-300 transition hover:bg-red-500/12 hover:text-red-100"
+                  aria-label="Sign out"
                 >
+                  <LogOut className="h-4 w-4" aria-hidden />
                   Sign Out
                 </button>
               </div>
@@ -70,12 +102,16 @@ const NavBar: React.FC = () => {
           </>
         )}
       </div>
-      {/* Mobile quick links row (hidden on md+) */}
-      <div className="md:hidden fixed bottom-2 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-gray-900/80 backdrop-blur-md border border-white/10 rounded-full px-3 py-1.5 shadow-lg z-30">
-        <Link to="/lobby" className="text-gray-300 hover:text-white text-xs px-2 py-1 rounded-md hover:bg-white/5">Lobby</Link>
-        <Link to="/leaderboard" className="text-gray-300 hover:text-white text-xs px-2 py-1 rounded-md hover:bg-white/5">Top</Link>
-        <Link to="/how-to-play" className="text-gray-300 hover:text-white text-xs px-2 py-1 rounded-md hover:bg-white/5">Rules</Link>
-        {user && <Link to="/profile" className="text-gray-300 hover:text-white text-xs px-2 py-1 rounded-md hover:bg-white/5">Profile</Link>}
+
+      <div className="fixed bottom-3 left-1/2 z-40 flex -translate-x-1/2 items-center gap-1 rounded-full border border-white/10 bg-[#060912]/90 px-2 py-1.5 shadow-2xl backdrop-blur-xl lg:hidden">
+        {navItems.map((item) => {
+          const Icon = item.icon;
+          return (
+            <NavLink key={item.to} to={item.to} className={({ isActive }) => cn('rounded-full p-2 text-slate-300 transition', isActive ? 'bg-violet-500/20 text-violet-100' : 'hover:bg-white/[0.06] hover:text-white')} aria-label={item.label}>
+              <Icon className="h-4 w-4" aria-hidden />
+            </NavLink>
+          );
+        })}
       </div>
     </nav>
   );

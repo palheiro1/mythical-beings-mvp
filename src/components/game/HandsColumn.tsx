@@ -2,6 +2,7 @@ import React, { useRef, useEffect } from 'react';
 import { Knowledge } from '../../game/types.js';
 import Card from '../Card.js';
 import { useCardRegistry } from '../../context/CardRegistry.js';
+import { cn, StatusBadge } from '../ui/index.js';
 
 interface HandsColumnProps {
     currentPlayerHand: Knowledge[];
@@ -35,12 +36,12 @@ const HandsColumn: React.FC<HandsColumnProps> = ({
     }, [registry]);
 
     return (
-        <div className="h-full min-h-0 w-full flex flex-col overflow-hidden rounded-lg">
+        <div className="flex h-full min-h-0 w-full flex-col overflow-hidden rounded-2xl border border-white/10 bg-white/[0.035]">
             {/* Opponent Hand Area - reduced from flex-1 to flex-none with fixed height */}
-            <div className="flex-none h-1/5 flex flex-col items-center justify-center p-2 overflow-hidden relative" ref={oppHandRef}>
-                <span className="text-gray-200 text-sm font-medium absolute top-1 left-1/2 transform -translate-x-1/2 px-2 py-1 bg-black/30 rounded-full">
-                    Opponent ({opponentPlayerHand.length})
-                </span>
+            <div className="relative flex h-1/5 flex-none flex-col items-center justify-center overflow-hidden p-2" ref={oppHandRef}>
+                <div className="absolute left-2 top-2 z-10">
+                    <StatusBadge tone="muted">Opponent ({opponentPlayerHand.length})</StatusBadge>
+                </div>
                 <div className="flex justify-center items-center gap-2 w-full h-full p-1">
                     {opponentPlayerHand.length === 0 ? (
                          // Container defines size
@@ -61,29 +62,29 @@ const HandsColumn: React.FC<HandsColumnProps> = ({
                 </div>
             </div>
 
-            <hr className="border-white/20 w-full mx-auto" />
+            <hr className="mx-auto w-full border-white/10" />
 
             {/* Empty Middle Section 1 */}
-            <div className="flex-grow flex flex-col justify-center items-center opacity-30 text-white/50">
-                <div className="w-full h-1/3 flex items-center justify-center">
-                    <span className="text-xs">Field Zone</span>
+            <div className="flex flex-grow flex-col items-center justify-center text-white/40">
+                <div className="flex h-1/3 w-full items-center justify-center">
+                    <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-xs uppercase tracking-widest">Field Zone</span>
                 </div>
             </div>
 
             {/* Empty Middle Section 2 */}
-            <div className="flex-grow flex flex-col justify-center items-center opacity-30 text-white/50">
-                <div className="w-full h-1/3 flex items-center justify-center">
-                    <span className="text-xs">Strategy Zone</span>
+            <div className="flex flex-grow flex-col items-center justify-center text-white/40">
+                <div className="flex h-1/3 w-full items-center justify-center">
+                    <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-xs uppercase tracking-widest">Strategy Zone</span>
                 </div>
             </div>
 
-            <hr className="border-white/20 w-full mx-auto" />
+            <hr className="mx-auto w-full border-white/10" />
 
             {/* Player Hand Area - reduced from flex-1 to flex-none with fixed height */}
-            <div className="flex-none h-1/5 flex flex-col items-center justify-center p-2 overflow-hidden relative" ref={myHandRef}>
-                <span className="text-gray-200 text-sm font-medium absolute bottom-1 left-1/2 transform -translate-x-1/2 px-2 py-1 bg-black/30 rounded-full">
-                    Your Hand ({currentPlayerHand.length}/5)
-                </span>
+            <div className="relative flex h-1/5 flex-none flex-col items-center justify-center overflow-hidden p-2" ref={myHandRef}>
+                <div className="absolute bottom-2 left-2 z-10">
+                    <StatusBadge tone={isMyTurn && phase === 'action' ? 'violet' : 'muted'}>Your Hand ({currentPlayerHand.length}/5)</StatusBadge>
+                </div>
                 <div className="flex justify-center items-center gap-2 w-full h-full p-1">
                     {currentPlayerHand.length === 0 ? (
                         // Container defines size
@@ -102,7 +103,7 @@ const HandsColumn: React.FC<HandsColumnProps> = ({
                                 // Container defines size with hover effect - REMOVED hover:scale-110 and cursor-pointer
                                 <div
                                     key={instanceId} // Use instanceId for key
-                                    className={`h-[85%] aspect-[2/3] transition-all ${selectedKnowledgeId === instanceId ? 'ring-2 ring-yellow-400 scale-105' : ''}`} // Compare with instanceId
+                                    className={cn('h-[85%] aspect-[2/3] rounded-xl transition-all', selectedKnowledgeId === instanceId ? 'scale-105 ring-2 ring-amber-300 shadow-[0_0_24px_rgba(246,184,59,0.35)]' : '')} // Compare with instanceId
                                     ref={(el) => {
                                         if (card.instanceId) registry.register(`hand:${card.instanceId}`, el as unknown as HTMLElement | null);
                                     }}
