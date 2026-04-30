@@ -48,7 +48,7 @@ describe('Tsunami (aquatic1) Effect', () => {
     gameState.players[1].power = 20;
   });
 
-  it('should rotate the first available other knowledge card 90 degrees', () => {
+  it('should create a pending choice for another knowledge card to rotate', () => {
     const initialTargetRotation = gameState.players[playerIndex].field[targetSlotIndex].knowledge!.rotation;
 
     const newState = knowledgeEffects.aquatic1({
@@ -62,9 +62,11 @@ describe('Tsunami (aquatic1) Effect', () => {
 
     const targetKnowledgeAfter = newState.players[playerIndex].field[targetSlotIndex].knowledge;
     expect(targetKnowledgeAfter).toBeDefined();
-    expect(targetKnowledgeAfter!.rotation).toBe(initialTargetRotation + 90);
-    expect(newState.log.some(log => log.includes(`Tsunami rotates ${rotatableKnowledge.name}`))).toBe(true);
-    expect(newState.log.some(log => log.includes(`New rotation: ${initialTargetRotation + 90}º`))).toBe(true);
+    expect(targetKnowledgeAfter!.rotation).toBe(initialTargetRotation);
+    expect(newState.pendingEffect?.type).toBe('chooseKnowledgeToRotate');
+    expect(newState.pendingEffect?.choices).toEqual(expect.arrayContaining([
+      expect.objectContaining({ kind: 'knowledge', instanceId: 'target1' }),
+    ]));
   });
 
   it('should not rotate itself', () => {

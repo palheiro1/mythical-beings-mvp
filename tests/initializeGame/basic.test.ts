@@ -54,7 +54,8 @@ describe('initializeGame', () => {
     expect(initialState.market.length).toBeGreaterThan(0);
     expect(initialState.knowledgeDeck.length).toBeGreaterThan(0);
     expect(initialState.turn).toBe(1);
-    expect(['knowledge', 'action']).toContain(initialState.phase);
+    expect(initialState.phase).toBe('action');
+    expect(initialState.log.join(' ')).not.toContain('Knowledge Phase started');
     expect(initialState.winner).toBeNull();
   });
 

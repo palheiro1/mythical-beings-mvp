@@ -16,7 +16,7 @@ describe('Japinunus Passive', () => {
       });
 
       // Give player 1 an air knowledge card
-      const airCard = createTestKnowledge('aerial1', { cost: 1 });
+      const airCard = createTestKnowledge('aerial2', { cost: 1 });
       initialState.players[0].hand = [airCard];
       // Ensure a creature (Adaro) has enough wisdom
       const adaroIndex = initialState.players[0].creatures.findIndex(c => c.id === 'adaro');

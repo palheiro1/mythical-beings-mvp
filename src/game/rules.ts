@@ -1,6 +1,7 @@
 import { knowledgeEffects } from './effects.js';
 import { GameState, GameAction, Knowledge, SummonKnowledgePayload } from './types'; // Import SummonKnowledgePayload
 import { applyPassiveAbilities } from './passives.js';
+import { getEffectiveCreatureWisdom } from './utils.js';
 
 // Constants
 const MAX_HAND_SIZE = 5;
@@ -27,6 +28,26 @@ export function isValidAction(state: GameState, action: GameAction): RuleValidat
   const currentPlayer = state.players[state.currentPlayerIndex];
   if (!currentPlayer) {
     return { isValid: false, reason: 'Current player not found.' };
+  }
+
+  if (state.pendingEffect) {
+    if (action.type !== 'RESOLVE_PENDING_EFFECT') {
+      return { isValid: false, reason: 'Resolve the pending card effect first.' };
+    }
+
+    if (action.payload.playerId !== state.pendingEffect.playerId) {
+      return { isValid: false, reason: 'This pending effect must be resolved by the selected player.' };
+    }
+
+    if (action.payload.resolution.effectId !== state.pendingEffect.id) {
+      return { isValid: false, reason: 'Pending effect no longer matches this choice.' };
+    }
+
+    return { isValid: true };
+  }
+
+  if (action.type === 'RESOLVE_PENDING_EFFECT') {
+    return { isValid: false, reason: 'There is no pending effect to resolve.' };
   }
 
   // Most actions have a playerId in their payload, ensure it matches the current player
@@ -60,31 +81,21 @@ export function isValidAction(state: GameState, action: GameAction): RuleValidat
       if (fieldSlotIndex === -1) {
         return { isValid: false, reason: 'Target field slot not found.' };
       }
-      const fieldSlot = actingPlayer.field[fieldSlotIndex];
-
       const actingPlayerIndex = state.players.findIndex((p: typeof state.players[number]) => p.id === actingPlayer.id);
       const opponentPlayerIndex = actingPlayerIndex === 0 ? 1 : 0;
 
-      // Check if the slot is blocked by the opponent
-      if (state.blockedSlots[opponentPlayerIndex]?.includes(fieldSlotIndex)) {
-        return { isValid: false, reason: `Creature slot ${payload.creatureId} is currently blocked by an opponent.` };
+      const opponentOpposingKnowledge = state.players[opponentPlayerIndex]?.field[fieldSlotIndex]?.knowledge;
+      if (opponentOpposingKnowledge?.id === 'aquatic3') {
+        return { isValid: false, reason: `Creature slot ${payload.creatureId} is blocked by Hurricane.` };
       }
 
-      // Check if the slot is blocked by the current player (self-block)
-      if (state.blockedSlots[actingPlayerIndex]?.includes(fieldSlotIndex)) {
-        return { isValid: false, reason: `Creature slot ${payload.creatureId} is currently blocked.` };
-      }
-
-      // Check if the slot already has knowledge (new rule)
-      if (fieldSlot.knowledge) {
-        return { isValid: false, reason: 'Creature slot already has knowledge.' };
-      }
+      // Occupied slots are valid: the new Knowledge replaces the old one, which is discarded.
 
       const knowledgeCardInHand = actingPlayer.hand.find((k: Knowledge) => k.instanceId === payload.instanceId);
       if (!knowledgeCardInHand) {
         return { isValid: false, reason: 'Knowledge card not in hand.' };
       }
-      if ((creature.currentWisdom ?? 0) < knowledgeCardInHand.cost) {
+      if (getEffectiveCreatureWisdom(state, actingPlayerIndex, creature.id) < knowledgeCardInHand.cost) {
         return { isValid: false, reason: 'Creature does not have enough wisdom.' };
       }
       return { isValid: true };
@@ -101,7 +112,9 @@ export function isValidAction(state: GameState, action: GameAction): RuleValidat
       if (!creature) {
         return { isValid: false, reason: 'Creature to rotate not found.' };
       }
-      // Add any specific rotation rules if necessary (e.g., cannot rotate if already max wisdom)
+      if ((creature.rotation ?? 0) >= 270) {
+        return { isValid: false, reason: `${creature.name} is already at maximum rotation.` };
+      }
       return { isValid: true };
     }
     case 'DRAW_KNOWLEDGE': {
@@ -112,9 +125,7 @@ export function isValidAction(state: GameState, action: GameAction): RuleValidat
       const actingPlayer = state.players.find((p: typeof state.players[number]) => p.id === payload.playerId);
       if (!actingPlayer) return { isValid: false, reason: 'Acting player not found for draw.' };
 
-      if (actingPlayer.hand.length >= MAX_HAND_SIZE) {
-        return { isValid: false, reason: 'Hand is full.' };
-      }
+      // Drawing is allowed at the hand limit; exceeding 5 creates a required discard choice.
       const marketCard = state.market.find((k: Knowledge) => k.instanceId === payload.instanceId);
       if (!marketCard) {
         return { isValid: false, reason: 'Card not found in market.' };
@@ -137,7 +148,7 @@ export function isValidAction(state: GameState, action: GameAction): RuleValidat
  * @param state The current game state.
  * @returns The updated game state after the knowledge phase.
  */
-export function executeKnowledgePhase(state: GameState): GameState {
+export function executeKnowledgePhase(state: GameState, activePlayerIndex: 0 | 1 = state.currentPlayerIndex): GameState {
   let phaseState = structuredClone(state); // Use cloneDeep for initial phase clone
   phaseState.log.push(`Turn ${phaseState.turn}: Knowledge Phase started.`);
 
@@ -145,7 +156,7 @@ export function executeKnowledgePhase(state: GameState): GameState {
   const effectStates: { playerIndex: number; slotIndex: number; state: GameState }[] = [];
 
   // 1. Calculate Rotations and Prepare Effect States (Read-only pass)
-  for (let playerIndex = 0; playerIndex < phaseState.players.length; playerIndex++) {
+  for (const playerIndex of [activePlayerIndex]) {
     for (let slotIndex = 0; slotIndex < phaseState.players[playerIndex].field.length; slotIndex++) {
       const slot = phaseState.players[playerIndex].field[slotIndex];
 

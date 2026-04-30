@@ -1,6 +1,7 @@
 // Removed unused imports: KnowledgeType, CreatureElement
 import { GameState, Knowledge, PlayerState, KnowledgeEffectTrigger } from './types.js';
 import { applyPassiveAbilities } from './passives.js'; // Import applyPassiveAbilities
+import { buildHandChoices, buildKnowledgeChoices, buildMarketChoices, createPendingEffect, getEffectiveCreatureWisdom, updateCreatureWisdomFromRotation } from './utils.js';
 
 
 // Helper function to calculate damage, considering defense and passives
@@ -26,25 +27,32 @@ export function calculateDamage(
   }
   const sourceCreatureId = sourcePlayer?.field[sourceFieldSlotIndex]?.creatureId;
   const sourceCreature = sourcePlayer?.creatures.find((c: import('./types.js').Creature) => c.id === sourceCreatureId);
-  const targetFieldSlot = targetPlayer.field[sourceFieldSlotIndex];
 
   let defense = 0;
-  let defenseSource = '';
   let bypassDefense = false;
 
-  // Check if target has defense (e.g., from aquatic2 - Asteroid)
-  if (targetFieldSlot?.knowledge?.id === 'aquatic2') {
-    const opponentOfDefenderIndex = targetPlayerIndex === 0 ? 1 : 0;
-    const opponentOfDefenderSlot = state.players[opponentOfDefenderIndex]?.field[sourceFieldSlotIndex];
-
-    if (!opponentOfDefenderSlot?.knowledge) {
-      defense = 1; // Assuming aquatic2 grants 1 defense
-      defenseSource = 'Aquatic2 (Asteroid)';
-      logs.push(`[Defense] ${targetPlayer.id} has +1 defense from ${defenseSource} because opposing slot ${sourceFieldSlotIndex} is empty.`);
-    } else {
-      defenseSource = 'Aquatic2 (Asteroid)';
-      logs.push(`[Defense] ${targetPlayer.id} has ${defenseSource}, but opposing slot ${sourceFieldSlotIndex} has knowledge. No defense bonus.`);
+  targetPlayer.field.forEach((slot, slotIndex) => {
+    const defendingKnowledge = slot.knowledge;
+    if (!defendingKnowledge) return;
+    const step = Math.floor(((defendingKnowledge.rotation ?? 0) % 360) / 90);
+    const value = defendingKnowledge.valueCycle?.[step] ?? 0;
+    if (value < 0) {
+      defense += Math.abs(value);
+      logs.push(`[Defense] ${targetPlayer.id} has +${Math.abs(value)} defense from ${defendingKnowledge.name}.`);
     }
+
+    if (defendingKnowledge.id === 'aquatic2') {
+      const opposingSlot = state.players[sourcePlayerIndex]?.field[slotIndex];
+      if (!opposingSlot?.knowledge) {
+        defense += 1;
+        logs.push(`[Defense] ${targetPlayer.id} has +1 defense from ${defendingKnowledge.name} because the opposing slot is empty.`);
+      }
+    }
+  });
+
+  if (defense > 0 && targetPlayer.creatures.some(creature => creature.id === 'trempulcahue')) {
+    defense += 1;
+    logs.push(`[Defense] Trempulcahue grants +1 additional defense to ${targetPlayer.id}.`);
   }
 
   // Check if attacker has Zhar-Ptitsa and knowledge is aerial
@@ -130,7 +138,7 @@ export const knowledgeEffects: Record<string, KnowledgeEffectFn> = {
   },
 
   // Terrestrial 2: Look at opponent's hand and discard 1 card + Rotational Damage
-  terrestrial2: ({ state, playerIndex, fieldSlotIndex, knowledge, rotation, trigger: _trigger }: {
+  terrestrial2: ({ state, playerIndex, fieldSlotIndex, knowledge, rotation, trigger }: {
     state: GameState;
     playerIndex: number;
     fieldSlotIndex: number;
@@ -141,6 +149,23 @@ export const knowledgeEffects: Record<string, KnowledgeEffectFn> = {
     let newState = structuredClone(state); // Use cloneDeep
     const opponentIndex = playerIndex === 0 ? 1 : 0;
     let combinedLog: string[] = [];
+
+    if (trigger === 'onSummon') {
+      const choices = buildHandChoices(newState, opponentIndex as 0 | 1);
+      if (choices.length === 0) {
+        newState.log.push(`[Apparition] ${knowledge.name}: opponent has no cards to discard.`);
+        return newState;
+      }
+      return createPendingEffect(newState, {
+        type: 'chooseOpponentHandDiscard',
+        playerId: newState.players[playerIndex].id,
+        sourcePlayerId: newState.players[playerIndex].id,
+        sourceKnowledgeId: knowledge.id,
+        sourceKnowledgeName: knowledge.name,
+        prompt: `${knowledge.name}: choose one opponent hand card to discard.`,
+        choices,
+      });
+    }
 
     // --- Damage Calculation (from valueCycle) ---
     // This part seems okay, assuming valueCycle is defined for terrestrial2 if needed
@@ -164,29 +189,6 @@ export const knowledgeEffects: Record<string, KnowledgeEffectFn> = {
       }
     }
 
-    // --- Discard Logic (Always Active) ---
-    // Removed the `if (rotation === 0)` condition
-    const opponentHand = newState.players[opponentIndex].hand;
-    let discardLog = `[Effect] ${knowledge.name}`; // Simplified log prefix
-    if (opponentHand.length === 0) {
-      // Match the test expectation
-      discardLog = `${knowledge.name}: Opponent has no cards to discard.`;
-    } else {
-      const [discarded, ...rest] = opponentHand;
-      // Match the test expectation
-      discardLog = `${knowledge.name} forces opponent to discard ${discarded.name}.`;
-      const newPlayers = [...newState.players];
-      newPlayers[opponentIndex] = {
-        ...newPlayers[opponentIndex],
-        hand: rest,
-      };
-      const newDiscardPile = [...newState.discardPile, discarded];
-      newState.players = newPlayers as [PlayerState, PlayerState];
-      newState.discardPile = newDiscardPile;
-    }
-    combinedLog.push(discardLog);
-
-
     return {
       ...newState,
       log: [...newState.log, ...combinedLog], // Combine damage and discard logs
@@ -204,8 +206,7 @@ export const knowledgeEffects: Record<string, KnowledgeEffectFn> = {
     let newState = structuredClone(state); // Use cloneDeep
     const opponentIndex = playerIndex === 0 ? 1 : 0;
     const creatureId = newState.players[playerIndex].field[fieldSlotIndex]?.creatureId;
-    const creature = newState.players[playerIndex].creatures.find((c: import('./types.js').Creature) => c.id === creatureId);
-    const wisdom = creature?.currentWisdom ?? creature?.baseWisdom ?? 0;
+    const wisdom = creatureId ? getEffectiveCreatureWisdom(newState, playerIndex, creatureId) : 0;
 
     if (wisdom > 0) {
       const { finalDamage, logs } = calculateDamage(newState, opponentIndex, wisdom, playerIndex, knowledge, fieldSlotIndex);
@@ -308,39 +309,20 @@ export const knowledgeEffects: Record<string, KnowledgeEffectFn> = {
 
     // --- Discard Logic (Final Rotation Only) ---
     if (isFinalRotation) {
-      const opponentField = newState.players[opponentIndex].field;
-      const knowledgesOnField = opponentField
-        .map((slot: { creatureId: string; knowledge: Knowledge | null }, idx: number) => ({ slot, idx }))
-        .filter(({ slot }: { slot: { creatureId: string; knowledge: Knowledge | null } }) => slot.knowledge);
-
-      let discardLog = `[Final] ${knowledge.name} attempts to discard opponent knowledge.`;
-      if (knowledgesOnField.length === 0) {
-        discardLog += ' No knowledge cards to discard.';
+      const choices = buildKnowledgeChoices(newState, opponentIndex as 0 | 1);
+      if (choices.length === 0) {
+        combinedLog.push(`[Final] ${knowledge.name}: no opponent Knowledge cards to discard.`);
       } else {
-        const { slot, idx } = knowledgesOnField[0]; // MVP: Auto-pick first
-        const discardedKnowledge: Knowledge = {
-          ...slot.knowledge!,
-          type: slot.knowledge!.type ?? 'spell',
-          element: slot.knowledge!.element ?? 'neutral',
-          cost: slot.knowledge!.cost ?? 0,
-          effect: slot.knowledge!.effect ?? '',
-          maxRotations: slot.knowledge!.maxRotations ?? 4,
-          id: slot.knowledge!.id ?? 'unknown',
-          name: slot.knowledge!.name ?? 'Unknown Knowledge',
-          instanceId: slot.knowledge!.instanceId ?? 'unknown-instance',
-          rotation: slot.knowledge!.rotation ?? 0,
-        };
-        opponentField[idx].knowledge = null;
-        newState.discardPile.push(discardedKnowledge);
-        const logSuffix = knowledgesOnField.length > 1 ? ". [TODO: Let user choose which knowledge to discard if multiple are valid]" : ".";
-        discardLog += ` Discarded ${discardedKnowledge.name}${logSuffix}`;
-        newState = applyPassiveAbilities(newState, 'KNOWLEDGE_LEAVE', {
-          playerId: newState.players[opponentIndex].id,
-          creatureId: opponentField[idx].creatureId,
-          knowledgeCard: discardedKnowledge,
+        newState = createPendingEffect(newState, {
+          type: 'chooseOpponentKnowledgeDiscard',
+          playerId: newState.players[playerIndex].id,
+          sourcePlayerId: newState.players[playerIndex].id,
+          sourceKnowledgeId: knowledge.id,
+          sourceKnowledgeName: knowledge.name,
+          prompt: `${knowledge.name}: choose one opponent Knowledge to discard.`,
+          choices,
         });
       }
-      combinedLog.push(discardLog);
     }
 
     // --- Extra Action Logic (Final Rotation Only) ---
@@ -360,7 +342,7 @@ export const knowledgeEffects: Record<string, KnowledgeEffectFn> = {
     };
   },
 
-  // Aquatic 1: Rotates one of your Knowledge cards immediately (MVP: auto-pick first)
+  // Aquatic 1: Rotates one of your Knowledge cards immediately
   aquatic1: ({ state, playerIndex, fieldSlotIndex, knowledge, trigger: _trigger }: {
     state: GameState;
     playerIndex: number;
@@ -369,37 +351,26 @@ export const knowledgeEffects: Record<string, KnowledgeEffectFn> = {
     trigger: KnowledgeEffectTrigger;
   }) => {
     let newState = structuredClone(state); // Use cloneDeep
-    const playerField = newState.players[playerIndex].field;
-    const rotatable = playerField
-      .map((slot: { creatureId: string; knowledge: Knowledge | null }, idx: number) => ({ slot, idx }))
-      .filter(({ slot, idx }: { slot: { creatureId: string; knowledge: Knowledge | null }; idx: number }) => {
-        if (!slot.knowledge || idx === fieldSlotIndex) return false;
-        // Use maxRotations from the specific knowledge card, default to 4 if undefined
-        const maxRotations = slot.knowledge.maxRotations ?? 4;
-        const maxRotationDegrees = maxRotations * 90;
-        // Check if current rotation is less than the max possible degrees
-        return (slot.knowledge.rotation ?? 0) < maxRotationDegrees;
-      });
+    const rotatable = buildKnowledgeChoices(newState, playerIndex as 0 | 1, (candidate, _creatureId, idx) => {
+      if (idx === fieldSlotIndex) return false;
+      const maxRotationDegrees = (candidate.maxRotations ?? 4) * 90;
+      return (candidate.rotation ?? 0) < maxRotationDegrees;
+    });
 
     if (rotatable.length === 0) {
       newState.log.push(`[Effect] ${knowledge.name}: No other knowledge cards to rotate.`); // Added [Effect] prefix
       return newState; // Return the clone
     }
 
-    // MVP: Auto-pick the first rotatable card found
-    const { slot, idx } = rotatable[0];
-    const k = slot.knowledge!; // Operate on knowledge within the cloned state
-    const currentRotation = k.rotation ?? 0;
-    const newRotation = currentRotation + 90;
-    k.rotation = newRotation; // Rotate the knowledge in the clone
-
-    // Add log message for successful rotation
-    newState.log.push(`[Effect] ${knowledge.name} rotates ${k.name} (Slot ${idx}). New rotation: ${newRotation}º.`);
-
-    // TODO: Decide if rotating a card should trigger its own rotational effect immediately.
-    // Currently, it does not.
-
-    return newState; // Return the modified clone
+    return createPendingEffect(newState, {
+      type: 'chooseKnowledgeToRotate',
+      playerId: newState.players[playerIndex].id,
+      sourcePlayerId: newState.players[playerIndex].id,
+      sourceKnowledgeId: knowledge.id,
+      sourceKnowledgeName: knowledge.name,
+      prompt: `${knowledge.name}: choose one of your Knowledge cards to rotate.`,
+      choices: rotatable,
+    });
   },
 
   // Aquatic 2: Gain +1 defense when defending if the opposing Creature has no Knowledge cards (Passive in calculateDamage) + Rotational Damage
@@ -444,22 +415,16 @@ export const knowledgeEffects: Record<string, KnowledgeEffectFn> = {
     trigger: KnowledgeEffectTrigger;
   }) => {
     let newState = structuredClone(state); // Use cloneDeep
-    const opponentIndex = playerIndex === 0 ? 1 : 0;
-    if (!newState.blockedSlots) newState.blockedSlots = { 0: [], 1: [] };
-    if (!isFinalRotation) {
-      if (!newState.blockedSlots[opponentIndex].includes(fieldSlotIndex)) {
-        newState.blockedSlots[opponentIndex] = [...newState.blockedSlots[opponentIndex], fieldSlotIndex];
-        newState.log.push(`Aquatic3: Opponent cannot summon knowledge onto the opposing creature (slot ${fieldSlotIndex}) while this card is in play.`);
-      }
-    } else {
-      newState.blockedSlots[opponentIndex] = newState.blockedSlots[opponentIndex].filter(idx => idx !== fieldSlotIndex);
-      newState.log.push(`Aquatic3: Block on opponent's slot ${fieldSlotIndex} removed (aquatic3 left play).`);
-    }
+    newState.log.push(
+      isFinalRotation
+        ? `Hurricane leaves play after this rotation; opposing slot ${fieldSlotIndex} will no longer be blocked.`
+        : `Hurricane blocks summons on the opposing slot ${fieldSlotIndex} while it remains in play.`
+    );
     return newState;
   },
 
   // Aquatic 4: Apparition - Draw 1 card from Market + Rotational Damage/Defense
-  aquatic4: ({ state, playerIndex, fieldSlotIndex, knowledge, rotation, trigger: _trigger }: {
+  aquatic4: ({ state, playerIndex, fieldSlotIndex, knowledge, rotation, trigger }: {
     state: GameState;
     playerIndex: number;
     fieldSlotIndex: number;
@@ -470,6 +435,23 @@ export const knowledgeEffects: Record<string, KnowledgeEffectFn> = {
     let newState = structuredClone(state); // Use cloneDeep
     const opponentIndex = playerIndex === 0 ? 1 : 0;
     let combinedLog: string[] = [];
+
+    if (trigger === 'onSummon') {
+      const choices = buildMarketChoices(newState);
+      if (choices.length === 0) {
+        newState.log.push(`[Apparition] ${knowledge.name}: Market is empty.`);
+        return newState;
+      }
+      return createPendingEffect(newState, {
+        type: 'chooseMarketDraw',
+        playerId: newState.players[playerIndex].id,
+        sourcePlayerId: newState.players[playerIndex].id,
+        sourceKnowledgeId: knowledge.id,
+        sourceKnowledgeName: knowledge.name,
+        prompt: `${knowledge.name}: choose one Market card to draw.`,
+        choices,
+      });
+    }
 
     // --- Damage/Defense Calculation (from valueCycle) ---
     const cycleIndex = rotation / 90;
@@ -488,24 +470,6 @@ export const knowledgeEffects: Record<string, KnowledgeEffectFn> = {
         // Actual defense application happens in calculateDamage if this card is the target
     } else {
         combinedLog.push(`${knowledge.name} causes no damage or defense this rotation (${rotation}º).`);
-    }
-
-    // --- Draw Logic (Apparition - only if not already drawn) ---
-    if (rotation === 0 && newState.market.length > 0 && !newState.players[playerIndex].hand.some(card => card.id === newState.market[0].id)) {
-      let drawLog = `[Apparition] ${knowledge.name} attempts to draw from market.`;
-      const drawnCard = newState.market.shift();
-      if (drawnCard) {
-        newState.players[playerIndex].hand.push(drawnCard);
-        drawLog += ` Drew ${drawnCard.name}.`;
-        // Refill market from deck
-        if (newState.knowledgeDeck && newState.knowledgeDeck.length > 0) {
-          const refillCard = newState.knowledgeDeck.shift();
-          if (refillCard) newState.market.push(refillCard);
-        }
-      }
-      combinedLog.push(drawLog);
-    } else if (rotation === 0 && newState.market.length === 0) {
-      combinedLog.push(`[Apparition] ${knowledge.name} attempts to draw from market. Market is empty, no card drawn.`);
     }
 
     return {
@@ -565,7 +529,7 @@ export const knowledgeEffects: Record<string, KnowledgeEffectFn> = {
   },
 
   // Aerial 1: Apparition - Gain +1 Power (on summon only) + Rotational Damage
-  aerial1: ({ state, playerIndex, fieldSlotIndex, knowledge, rotation, trigger: _trigger }: {
+  aerial1: ({ state, playerIndex, fieldSlotIndex, knowledge, rotation, trigger }: {
     state: GameState;
     playerIndex: number;
     fieldSlotIndex: number;
@@ -576,6 +540,12 @@ export const knowledgeEffects: Record<string, KnowledgeEffectFn> = {
     let newState = structuredClone(state); // Use cloneDeep
     const opponentIndex = playerIndex === 0 ? 1 : 0;
     let combinedLog: string[] = [];
+
+    if (trigger === 'onSummon') {
+      newState.players[playerIndex].power += 1;
+      newState.log.push(`[Apparition] ${knowledge.name} grants +1 Power to ${newState.players[playerIndex].id}.`);
+      return newState;
+    }
 
     // --- Damage Calculation (from valueCycle) ---
     const cycleIndex = rotation / 90;
@@ -592,9 +562,6 @@ export const knowledgeEffects: Record<string, KnowledgeEffectFn> = {
     } else {
       combinedLog.push(`${knowledge.name} causes no damage this rotation (${rotation}º).`);
     }
-
-    // Note: The +1 Power on summon (Apparition) is not handled here, likely needs a passive or direct reducer logic.
-    combinedLog.push(`[Note] ${knowledge.name} Apparition power gain handled elsewhere.`);
 
     return {
       ...newState,
@@ -653,34 +620,11 @@ export const knowledgeEffects: Record<string, KnowledgeEffectFn> = {
       combinedLog.push(`${knowledge.name} causes no damage this rotation (${rotation}º).`);
     }
 
-    // --- Wisdom Buff Logic ---
-    // Note: This buff applies/removes based on presence, not rotation directly.
-    // The application/removal might be better handled by passives on KNOWLEDGE_ENTER/KNOWLEDGE_LEAVE.
-    // Keeping it here for now, but it triggers every knowledge phase while active.
-    if (!isFinalRotation) {
-      const player = newState.players[playerIndex];
-      // Check if buff already applied to avoid stacking (simple check, might need refinement)
-      const needsBuff = player.creatures.some((c: import('./types.js').Creature) => c.currentWisdom === c.baseWisdom);
-      if (needsBuff) {
-          player.creatures = player.creatures.map((creature: import('./types.js').Creature) => ({
-            ...creature,
-            // Ensure currentWisdom exists before incrementing
-            currentWisdom: (typeof creature.currentWisdom === 'number' ? creature.currentWisdom : creature.baseWisdom) + 1,
-          }));
-          combinedLog.push(`[Effect] ${knowledge.name}: While in play, all your creatures gain +1 Wisdom.`);
-      } else {
-          combinedLog.push(`[Effect] ${knowledge.name}: Wisdom buff already active.`);
-      }
-    } else {
-      // On final rotation, remove the buff (assuming it was applied)
-      const player = newState.players[playerIndex];
-      player.creatures = player.creatures.map((creature: import('./types.js').Creature) => ({
-        ...creature,
-        // Revert to base wisdom if buff was active
-        currentWisdom: (typeof creature.currentWisdom === 'number' && creature.currentWisdom > creature.baseWisdom) ? creature.currentWisdom - 1 : creature.baseWisdom,
-      }));
-      combinedLog.push(`[Final] ${knowledge.name}: Wisdom buff removed.`);
-    }
+    combinedLog.push(
+      isFinalRotation
+        ? `[Final] ${knowledge.name}: Wisdom aura ends as the card leaves play.`
+        : `[Effect] ${knowledge.name}: Wisdom aura is active while this card remains in play.`
+    );
 
     return {
       ...newState,
@@ -754,7 +698,7 @@ export const knowledgeEffects: Record<string, KnowledgeEffectFn> = {
       if (currentRotation > 0) {
         rotatedCount++;
         const newRotation = Math.max(0, currentRotation - 90);
-        return { ...creature, rotation: newRotation };
+        return updateCreatureWisdomFromRotation({ ...creature, rotation: newRotation });
       }
       return creature;
     });

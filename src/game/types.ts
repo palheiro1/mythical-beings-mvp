@@ -17,7 +17,7 @@ export type CreatureElement = 'earth' | 'water' | 'air' | 'fire' | 'neutral'; //
 export interface Creature extends BaseCard {
   element: CreatureElement;
   passiveAbility: string; // Description of passive effect
-  baseWisdom: number; // Starting wisdom (legacy, use wisdomCycle[0] if present)
+  baseWisdom?: number; // Starting wisdom (legacy, use wisdomCycle[0] if present)
   // Wisdom per rotation (0, 90, 180, 270 degrees)
   wisdomCycle?: number[];
   // Runtime properties (added during gameplay, not in JSON)
@@ -58,6 +58,61 @@ export interface PlayerState {
   selectedCreatures: Creature[]; // Creatures chosen during NFTSelection phase
 }
 
+export type PendingEffectChoice =
+  | {
+      kind: 'knowledge';
+      playerIndex: 0 | 1;
+      creatureId: string;
+      instanceId: string;
+      label: string;
+      image?: string;
+    }
+  | {
+      kind: 'creature';
+      playerIndex: 0 | 1;
+      creatureId: string;
+      label: string;
+      image?: string;
+    }
+  | {
+      kind: 'hand';
+      playerIndex: 0 | 1;
+      instanceId: string;
+      label: string;
+      image?: string;
+    }
+  | {
+      kind: 'market';
+      instanceId: string;
+      label: string;
+      image?: string;
+    };
+
+export interface PendingEffect {
+  id: string;
+  type:
+    | 'chooseKnowledgeToRotate'
+    | 'chooseOpponentHandDiscard'
+    | 'chooseOpponentKnowledgeDiscard'
+    | 'chooseCreatureToRotate'
+    | 'chooseMarketDiscard'
+    | 'chooseMarketDraw'
+    | 'discardToHandLimit';
+  playerId: string;
+  sourcePlayerId: string;
+  sourceKnowledgeId?: string;
+  sourceKnowledgeName?: string;
+  prompt: string;
+  choices: PendingEffectChoice[];
+  optional?: boolean;
+}
+
+export interface PendingEffectResolution {
+  effectId: string;
+  choice?: PendingEffectChoice | null;
+  skip?: boolean;
+}
+
 // Overall Game State
 export interface GameState {
   gameId: string; // Unique ID for the game session
@@ -74,7 +129,8 @@ export interface GameState {
   log: string[]; // History of game events/actions
   blockedSlots: Record<number, number[]>; // Tracks which field slots are blocked for each player index
   extraActionsNextTurn: { 0: number; 1: number }; // Actions granted by aquatic5
-  pendingEffects?: { type: 'damage' | 'defense'; amount: number }[]; // Change pendingEffects type
+  pendingEffect?: PendingEffect | null;
+  rulesVersion?: 'rulebook-v1';
 }
 
 // Type for games listed in the lobby
@@ -92,6 +148,7 @@ export type GameAction =
   | { type: 'DRAW_KNOWLEDGE'; payload: { playerId: string; knowledgeId: string; instanceId: string } }
   | { type: 'SUMMON_KNOWLEDGE'; payload: { playerId: string; knowledgeId: string; creatureId: string; instanceId: string } }
   | { type: 'ROTATE_KNOWLEDGE'; payload: { playerId: string; creatureId: string; instanceId: string } } // Added instanceId
+  | { type: 'RESOLVE_PENDING_EFFECT'; payload: { playerId: string; resolution: PendingEffectResolution } }
   | { type: 'END_TURN'; payload: { playerId: string } }
   | { type: 'INITIALIZE_GAME'; payload: { gameId: string; player1Id: string; player2Id: string; player1SelectedIds: string[]; player2SelectedIds: string[] } }
   | { type: 'SET_GAME_STATE'; payload: GameState | null }; // Allow null payload for setting/clearing state

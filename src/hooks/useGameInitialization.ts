@@ -66,8 +66,13 @@ export function useGameInitialization(
   const lastRealtimeAtRef = useRef<number>(0);
   const lastDispatchAtRef = useRef<number>(0);
   const pollingTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const stateRef = useRef<GameScreenState>(null);
   const POLL_INTERVAL_MS = 2500;
   const REALTIME_STALE_MS = 3000;
+
+  useEffect(() => {
+    stateRef.current = state;
+  }, [state]);
 
   useEffect(() => {
     // Clear state and reset if gameId or currentPlayerId changes/becomes invalid
@@ -279,8 +284,32 @@ export function useGameInitialization(
                     const latest = await getGameState(gameId);
                     if (!latest) return;
                     // Compare a few key fields to avoid redundant dispatches
-                    const cur = state;
-                    const changed = !cur || cur.turn !== latest.turn || cur.currentPlayerIndex !== latest.currentPlayerIndex || cur.phase !== latest.phase;
+                    const cur = stateRef.current;
+                    const changed = !cur || JSON.stringify({
+                      turn: cur.turn,
+                      currentPlayerIndex: cur.currentPlayerIndex,
+                      phase: cur.phase,
+                      actionsTakenThisTurn: cur.actionsTakenThisTurn,
+                      actionsPerTurn: cur.actionsPerTurn,
+                      pendingEffect: cur.pendingEffect?.id ?? null,
+                      market: cur.market.map(card => card.instanceId),
+                      hands: cur.players.map(player => player.hand.map(card => card.instanceId)),
+                      field: cur.players.map(player => player.field.map(slot => slot.knowledge?.instanceId ?? null)),
+                      powers: cur.players.map(player => player.power),
+                      logLength: cur.log.length,
+                    }) !== JSON.stringify({
+                      turn: latest.turn,
+                      currentPlayerIndex: latest.currentPlayerIndex,
+                      phase: latest.phase,
+                      actionsTakenThisTurn: latest.actionsTakenThisTurn,
+                      actionsPerTurn: latest.actionsPerTurn,
+                      pendingEffect: latest.pendingEffect?.id ?? null,
+                      market: latest.market.map(card => card.instanceId),
+                      hands: latest.players.map(player => player.hand.map(card => card.instanceId)),
+                      field: latest.players.map(player => player.field.map(slot => slot.knowledge?.instanceId ?? null)),
+                      powers: latest.players.map(player => player.power),
+                      logLength: latest.log.length,
+                    });
                     if (changed) {
                       console.log('[useGameInit] Polling detected newer state. Dispatching SET_GAME_STATE.');
                       dispatch({ type: 'SET_GAME_STATE', payload: assignInstanceIds(latest) });

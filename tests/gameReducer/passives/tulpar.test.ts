@@ -7,7 +7,6 @@ describe('Tulpar Passive', () => {
   describe('AFTER_SUMMON (Owner) - If owner summoned air knowledge, rotate one of owner\'s creatures 90 degrees', () => {
     it('should rotate the first non-fully rotated creature 90 degrees when owner summons air knowledge', () => {
       const p1Id = 'player1'; // Tulpar's owner
-      const p2Id = 'player2';
       const initialState = createInitialTestState('game32', ['tulpar', 'pele'], ['adaro'], { // P1 has Tulpar and Pele
         currentPlayerIndex: 0, // Player 1's turn
         phase: 'action',
@@ -40,17 +39,18 @@ describe('Tulpar Passive', () => {
 
       const stateAfterSummon = gameReducer(initialState, summonAction) as GameState;
 
-      // Assert: Tulpar (the first creature) should be rotated
+      // Assert: Tulpar opens an optional choice instead of auto-rotating.
       const finalTulparRotation = stateAfterSummon.players[0].creatures[tulparCreatureIndex].rotation;
-      expect(finalTulparRotation).toBe(initialTulparRotation + 90);
+      expect(finalTulparRotation).toBe(initialTulparRotation);
 
-      // Assert: Pele (the second creature) should NOT be rotated
       const finalPeleRotation = stateAfterSummon.players[0].creatures[peleCreatureIndex].rotation;
       expect(finalPeleRotation).toBe(initialPeleRotation);
 
-      // Assert: Log message indicates rotation
-      // FIX: Join log array and use less specific substring match
-      expect(stateAfterSummon.log.join(' ')).toContain(`Tulpar (Owner: ${p1Id}) rotates Tulpar`);
+      expect(stateAfterSummon.pendingEffect?.type).toBe('chooseCreatureToRotate');
+      expect(stateAfterSummon.pendingEffect?.optional).toBe(true);
+      expect(stateAfterSummon.pendingEffect?.choices).toEqual(expect.arrayContaining([
+        expect.objectContaining({ kind: 'creature', creatureId: 'tulpar' }),
+      ]));
     });
 
     it('should NOT rotate any creature when owner summons non-air knowledge', () => {

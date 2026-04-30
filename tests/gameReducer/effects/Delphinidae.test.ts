@@ -27,7 +27,7 @@ describe('Delphinidae (aquatic4) Effect', () => {
     }
   });
 
-  it('should draw 1 card from market on apparition (onSummon trigger)', () => {
+  it('should create a pending Market draw on apparition (onSummon trigger)', () => {
     const initialHandSize = gameState.players[0].hand.length;
     const result = knowledgeEffects.aquatic4({
       state: gameState,
@@ -38,8 +38,9 @@ describe('Delphinidae (aquatic4) Effect', () => {
       isFinalRotation: false,
       trigger: 'onSummon',
     });
-    expect(result.players[0].hand.length).toBe(initialHandSize + 1);
-    expect(result.log.some(log => log.includes('Apparition') && log.includes('Delphinidae'))).toBe(true);
+    expect(result.players[0].hand.length).toBe(initialHandSize);
+    expect(result.pendingEffect?.type).toBe('chooseMarketDraw');
+    expect(result.pendingEffect?.choices.length).toBeGreaterThan(0);
   });
 
   it('should deal 1 damage at 0º rotation', () => {
@@ -109,6 +110,7 @@ describe('Delphinidae (aquatic4) Effect', () => {
       trigger: 'onSummon',
     });
     expect(result.players[0].hand.length).toBe(gameState.players[0].hand.length);
-    expect(result.log.some(log => log.includes('Apparition') && log.includes('empty') && log.includes('Delphinidae'))).toBe(true);
+    expect(result.pendingEffect).toBeFalsy();
+    expect(result.log.some(log => log.includes('Market is empty') && log.includes('Delphinidae'))).toBe(true);
   });
 });

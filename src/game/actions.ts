@@ -1,5 +1,5 @@
 import { GameState, Knowledge, PlayerState, SummonKnowledgePayload } from './types';
-import { getCreatureWisdom, getPlayerState } from './utils.js';
+import { getCreatureWisdom, getPlayerState, makeKnowledgeInstance, refillMarket } from './utils.js';
 
 
 // Define a return type that includes info about leaving knowledge
@@ -82,22 +82,17 @@ export function drawKnowledge(state: GameState, payload: { playerId: string; kno
   player.hand = [...player.hand, cardToDraw];
   updatedPlayers[playerIndex] = player;
 
-  let updatedMarket = state.market.filter(k => k.instanceId !== instanceId);
-  let updatedDeck = [...state.knowledgeDeck];
-  if (updatedDeck.length > 0) {
-    const nextCard = updatedDeck.shift();
-    if (nextCard) {
-      updatedMarket.push({ ...nextCard, instanceId: nextCard.instanceId || crypto.randomUUID() });
-    }
-  }
-
-  return {
+  let nextState: GameState = {
     ...state,
     players: updatedPlayers as [PlayerState, PlayerState],
-    market: updatedMarket,
-    knowledgeDeck: updatedDeck,
+    market: state.market.filter(k => k.instanceId !== instanceId),
+    knowledgeDeck: [...state.knowledgeDeck],
+    discardPile: [...state.discardPile],
     log: [...state.log, `Player ${playerId} drew ${cardToDraw.name} from the market.`]
   };
+
+  nextState = refillMarket(nextState, state.market.length);
+  return nextState;
 }
 
 /**
@@ -121,28 +116,39 @@ export function summonKnowledge(state: GameState, payload: SummonKnowledgePayloa
     console.error(`[Action] summonKnowledge: Knowledge ${instanceId} not found in hand of player ${playerId}`);
     return { newState: workingState, leavingKnowledgeInfo: null };
   }
-  const knowledgeToSummon = player.hand[knowledgeIndex];
+  const knowledgeToSummon = makeKnowledgeInstance({ ...player.hand[knowledgeIndex], rotation: 0 });
   const fieldIndex = player.field.findIndex(f => f.creatureId === creatureId);
   if (fieldIndex === -1) {
     console.error(`[Action] summonKnowledge: Creature slot ${creatureId} not found for player ${playerId}`);
     return { newState: workingState, leavingKnowledgeInfo: null };
   }
 
-  // --- Prevent Knowledge Replacement ---
-  if (player.field[fieldIndex].knowledge) {
-    console.error(`[Action] summonKnowledge: Cannot summon onto occupied slot for creature ${creatureId}.`);
-    // Do not allow replacement, return state unchanged
-    return { newState: workingState, leavingKnowledgeInfo: null };
+  const replacedKnowledge = player.field[fieldIndex].knowledge
+    ? { ...player.field[fieldIndex].knowledge! }
+    : null;
+
+  let leavingKnowledgeInfo: SummonKnowledgeResult['leavingKnowledgeInfo'] = null;
+  if (replacedKnowledge) {
+    workingState.discardPile = [...workingState.discardPile, replacedKnowledge];
+    leavingKnowledgeInfo = {
+      playerId,
+      creatureId,
+      knowledgeCard: replacedKnowledge,
+    };
   }
-  // --- End Replacement Prevention ---
 
   // Place the new knowledge
   player.field[fieldIndex].knowledge = knowledgeToSummon;
   // Remove the summoned card from hand
   player.hand.splice(knowledgeIndex, 1);
 
-  workingState.log = [...workingState.log, `${playerId} summoned ${knowledgeToSummon.name} onto ${creatureId}.`];
+  workingState.log = [
+    ...workingState.log,
+    replacedKnowledge
+      ? `${playerId} replaced ${replacedKnowledge.name} with ${knowledgeToSummon.name} onto ${creatureId}.`
+      : `${playerId} summoned ${knowledgeToSummon.name} onto ${creatureId}.`
+  ];
 
   // Return the modified state and the info about any knowledge that left
-  return { newState: workingState, leavingKnowledgeInfo: null };
+  return { newState: workingState, leavingKnowledgeInfo };
 }

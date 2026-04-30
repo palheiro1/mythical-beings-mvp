@@ -100,12 +100,12 @@ describe('Aquatic2 (Asteroid) Effect', () => {
       attackerKnowledge,
       fieldSlotIndex
     );
-    // Should reduce damage by 1 (defense)
-    expect(result.finalDamage).toBe(1);
+    // Asteroid gives 1 defense from its value cycle and +1 more when the opposing slot is empty.
+    expect(result.finalDamage).toBe(0);
     expect(result.logs.some(log => log.includes('Asteroid') && log.includes('+1 defense'))).toBe(true);
   });
 
-  it('should NOT provide defense if opposing slot has knowledge', () => {
+  it('should only provide value-cycle defense if opposing slot has knowledge', () => {
     // Place a knowledge in the attacker's slot
     gameState.players[1].field[fieldSlotIndex].knowledge = createTestKnowledge('aerial1');
     const attackerKnowledge = createTestKnowledge('terrestrial1');
@@ -118,8 +118,7 @@ describe('Aquatic2 (Asteroid) Effect', () => {
       attackerKnowledge,
       fieldSlotIndex
     );
-    // No defense should be applied
-    expect(result.finalDamage).toBe(2);
-    expect(result.logs.some(log => log.includes('Asteroid') && log.includes('has knowledge. No defense'))).toBe(true);
+    expect(result.finalDamage).toBe(1);
+    expect(result.logs.some(log => log.includes('Asteroid') && log.includes('+1 defense'))).toBe(true);
   });
 });

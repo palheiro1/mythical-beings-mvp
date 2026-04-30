@@ -46,7 +46,7 @@ describe('Tarasca Passive', () => {
         phase: 'action',
         actionsTakenThisTurn: 0,
       });
-      const airCard = createTestKnowledge('aerial1', { cost: 1 });
+      const airCard = createTestKnowledge('aquatic1', { cost: 1 });
       initialState.players[1].hand = [airCard];
       initialState.players[1].creatures[0].currentWisdom = 1;
 

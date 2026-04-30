@@ -3,6 +3,7 @@ import { knowledgeEffects } from '../../../src/game/effects';
 import { GameState, Knowledge } from '../../../src/game/types';
 import { createInitialTestState } from '../../utils/testHelpers';
 import knowledges from '../../../src/assets/knowledges.json';
+import { getEffectiveCreatureWisdom } from '../../../src/game/utils';
 
 const owlKnowledge = knowledges.find(k => k.id === 'aerial3') as Knowledge;
 const p1CreatureId = 'adaro';
@@ -66,7 +67,7 @@ describe('Owl (aerial3) Effect', () => {
     expect(result.log.some(log => log.includes('Owl deals 2 damage (Rotation: 180º)'))).toBe(true);
   });
 
-  it('should grant +1 wisdom to all your creatures while in play', () => {
+  it('should grant +1 effective wisdom to your creatures while in play', () => {
     const result = knowledgeEffects.aerial3({
       state: gameState,
       playerIndex: 0,
@@ -76,11 +77,12 @@ describe('Owl (aerial3) Effect', () => {
       isFinalRotation: false,
       trigger: 'onPhase',
     });
-    expect(result.players[0].creatures[0].currentWisdom).toBe(3);
-    expect(result.log.some(log => log.includes('Owl: While in play, all your creatures gain +1 Wisdom.'))).toBe(true);
+    expect(result.players[0].creatures[0].currentWisdom).toBe(2);
+    expect(getEffectiveCreatureWisdom(result, 0, p1CreatureId)).toBe(3);
+    expect(result.log.some(log => log.includes('Wisdom aura is active'))).toBe(true);
   });
 
-  it('should remove wisdom buff on final rotation', () => {
+  it('should end effective wisdom buff on final rotation', () => {
     // First, apply the buff
     let result = knowledgeEffects.aerial3({
       state: gameState,
@@ -102,6 +104,6 @@ describe('Owl (aerial3) Effect', () => {
       trigger: 'onPhase',
     });
     expect(result.players[0].creatures[0].currentWisdom).toBe(2);
-    expect(result.log.some(log => log.includes('Owl: Wisdom buff removed.'))).toBe(true);
+    expect(result.log.some(log => log.includes('Wisdom aura ends'))).toBe(true);
   });
 });

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { GameState, Knowledge, Card } from '../../../src/game/types';
+import { GameState, Knowledge } from '../../../src/game/types';
 import { knowledgeEffects } from '../../../src/game/effects';
 import { createInitialTestState, createTestKnowledge } from '../../utils/testHelpers';
 import knowledges from '../../../src/assets/knowledges.json';
@@ -40,29 +40,21 @@ describe('Serpent (terrestrial2) Effect', () => {
     gameState.log = []; // Clear log
   });
 
-  it('should force opponent to discard the first card from hand', () => {
+  it('should create a pending discard choice on apparition', () => {
     const initialOpponentHandSize = gameState.players[opponentIndex].hand.length;
-    const cardToDiscard = gameState.players[opponentIndex].hand[0]; // The first card
 
     const newState = knowledgeEffects.terrestrial2({
       state: gameState,
       playerIndex,
       fieldSlotIndex,
       knowledge: gameState.players[playerIndex].field[fieldSlotIndex].knowledge!,
-      trigger: 'onPhase',
-      // rotation and isFinalRotation are not used by terrestrial2
+      trigger: 'onSummon',
     });
 
-    // Check opponent's hand
-    expect(newState.players[opponentIndex].hand.length).toBe(initialOpponentHandSize - 1);
-    expect(newState.players[opponentIndex].hand.find(c => c.instanceId === cardToDiscard.instanceId)).toBeUndefined();
-
-    // Check discard pile
-    expect(newState.discardPile.length).toBe(1);
-    expect(newState.discardPile[0].instanceId).toBe(cardToDiscard.instanceId);
-
-    // Check log
-    expect(newState.log.some(log => log.includes(`Serpent forces opponent to discard ${cardToDiscard.name}`))).toBe(true);
+    expect(newState.players[opponentIndex].hand.length).toBe(initialOpponentHandSize);
+    expect(newState.discardPile.length).toBe(0);
+    expect(newState.pendingEffect?.type).toBe('chooseOpponentHandDiscard');
+    expect(newState.pendingEffect?.choices).toHaveLength(2);
   });
 
   it('should do nothing if opponent has no cards in hand', () => {
@@ -75,7 +67,7 @@ describe('Serpent (terrestrial2) Effect', () => {
       playerIndex,
       fieldSlotIndex,
       knowledge: gameState.players[playerIndex].field[fieldSlotIndex].knowledge!,
-      trigger: 'onPhase',
+      trigger: 'onSummon',
     });
 
     // Check opponent's hand (still empty)
@@ -85,35 +77,32 @@ describe('Serpent (terrestrial2) Effect', () => {
     expect(newState.discardPile.length).toBe(initialDiscardPileSize);
 
     // Check log
-    expect(newState.log.some(log => log.includes('Serpent: Opponent has no cards to discard.'))).toBe(true);
+    expect(newState.pendingEffect).toBeFalsy();
+    expect(newState.log.some(log => log.includes('opponent has no cards to discard'))).toBe(true);
   });
 
-  it('should not discard from the player\'s own hand', () => {
+  it('should not include the player\'s own hand in the pending choice', () => {
      // Give player a card
      const playerCard = createTestKnowledge('terrestrial3');
      gameState.players[playerIndex].hand = [{ ...playerCard, instanceId: 'playerCard1' }];
      const initialPlayerHandSize = gameState.players[playerIndex].hand.length;
      const initialOpponentHandSize = gameState.players[opponentIndex].hand.length;
-     const cardToDiscard = gameState.players[opponentIndex].hand[0]; // Opponent's first card
 
     const newState = knowledgeEffects.terrestrial2({
       state: gameState,
       playerIndex,
       fieldSlotIndex,
       knowledge: gameState.players[playerIndex].field[fieldSlotIndex].knowledge!,
-      trigger: 'onPhase',
+      trigger: 'onSummon',
     });
 
     // Check player's hand (unchanged)
     expect(newState.players[playerIndex].hand.length).toBe(initialPlayerHandSize);
     expect(newState.players[playerIndex].hand[0].instanceId).toBe('playerCard1');
 
-    // Check opponent's hand (one card discarded)
-    expect(newState.players[opponentIndex].hand.length).toBe(initialOpponentHandSize - 1);
-
-    // Check discard pile (contains opponent's card)
-    expect(newState.discardPile.length).toBe(1);
-    expect(newState.discardPile[0].instanceId).toBe(cardToDiscard.instanceId);
+    expect(newState.players[opponentIndex].hand.length).toBe(initialOpponentHandSize);
+    expect(newState.discardPile.length).toBe(0);
+    expect(newState.pendingEffect?.choices.every(choice => choice.kind === 'hand' && choice.playerIndex === opponentIndex)).toBe(true);
   });
 
 });

@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { knowledgeEffects } from '../../../src/game/effects';
 import { createInitialTestState, createTestKnowledge } from '../../utils/testHelpers';
 import knowledges from '../../../src/assets/knowledges.json';
+import { isValidAction } from '../../../src/game/rules';
 
 const hurricaneKnowledge = knowledges.find(k => k.id === 'aquatic3');
 const p1CreatureId = 'adaro';
@@ -29,10 +30,20 @@ describe('Hurricane (aquatic3) Effect', () => {
       isFinalRotation: false,
       trigger: 'onPhase',
     });
-    // Opponent's slot 0 should be blocked
-    expect(result.blockedSlots[1]).toContain(fieldSlotIndex);
-    // Log should mention the block
-    expect(result.log.some(log => log.includes('cannot summon knowledge onto the opposing creature'))).toBe(true);
+    expect(result.blockedSlots[1]).toEqual([]);
+    expect(result.log.some(log => log.includes('Hurricane blocks summons'))).toBe(true);
+
+    const p2Card = createTestKnowledge('aerial1');
+    result.players[1].hand = [p2Card];
+    result.players[1].creatures[0].currentWisdom = 5;
+    result.phase = 'action';
+    result.currentPlayerIndex = 1;
+    const validation = isValidAction(result, {
+      type: 'SUMMON_KNOWLEDGE',
+      payload: { playerId: 'player2', knowledgeId: p2Card.id, instanceId: p2Card.instanceId!, creatureId: p2CreatureId },
+    });
+    expect(validation.isValid).toBe(false);
+    expect(validation.reason).toContain('Hurricane');
   });
 
   it('should remove the block when Hurricane leaves play (final rotation)', () => {
@@ -46,10 +57,8 @@ describe('Hurricane (aquatic3) Effect', () => {
       isFinalRotation: true,
       trigger: 'onPhase',
     });
-    // Block should be removed
-    expect(result.blockedSlots[1]).not.toContain(fieldSlotIndex);
-    // Log should mention block removal
-    expect(result.log.some(log => log.includes('Block on opponent\'s slot'))).toBe(true);
+    expect(result.blockedSlots[1]).toContain(fieldSlotIndex);
+    expect(result.log.some(log => log.includes('will no longer be blocked'))).toBe(true);
   });
 
   it('should not block other slots', () => {
@@ -61,9 +70,7 @@ describe('Hurricane (aquatic3) Effect', () => {
       isFinalRotation: false,
       trigger: 'onPhase',
     });
-    // Only slot 0 should be blocked for opponent
-    expect(result.blockedSlots[1]).toEqual([fieldSlotIndex]);
-    // Other slots should not be blocked
+    expect(result.blockedSlots[1]).toEqual([]);
     expect(result.blockedSlots[1]).not.toContain(1);
     expect(result.blockedSlots[1]).not.toContain(2);
   });
@@ -77,7 +84,6 @@ describe('Hurricane (aquatic3) Effect', () => {
       isFinalRotation: false,
       trigger: 'onPhase',
     });
-    // Block should still be present, no duplicate
     expect(result.blockedSlots[1].filter(i => i === fieldSlotIndex).length).toBe(1);
   });
 });

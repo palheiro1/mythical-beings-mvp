@@ -1,4 +1,12 @@
 import { GameState, PassiveTriggerType, PassiveEventData, Knowledge, Creature } from './types.js';
+import {
+  buildCreatureChoices,
+  buildKnowledgeChoices,
+  buildMarketChoices,
+  createPendingEffect,
+  refillMarket,
+  updateCreatureWisdomFromRotation,
+} from './utils.js';
 
 
 /**
@@ -56,28 +64,7 @@ export function applyPassiveAbilities(
           }
         }
 
-        // Zhar-Ptitsa Passive: Triggers at TURN_START. Owner draws 1 card from market (free draw).
-        // Standardized trigger: 'TURN_START'
-        else if (creature.id === 'zhar-ptitsa') {
-          newState.log.push(`[Passive Effect] Zhar-Ptitsa (Owner: ${player.id}) triggers free draw.`);
-          if (newState.market.length > 0) {
-            const drawnCard = newState.market.shift();
-            if (drawnCard) {
-              player.hand.push(drawnCard); // Modify player directly in newState
-              // simple draw log for tests
-              newState.log.push(`[Passive Effect] Zhar-Ptitsa (Owner: ${player.id}) draws ${drawnCard.name}.`);
-              // detailed draw log
-              newState.log.push(`[Passive Effect] Zhar-Ptitsa (Owner: ${player.id}) draws ${drawnCard.name}. Hand size: ${player.hand.length}`);
-              if (newState.knowledgeDeck.length > 0) {
-                const refillCard = { ...newState.knowledgeDeck.shift()!, instanceId: crypto.randomUUID() };
-                newState.market.push(refillCard);
-                newState.log.push(`[Passive Effect] Market refilled with ${refillCard.name}.`);
-              }
-            }
-          } else {
-            newState.log.push(`[Passive Effect] Zhar-Ptitsa triggered, but Market is empty.`);
-          }
-        }
+        // Zhar-Ptitsa is handled during damage calculation: aerial Knowledge bypasses defense.
       });
     });
   }
@@ -107,14 +94,7 @@ export function applyPassiveAbilities(
             if (drawnCard) {
               player.hand.push(drawnCard); // Modify player directly in newState
               newState.log.push(`[Passive Effect] ${player.id} drew ${drawnCard.name} from Market due to Adaro passive.`);
-              // Refill market
-              if (newState.knowledgeDeck.length > 0) {
-                const refillCard = newState.knowledgeDeck.shift();
-                if (refillCard) {
-                  newState.market.push(refillCard);
-                  newState.log.push(`[Passive Effect] Market refilled with ${refillCard.name}.`); // Log refill
-                }
-              }
+              newState = refillMarket(newState, newState.market.length + 1);
             }
           } else {
             newState.log.push(`[Passive Effect] Adaro triggered, but Market is empty.`);
@@ -154,29 +134,19 @@ export function applyPassiveAbilities(
         // Pele: AFTER_SUMMON (Owner) - If owner summoned earth knowledge, discard 1 opponent knowledge with lower cost.
         else if (creature.id === 'pele' && player.id === summoningPlayerId && summonedKnowledge.element === 'earth') {
           if (opponent) {
-            let discardedCard: Knowledge | null = null;
-            let discardedFromCreatureId: string | null = null;
+            const opponentIndex = newState.players.findIndex(p => p.id === opponent.id) as 0 | 1;
+            const choices = buildKnowledgeChoices(newState, opponentIndex as 0 | 1, candidate => candidate.cost < summonedKnowledge.cost);
 
-            // Find the first opponent knowledge card with lower cost
-            for (const fieldSlot of opponent.field) {
-              if (fieldSlot.knowledge && fieldSlot.knowledge.cost < summonedKnowledge.cost) {
-                discardedCard = fieldSlot.knowledge;
-                discardedFromCreatureId = fieldSlot.creatureId;
-                // Use helper to remove knowledge and trigger KNOWLEDGE_LEAVE
-                removeKnowledgeFromFieldAndTriggerPassives(
-                  newState,
-                  opponent.id,
-                  fieldSlot.creatureId,
-                  discardedCard
-                );
-                fieldSlot.knowledge = null; // Remove from field (already handled in helper, but keep for clarity)
-                break; // Discard only one
-              }
-            }
-
-            if (discardedCard && discardedFromCreatureId) {
-              newState.log.push(`[Passive Effect] Pele (Owner: ${player.id}) discards ${discardedCard.name} (Cost: ${discardedCard.cost}) from opponent ${opponent.id}'s ${discardedFromCreatureId}.`);
-              console.log(`[Passives] Pele triggered. Discarded ${discardedCard.name} from opponent ${opponent.id}.`);
+            if (choices.length > 0) {
+              newState = createPendingEffect(newState, {
+                type: 'chooseOpponentKnowledgeDiscard',
+                playerId: player.id,
+                sourcePlayerId: player.id,
+                sourceKnowledgeId: summonedKnowledge.id,
+                sourceKnowledgeName: 'Pele',
+                prompt: `Pele: choose an opponent Knowledge with cost lower than ${summonedKnowledge.name}.`,
+                choices,
+              });
             } else {
               console.log(`[Passives] Pele triggered, but no lower cost knowledge found on opponent ${opponent.id}.`);
             }
@@ -189,17 +159,21 @@ export function applyPassiveAbilities(
         // Effect: Rotates one of owner's creatures 90º (if not fully rotated).
         // Standardized trigger: 'AFTER_PLAYER_SUMMON'
         else if (creature.id === 'tulpar' && summonedKnowledge.element === 'air' && player.id === summoningPlayerId) {
-          const notFullyRotated = player.creatures
-            .map((c, index) => ({ creature: c, index }))
-            .filter(({ creature: c }) => (c.rotation ?? 0) < 270);
+          const choices = buildCreatureChoices(newState, playerIndex as 0 | 1, c => (c.rotation ?? 0) < 270);
 
-          if (notFullyRotated.length === 0) {
+          if (choices.length === 0) {
             newState.log.push(`[Passive Effect] Tulpar (Owner: ${player.id}) triggered, but all creatures are fully rotated.`);
           } else {
-            const { creature: c, index: creatureIndex } = notFullyRotated[0];
-            const currentRotation = c.rotation ?? 0;
-            newState.players[playerIndex].creatures[creatureIndex].rotation = currentRotation + 90;
-            newState.log.push(`[Passive Effect] Tulpar (Owner: ${player.id}) rotates ${c.name} 90º due to summoning ${summonedKnowledge.name}.`);
+            newState = createPendingEffect(newState, {
+              type: 'chooseCreatureToRotate',
+              playerId: player.id,
+              sourcePlayerId: player.id,
+              sourceKnowledgeId: summonedKnowledge.id,
+              sourceKnowledgeName: 'Tulpar',
+              prompt: `Tulpar: choose one of your creatures to rotate.`,
+              choices,
+              optional: true,
+            });
           }
         }
 
@@ -218,18 +192,20 @@ export function applyPassiveAbilities(
         // Effect: Rotates one other knowledge on owner's field by 90º.
         // Standardized trigger: 'AFTER_PLAYER_SUMMON'
         else if (creature.id === 'lafaic' && trigger === 'AFTER_PLAYER_SUMMON' && player.id === summoningPlayerId && targetCreatureId === 'lafaic' && summonedKnowledge.element === 'water') {
-          // Rotate the first other knowledge by 90°
-          const playerField = newState.players[playerIndex].field;
-          for (const slot of playerField) {
-            if (slot.creatureId !== 'lafaic' && slot.knowledge) {
-              const currentRot = slot.knowledge.rotation ?? 0;
-              slot.knowledge.rotation = currentRot + 90;
-              break; // Only rotate one
-            }
+          const choices = buildKnowledgeChoices(newState, playerIndex as 0 | 1, (_candidate, creatureId) => creatureId !== 'lafaic');
+          if (choices.length > 0) {
+            newState = createPendingEffect(newState, {
+              type: 'chooseKnowledgeToRotate',
+              playerId: player.id,
+              sourcePlayerId: player.id,
+              sourceKnowledgeId: summonedKnowledge.id,
+              sourceKnowledgeName: 'Lafaic',
+              prompt: 'Lafaic: choose one other Knowledge to rotate.',
+              choices,
+            });
+          } else {
+            newState.log.push(`[Passive Effect] Lafaic (Owner: ${player.id}) triggered, but there are no other Knowledges to rotate.`);
           }
-          newState.log.push(
-            `[Passive Effect] Lafaic (Owner: ${player.id}) rotates other knowledges due to aquatic summon.`
-          );
         }
 
         // Tarasca Passive: Triggers on AFTER_PLAYER_SUMMON when opponent summons terrestrial/earth knowledge.
@@ -258,16 +234,22 @@ export function applyPassiveAbilities(
         // Inkanyamba Passive: Triggers on AFTER_PLAYER_DRAW or AFTER_OPPONENT_DRAW when owner draws a card.
         // Effect: Discards the top card from the market and refills it if possible.
         // Standardized triggers: 'AFTER_PLAYER_DRAW', 'AFTER_OPPONENT_DRAW'
-        if (creature.id === 'inkanyamba' && eventData.playerId === player.id && newState.market.length > 0) {
-          const cardToDiscard = newState.market[0]; // Discard the first card
-          newState.market = newState.market.slice(1);
-          newState.discardPile.push(cardToDiscard);
-          newState.log.push(`[Passive Effect] Inkanyamba (Owner: ${player.id}) discards ${cardToDiscard.name} from Market.`);
-          if (newState.knowledgeDeck.length > 0) {
-            const refillCard = { ...newState.knowledgeDeck.shift()!, instanceId: crypto.randomUUID() };
-            newState.market.push(refillCard);
-            newState.log.push(`[Passive Effect] Market refilled with ${refillCard.name}.`);
-          }
+        if (
+          creature.id === 'inkanyamba'
+          && eventData.playerId === player.id
+          && eventData.knowledgeCard?.element === 'water'
+          && newState.market.length > 0
+        ) {
+          newState = createPendingEffect(newState, {
+            type: 'chooseMarketDiscard',
+            playerId: player.id,
+            sourcePlayerId: player.id,
+            sourceKnowledgeId: eventData.knowledgeCard.id,
+            sourceKnowledgeName: 'Inkanyamba',
+            prompt: 'Inkanyamba: you may discard one card from the Market.',
+            choices: buildMarketChoices(newState),
+            optional: true,
+          });
         }
       });
     });
@@ -381,7 +363,7 @@ export const aerial5 = ({ state, playerIndex }: { state: GameState; playerIndex:
     if (currentRotation < 270) { // Assuming 270 is max rotation for creatures
       rotatedCount++;
       const newRotation = currentRotation + 90;
-      return { ...creature, rotation: newRotation };
+      return updateCreatureWisdomFromRotation({ ...creature, rotation: newRotation });
     }
     return creature;
   });

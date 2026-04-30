@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest'; // Added beforeEach
-import { GameState, PlayerState } from '../../../src/game/types';
+import { GameState } from '../../../src/game/types';
 import { knowledgeEffects } from '../../../src/game/effects';
 import { createInitialTestState, createTestKnowledge } from '../../utils/testHelpers'; // Use createInitialTestState and createTestKnowledge
 import { Knowledge } from '../../../src/game/types';
@@ -130,7 +130,7 @@ describe('Lupus (terrestrial5) Effect', () => {
     expect(newState.log.some(log => log.includes('Lupus deals 3 damage (Rotation: 270º)'))).toBe(true);
   });
 
-  it('should discard opponent knowledge on final rotation (270 degrees)', () => {
+  it('should create a pending opponent knowledge discard on final rotation (270 degrees)', () => {
     const rotation = 270;
     const opponentKnowledgeInstance: Knowledge = { ...opponentTestKnowledge, instanceId: 'oppoK1' };
     // Ensure opponent knowledge is placed in the correct slot
@@ -153,14 +153,14 @@ describe('Lupus (terrestrial5) Effect', () => {
       trigger: 'onPhase',
     });
 
-    // Find the opponent slot again in the new state to check knowledge
     const opponentSlotAfter = newState.players[opponentIndex].field.find(slot => slot.creatureId === p2CreatureId);
-    expect(opponentSlotAfter?.knowledge).toBeNull();
+    expect(opponentSlotAfter?.knowledge?.instanceId).toBe('oppoK1');
 
-    expect(newState.discardPile).toEqual(expect.arrayContaining([
+    expect(newState.discardPile).toEqual([]);
+    expect(newState.pendingEffect?.type).toBe('chooseOpponentKnowledgeDiscard');
+    expect(newState.pendingEffect?.choices).toEqual(expect.arrayContaining([
         expect.objectContaining({ instanceId: 'oppoK1' })
     ]));
-    expect(newState.log.some(log => log.includes(`[Final] Lupus attempts to discard opponent knowledge. Discarded ${opponentKnowledgeInstance.name}`))).toBe(true);
     expect(newState.players[opponentIndex].power).toBe(17);
   });
 
@@ -187,7 +187,7 @@ describe('Lupus (terrestrial5) Effect', () => {
 
     expect(opponentFieldSlot.knowledge).toEqual(opponentKnowledgeInstance);
     expect(newState.discardPile).toEqual([]); // Discard pile should be empty
-    expect(newState.log.some(log => log.includes('[Final] Lupus attempts to discard opponent knowledge.'))).toBe(false);
+    expect(newState.pendingEffect).toBeFalsy();
     expect(newState.players[opponentIndex].power).toBe(18);
   });
 
@@ -209,7 +209,8 @@ describe('Lupus (terrestrial5) Effect', () => {
 
     const opponentFieldSlot = newState.players[opponentIndex].field.find(slot => slot.creatureId === p2CreatureId);
     expect(opponentFieldSlot?.knowledge).toBeNull();
-    expect(newState.log.some(log => log.includes('[Final] Lupus attempts to discard opponent knowledge. No knowledge cards to discard.'))).toBe(true);
+    expect(newState.pendingEffect).toBeFalsy();
+    expect(newState.log.some(log => log.includes('[Final] Lupus: no opponent Knowledge cards to discard.'))).toBe(true);
     expect(newState.players[opponentIndex].power).toBe(17);
   });
 

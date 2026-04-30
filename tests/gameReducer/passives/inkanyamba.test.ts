@@ -14,8 +14,8 @@ describe('Inkanyamba Passive', () => {
         phase: 'action',
         actionsTakenThisTurn: 0,
         market: [ // Ensure market has cards
-            createTestKnowledge('aerial1'),
             createTestKnowledge('aquatic1'),
+            createTestKnowledge('aerial1'),
             createTestKnowledge('terrestrial1'),
             createTestKnowledge('aerial2'),
         ],
@@ -25,8 +25,6 @@ describe('Inkanyamba Passive', () => {
       const initialMarketSize = initialState.market.length;
       const initialDiscardSize = initialState.discardPile.length;
       const cardToBeDrawn = initialState.market[0]; // The card the player will draw
-      const cardToBeDiscardedByPassive = initialState.market[1]; // The card Inkanyamba should discard (now the 2nd card)
-      const cardToRefill = initialState.knowledgeDeck[0];
 
       const drawAction = {
         type: 'DRAW_KNOWLEDGE', // Use DRAW_KNOWLEDGE
@@ -39,28 +37,15 @@ describe('Inkanyamba Passive', () => {
 
       const stateAfterDraw = gameReducer(initialState, drawAction) as GameState;
 
-      // Assert: Market size is unchanged (1 drawn, 1 discarded, 1 refilled)
-      expect(stateAfterDraw.market.length).toBe(initialMarketSize - 1); // Draw 1, Discard 1, Refill 1 = Net -1
-      // Assert: Discard pile size increased by 1 (Inkanyamba discard)
-      expect(stateAfterDraw.discardPile.length).toBe(initialDiscardSize + 1);
-      // Assert: The card discarded by the passive is in the discard pile
-      expect(stateAfterDraw.discardPile).toEqual(expect.arrayContaining([
-        expect.objectContaining({ instanceId: cardToBeDiscardedByPassive.instanceId })
-      ]));
+      expect(stateAfterDraw.market.length).toBe(initialMarketSize);
+      expect(stateAfterDraw.discardPile.length).toBe(initialDiscardSize);
+      expect(stateAfterDraw.pendingEffect?.type).toBe('chooseMarketDiscard');
+      expect(stateAfterDraw.pendingEffect?.optional).toBe(true);
       // Assert: The card drawn by the player is NOT in the market
       expect(stateAfterDraw.market).not.toEqual(expect.arrayContaining([
         expect.objectContaining({ instanceId: cardToBeDrawn.instanceId })
       ]));
-      // Assert: The card discarded by the passive is NOT in the market
-      expect(stateAfterDraw.market).not.toEqual(expect.arrayContaining([
-        expect.objectContaining({ instanceId: cardToBeDiscardedByPassive.instanceId })
-      ]));
-       // Assert: The refill card IS in the market
-      expect(stateAfterDraw.market).toEqual(expect.arrayContaining([
-        expect.objectContaining({ instanceId: cardToRefill.instanceId })
-      ]));
-      // Assert: Log message is present for the passive discard
-      expect(stateAfterDraw.log).toContain(`[Passive Effect] Inkanyamba (Owner: ${p1Id}) discards ${cardToBeDiscardedByPassive.name} from Market.`);
+      expect(stateAfterDraw.log.some(log => log.includes('Inkanyamba: you may discard one card from the Market.'))).toBe(true);
     });
 
     it('should NOT discard a card from market if opponent draws a card', () => {
@@ -150,8 +135,8 @@ describe('Inkanyamba Passive', () => {
         phase: 'action',
         actionsTakenThisTurn: 0,
         market: [ // Ensure market has cards
-            createTestKnowledge('aerial1'), // Card to be drawn
-            createTestKnowledge('aquatic1'), // Card to be discarded
+            createTestKnowledge('aquatic1'), // Card to be drawn
+            createTestKnowledge('aerial1'), // Candidate to discard
             createTestKnowledge('terrestrial1'),
         ],
         knowledgeDeck: [] // Empty deck
@@ -160,7 +145,6 @@ describe('Inkanyamba Passive', () => {
       const initialMarketSize = initialState.market.length; // 3
       const initialDiscardSize = initialState.discardPile.length;
       const cardToBeDrawn = initialState.market[0];
-      const cardToBeDiscardedByPassive = initialState.market[1];
 
       const drawAction = {
         type: 'DRAW_KNOWLEDGE',
@@ -173,21 +157,12 @@ describe('Inkanyamba Passive', () => {
 
       const stateAfterDraw = gameReducer(initialState, drawAction) as GameState;
 
-      // Assert: Market size decreased by 2 (1 drawn, 1 discarded, no refill)
-      expect(stateAfterDraw.market.length).toBe(initialMarketSize - 2); // Should be 1
-      // Assert: Discard pile size increased by 1
-      expect(stateAfterDraw.discardPile.length).toBe(initialDiscardSize + 1);
-      // Assert: The discarded card is in the discard pile
-      expect(stateAfterDraw.discardPile).toEqual(expect.arrayContaining([
-        expect.objectContaining({ instanceId: cardToBeDiscardedByPassive.instanceId })
-      ]));
-      // Assert: Neither drawn nor discarded card is in the market
+      expect(stateAfterDraw.market.length).toBe(initialMarketSize - 1);
+      expect(stateAfterDraw.discardPile.length).toBe(initialDiscardSize);
+      expect(stateAfterDraw.pendingEffect?.type).toBe('chooseMarketDiscard');
       expect(stateAfterDraw.market).not.toEqual(expect.arrayContaining([
         expect.objectContaining({ instanceId: cardToBeDrawn.instanceId }),
-        expect.objectContaining({ instanceId: cardToBeDiscardedByPassive.instanceId })
       ]));
-      // Assert: Log message is present
-      expect(stateAfterDraw.log).toContain(`[Passive Effect] Inkanyamba (Owner: ${p1Id}) discards ${cardToBeDiscardedByPassive.name} from Market.`);
     });
 
     // Add test case for owner drawing via other means (e.g., Adaro passive - requires careful setup)

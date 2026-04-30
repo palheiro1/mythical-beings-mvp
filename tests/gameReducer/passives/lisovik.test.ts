@@ -79,16 +79,12 @@ describe('Lisovik Passive', () => {
       // Execute the knowledge phase
       const stateAfterKnowledgePhase = executeKnowledgePhase(initialState);
 
-      // Assert: Player 1's (Lisovik's owner) power is DECREASED by 2 due to P2's terrestrial1 (Ursus) effect, NOT by Lisovik's passive.
-      expect(stateAfterKnowledgePhase.players[0].power).toBe(initialP1Power - 2);
-      // Assert: Opponent's (P2) power is UNCHANGED by Lisovik's passive (and also not by its own Ursus effect on itself).
+      // Only the active player's Knowledges resolve, so P2's card does not act or leave on P1's Knowledge Phase.
+      expect(stateAfterKnowledgePhase.players[0].power).toBe(initialP1Power);
       expect(stateAfterKnowledgePhase.players[1].power).toBe(initialP2Power);
-      // Assert: Discard pile size is INCREASED by 1 (opponent's card is discarded)
-      expect(stateAfterKnowledgePhase.discardPile.length).toBe(initialDiscardSize + 1);
-      expect(stateAfterKnowledgePhase.discardPile.find(k => k.instanceId === earthKnowledgeOnField.instanceId)).toBeDefined();
-      // Assert: The earth card is REMOVED from P2's field
+      expect(stateAfterKnowledgePhase.discardPile.length).toBe(initialDiscardSize);
       const adaroSlotP2After = stateAfterKnowledgePhase.players[1].field.find(f => f.creatureId === 'adaro');
-      expect(adaroSlotP2After?.knowledge).toBeNull();
+      expect(adaroSlotP2After?.knowledge?.instanceId).toBe(earthKnowledgeOnField.instanceId);
       // Assert: Log message for Lisovik damage should NOT be present
       expect(stateAfterKnowledgePhase.log).not.toContain(`[Passive Effect] Lisovik (Owner: ${p1Id}) deals 1 damage to ${p2Id} as ${earthKnowledgeOnField.name} leaves play.`);
       expect(stateAfterKnowledgePhase.log).not.toContain(`Power: ${initialP1Power} -> ${initialP1Power - 1}`);

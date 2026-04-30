@@ -1,4 +1,4 @@
-import { GameState, PlayerState, Creature, Knowledge } from './types';
+import { GameState, PlayerState, Creature, Knowledge, PendingEffect, PendingEffectChoice } from './types';
 // Import the JSON data
 import creaturesData from '../assets/creatures.json';
 import knowledgesData from '../assets/knowledges.json';
@@ -59,9 +59,154 @@ export function getCreatureWisdom(creature: Creature | undefined | null): number
   if (!creature) return 0;
   const rotation = creature.rotation ?? 0;
   if (Array.isArray(creature.wisdomCycle)) {
-    const idx = Math.floor((rotation % 360) / 90);
-    return creature.wisdomCycle[idx] ?? 0;
+    const idx = Math.min(3, Math.max(0, Math.floor((((rotation % 360) + 360) % 360) / 90)));
+    return creature.wisdomCycle[idx] ?? creature.wisdomCycle[0] ?? creature.baseWisdom ?? 0;
   }
   // Fallback or default if wisdomCycle is not defined (shouldn't happen with current data)
   return creature.baseWisdom ?? 0;
+}
+
+export function normalizeCreature(creature: Creature): Creature {
+  const baseWisdom = creature.baseWisdom ?? creature.wisdomCycle?.[0] ?? 0;
+  const rotation = creature.rotation ?? 0;
+  return {
+    ...creature,
+    baseWisdom,
+    rotation,
+    currentWisdom: typeof creature.currentWisdom === 'number'
+      ? creature.currentWisdom
+      : getCreatureWisdom({ ...creature, baseWisdom, rotation }),
+  };
+}
+
+export function updateCreatureWisdomFromRotation(creature: Creature): Creature {
+  return {
+    ...creature,
+    currentWisdom: getCreatureWisdom(creature),
+  };
+}
+
+export function getEffectiveCreatureWisdom(state: GameState, playerIndex: number, creatureId: string): number {
+  const player = state.players[playerIndex];
+  const creature = player?.creatures.find(c => c.id === creatureId);
+  if (!creature) return 0;
+
+  let wisdom = typeof creature.currentWisdom === 'number'
+    ? creature.currentWisdom
+    : getCreatureWisdom(creature);
+  const hasOwl = player.field.some(slot => slot.knowledge?.id === 'aerial3');
+  if (hasOwl) wisdom += 1;
+
+  return wisdom;
+}
+
+export function makeKnowledgeInstance(card: Knowledge): Knowledge {
+  return { ...card, instanceId: card.instanceId || crypto.randomUUID(), rotation: card.rotation ?? 0 };
+}
+
+export function refillMarket(state: GameState, minimumSize = 5): GameState {
+  const newState = structuredClone(state);
+  while (newState.market.length < minimumSize) {
+    if (newState.knowledgeDeck.length === 0) {
+      if (newState.discardPile.length === 0) break;
+      const reshuffled = [...newState.discardPile].sort(() => Math.random() - 0.5).map(card => ({
+        ...card,
+        rotation: 0,
+        instanceId: crypto.randomUUID(),
+      }));
+      newState.knowledgeDeck = reshuffled;
+      newState.discardPile = [];
+      newState.log.push('[Market] Discard pile reshuffled into the Knowledge deck.');
+    }
+
+    const nextCard = newState.knowledgeDeck.shift();
+    if (!nextCard) break;
+    newState.market.push(makeKnowledgeInstance(nextCard));
+  }
+  return newState;
+}
+
+export function createPendingEffect(
+  state: GameState,
+  effect: Omit<PendingEffect, 'id'>
+): GameState {
+  if (state.pendingEffect) {
+    return {
+      ...state,
+      log: [...state.log, `[Pending Effect] ${effect.sourceKnowledgeName ?? 'Card effect'} could not open because another choice is pending.`],
+    };
+  }
+
+  return {
+    ...state,
+    pendingEffect: {
+      ...effect,
+      id: crypto.randomUUID(),
+    },
+    log: [...state.log, `[Pending Effect] ${effect.prompt}`],
+  };
+}
+
+export function buildKnowledgeChoices(
+  state: GameState,
+  playerIndex: 0 | 1,
+  filter: (knowledge: Knowledge, creatureId: string, slotIndex: number) => boolean = () => true
+): PendingEffectChoice[] {
+  return state.players[playerIndex].field.flatMap((slot, slotIndex) => {
+    if (!slot.knowledge || !slot.knowledge.instanceId || !filter(slot.knowledge, slot.creatureId, slotIndex)) return [];
+    return [{
+      kind: 'knowledge' as const,
+      playerIndex,
+      creatureId: slot.creatureId,
+      instanceId: slot.knowledge.instanceId,
+      label: slot.knowledge.name,
+      image: slot.knowledge.image,
+    }];
+  });
+}
+
+export function buildHandChoices(
+  state: GameState,
+  playerIndex: 0 | 1,
+  filter: (knowledge: Knowledge) => boolean = () => true
+): PendingEffectChoice[] {
+  return state.players[playerIndex].hand.flatMap(card => {
+    if (!card.instanceId || !filter(card)) return [];
+    return [{
+      kind: 'hand' as const,
+      playerIndex,
+      instanceId: card.instanceId,
+      label: card.name,
+      image: card.image,
+    }];
+  });
+}
+
+export function buildCreatureChoices(
+  state: GameState,
+  playerIndex: 0 | 1,
+  filter: (creature: Creature) => boolean = () => true
+): PendingEffectChoice[] {
+  return state.players[playerIndex].creatures.flatMap(creature => {
+    if (!filter(creature)) return [];
+    return [{
+      kind: 'creature' as const,
+      playerIndex,
+      creatureId: creature.id,
+      label: creature.name,
+      image: creature.image,
+    }];
+  });
+}
+
+export function buildMarketChoices(state: GameState): PendingEffectChoice[] {
+  return state.market.flatMap(card => {
+    if (!card.instanceId) return [];
+    return [{
+      kind: 'market' as const,
+      instanceId: card.instanceId,
+      label: card.name,
+      image: card.image,
+    }];
+  });
 }

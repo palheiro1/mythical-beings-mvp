@@ -31,11 +31,12 @@ describe('Lafaic Passive', () => {
         payload: { playerId: p1, knowledgeId: aquaCard.id, instanceId: aquaCard.instanceId!, creatureId: 'lafaic' }
       }) as GameState;
 
-      // other field knowledge on Adaro (index 1) should now have rotation = before + 90
       const adaroFieldAfter = result.players[0].field.find(f => f.creatureId === 'adaro');
-      expect(adaroFieldAfter?.knowledge?.rotation).toBe((beforeRotation ?? 0) + 90);
-      // log should contain Lafaic passive mention
-      expect(result.log).toContain(`[Passive Effect] Lafaic (Owner: ${p1}) rotates other knowledges due to aquatic summon.`);
+      expect(adaroFieldAfter?.knowledge?.rotation).toBe(beforeRotation);
+      expect(result.pendingEffect?.type).toBe('chooseKnowledgeToRotate');
+      expect(result.pendingEffect?.choices).toEqual(expect.arrayContaining([
+        expect.objectContaining({ kind: 'knowledge', instanceId: otherCard.instanceId }),
+      ]));
     });
 
     it('should NOT rotate others when non-aquatic knowledge is summoned onto Lafaic', () => {

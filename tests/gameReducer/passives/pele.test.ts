@@ -8,28 +8,25 @@ describe('Pele Passive', () => {
   describe('AFTER_SUMMON (Owner) - If owner summoned earth knowledge, discard 1 opponent knowledge with lower cost', () => {
     it('should discard 1 opponent knowledge with lower cost when owner summons earth knowledge', () => {
       const p1Id = 'player1'; // Pele's owner and summoner
-      const p2Id = 'player2'; // Opponent
       const initialState = createInitialTestState('game25', ['pele', 'adaro'], ['kyzy', 'lisovik'], { // P1 has Pele
         currentPlayerIndex: 0, // Player 1's turn
         phase: 'action',
         actionsTakenThisTurn: 0,
       });
 
-      // Give player 1 an earth knowledge card to summon (cost 2)
-      const earthCardSummoned = createTestKnowledge('terrestrial2', { cost: 2 });
+      // Use a non-Apparition earth knowledge so Pele is the pending choice being tested.
+      const earthCardSummoned = createTestKnowledge('terrestrial3', { cost: 3 });
       initialState.players[0].hand = [earthCardSummoned];
       const adaroIndexP1 = initialState.players[0].creatures.findIndex(c => c.id === 'adaro');
-      initialState.players[0].creatures[adaroIndexP1].currentWisdom = 2; // Ensure wisdom
+      initialState.players[0].creatures[adaroIndexP1].currentWisdom = 3; // Ensure wisdom
 
       // Give opponent knowledge cards on their creatures
       const lowerCostKnowledge = createTestKnowledge('aerial1', { cost: 1 }); // Cost 1 (Lower)
-      const higherCostKnowledge = createTestKnowledge('aquatic3', { cost: 3 }); // Cost 3 (Higher)
+      const higherCostKnowledge = createTestKnowledge('aquatic4', { cost: 4 }); // Cost 4 (Higher)
       const kyzyFieldIndexP2 = initialState.players[1].field.findIndex(f => f.creatureId === 'kyzy');
       const lisovikFieldIndexP2 = initialState.players[1].field.findIndex(f => f.creatureId === 'lisovik');
       initialState.players[1].field[kyzyFieldIndexP2].knowledge = lowerCostKnowledge;
       initialState.players[1].field[lisovikFieldIndexP2].knowledge = higherCostKnowledge;
-
-      const initialDiscardSize = initialState.discardPile.length;
 
       const summonAction = {
         type: 'SUMMON_KNOWLEDGE',
@@ -43,23 +40,18 @@ describe('Pele Passive', () => {
 
       const stateAfterSummon = gameReducer(initialState, summonAction) as GameState;
 
-      // Assert: Discard pile size increased by 1
-      expect(stateAfterSummon.discardPile.length).toBe(initialDiscardSize + 1);
-      // Assert: The discarded card is the lower cost one
-      expect(stateAfterSummon.discardPile).toEqual(expect.arrayContaining([
+      expect(stateAfterSummon.pendingEffect?.type).toBe('chooseOpponentKnowledgeDiscard');
+      expect(stateAfterSummon.pendingEffect?.choices).toEqual(expect.arrayContaining([
         expect.objectContaining({ instanceId: lowerCostKnowledge.instanceId })
       ]));
-      // Assert: The lower cost card is removed from opponent's field
-      expect(stateAfterSummon.players[1].field[kyzyFieldIndexP2].knowledge).toBeNull();
+      expect(stateAfterSummon.players[1].field[kyzyFieldIndexP2].knowledge?.instanceId).toBe(lowerCostKnowledge.instanceId);
       // Assert: The higher cost card remains on opponent's field
       expect(stateAfterSummon.players[1].field[lisovikFieldIndexP2].knowledge?.instanceId).toBe(higherCostKnowledge.instanceId);
-      // Assert: Log message indicates discard
-      expect(stateAfterSummon.log).toContain(`[Passive Effect] Pele (Owner: ${p1Id}) discards ${lowerCostKnowledge.name} (Cost: ${lowerCostKnowledge.cost}) from opponent ${p2Id}'s ${initialState.players[1].field[kyzyFieldIndexP2].creatureId}.`);
+      expect(stateAfterSummon.log.some(log => log.includes('Pele: choose an opponent Knowledge'))).toBe(true);
     });
 
     it('should discard only the first lower cost opponent knowledge if multiple exist', () => {
       const p1Id = 'player1'; // Pele's owner and summoner
-      const p2Id = 'player2'; // Opponent
       const initialState = createInitialTestState('game26', ['pele', 'adaro'], ['kyzy', 'lisovik'], { // P1 has Pele
         currentPlayerIndex: 0, // Player 1's turn
         phase: 'action',
@@ -81,8 +73,6 @@ describe('Pele Passive', () => {
       initialState.players[1].field[kyzyFieldIndexP2].knowledge = lowerCostKnowledge1;
       initialState.players[1].field[lisovikFieldIndexP2].knowledge = lowerCostKnowledge2;
 
-      const initialDiscardSize = initialState.discardPile.length;
-
       const summonAction = {
         type: 'SUMMON_KNOWLEDGE',
         payload: {
@@ -95,20 +85,15 @@ describe('Pele Passive', () => {
 
       const stateAfterSummon = gameReducer(initialState, summonAction) as GameState;
 
-      // Assert: Discard pile size increased by 1
-      expect(stateAfterSummon.discardPile.length).toBe(initialDiscardSize + 1);
-      // Assert: The discarded card is the FIRST lower cost one found (lowerCostKnowledge1 on Kyzy)
-      expect(stateAfterSummon.discardPile).toEqual(expect.arrayContaining([
+      expect(stateAfterSummon.pendingEffect?.type).toBe('chooseOpponentKnowledgeDiscard');
+      expect(stateAfterSummon.pendingEffect?.choices).toEqual(expect.arrayContaining([
         expect.objectContaining({ instanceId: lowerCostKnowledge1.instanceId })
       ]));
-      // Assert: The first lower cost card is removed from opponent's field
-      expect(stateAfterSummon.players[1].field[kyzyFieldIndexP2].knowledge).toBeNull();
-      // Assert: The second lower cost card remains on opponent's field
+      expect(stateAfterSummon.pendingEffect?.choices).toEqual(expect.arrayContaining([
+        expect.objectContaining({ instanceId: lowerCostKnowledge2.instanceId })
+      ]));
+      expect(stateAfterSummon.players[1].field[kyzyFieldIndexP2].knowledge?.instanceId).toBe(lowerCostKnowledge1.instanceId);
       expect(stateAfterSummon.players[1].field[lisovikFieldIndexP2].knowledge?.instanceId).toBe(lowerCostKnowledge2.instanceId);
-      // Assert: Log message indicates discard of the first card
-      expect(stateAfterSummon.log).toContain(`[Passive Effect] Pele (Owner: ${p1Id}) discards ${lowerCostKnowledge1.name} (Cost: ${lowerCostKnowledge1.cost}) from opponent ${p2Id}'s ${initialState.players[1].field[kyzyFieldIndexP2].creatureId}.`);
-      // Assert: Log message does NOT indicate discard of the second card
-      expect(stateAfterSummon.log).not.toContain(`[Passive Effect] Pele (Owner: ${p1Id}) discards ${lowerCostKnowledge2.name}`);
     });
 
     it('should NOT discard if opponent only has equal/higher cost knowledge', () => {

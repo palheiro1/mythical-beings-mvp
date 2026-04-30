@@ -6,7 +6,7 @@ import { createInitialTestState, createTestKnowledge } from '../../utils/testHel
 describe('Passive Interactions', () => {
 
   describe('Scenario 1: Multiple TURN_START Passives', () => {
-    it('should trigger Caapora and Zhar-Ptitsa at turn start, followed by knowledge phase draw', () => {
+    it('should trigger Caapora at turn start without treating Zhar-Ptitsa as a draw passive', () => {
       const p1Id = 'player1';
       const p2Id = 'player2';
       // P1 has Caapora and Zhar-Ptitsa
@@ -21,9 +21,6 @@ describe('Passive Interactions', () => {
 
       const p2PowerBefore = initialState.players[1].power;
       const p1HandBefore = initialState.players[0].hand.length; // 1
-      const marketBefore = initialState.market.length;
-      const deckBefore = initialState.knowledgeDeck.length;
-      const marketCardToDraw = initialState.market[0];
 
       // Trigger turn start for P1
       const result = gameReducer(initialState, { type: 'END_TURN', payload: { playerId: p2Id } }) as GameState;
@@ -32,18 +29,8 @@ describe('Passive Interactions', () => {
       expect(result.players[1].power).toBe(p2PowerBefore - 1);
       expect(result.log).toContain(`[Passive Effect] Caapora (Owner: ${p1Id}) deals 1 damage to ${p2Id}.`);
 
-      // Check Zhar-Ptitsa effect + Knowledge Phase Draw
-      // Expect hand size to increase by 1 (1 passive OR 1 knowledge phase, not both)
-      expect(result.players[0].hand.length).toBe(p1HandBefore + 1);
-      // Check that the card drawn by Zhar-Ptitsa is present
-      expect(result.players[0].hand).toEqual(expect.arrayContaining([
-        expect.objectContaining({ instanceId: marketCardToDraw.instanceId })
-      ]));
-      // Market refilled once by Zhar-Ptitsa, once by knowledge phase draw
-      expect(result.market.length).toBe(marketBefore);
-      expect(result.knowledgeDeck.length).toBe(deckBefore - 1); // Only 1 card drawn from deck
-      expect(result.log).toContain(`[Passive Effect] Zhar-Ptitsa (Owner: ${p1Id}) triggers free draw.`);
-      expect(result.log).toContain(`[Passive Effect] Zhar-Ptitsa (Owner: ${p1Id}) draws ${marketCardToDraw.name}.`);
+      expect(result.players[0].hand.length).toBe(p1HandBefore);
+      expect(result.log.join(' ')).not.toContain('Zhar-Ptitsa (Owner: player1) triggers free draw');
     });
   });
 
@@ -115,8 +102,6 @@ describe('Passive Interactions', () => {
 
       const p1HandBefore = initialState.players[0].hand.length; // 2
       const p2HandBefore = initialState.players[1].hand.length; // 0
-      const discardBefore = initialState.discardPile.length;
-      const lisovikCreatureId = initialState.players[1].field[lisovikFieldIdxP2].creatureId;
 
       const summonAction = {
         type: 'SUMMON_KNOWLEDGE' as const, // Fix type
@@ -124,12 +109,12 @@ describe('Passive Interactions', () => {
       };
       const result = gameReducer(initialState, summonAction) as GameState;
 
-      // Check Pele effect (discards P2's lower cost knowledge)
-      expect(result.players[1].field[lisovikFieldIdxP2].knowledge).toBeNull();
-      expect(result.discardPile).toEqual(expect.arrayContaining([
+      // Pele opens a pending target choice; Kyzy still resolves its mandatory discard.
+      expect(result.players[1].field[lisovikFieldIdxP2].knowledge?.instanceId).toBe(lowerCostKnowledgeP2.instanceId);
+      expect(result.pendingEffect?.type).toBe('chooseOpponentKnowledgeDiscard');
+      expect(result.pendingEffect?.choices).toEqual(expect.arrayContaining([
         expect.objectContaining({ instanceId: lowerCostKnowledgeP2.instanceId })
       ]));
-      expect(result.log).toContain(`[Passive Effect] Pele (Owner: ${p1Id}) discards ${lowerCostKnowledgeP2.name} (Cost: ${lowerCostKnowledgeP2.cost}) from opponent ${p2Id}'s ${lisovikCreatureId}.`);
 
       // Check Kyzy effect (forces P1 - opponent of Kyzy owner - to discard from hand)
       expect(result.players[1].hand.length).toBe(p2HandBefore); // P2 hand unchanged
@@ -141,8 +126,9 @@ describe('Passive Interactions', () => {
       expect(result.log).toContain(`[Passive Effect] ${p1Id} discarded ${otherCardP1.name} due to Kyzy passive.`);
 
       // Check P1 hand size (already checked)
-      // Check discard pile size (Pele + Kyzy)
-      expect(result.discardPile.length).toBe(discardBefore + 2);
+      expect(result.discardPile).toEqual(expect.arrayContaining([
+        expect.objectContaining({ instanceId: otherCardP1.instanceId })
+      ]));
     });
   });
 
@@ -156,7 +142,7 @@ describe('Passive Interactions', () => {
         actionsTakenThisTurn: 0,
       });
 
-      const airCard = createTestKnowledge('aerial1', { cost: 1 });
+      const airCard = createTestKnowledge('aerial2', { cost: 1 });
       initialState.players[0].hand = [airCard];
       const tulparIndex = initialState.players[0].creatures.findIndex(c => c.id === 'tulpar');
       const japinunusIndex = initialState.players[0].creatures.findIndex(c => c.id === 'japinunus'); // Find Japinunus index
@@ -174,9 +160,8 @@ describe('Passive Interactions', () => {
       expect(result.players[0].power).toBe(initialP1Power + 1);
       expect(result.log).toContain(`[Passive Effect] Japinunus (Owner: ${p1Id}) grants +1 Power to owner.`);
 
-      // Check Tulpar effect (should rotate Japinunus as it's the first creature *not* summoned onto)
-      expect(result.players[0].creatures[japinunusIndex].rotation).toBe(initialJapinunusRotation + 90);
-      expect(result.log.join(' ')).toContain(`Tulpar (Owner: ${p1Id}) rotates ${initialState.players[0].creatures[japinunusIndex].name} 90º due to summoning ${airCard.name}`);
+      expect(result.players[0].creatures[japinunusIndex].rotation).toBe(initialJapinunusRotation);
+      expect(result.pendingEffect?.type).toBe('chooseCreatureToRotate');
     });
   });
 
@@ -247,7 +232,6 @@ describe('Passive Interactions', () => {
       const p1PowerBefore = initialState.players[0].power;
       const p2PowerBefore = initialState.players[1].power;
       const discardBefore = initialState.discardPile.length;
-      const lisovikCreatureId = initialState.players[1].field[lisovikFieldIdxP2].creatureId;
 
 
       const summonAction = {
@@ -256,19 +240,15 @@ describe('Passive Interactions', () => {
       };
       const result = gameReducer(initialState, summonAction) as GameState;
 
-      // Check Pele effect (discards P2's earth knowledge)
-      expect(result.players[1].field[lisovikFieldIdxP2].knowledge).toBeNull();
-      expect(result.discardPile.length).toBe(discardBefore + 1);
-      expect(result.discardPile).toEqual(expect.arrayContaining([
+      expect(result.players[1].field[lisovikFieldIdxP2].knowledge?.instanceId).toBe(earthKnowledgeToLeave.instanceId);
+      expect(result.discardPile.length).toBe(discardBefore);
+      expect(result.pendingEffect?.type).toBe('chooseOpponentKnowledgeDiscard');
+      expect(result.pendingEffect?.choices).toEqual(expect.arrayContaining([
         expect.objectContaining({ instanceId: earthKnowledgeToLeave.instanceId })
       ]));
-      expect(result.log).toContain(`[Passive Effect] Pele (Owner: ${p1Id}) discards ${earthKnowledgeToLeave.name} (Cost: ${earthKnowledgeToLeave.cost}) from opponent ${p2Id}'s ${lisovikCreatureId}.`);
 
-      // Check Lisovik effect (damages P1 because P2's earth knowledge left)
-      // Now Lisovik should trigger and P1 should lose 1 power
-      expect(result.players[0].power).toBe(p1PowerBefore - 1); // P1 takes damage
+      expect(result.players[0].power).toBe(p1PowerBefore);
       expect(result.players[1].power).toBe(p2PowerBefore); // P2 power unchanged by Lisovik
-      expect(result.log).toContain(`[Passive Effect] Lisovik (Owner: ${p2Id}) deals 1 damage to ${p1Id} as ${earthKnowledgeToLeave.name} leaves play.`);
     });
 
     it('should trigger Pele discard, then Tsenehale power gain', () => {
@@ -291,7 +271,6 @@ describe('Passive Interactions', () => {
       const p1PowerBefore = initialState.players[0].power;
       const p2PowerBefore = initialState.players[1].power;
       const discardBefore = initialState.discardPile.length;
-      const tsenehaleCreatureId = initialState.players[1].field[tsenehaleFieldIdxP2].creatureId;
 
       const summonAction = {
         type: 'SUMMON_KNOWLEDGE' as const, // Fix type
@@ -299,19 +278,15 @@ describe('Passive Interactions', () => {
       };
       const result = gameReducer(initialState, summonAction) as GameState;
 
-      // Check Pele effect (discards P2's air knowledge)
-      expect(result.players[1].field[tsenehaleFieldIdxP2].knowledge).toBeNull();
-      expect(result.discardPile.length).toBe(discardBefore + 1);
-      expect(result.discardPile).toEqual(expect.arrayContaining([
+      expect(result.players[1].field[tsenehaleFieldIdxP2].knowledge?.instanceId).toBe(airKnowledgeToLeave.instanceId);
+      expect(result.discardPile.length).toBe(discardBefore);
+      expect(result.pendingEffect?.type).toBe('chooseOpponentKnowledgeDiscard');
+      expect(result.pendingEffect?.choices).toEqual(expect.arrayContaining([
         expect.objectContaining({ instanceId: airKnowledgeToLeave.instanceId })
       ]));
-      expect(result.log).toContain(`[Passive Effect] Pele (Owner: ${p1Id}) discards ${airKnowledgeToLeave.name} (Cost: ${airKnowledgeToLeave.cost}) from opponent ${p2Id}'s ${tsenehaleCreatureId}.`);
 
-      // Check Tsenehale effect (P2 gains power because P2's air knowledge left)
-      // Now Tsenehale should trigger and P2 should gain 1 power
       expect(result.players[0].power).toBe(p1PowerBefore); // P1 power unchanged by Tsenehale
-      expect(result.players[1].power).toBe(p2PowerBefore + 1); // P2 gains power
-      expect(result.log).toContain(`[Passive Effect] Tsenehale (Owner: ${p2Id}) grants +1 Power to owner as ${airKnowledgeToLeave.name} leaves play from ${tsenehaleCreatureId}.`);
+      expect(result.players[1].power).toBe(p2PowerBefore);
     });
   });
 
@@ -392,7 +367,7 @@ describe('Passive Interactions', () => {
   });
 
   describe('Scenario 9: TURN_START Draw vs AFTER_PLAYER_DRAW', () => {
-    it('should trigger Zhar-Ptitsa draw, then Inkanyamba discard', () => {
+    it('should not treat Zhar-Ptitsa as a draw trigger for Inkanyamba', () => {
       const p1Id = 'player1'; // Owner of Zhar-Ptitsa and Inkanyamba
       const p2Id = 'player2';
       const initialState = createInitialTestState('interaction9', ['zhar-ptitsa', 'inkanyamba'], ['pele'], {
@@ -407,30 +382,15 @@ describe('Passive Interactions', () => {
       const initialHandSize = initialState.players[0].hand.length; // 1
       const initialMarketSize = initialState.market.length;
       const initialDiscardSize = initialState.discardPile.length;
-      const cardToDraw = initialState.market[0];
-      const cardToDiscard = initialState.market[1]; // Inkanyamba should discard the *next* card after draw
 
       // Trigger turn start for P1
       const result = gameReducer(initialState, { type: 'END_TURN', payload: { playerId: p2Id } }) as GameState;
 
-      // Check Zhar-Ptitsa effect (draw)
-      // Note: Knowledge phase draw also happens, so hand increases by 1 total
-      expect(result.players[0].hand.length).toBe(initialHandSize + 1);
-      expect(result.players[0].hand).toEqual(expect.arrayContaining([
-        expect.objectContaining({ instanceId: cardToDraw.instanceId })
-      ]));
-      expect(result.log).toContain(`[Passive Effect] Zhar-Ptitsa (Owner: ${p1Id}) triggers free draw.`);
-      expect(result.log).toContain(`[Passive Effect] Zhar-Ptitsa (Owner: ${p1Id}) draws ${cardToDraw.name}.`);
+      expect(result.players[0].hand.length).toBe(initialHandSize);
+      expect(result.log.join(' ')).not.toContain('Zhar-Ptitsa (Owner: player1) triggers free draw');
 
-      // Check Inkanyamba effect (discard triggered by Zhar-Ptitsa draw)
-      // Market: -1 Zhar draw, +1 Zhar refill, (-1 Inkanyamba discard, +1 Inkanyamba refill IF IMPLEMENTED) = Net 0 change currently
-      // TODO: Implement AFTER_PLAYER_DRAW trigger for passive draws (Zhar, Adaro).
       expect(result.market.length).toBe(initialMarketSize);
-      expect(result.discardPile.length).toBe(initialDiscardSize); // Should be +1 if Inkanyamba triggered
-      // expect(result.discardPile).toEqual(expect.arrayContaining([
-      //   expect.objectContaining({ instanceId: cardToDiscard.instanceId })
-      // ])); // Expectation commented out until fixed
-      // expect(result.log).toContain(`[Passive Effect] Inkanyamba (Owner: ${p1Id}) discards ${cardToDiscard.name} from Market.`); // Log check commented out until fixed
+      expect(result.discardPile.length).toBe(initialDiscardSize);
     });
   });
 

@@ -1,6 +1,6 @@
 import type { Dispatch } from 'react';
 import { useCallback, useRef } from 'react';
-import { GameState, GameAction } from '../game/types.js';
+import { GameState, GameAction, PendingEffectResolution } from '../game/types.js';
 import { gameReducer } from '../game/state.js';
 import { recordGameOutcomeAndUpdateStats, updateGameState } from '../utils/supabase.js';
 import { isValidAction } from '../game/rules.js';
@@ -17,6 +17,7 @@ export function useGameActions(
     handleHandCardClick: (knowledgeId: string) => void;
     handleCreatureClickForSummon: (targetCreatureId: string) => void;
     handleEndTurn: () => void;
+    handleResolvePendingEffect: (resolution: PendingEffectResolution) => void;
 } {
     const isProcessing = useRef(false);
 
@@ -170,11 +171,17 @@ export function useGameActions(
         handleAction(action);
     }, [handleAction, currentPlayerId]);
 
+    const handleResolvePendingEffect = useCallback((resolution: PendingEffectResolution) => {
+        if (!currentPlayerId) return;
+        handleAction({ type: 'RESOLVE_PENDING_EFFECT', payload: { playerId: currentPlayerId, resolution } });
+    }, [handleAction, currentPlayerId]);
+
     return {
         handleRotateCreature,
         handleDrawKnowledge,
         handleHandCardClick,
         handleCreatureClickForSummon,
         handleEndTurn,
+        handleResolvePendingEffect,
     };
 }

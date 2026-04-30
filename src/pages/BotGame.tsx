@@ -17,6 +17,8 @@ import { useCardRegistry } from '../context/CardRegistry.js';
 import GameShell from '../components/game/GameShell.js';
 import { Panel, SpinnerEmblem, StatusBadge } from '../components/ui/index.js';
 import { clearBotCreatureSelection, isValidBotCreatureSelection, readBotCreatureSelection } from '../utils/botSelection.js';
+import PendingEffectPanel from '../components/game/PendingEffectPanel.js';
+import { getEffectiveCreatureWisdom } from '../game/utils.js';
 
 const BOT_ID = 'bot';
 const BOT_NAME = 'Bot';
@@ -51,6 +53,29 @@ const BotGame: React.FC = () => {
   const latestStateRef = useRef<GameState | null>(null);
   useEffect(() => { latestStateRef.current = gameState; }, [gameState]);
 
+  const handleHandClick = (instanceId: string) => {
+    setSelectedKnowledgeId(prev => prev === instanceId ? null : instanceId);
+  };
+
+  const handleCreatureClick = (creatureId: string) => {
+    if (selectedKnowledgeId) {
+      handleCreatureClickForSummon(creatureId);
+      setSelectedKnowledgeId(null);
+    } else {
+      handleRotateCreature(creatureId);
+    }
+  };
+
+  const handleMarketClick = (knowledgeId: string) => {
+    handleDrawKnowledge(knowledgeId);
+    setSelectedKnowledgeId(null);
+  };
+
+  const handleTrainingEndTurn = () => {
+    setSelectedKnowledgeId(null);
+    handleEndTurn();
+  };
+
   // Initialize a local game only after the shared creature selection screen has completed.
   useEffect(() => {
     if (authLoading) return;
@@ -77,10 +102,32 @@ const BotGame: React.FC = () => {
     }
   }, [authLoading, currentPlayerId, navigate, playerCreatureIds]);
 
-  // Simple Bot AI loop: on bot's action phase, try rotate → play → draw, with small delays
+  // Bot resolves its own pending choices deterministically.
   const botThinking = useRef(false);
   useEffect(() => {
-    if (!gameState || gameState.phase !== 'action') return;
+    if (!gameState || !gameState.pendingEffect) return;
+    if (gameState.pendingEffect.playerId !== BOT_ID) return;
+
+    const timeout = window.setTimeout(() => {
+      const pending = latestStateRef.current?.pendingEffect;
+      if (!pending || pending.playerId !== BOT_ID) return;
+      handleAction({
+        type: 'RESOLVE_PENDING_EFFECT',
+        payload: {
+          playerId: BOT_ID,
+          resolution: pending.optional
+            ? { effectId: pending.id, skip: true }
+            : { effectId: pending.id, choice: pending.choices[0] },
+        },
+      });
+    }, 450);
+
+    return () => window.clearTimeout(timeout);
+  }, [gameState?.pendingEffect, handleAction]);
+
+  // Simple Bot AI loop: on bot's action phase, try rotate → play → draw, with small delays
+  useEffect(() => {
+    if (!gameState || gameState.phase !== 'action' || gameState.pendingEffect) return;
     const isBotTurn = gameState.players[gameState.currentPlayerIndex]?.id === BOT_ID;
     if (!isBotTurn || botThinking.current || gameState.winner) return;
     botThinking.current = true;
@@ -104,14 +151,13 @@ const BotGame: React.FC = () => {
       // 2) Try to play first playable knowledge in hand onto first empty slot creature
       snap = latestStateRef.current!;
       const botNow = snap.players[snap.currentPlayerIndex];
-      const emptySlot = botNow.field.find(s => !s.knowledge)?.creatureId;
-      const playable = botNow.hand.find(k => {
-        const creature = botNow.creatures.find(c => c.id === emptySlot);
-        return creature && (creature.currentWisdom ?? creature.baseWisdom) >= k.cost;
-      });
-      if (emptySlot && playable) {
+      const playableTarget = botNow.field.flatMap(s => {
+        const playable = botNow.hand.find(k => getEffectiveCreatureWisdom(snap, snap.currentPlayerIndex, s.creatureId) >= k.cost);
+        return playable ? [{ creatureId: s.creatureId, card: playable }] : [];
+      })[0];
+      if (playableTarget) {
         await sleep(350);
-        handleAction({ type: 'SUMMON_KNOWLEDGE', payload: { playerId: BOT_ID, knowledgeId: playable.id, creatureId: emptySlot, instanceId: playable.instanceId! } });
+        handleAction({ type: 'SUMMON_KNOWLEDGE', payload: { playerId: BOT_ID, knowledgeId: playableTarget.card.id, creatureId: playableTarget.creatureId, instanceId: playableTarget.card.instanceId! } });
         await sleep(100);
         snap = latestStateRef.current!;
       } else {
@@ -127,7 +173,10 @@ const BotGame: React.FC = () => {
 
       // End bot turn
       await sleep(300);
-      handleAction({ type: 'END_TURN', payload: { playerId: BOT_ID } });
+      const finalSnap = latestStateRef.current;
+      if (finalSnap && !finalSnap.pendingEffect && finalSnap.players[finalSnap.currentPlayerIndex]?.id === BOT_ID) {
+        handleAction({ type: 'END_TURN', payload: { playerId: BOT_ID } });
+      }
       botThinking.current = false;
     };
 
@@ -138,10 +187,10 @@ const BotGame: React.FC = () => {
   const TURN_DURATION_SECONDS = 30;
   const isMyTurn = !!gameState && gameState.players[gameState.currentPlayerIndex]?.id === currentPlayerId;
   const remainingTime = useTurnTimer({
-    isMyTurn,
-    phase: gameState?.phase === 'action' || gameState?.phase === 'knowledge' || gameState?.phase === 'end' ? gameState.phase : null,
+    isMyTurn: isMyTurn && !gameState?.pendingEffect,
+    phase: gameState?.pendingEffect ? null : gameState?.phase === 'action' || gameState?.phase === 'knowledge' || gameState?.phase === 'end' ? gameState.phase : null,
     turnDurationSeconds: TURN_DURATION_SECONDS,
-    onTimerEnd: handleEndTurn,
+    onTimerEnd: handleTrainingEndTurn,
     gameTurn: gameState?.turn ?? 0,
     currentPlayerIndex: gameState?.currentPlayerIndex ?? null,
   });
@@ -156,13 +205,20 @@ const BotGame: React.FC = () => {
   return (
     <GameShell
       overlays={(
-        <GameAnnouncer
-          turn={gameState.turn}
-          phase={(gameState.phase === 'action' || gameState.phase === 'knowledge' || gameState.phase === 'end') ? gameState.phase : 'end'}
-          isMyTurn={isMyTurn}
-          playerName={'You'}
-          opponentName={BOT_NAME}
-        />
+        <>
+          <GameAnnouncer
+            turn={gameState.turn}
+            phase={(gameState.phase === 'action' || gameState.phase === 'knowledge' || gameState.phase === 'end') ? gameState.phase : 'end'}
+            isMyTurn={isMyTurn && !gameState.pendingEffect}
+            playerName={'You'}
+            opponentName={BOT_NAME}
+          />
+          <PendingEffectPanel
+            gameState={gameState}
+            currentPlayerId={currentPlayerId}
+            onResolve={(resolution) => handleAction({ type: 'RESOLVE_PENDING_EFFECT', payload: { playerId: currentPlayerId, resolution } })}
+          />
+        </>
       )}
       topBar={(
         <TopBar
@@ -178,7 +234,7 @@ const BotGame: React.FC = () => {
       )}
       actionBar={(
         <ActionBar
-          isMyTurn={isMyTurn}
+          isMyTurn={isMyTurn && !gameState.pendingEffect}
           phase={gameState.phase}
           winner={gameState.winner}
           actionsTaken={gameState.actionsTakenThisTurn}
@@ -187,7 +243,7 @@ const BotGame: React.FC = () => {
           isSpectator={false}
           playerUsername={'You'}
           opponentUsername={BOT_NAME}
-          onEndTurnClick={handleEndTurn}
+          onEndTurnClick={handleTrainingEndTurn}
         />
       )}
     >
@@ -212,30 +268,30 @@ const BotGame: React.FC = () => {
           <HandsColumn
             currentPlayerHand={player.hand}
             opponentPlayerHand={opponent.hand}
-            isMyTurn={isMyTurn}
+            isMyTurn={isMyTurn && !gameState.pendingEffect}
             phase={(gameState.phase === 'action' || gameState.phase === 'knowledge' || gameState.phase === 'end') ? gameState.phase as any : 'end'}
             selectedKnowledgeId={selectedKnowledgeId}
-            onHandCardClick={setSelectedKnowledgeId}
+            onHandCardClick={handleHandClick}
           />
         </div>
         <div className="min-h-0" ref={(el) => { if (el) registry.register('table:anchor', el); }}>
           <TableArea
             currentPlayer={player}
             opponentPlayer={opponent}
-            isMyTurn={isMyTurn}
+            isMyTurn={isMyTurn && !gameState.pendingEffect}
             phase={(gameState.phase === 'action' || gameState.phase === 'knowledge' || gameState.phase === 'end') ? gameState.phase : 'end'}
             selectedKnowledgeId={selectedKnowledgeId}
-            onCreatureClickForSummon={handleCreatureClickForSummon}
-            onRotateCreature={handleRotateCreature}
+            onCreatureClickForSummon={handleCreatureClick}
+            onRotateCreature={handleCreatureClick}
           />
         </div>
         <div className="min-h-0" ref={(el) => { if (el) registry.register('market:anchor', el); }}>
           <MarketColumn
             marketCards={gameState.market}
             deckCount={gameState.knowledgeDeck.length}
-            isMyTurn={isMyTurn}
+            isMyTurn={isMyTurn && !gameState.pendingEffect}
             phase={(gameState.phase === 'action' || gameState.phase === 'knowledge' || gameState.phase === 'end') ? gameState.phase : 'end'}
-            onDrawKnowledge={handleDrawKnowledge}
+            onDrawKnowledge={handleMarketClick}
           />
         </div>
         <div className="min-h-0" ref={(el) => { if (el) registry.register('discard:anchor', el); }}>

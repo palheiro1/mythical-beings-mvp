@@ -18,6 +18,7 @@ import CombatFloaters from '../components/game/CombatFloaters.js';
 import { useCardRegistry } from '../context/CardRegistry.js';
 import GameShell from '../components/game/GameShell.js';
 import { ErrorRecoveryPanel, SpinnerEmblem } from '../components/ui/index.js';
+import PendingEffectPanel from '../components/game/PendingEffectPanel.js';
 
 const GameScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -39,6 +40,7 @@ const GameScreen: React.FC = () => {
     handleHandCardClick,
     handleCreatureClickForSummon,
     handleEndTurn, // Get handleEndTurn from useGameActions
+    handleResolvePendingEffect,
   } = useGameActions(gameState, gameId || null, dispatch, currentPlayerId || null, selectedKnowledgeId);
 
   // Animation overlay state
@@ -81,8 +83,8 @@ const GameScreen: React.FC = () => {
   };
   
   const remainingTime = useTurnTimer({
-    isMyTurn,
-    phase: mapPhaseForTimer(gameState?.phase),
+    isMyTurn: isMyTurn && !gameState?.pendingEffect,
+    phase: gameState?.pendingEffect ? null : mapPhaseForTimer(gameState?.phase),
     turnDurationSeconds: TURN_DURATION_SECONDS,
     onTimerEnd: handleEndTurn, // Call handleEndTurn when timer ends
     gameTurn: gameState?.turn ?? 0,
@@ -373,6 +375,11 @@ const GameScreen: React.FC = () => {
             playerName={playerProfile.username || undefined}
             opponentName={opponentProfile.username || undefined}
           />
+          <PendingEffectPanel
+            gameState={gameState}
+            currentPlayerId={currentPlayerId}
+            onResolve={handleResolvePendingEffect}
+          />
         </>
       )}
       topBar={(
@@ -389,7 +396,7 @@ const GameScreen: React.FC = () => {
       )}
       actionBar={(
         <ActionBar
-          isMyTurn={isMyTurn}
+          isMyTurn={isMyTurn && !gameState.pendingEffect}
           phase={gameState.phase}
           winner={gameState.winner}
           actionsTaken={gameState.actionsTakenThisTurn}
@@ -408,7 +415,7 @@ const GameScreen: React.FC = () => {
             <HandsColumn
               currentPlayerHand={player.hand}
               opponentPlayerHand={opponent.hand}
-              isMyTurn={isMyTurn}
+              isMyTurn={isMyTurn && !gameState.pendingEffect}
               phase={mapPhaseForTableArea(gameState.phase)}
               selectedKnowledgeId={selectedKnowledgeId}
               onHandCardClick={handleHandClick}
@@ -424,7 +431,7 @@ const GameScreen: React.FC = () => {
             <TableArea
               currentPlayer={player}
               opponentPlayer={opponent}
-              isMyTurn={isMyTurn}
+              isMyTurn={isMyTurn && !gameState.pendingEffect}
               phase={mapPhaseForTableArea(gameState.phase)}
               selectedKnowledgeId={selectedKnowledgeId}
               onCreatureClickForSummon={handleCreatureClick}
@@ -440,7 +447,7 @@ const GameScreen: React.FC = () => {
           <MarketColumn
             marketCards={gameState.market}
             deckCount={gameState.knowledgeDeck.length}
-            isMyTurn={isMyTurn}
+            isMyTurn={isMyTurn && !gameState.pendingEffect}
             phase={mapPhaseForTableArea(gameState.phase)}
             onDrawKnowledge={handleMarketClick}
           />

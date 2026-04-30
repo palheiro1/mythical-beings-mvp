@@ -1,10 +1,18 @@
-import { GameState, GameAction, PlayerState, Knowledge, Creature, SummonKnowledgePayload } from './types.js';
+import { GameState, GameAction, PlayerState, Knowledge, Creature, SummonKnowledgePayload, PendingEffectChoice } from './types.js';
 import { isValidAction, executeKnowledgePhase, checkWinConditions } from './rules.js';
 import { rotateCreature, drawKnowledge, summonKnowledge } from './actions.js';
 import { applyPassiveAbilities } from './passives.js';
 import knowledgeData from '../assets/knowledges.json' assert { type: 'json' };
 import creatureData from '../assets/creatures.json' assert { type: 'json' };
-import { getPlayerState } from './utils.js';
+import {
+  buildHandChoices,
+  buildMarketChoices,
+  createPendingEffect,
+  getPlayerState,
+  normalizeCreature,
+  refillMarket,
+  updateCreatureWisdomFromRotation,
+} from './utils.js';
 
 
 // Constants
@@ -90,7 +98,7 @@ const lookupCreatures = (ids: string[], allCreatures: Creature[]): Creature[] =>
 const initialPlayerState = (id: string, creatures: Creature[]): PlayerState => ({
   id,
   power: INITIAL_POWER,
-  creatures: creatures.map(c => ({ ...c, currentWisdom: c.baseWisdom, rotation: 0 })),
+  creatures: creatures.map(c => normalizeCreature({ ...c, rotation: 0 })),
   hand: [],
   field: creatures.map(c => ({ creatureId: c.id, knowledge: null })),
   selectedCreatures: creatures,
@@ -129,6 +137,8 @@ export const initialGameState: GameState = {
   log: [],
   blockedSlots: { 0: [], 1: [] }, // Initialize blockedSlots
   extraActionsNextTurn: { 0: 0, 1: 0 }, // Initialize extraActionsNextTurn
+  pendingEffect: null,
+  rulesVersion: 'rulebook-v1',
 };
 
 export function initializeGame(payload: InitializeGamePayload): GameState {
@@ -176,21 +186,20 @@ export function initializeGame(payload: InitializeGamePayload): GameState {
     discardPile: [],
     currentPlayerIndex: 0,
     turn: 1,
-    phase: 'knowledge', // Initial phase before first knowledge execution
+    phase: 'action',
     actionsTakenThisTurn: 0,
     actionsPerTurn: ACTIONS_PER_TURN,
     winner: null,
     log: [`Game ${gameId} initialized. Player 1 starts.`],
     blockedSlots: { 0: [], 1: [] },
     extraActionsNextTurn: { 0: 0, 1: 0 },
+    pendingEffect: null,
+    rulesVersion: 'rulebook-v1',
   };
   checkForDuplicateIds(initialState, "After initial deal");
 
   initialState = applyPassiveAbilities(initialState, 'TURN_START', { playerId: initialState.players[0].id });
   checkForDuplicateIds(initialState, "After applyPassiveAbilities");
-
-  initialState = executeKnowledgePhase(initialState);
-  checkForDuplicateIds(initialState, "After executeKnowledgePhase");
 
   initialState = checkWinConditions(initialState);
   if (initialState.winner) {
@@ -200,7 +209,6 @@ export function initializeGame(payload: InitializeGamePayload): GameState {
     // If game is not over, transition to action phase for the first player
     initialState = {
       ...initialState,
-      phase: 'action',
       log: [...initialState.log, `Turn ${initialState.turn}: Action Phase started for Player ${initialState.players[initialState.currentPlayerIndex].id}.`]
     };
     console.log(`[initializeGame] Transitioned to action phase for Player ${initialState.players[initialState.currentPlayerIndex].id}. New phase: ${initialState.phase}`);
@@ -213,9 +221,227 @@ export function initializeGame(payload: InitializeGamePayload): GameState {
   return finalState;
 }
 
+function ensureRuntimeState(state: GameState): GameState {
+  return {
+    ...state,
+    players: state.players.map(player => ({
+      ...player,
+      creatures: player.creatures.map(normalizeCreature),
+      selectedCreatures: player.selectedCreatures?.map(normalizeCreature) ?? player.creatures.map(normalizeCreature),
+    })) as [PlayerState, PlayerState],
+    actionsTakenThisTurn: state.actionsTakenThisTurn ?? 0,
+    actionsPerTurn: state.actionsPerTurn ?? ACTIONS_PER_TURN,
+    log: state.log ?? [],
+    blockedSlots: state.blockedSlots ?? { 0: [], 1: [] },
+    extraActionsNextTurn: state.extraActionsNextTurn ?? { 0: 0, 1: 0 },
+    pendingEffect: state.pendingEffect ?? null,
+    rulesVersion: state.rulesVersion ?? 'rulebook-v1',
+  };
+}
+
+function removeKnowledgeFromChoice(state: GameState, choice: Extract<PendingEffectChoice, { kind: 'knowledge' }>): GameState {
+  let newState = structuredClone(state);
+  const player = newState.players[choice.playerIndex];
+  const slot = player.field.find(s => s.creatureId === choice.creatureId && s.knowledge?.instanceId === choice.instanceId);
+  if (!slot?.knowledge) {
+    return { ...newState, log: [...newState.log, '[Pending Effect] Chosen Knowledge is no longer on the field.'] };
+  }
+
+  const discarded = slot.knowledge;
+  slot.knowledge = null;
+  newState.discardPile.push(discarded);
+  newState.log.push(`[Pending Effect] ${discarded.name} was discarded.`);
+  newState = applyPassiveAbilities(newState, 'KNOWLEDGE_LEAVE', {
+    playerId: player.id,
+    creatureId: choice.creatureId,
+    knowledgeCard: discarded,
+  });
+
+  return newState;
+}
+
+function rotateKnowledgeFromChoice(state: GameState, choice: Extract<PendingEffectChoice, { kind: 'knowledge' }>): GameState {
+  let newState = structuredClone(state);
+  const player = newState.players[choice.playerIndex];
+  const slot = player.field.find(s => s.creatureId === choice.creatureId && s.knowledge?.instanceId === choice.instanceId);
+  if (!slot?.knowledge) {
+    return { ...newState, log: [...newState.log, '[Pending Effect] Chosen Knowledge is no longer on the field.'] };
+  }
+
+  const knowledge = slot.knowledge;
+  const nextRotation = (knowledge.rotation ?? 0) + 90;
+  const maxRotation = (knowledge.maxRotations ?? 4) * 90;
+  if (nextRotation >= maxRotation) {
+    const discarded = knowledge;
+    slot.knowledge = null;
+    newState.discardPile.push(discarded);
+    newState.log.push(`[Pending Effect] ${discarded.name} rotated out and was discarded.`);
+    newState = applyPassiveAbilities(newState, 'KNOWLEDGE_LEAVE', {
+      playerId: player.id,
+      creatureId: choice.creatureId,
+      knowledgeCard: discarded,
+    });
+  } else {
+    knowledge.rotation = nextRotation;
+    newState.log.push(`[Pending Effect] ${knowledge.name} rotated to ${nextRotation}º.`);
+  }
+
+  return newState;
+}
+
+function enforceHandLimit(state: GameState, playerIndex: 0 | 1): GameState {
+  const player = state.players[playerIndex];
+  if (state.pendingEffect || !player || player.hand.length <= 5) return state;
+  return createPendingEffect(state, {
+    type: 'discardToHandLimit',
+    playerId: player.id,
+    sourcePlayerId: player.id,
+    prompt: 'Choose a card to discard until your hand has 5 cards.',
+    choices: buildHandChoices(state, playerIndex),
+  });
+}
+
+function resolvePendingEffect(state: GameState, action: Extract<GameAction, { type: 'RESOLVE_PENDING_EFFECT' }>): GameState {
+  const pending = state.pendingEffect;
+  if (!pending || pending.id !== action.payload.resolution.effectId) return state;
+
+  const resolution = action.payload.resolution;
+  let newState: GameState = { ...structuredClone(state), pendingEffect: null };
+
+  if (resolution.skip && pending.optional) {
+    return { ...newState, log: [...newState.log, `[Pending Effect] ${pending.sourceKnowledgeName ?? 'Effect'} skipped.`] };
+  }
+
+  const choice = resolution.choice;
+  if (!choice) {
+    return { ...state, log: [...state.log, '[Pending Effect] Choose a valid option to continue.'] };
+  }
+
+  switch (pending.type) {
+    case 'chooseOpponentHandDiscard':
+    case 'discardToHandLimit': {
+      if (choice.kind !== 'hand') return { ...state, log: [...state.log, '[Pending Effect] Invalid hand choice.'] };
+      const player = newState.players[choice.playerIndex];
+      const card = player.hand.find(k => k.instanceId === choice.instanceId);
+      if (!card) return { ...newState, log: [...newState.log, '[Pending Effect] Chosen hand card is no longer available.'] };
+      player.hand = player.hand.filter(k => k.instanceId !== choice.instanceId);
+      newState.discardPile.push(card);
+      newState.log.push(`[Pending Effect] ${player.id} discarded ${card.name}.`);
+      if (pending.type === 'discardToHandLimit' && player.hand.length > 5) {
+        newState = enforceHandLimit(newState, choice.playerIndex);
+      }
+      break;
+    }
+
+    case 'chooseKnowledgeToRotate':
+      if (choice.kind !== 'knowledge') return { ...state, log: [...state.log, '[Pending Effect] Invalid Knowledge choice.'] };
+      newState = rotateKnowledgeFromChoice(newState, choice);
+      break;
+
+    case 'chooseOpponentKnowledgeDiscard':
+      if (choice.kind !== 'knowledge') return { ...state, log: [...state.log, '[Pending Effect] Invalid Knowledge choice.'] };
+      newState = removeKnowledgeFromChoice(newState, choice);
+      break;
+
+    case 'chooseCreatureToRotate': {
+      if (choice.kind !== 'creature') return { ...state, log: [...state.log, '[Pending Effect] Invalid creature choice.'] };
+      const player = newState.players[choice.playerIndex];
+      const creatureIndex = player.creatures.findIndex(c => c.id === choice.creatureId);
+      const creature = player.creatures[creatureIndex];
+      if (!creature) return { ...newState, log: [...newState.log, '[Pending Effect] Chosen creature is no longer available.'] };
+      const currentRotation = creature.rotation ?? 0;
+      if (currentRotation >= 270) {
+        newState.log.push(`[Pending Effect] ${creature.name} is already at maximum rotation.`);
+        break;
+      }
+      player.creatures[creatureIndex] = updateCreatureWisdomFromRotation({ ...creature, rotation: currentRotation + 90 });
+      newState.log.push(`[Pending Effect] ${creature.name} rotated to ${currentRotation + 90}º.`);
+      break;
+    }
+
+    case 'chooseMarketDiscard': {
+      if (choice.kind !== 'market') return { ...state, log: [...state.log, '[Pending Effect] Invalid market choice.'] };
+      const card = newState.market.find(k => k.instanceId === choice.instanceId);
+      if (!card) return { ...newState, log: [...newState.log, '[Pending Effect] Chosen market card is no longer available.'] };
+      newState.market = newState.market.filter(k => k.instanceId !== choice.instanceId);
+      newState.discardPile.push(card);
+      newState.log.push(`[Pending Effect] ${card.name} was discarded from the Market.`);
+      newState = refillMarket(newState, newState.market.length + 1);
+      break;
+    }
+
+    case 'chooseMarketDraw': {
+      if (choice.kind !== 'market') return { ...state, log: [...state.log, '[Pending Effect] Invalid market choice.'] };
+      const playerIndex = newState.players.findIndex(p => p.id === pending.playerId) as 0 | 1;
+      const player = newState.players[playerIndex];
+      const card = newState.market.find(k => k.instanceId === choice.instanceId);
+      if (!player || !card) return { ...newState, log: [...newState.log, '[Pending Effect] Chosen market card is no longer available.'] };
+      newState.market = newState.market.filter(k => k.instanceId !== choice.instanceId);
+      player.hand.push(card);
+      newState.log.push(`[Pending Effect] ${player.id} drew ${card.name} from the Market.`);
+      newState = refillMarket(newState, newState.market.length + 1);
+      newState = enforceHandLimit(newState, playerIndex);
+      break;
+    }
+  }
+
+  return checkWinConditions(newState);
+}
+
+function applySummonEffect(state: GameState, playerId: string, knowledge: Knowledge | undefined): GameState {
+  if (!knowledge) return state;
+
+  const playerIndex = state.players.findIndex(p => p.id === playerId);
+  if (playerIndex !== 0 && playerIndex !== 1) return state;
+  const opponentIndex = playerIndex === 0 ? 1 : 0;
+  let newState = state;
+
+  if (knowledge.id === 'aerial1') {
+    const player = newState.players[playerIndex];
+    player.power += 1;
+    newState.log.push(`[Apparition] ${knowledge.name} grants +1 Power to ${player.id}.`);
+  }
+
+  if (knowledge.id === 'terrestrial2') {
+    const choices = buildHandChoices(newState, opponentIndex);
+    if (choices.length > 0) {
+      newState = createPendingEffect(newState, {
+        type: 'chooseOpponentHandDiscard',
+        playerId,
+        sourcePlayerId: playerId,
+        sourceKnowledgeId: knowledge.id,
+        sourceKnowledgeName: knowledge.name,
+        prompt: `${knowledge.name}: choose one opponent hand card to discard.`,
+        choices,
+      });
+    } else {
+      newState.log.push(`[Apparition] ${knowledge.name}: opponent has no cards to discard.`);
+    }
+  }
+
+  if (knowledge.id === 'aquatic4') {
+    const choices = buildMarketChoices(newState);
+    if (choices.length > 0) {
+      newState = createPendingEffect(newState, {
+        type: 'chooseMarketDraw',
+        playerId,
+        sourcePlayerId: playerId,
+        sourceKnowledgeId: knowledge.id,
+        sourceKnowledgeName: knowledge.name,
+        prompt: `${knowledge.name}: choose one Market card to draw.`,
+        choices,
+      });
+    } else {
+      newState.log.push(`[Apparition] ${knowledge.name}: Market is empty.`);
+    }
+  }
+
+  return newState;
+}
+
 function endTurnSequence(state: GameState): GameState {
   console.log(`[Reducer] Starting endTurnSequence for Player ${state.players[state.currentPlayerIndex].id}`);
-  let workingState = structuredClone(state); // Use cloneDeep at the beginning of the function
+  let workingState = ensureRuntimeState(structuredClone(state)); // Use cloneDeep at the beginning of the function
 
   // --- Rotate Creatures (Current player's creatures) ---
   // const currentPlayerId = workingState.players[workingState.currentPlayerIndex].id; // This was unused
@@ -269,7 +495,7 @@ function endTurnSequence(state: GameState): GameState {
 
   // --- Execute Knowledge Phase for the new current player ---
   console.log(`[Reducer] Executing knowledge phase for Player ${newPlayerId}`);
-  workingState = executeKnowledgePhase(workingState); // This function logs "Knowledge Phase ended"
+  workingState = executeKnowledgePhase(workingState, workingState.currentPlayerIndex); // This function logs "Knowledge Phase ended"
 
   // Check win condition after Knowledge Phase
   workingState = checkWinConditions(workingState);
@@ -288,6 +514,7 @@ function endTurnSequence(state: GameState): GameState {
   // --- Transition to Action Phase for the new current player ---
   workingState.phase = 'action';
   workingState.log.push(`Turn ${workingState.turn}: Action Phase started for Player ${newPlayerId}.`);
+  workingState = enforceHandLimit(workingState, workingState.currentPlayerIndex);
   console.log(`[Reducer] endTurnSequence complete. New phase: ${workingState.phase} for player ${newPlayerId}`);
 
   return workingState;
@@ -298,16 +525,9 @@ export function gameReducer(state: GameState | null, action: GameAction): GameSt
   if (!state) {
     if (action.type === 'SET_GAME_STATE' && action.payload) {
       console.log("[Reducer] Received SET_GAME_STATE on null state.");
-      const newState = action.payload as GameState;
+      const newState = ensureRuntimeState(action.payload as GameState);
       // Ensure essential properties have defaults if not present in payload
-      return {
-        ...newState,
-        actionsTakenThisTurn: newState.actionsTakenThisTurn ?? 0,
-        actionsPerTurn: newState.actionsPerTurn ?? ACTIONS_PER_TURN,
-        log: newState.log ?? [],
-        blockedSlots: newState.blockedSlots ?? { 0: [], 1: [] },
-        extraActionsNextTurn: newState.extraActionsNextTurn ?? { 0: 0, 1: 0 },
-      };
+      return newState;
     } else {
       console.error("[Reducer] Received action on null state (expected SET_GAME_STATE with payload):", action.type);
       return null;
@@ -331,10 +551,38 @@ export function gameReducer(state: GameState | null, action: GameAction): GameSt
   }
 
 
-  let intermediateState = structuredClone(state); // Clone state for modification
+  let intermediateState = ensureRuntimeState(structuredClone(state)); // Clone state for modification
   let actionConsumed = false; // Flag to track if the action uses one of the player's available actions
 
+  if (action.type === 'SET_GAME_STATE') {
+    return action.payload ? ensureRuntimeState(action.payload) : null;
+  }
+
+  if (action.type === 'RESOLVE_PENDING_EFFECT') {
+    const validation = isValidAction(intermediateState, action);
+    if (!validation.isValid) {
+      console.warn(`[Reducer] Invalid action: ${action.type} - ${validation.reason}`);
+      return { ...intermediateState, log: [...intermediateState.log, `Invalid action: ${validation.reason}`] };
+    }
+    const resolvedState = resolvePendingEffect(intermediateState, action);
+    if (
+      resolvedState.phase === 'action'
+      && !resolvedState.pendingEffect
+      && !resolvedState.winner
+      && resolvedState.actionsTakenThisTurn >= resolvedState.actionsPerTurn
+    ) {
+      return endTurnSequence(resolvedState);
+    }
+    return resolvedState;
+  }
+
   if (action.type === 'END_TURN') {
+    if (intermediateState.pendingEffect) {
+      return {
+        ...intermediateState,
+        log: [...intermediateState.log, 'Invalid action: resolve the pending card effect before ending the turn.'],
+      };
+    }
     // Player ID in END_TURN payload should match current player
     if (!action.payload || action.payload.playerId !== state.players[state.currentPlayerIndex].id) {
       console.warn(`[Reducer] Invalid END_TURN: Not current player or missing payload. Current: ${state.players[state.currentPlayerIndex].id}, Payload:`, action.payload);
@@ -415,6 +663,8 @@ export function gameReducer(state: GameState | null, action: GameAction): GameSt
         console.log(`[Reducer Debug] Found leavingKnowledgeInfo. Applying KNOWLEDGE_LEAVE passives.`);
         intermediateState = applyPassiveAbilities(intermediateState, 'KNOWLEDGE_LEAVE', leavingKnowledgeInfo);
       }
+
+      intermediateState = applySummonEffect(intermediateState, playerId, knowledgeToSummon);
 
       let isFreeSummon = false;
       const playerAfterLeavePassives = getPlayerState(intermediateState, playerId);
@@ -505,6 +755,12 @@ export function gameReducer(state: GameState | null, action: GameAction): GameSt
 
   // --- Post-action processing ---
   let finalState = intermediateState;
+  if (action.payload && 'playerId' in action.payload) {
+    const actingPlayerIndex = finalState.players.findIndex(p => p.id === action.payload.playerId);
+    if (actingPlayerIndex === 0 || actingPlayerIndex === 1) {
+      finalState = enforceHandLimit(finalState, actingPlayerIndex);
+    }
+  }
 
   if (actionConsumed) {
     finalState.actionsTakenThisTurn++;
@@ -525,6 +781,10 @@ export function gameReducer(state: GameState | null, action: GameAction): GameSt
       : `[Game] ${winnerId} wins! ${loser ? loser.id + ' was defeated.' : ''}`;
     console.log(`[Reducer] Win/Draw condition met after action ${(action as any).type}. ${winLog}`);
     return { ...finalState, phase: 'gameOver', winner: winnerId, log: [...finalState.log, winLog] };
+  }
+
+  if (finalState.pendingEffect) {
+    return finalState;
   }
 
   if (finalState.actionsTakenThisTurn >= finalState.actionsPerTurn) {
