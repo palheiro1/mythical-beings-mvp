@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useCardRegistry } from '../context/CardRegistry.js';
 import { Creature, Knowledge } from '../game/types.js';
 import { cn } from './ui/index.js';
@@ -10,93 +11,101 @@ interface CardProps {
   rotation?: number; // degrees (0, 90, 180, 270)
   showBack?: boolean; // If true, show card back
   isDisabled?: boolean; // For actions, not hover/zoom
+  fit?: 'card' | 'board';
+  knowledgeStatus?: {
+    steps: number;
+    currentStep: number;
+    effectLabel?: string;
+    isFinalNext?: boolean;
+  };
 }
 
-// Define zoom scale factor
-const ZOOM_SCALE = 2.5;
-// Define card dimensions (adjust if necessary, ensure aspect ratio matches)
-const BASE_CARD_WIDTH_PX = 100; // Example base width in pixels
-const BASE_CARD_HEIGHT_PX = BASE_CARD_WIDTH_PX * (3.5 / 2.5); // Assuming standard card aspect ratio
+const CARD_ASPECT_RATIO = 921 / 1217;
+const HOVER_ZOOM_DELAY_MS = 360;
 
-const Card: React.FC<CardProps> = ({ card, onClick, isSelected, rotation = 0, showBack = false, isDisabled = false }) => {
+const normalizeRotation = (rotation: number) => ((rotation % 360) + 360) % 360;
+
+const Card: React.FC<CardProps> = ({
+  card,
+  onClick,
+  isSelected,
+  rotation = 0,
+  showBack = false,
+  isDisabled = false,
+  fit = 'card',
+  knowledgeStatus,
+}) => {
   const registry = useCardRegistry();
-  // No isHovering state needed if it's only used for zoom logic
   const [isZoomed, setIsZoomed] = useState(false);
-  const [zoomPosition, setZoomPosition] = useState({ top: '50%', left: '50%', transform: 'translate(-50%, -50%)' });
-  const hoverTimer = useRef<NodeJS.Timeout | null>(null);
-  const cardRef = useRef<HTMLDivElement>(null); // Ref to get card position
+  const [zoomFrame, setZoomFrame] = useState({ top: 80, left: 80, width: 280, height: 370 });
+  const hoverTimer = useRef<number | null>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
+  const normalizedRotation = normalizeRotation(rotation);
+  const isBoardCard = fit === 'board';
 
-  const handleMouseEnter = (): void => {
-    // Hover/zoom is independent of isDisabled
-    if (hoverTimer.current) clearTimeout(hoverTimer.current); // Clear any existing timer before starting a new one
-    hoverTimer.current = setTimeout(() => {
-      if (cardRef.current) {
-        const rect = cardRef.current.getBoundingClientRect();
-        const vw = window.innerWidth;
-        const vh = window.innerHeight;
+  const calculateZoomFrame = () => {
+    if (!cardRef.current) return;
 
-        const zoomedWidth = BASE_CARD_WIDTH_PX * ZOOM_SCALE;
-        const zoomedHeight = BASE_CARD_HEIGHT_PX * ZOOM_SCALE;
+    const rect = cardRef.current.getBoundingClientRect();
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    const margin = 14;
+    const gap = 18;
 
-        // Calculate ideal centered position based on original card
-        let idealTop = rect.top + rect.height / 2;
-        let idealLeft = rect.left + rect.width / 2;
+    let zoomHeight = Math.min(isBoardCard ? 440 : 500, Math.max(300, viewportHeight - 130));
+    let zoomWidth = zoomHeight * CARD_ASPECT_RATIO;
+    const maxWidth = Math.min(360, viewportWidth - margin * 2);
 
-        // Adjust position to keep the zoomed card within viewport bounds
-        const marginTop = 10; // Margin from viewport edges
-        const marginLeft = 10;
+    if (zoomWidth > maxWidth) {
+      zoomWidth = maxWidth;
+      zoomHeight = zoomWidth / CARD_ASPECT_RATIO;
+    }
 
-        // Adjust top
-        if (idealTop - zoomedHeight / 2 < marginTop) {
-          idealTop = zoomedHeight / 2 + marginTop; // Align top edge
-        } else if (idealTop + zoomedHeight / 2 > vh - marginTop) {
-          idealTop = vh - zoomedHeight / 2 - marginTop; // Align bottom edge
-        }
+    let left = rect.right + gap;
+    if (left + zoomWidth > viewportWidth - margin) {
+      left = rect.left - gap - zoomWidth;
+    }
+    if (left < margin) {
+      left = Math.min(Math.max(rect.left + rect.width / 2 - zoomWidth / 2, margin), viewportWidth - zoomWidth - margin);
+    }
 
-        // Adjust left
-        if (idealLeft - zoomedWidth / 2 < marginLeft) {
-          idealLeft = zoomedWidth / 2 + marginLeft; // Align left edge
-        } else if (idealLeft + zoomedWidth / 2 > vw - marginLeft) {
-          idealLeft = vw - zoomedWidth / 2 - marginLeft; // Align right edge
-        }
+    let top = rect.top + rect.height / 2 - zoomHeight / 2;
+    top = Math.min(Math.max(top, margin), viewportHeight - zoomHeight - margin);
 
-        setZoomPosition({
-          top: `${idealTop}px`,
-          left: `${idealLeft}px`,
-          transform: 'translate(-50%, -50%)', // Center the zoomed card at the calculated position
-        });
-      }
-      setIsZoomed(true); // Show the zoom
-    }, 800); // 0.8 second delay
+    setZoomFrame({ top, left, width: zoomWidth, height: zoomHeight });
   };
 
-  // Handler for leaving the original card area
+  const handleMouseEnter = (): void => {
+    if (hoverTimer.current) clearTimeout(hoverTimer.current);
+    hoverTimer.current = window.setTimeout(() => {
+      calculateZoomFrame();
+      setIsZoomed(true);
+    }, HOVER_ZOOM_DELAY_MS);
+  };
+
   const handleMouseLeaveOriginalCard = (): void => {
-    // Clear the timer ONLY. This prevents the zoom from showing if the mouse leaves quickly.
-    // It does NOT hide the zoom if it's already visible.
     if (hoverTimer.current) {
       clearTimeout(hoverTimer.current);
       hoverTimer.current = null;
     }
+    setIsZoomed(false);
   };
 
-  // Handler specifically for closing the zoom (used by overlay and backdrop)
   const handleCloseZoom = (): void => {
-    if (hoverTimer.current) { // Clear timer just in case it's somehow still active
+    if (hoverTimer.current) {
       clearTimeout(hoverTimer.current);
       hoverTimer.current = null;
     }
-    setIsZoomed(false); // Hide the zoom
+    setIsZoomed(false);
   };
 
   const handleClick = (): void => {
-    // Click action still respects isDisabled
+    handleCloseZoom();
     if (onClick && !isDisabled) {
       onClick(card.id);
     }
   };
 
-  // Clear timer on unmount
   useEffect(() => {
     return (): void => {
       if (hoverTimer.current) {
@@ -105,83 +114,119 @@ const Card: React.FC<CardProps> = ({ card, onClick, isSelected, rotation = 0, sh
     };
   }, []);
 
-  const imagePath = showBack ? '/images/spells/back.jpg' : card.image;
+  const maybeInstance = (card as Knowledge).instanceId;
 
-  // Calculate rotation style for inner content of the base card
-  const rotationStyle = {
-    transform: rotation ? `rotate(${-rotation}deg)` : 'none',
-    transition: 'transform 0.3s ease-in-out',
-    transformOrigin: 'center center',
-  };
+  useEffect(() => {
+    if (!maybeInstance || !cardRef.current) return undefined;
+    registry.register(`card:${maybeInstance}`, cardRef.current);
+    return () => registry.register(`card:${maybeInstance}`, null);
+  }, [maybeInstance, registry]);
+
+  useEffect(() => {
+    if (!isZoomed) return undefined;
+    const handleResize = () => calculateZoomFrame();
+    window.addEventListener('resize', handleResize);
+    window.addEventListener('scroll', handleResize, true);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('scroll', handleResize, true);
+    };
+  }, [isZoomed]);
+
+  const imagePath = showBack ? '/images/spells/back.jpg' : card.image;
+  const cardTransform = isBoardCard
+    ? `translate(-50%, -50%) rotate(${normalizedRotation}deg)`
+    : `rotate(${normalizedRotation}deg)`;
+  const boardCardHeight = knowledgeStatus ? 96 : 112;
+  const boardCardWidth = boardCardHeight * CARD_ASPECT_RATIO;
 
   return (
     <>
       <div
-        ref={cardRef} // Attach ref to the main card element
+        ref={cardRef}
         className={cn(
-          'relative z-10 h-full w-full overflow-hidden rounded-[12px] bg-slate-800 shadow-[0_12px_28px_rgba(0,0,0,0.34)] transition-transform duration-200 ease-out',
-          onClick && !isDisabled ? 'cursor-pointer hover:scale-[1.02]' : 'cursor-default',
-          isSelected ? 'border-2 border-amber-300 ring-2 ring-amber-300/70' : 'border border-white/15',
+          'relative z-10 grid h-full w-full place-items-center overflow-visible',
+          onClick && !isDisabled ? 'cursor-pointer' : 'cursor-default',
           isDisabled ? 'opacity-80' : '',
         )}
         onMouseEnter={handleMouseEnter}
-        onMouseLeave={handleMouseLeaveOriginalCard} // Use the specific handler for leaving the original card
+        onMouseLeave={handleMouseLeaveOriginalCard}
         onClick={handleClick}
-        onLoadCapture={() => {
-          // Best-effort registration by instanceId if present on knowledge
-          const maybeInstance = (card as any).instanceId as string | undefined;
-          if (maybeInstance && cardRef.current) {
-            registry.register(`card:${maybeInstance}`, cardRef.current);
-          }
-        }}
+        title={showBack ? 'Hidden card' : card.name}
       >
-        {/* Using a wrapper div for card content that rotates */}
         <div
-          className="w-full h-full flex flex-col transition-transform duration-300"
-          style={rotationStyle}
+          className={cn(
+            'overflow-hidden rounded-[10px] bg-slate-900 shadow-[0_12px_28px_rgba(0,0,0,0.38)] ring-1 transition duration-300 ease-out will-change-transform',
+            isBoardCard ? 'absolute left-1/2 top-1/2' : 'relative h-full max-h-full',
+            onClick && !isDisabled ? 'hover:-translate-y-0.5 hover:shadow-[0_18px_34px_rgba(0,0,0,0.45)]' : '',
+            isSelected ? 'ring-2 ring-amber-300 shadow-[0_0_28px_rgba(246,184,59,0.42)]' : 'ring-white/15',
+          )}
+          style={{
+            aspectRatio: CARD_ASPECT_RATIO,
+            width: isBoardCard ? `${boardCardWidth}px` : undefined,
+            height: isBoardCard ? `${boardCardHeight}px` : undefined,
+            transform: cardTransform,
+          }}
         >
-          {/* Image Area */}
-          <div className="w-full h-full bg-gray-800 flex items-center justify-center">
-            <img
-              src={imagePath}
-              alt={card.name}
-              className="object-cover w-full h-full"
-              draggable={false}
-            />
-          </div>
+          <img
+            src={imagePath}
+            alt={card.name}
+            className="h-full w-full object-cover"
+            draggable={false}
+          />
         </div>
-      </div>
 
-      {/* Zoomed Card Overlay */}
-      {isZoomed && (
-        <div
-          className="fixed left-0 top-0 z-40 h-full w-full bg-black/60 backdrop-blur-sm" // Backdrop
-          onClick={handleCloseZoom} // Use the closing handler
-        >
-          <div
-            className="pointer-events-auto fixed z-50 overflow-hidden rounded-[14px] border-4 border-amber-300 bg-slate-800 shadow-[0_0_48px_rgba(246,184,59,0.35)]" // Added pointer-events-auto to ensure leave event fires
-            style={{
-              ...zoomPosition,
-              width: `${BASE_CARD_WIDTH_PX * ZOOM_SCALE}px`,
-              height: `${BASE_CARD_HEIGHT_PX * ZOOM_SCALE}px`,
-            }}
-            onMouseLeave={handleCloseZoom} // Use the closing handler here too
-          >
-            {/* Inner content doesn't need rotation here as the base card shows rotation state */}
-            <div className="w-full h-full flex flex-col">
-              <div className="w-full h-full bg-gray-800 flex items-center justify-center">
-                <img
-                  src={imagePath} // Use the same image path
-                  alt={card.name}
-                  className="object-cover w-full h-full"
-                  draggable={false}
+        {knowledgeStatus && !showBack && (
+          <div className="pointer-events-none absolute inset-x-1 bottom-1 z-20 flex items-end justify-between gap-1">
+            <div className="flex gap-0.5 rounded-full border border-black/50 bg-black/[0.72] px-1.5 py-1 shadow">
+              {Array.from({ length: knowledgeStatus.steps }).map((_, index) => (
+                <span
+                  key={index}
+                  className={cn(
+                    'h-1.5 w-4 rounded-full',
+                    index < knowledgeStatus.currentStep ? 'bg-slate-500/80' : '',
+                    index === knowledgeStatus.currentStep ? 'bg-cyan-300 shadow-[0_0_10px_rgba(34,211,238,0.7)]' : '',
+                    index > knowledgeStatus.currentStep ? 'bg-white/[0.18]' : '',
+                  )}
                 />
-              </div>
-              {/* Optional: Add more card details to the zoom view if needed */}
+              ))}
+            </div>
+            <div className={cn(
+              'max-w-[58%] truncate rounded-full border px-2 py-0.5 text-[10px] font-black uppercase tracking-wide shadow',
+              knowledgeStatus.isFinalNext
+                ? 'border-red-300/60 bg-red-500/[0.85] text-white'
+                : 'border-cyan-200/50 bg-cyan-500/[0.85] text-slate-950',
+            )}>
+              {knowledgeStatus.isFinalNext
+                ? `Final ${knowledgeStatus.effectLabel || ''}`.trim()
+                : knowledgeStatus.effectLabel || 'Next'}
             </div>
           </div>
+        )}
+      </div>
+
+      {isZoomed && typeof document !== 'undefined' && createPortal((
+        <div
+          className="pointer-events-none fixed z-50 overflow-hidden rounded-[14px] border border-amber-200/70 bg-slate-950 shadow-[0_24px_70px_rgba(0,0,0,0.7),0_0_42px_rgba(246,184,59,0.2)]"
+          style={{
+            top: zoomFrame.top,
+            left: zoomFrame.left,
+            width: zoomFrame.width,
+            height: zoomFrame.height,
+          }}
+          aria-hidden
+        >
+          <img
+            src={imagePath}
+            alt=""
+            className="h-full w-full object-cover"
+            draggable={false}
+          />
+          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/78 via-black/28 to-transparent px-3 pb-3 pt-10">
+            <div className="truncate font-display text-lg font-bold text-white">{showBack ? 'Hidden card' : card.name}</div>
+          </div>
         </div>
-      )}
+      ), document.body)}
     </>
   );
 };

@@ -45,13 +45,13 @@ const HandsColumn: React.FC<HandsColumnProps> = ({
                 <div className="flex justify-center items-center gap-2 w-full h-full p-1">
                     {opponentPlayerHand.length === 0 ? (
                          // Container defines size
-                         <div className="h-[85%] aspect-[2/3]">
+                         <div className="h-[85%] aspect-[921/1217]">
                             <Card card={{ id: 'opp-back', name: 'Back', image: '/images/spells/back.jpg', type: 'spell', cost: 0, effect: '', element: 'neutral' }} showBack isDisabled />
                          </div>
                     ) : (
                         opponentPlayerHand.slice(0, maxVisibleCards).map((card, idx) => (
                             // Container defines size - REMOVED hover:scale-105
-                            <div key={card.id + idx + '-opp'} className="h-[85%] aspect-[2/3] transition-all">
+                            <div key={card.id + idx + '-opp'} className="h-[85%] aspect-[921/1217] transition-all">
                                 <Card card={card} showBack isDisabled />
                             </div>
                         ))
@@ -88,7 +88,7 @@ const HandsColumn: React.FC<HandsColumnProps> = ({
                 <div className="flex justify-center items-center gap-2 w-full h-full p-1">
                     {currentPlayerHand.length === 0 ? (
                         // Container defines size
-                        <div className="h-[85%] aspect-[2/3]">
+                        <div className="h-[85%] aspect-[921/1217]">
                             <Card card={{ id: 'player-back', name: 'Back', image: '/images/spells/back.jpg', type: 'spell', cost: 0, effect: '', element: 'neutral' }} showBack isDisabled />
                         </div>
                     ) : (
@@ -103,7 +103,7 @@ const HandsColumn: React.FC<HandsColumnProps> = ({
                                 // Container defines size with hover effect - REMOVED hover:scale-110 and cursor-pointer
                                 <div
                                     key={instanceId} // Use instanceId for key
-                                    className={cn('h-[85%] aspect-[2/3] rounded-xl transition-all', selectedKnowledgeId === instanceId ? 'scale-105 ring-2 ring-amber-300 shadow-[0_0_24px_rgba(246,184,59,0.35)]' : '')} // Compare with instanceId
+                                    className={cn('h-[85%] aspect-[921/1217] rounded-xl transition-all', selectedKnowledgeId === instanceId ? 'scale-105 ring-2 ring-amber-300 shadow-[0_0_24px_rgba(246,184,59,0.35)]' : '')} // Compare with instanceId
                                     ref={(el) => {
                                         if (card.instanceId) registry.register(`hand:${card.instanceId}`, el as unknown as HTMLElement | null);
                                     }}

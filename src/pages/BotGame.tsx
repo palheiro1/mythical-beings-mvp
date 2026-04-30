@@ -207,7 +207,7 @@ const BotGame: React.FC = () => {
         </Panel>
       </div>
 
-      <div className="grid h-[calc(100%-56px)] min-h-0 grid-cols-[minmax(190px,1fr)_minmax(520px,3fr)_minmax(180px,1fr)_minmax(190px,1fr)] gap-2">
+      <div className="grid h-[calc(100%-56px)] min-h-0 grid-cols-[minmax(170px,0.82fr)_minmax(620px,3.6fr)_minmax(170px,0.85fr)_minmax(190px,1fr)] gap-2">
         <div className="min-h-0">
           <HandsColumn
             currentPlayerHand={player.hand}

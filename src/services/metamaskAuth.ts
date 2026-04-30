@@ -57,6 +57,39 @@ async function getFunctionErrorMessage(err: unknown): Promise<string | null> {
   }
 }
 
+function getFunctionStatus(err: unknown): number | null {
+  const status = (err as any)?.context?.status;
+  return typeof status === 'number' ? status : null;
+}
+
+function getWalletAuthFailureMessage({
+  hint,
+  primaryError,
+  fallbackError,
+  primaryMessage,
+  fallbackMessage,
+}: {
+  hint: string | null;
+  primaryError?: unknown;
+  fallbackError?: unknown;
+  primaryMessage?: string | null;
+  fallbackMessage?: string | null;
+}): string {
+  if (hint) return hint;
+
+  const status = getFunctionStatus(fallbackError) ?? getFunctionStatus(primaryError);
+  if (status && status >= 500) {
+    return 'Wallet authentication service is temporarily unavailable. Please try again or continue as Guest.';
+  }
+
+  const rawMessage = fallbackMessage || primaryMessage || (fallbackError as any)?.message || (primaryError as any)?.message;
+  if (typeof rawMessage === 'string' && rawMessage.toLowerCase().includes('invalid signature')) {
+    return 'Signature could not be verified. Please try again.';
+  }
+
+  return rawMessage || 'Wallet authentication failed. Please try again or continue as Guest.';
+}
+
 class MetaMaskAuthService {
   private static instance: MetaMaskAuthService;
   private isConnecting = false;
@@ -228,7 +261,13 @@ By signing this message, you are proving ownership of this wallet address.`;
           const fallbackMessage = await getFunctionErrorMessage(fallback.error);
           return {
             success: false,
-            error: hint || fallbackMessage || primaryMessage || fallback.error.message || primaryErr?.message || 'Authentication failed',
+            error: getWalletAuthFailureMessage({
+              hint,
+              primaryError: primaryErr,
+              fallbackError: fallback.error,
+              primaryMessage,
+              fallbackMessage,
+            }),
           };
         }
         data = fallback.data;
@@ -286,7 +325,14 @@ By signing this message, you are proving ownership of this wallet address.`;
     } catch (error: any) {
       console.error('[MetaMaskAuth] Authentication error:', error);
       const hint = getSupabaseConnectivityHint(error);
-      return { success: false, error: hint || error.message || 'Authentication failed' };
+      return {
+        success: false,
+        error: getWalletAuthFailureMessage({
+          hint,
+          primaryError: error,
+          primaryMessage: error?.message ?? null,
+        }),
+      };
     }
   }
 

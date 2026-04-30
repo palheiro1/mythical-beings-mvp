@@ -17,6 +17,16 @@ export async function getSessionParticipants(sessionId: string): Promise<Session
   return (data ?? []) as SessionParticipant[];
 }
 
+function getPlayHubErrorMessage(error: any): string {
+  const message = error?.message || 'Play Hub request failed.';
+
+  if (message === 'Game mode is not available.') {
+    return 'Game mode is not available. The Card Game casual mode is not registered or enabled in Play Hub.';
+  }
+
+  return message;
+}
+
 export async function createPlayHubSession(): Promise<PlayHubSession | null> {
   const { data, error } = await supabase.rpc('playhub_create_session', {
     p_game_id: PLAYHUB_GAME_ID,
@@ -25,7 +35,7 @@ export async function createPlayHubSession(): Promise<PlayHubSession | null> {
 
   if (error) {
     console.error('[playhub_create_session] failed:', error);
-    return null;
+    throw new Error(getPlayHubErrorMessage(error));
   }
 
   const row = Array.isArray(data) ? (data[0] ?? null) : data;
@@ -39,7 +49,7 @@ export async function joinPlayHubSession(code: string): Promise<PlayHubSession |
 
   if (error) {
     console.error('[playhub_join_session] failed:', error);
-    return null;
+    throw new Error(getPlayHubErrorMessage(error));
   }
 
   const row = Array.isArray(data) ? (data[0] ?? null) : data;

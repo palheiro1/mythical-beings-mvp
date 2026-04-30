@@ -32,7 +32,7 @@ const MarketColumn: React.FC<MarketColumnProps> = ({
             </div>
             {/* Deck */}
             {/* Container defines size and aspect ratio */}
-            <div className="relative w-[80%] max-w-[100px] aspect-[2/3] flex-shrink-0">
+            <div className="relative aspect-[921/1217] w-[78%] max-w-[112px] flex-shrink-0">
                 <Card card={{ id: 'marketdeck', name: 'Deck', image: '/images/spells/back.jpg', type: 'spell', cost: 0, effect: '', element: 'neutral' }} showBack isDisabled /> {/* Removed size, added isDisabled */}
                 <span className="absolute -bottom-2 -right-2 flex h-7 w-7 items-center justify-center rounded-full border border-cyan-300/30 bg-black/80 text-xs font-bold text-cyan-100">{deckCount}</span>
             </div>
@@ -45,7 +45,7 @@ const MarketColumn: React.FC<MarketColumnProps> = ({
                         // Container defines size and aspect ratio
                         <div
                             key={card.instanceId || `${card.id}-${idx}`}
-                            className={`w-[90%] max-w-[120px] aspect-[2/3] flex-shrink-0 ${!isDisabled ? 'transition-transform hover:scale-[1.03]' : ''}`}
+                            className={`aspect-[921/1217] w-[92%] max-w-[132px] flex-shrink-0 ${!isDisabled ? 'transition-transform hover:scale-[1.03]' : ''}`}
                             ref={(el) => {
                                 if (card.instanceId) registry.register(`market:${card.instanceId}`, el as unknown as HTMLElement | null);
                             }}

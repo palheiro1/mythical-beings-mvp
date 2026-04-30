@@ -28,6 +28,8 @@ const allCreatures = [
   "trempulcahue",
 ];
 
+const functionVersion = "2026-04-30-card-game-repair";
+
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -41,6 +43,8 @@ function randomHand(size: number): string[] {
 }
 
 serve(async (req) => {
+  console.log(`[deal-cards] ${functionVersion} ${req.method} ${req.url}`);
+
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: corsHeaders });
   }

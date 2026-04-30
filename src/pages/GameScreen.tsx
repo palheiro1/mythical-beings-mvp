@@ -401,7 +401,7 @@ const GameScreen: React.FC = () => {
       )}
     >
 
-    <div className="grid h-full min-h-0 grid-cols-[minmax(190px,1fr)_minmax(520px,3fr)_minmax(180px,1fr)_minmax(190px,1fr)] gap-2 overflow-hidden">
+    <div className="grid h-full min-h-0 grid-cols-[minmax(170px,0.82fr)_minmax(620px,3.6fr)_minmax(170px,0.85fr)_minmax(190px,1fr)] gap-2 overflow-hidden">
         {/* Hands Column - Adjusted width */}
   <div className="h-full min-h-0" id={`hand-anchor-${currentPlayerId || 'unknown'}`} ref={(el) => { if (el && currentPlayerId) registry.register(`hand:${currentPlayerId}`, el); }}>
           {player && opponent ? (
