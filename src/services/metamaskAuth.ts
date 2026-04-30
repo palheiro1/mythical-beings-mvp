@@ -180,7 +180,7 @@ class MetaMaskAuthService {
     const timestamp = new Date().toISOString();
     const nonce = Math.random().toString(36).substring(2, 15);
     
-    return `Welcome to Mythical Beings Card Game!
+    return `Welcome to Wisdom Duel!
 
 This request will not trigger a blockchain transaction or cost any gas fees.
 

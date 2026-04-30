@@ -94,7 +94,7 @@ const TopBar: React.FC<TopBarProps> = ({
           {phase.toUpperCase()} PHASE
         </StatusBadge>
         <div className="mt-1 hidden justify-center sm:flex">
-          <img src="/images/banner.png" alt="Mythical Beings" className="h-5 w-auto opacity-70" />
+          <img src="/logos/logo-header-dark.png" alt="Wisdom Duel" className="h-5 w-auto opacity-70" />
         </div>
       </div>
 

@@ -54,7 +54,7 @@ const HowToPlay: React.FC = () => {
       <div className="space-y-6">
         <Panel id="overview" className="arena-banner p-6 sm:p-8" glow>
           <StatusBadge tone="violet" className="mb-4">Player Reference</StatusBadge>
-          <h1 className="font-display text-4xl font-black text-slate-50 sm:text-5xl">How to Play Mythical Arena</h1>
+          <h1 className="font-display text-4xl font-black text-slate-50 sm:text-5xl">How to Play</h1>
           <p className="mt-3 max-w-3xl text-slate-300">Everything you need to know to enter the arena, read the cards, and follow the digital match flow.</p>
         </Panel>
 

@@ -1,0 +1,44 @@
+:root {
+  --wd-bg-950: #050812;
+  --wd-bg-900: #0B1024;
+  --wd-blue-800: #192A6B;
+  --wd-blue-500: #2D6BFF;
+  --wd-cyan-400: #4FC3FF;
+  --wd-violet-700: #6C2DBE;
+  --wd-violet-950: #1A1240;
+  --wd-gold-500: #D4AF37;
+  --wd-gold-300: #F2C46B;
+  --wd-silver-200: #C9D2E3;
+  --wd-cream-50: #F3E9D6;
+
+  --wd-font-display: "Cinzel", "Trajan Pro", Georgia, serif;
+  --wd-font-ui: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+
+  --wd-glow-blue: 0 0 24px rgba(45, 107, 255, 0.45);
+  --wd-glow-violet: 0 0 24px rgba(108, 45, 190, 0.35);
+  --wd-border-gold: 1px solid rgba(212, 175, 55, 0.55);
+}
+
+.wd-logo {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+.wd-button-primary {
+  font-family: var(--wd-font-ui);
+  font-weight: 700;
+  color: var(--wd-cream-50);
+  background: linear-gradient(180deg, #283C91 0%, #121A42 100%);
+  border: var(--wd-border-gold);
+  box-shadow: var(--wd-glow-blue);
+  border-radius: 12px;
+  padding: 0.75rem 1.25rem;
+}
+
+.wd-panel {
+  background: linear-gradient(180deg, rgba(11,16,36,0.96), rgba(10,8,28,0.96));
+  border: var(--wd-border-gold);
+  box-shadow: var(--wd-glow-violet);
+  border-radius: 18px;
+}

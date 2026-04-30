@@ -193,7 +193,7 @@ const Lobby: React.FC = () => {
               <Swords className="h-3.5 w-3.5" aria-hidden />
               Play Hub
             </StatusBadge>
-            <h1 className="font-display text-4xl font-black uppercase text-slate-50 sm:text-5xl">Welcome to Mythical Arena</h1>
+            <h1 className="font-display text-4xl font-black uppercase text-slate-50 sm:text-5xl">Enter the Arena</h1>
             <p className="mt-3 max-w-2xl text-slate-300">Create a duel, join by code, rejoin an active match, or train locally against the bot.</p>
           </div>
           <div className="grid min-w-[220px] gap-3 rounded-2xl border border-white/10 bg-black/25 p-4">

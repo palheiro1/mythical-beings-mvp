@@ -47,11 +47,11 @@ const NavBar: React.FC = () => {
       <div className="flex min-w-0 items-center gap-5">
         <Link to={user ? '/lobby' : '/'} className="group flex min-w-0 items-center gap-3">
           <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl border border-violet-300/30 bg-violet-500/10 shadow-[0_0_24px_rgba(139,92,246,0.2)]">
-            <img src="/images/banner.png" alt="Mythical Beings" className="h-7 w-7 object-contain opacity-90 transition group-hover:opacity-100" />
+            <img src="/logos/logo-header-dark.png" alt="Wisdom Duel" className="h-7 w-7 object-contain opacity-90 transition group-hover:opacity-100" />
           </span>
           <span className="hidden min-w-0 flex-col leading-none sm:flex">
-            <span className="font-display text-lg font-bold uppercase text-slate-100">Mythical</span>
-            <span className="text-[10px] font-bold uppercase tracking-[0.38em] text-violet-300">Arena</span>
+            <span className="font-display text-lg font-bold uppercase text-slate-100">Wisdom</span>
+            <span className="text-[10px] font-bold uppercase tracking-[0.38em] text-violet-300">Duel</span>
           </span>
         </Link>
 

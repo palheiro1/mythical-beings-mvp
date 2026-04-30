@@ -101,9 +101,17 @@ button:disabled {
 
 .arena-banner {
   background:
-    linear-gradient(90deg, rgba(6, 9, 18, 0.92), rgba(6, 9, 18, 0.44), rgba(6, 9, 18, 0.9)),
-    url("/images/banner.png") center / contain no-repeat,
-    radial-gradient(circle at 70% 20%, rgba(34, 211, 238, 0.15), transparent 35%),
+    linear-gradient(90deg, rgba(6, 9, 18, 0.97) 30%, rgba(6, 9, 18, 0.35) 58%, rgba(6, 9, 18, 0.90) 100%),
+    url("/logos/logo-primary-dark.png") 70% center / auto 88% no-repeat,
+    radial-gradient(circle at 70% 50%, rgba(139, 92, 246, 0.10), transparent 45%),
+    linear-gradient(135deg, #121832, #080b16);
+}
+
+.arena-banner-center {
+  background:
+    linear-gradient(rgba(6, 9, 18, 0.72), rgba(6, 9, 18, 0.72)),
+    url("/logos/logo-primary-dark.png") center / auto 92% no-repeat,
+    radial-gradient(circle at 50% 50%, rgba(139, 92, 246, 0.10), transparent 55%),
     linear-gradient(135deg, #121832, #080b16);
 }
 

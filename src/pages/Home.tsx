@@ -80,9 +80,9 @@ const Home: React.FC = () => {
           Digital Card Arena
         </StatusBadge>
         <Panel glow className="w-full max-w-2xl px-6 py-8 sm:px-10 sm:py-10">
-          <img src="/images/banner.png" alt="Mythical Beings" className="mx-auto mb-6 h-20 w-auto object-contain opacity-95 sm:h-24" />
+          <img src="/logos/logo-primary-dark.png" alt="Wisdom Duel" className="mx-auto mb-6 h-20 w-auto object-contain opacity-95 sm:h-24" />
           <h1 className="font-display text-4xl font-black text-slate-50 sm:text-6xl">
-            Welcome to Mythical Beings
+            Welcome to Wisdom Duel
           </h1>
           <p className="mx-auto mt-4 max-w-xl text-base leading-7 text-slate-300 sm:text-lg">
             Collect powerful cards, command legendary beings, and battle for control of the arena.

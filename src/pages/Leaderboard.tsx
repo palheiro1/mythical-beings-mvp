@@ -83,7 +83,7 @@ const Leaderboard: React.FC = () => {
 
   return (
     <PageShell contentClassName="space-y-6 pb-24">
-      <Panel className="arena-banner p-6 text-center sm:p-8" glow>
+      <Panel className="arena-banner-center p-6 text-center sm:p-8" glow>
         <StatusBadge tone="amber" className="mb-4">
           <Trophy className="h-3.5 w-3.5" aria-hidden />
           Season Ranking
