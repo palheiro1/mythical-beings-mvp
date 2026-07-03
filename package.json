@@ -13,9 +13,9 @@
     "typecheck": "tsc -p tsconfig.app.json --noEmit && tsc -p tsconfig.node.json --noEmit"
   },
   "dependencies": {
-    "@mythicalb/ardor-core": "file:vendor/mythicalb-ardor-core-0.1.1.tgz",
-    "@mythicalb/ardor-provider": "file:vendor/mythicalb-ardor-provider-0.1.1.tgz",
-    "@mythicalb/sdk": "file:vendor/mythicalb-sdk-0.1.1.tgz",
+    "@mythicalb/ardor-core": "0.1.1",
+    "@mythicalb/ardor-provider": "0.1.1",
+    "@mythicalb/sdk": "0.1.1",
     "@supabase/supabase-js": "^2.49.4",
     "lucide-react": "^1.14.0",
     "react": "19.1.0",
