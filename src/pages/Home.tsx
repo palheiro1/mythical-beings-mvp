@@ -1,58 +1,117 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ShieldCheck, Sparkles, UserRound, WalletCards } from 'lucide-react';
+import { LogIn, Mail, ShieldCheck, Sparkles, WalletCards } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth.js';
-import { ArenaButton, Panel, StatusBadge } from '../components/ui/index.js';
+import { ArenaButton, Input, Panel, StatusBadge } from '../components/ui/index.js';
+import { PLAYHUB_ENABLE_WEB3_AUTH } from '../config/playhub.js';
+
+function formatCooldown(seconds: number): string {
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = seconds % 60;
+
+  if (minutes === 0) {
+    return `${seconds}s`;
+  }
+
+  return remainingSeconds === 0 ? `${minutes}m` : `${minutes}m ${remainingSeconds}s`;
+}
 
 const Home: React.FC = () => {
   const navigate = useNavigate();
-  const { user, loading, error, signInWithMetaMask, signInAsGuest } = useAuth();
-  const [authMode, setAuthMode] = useState<'guest' | 'wallet' | null>(null);
+  const {
+    user,
+    profile,
+    polygonWallet,
+    loading,
+    error,
+    magicLinkSentTo,
+    magicLinkCooldownUntil,
+    signInWithGoogle,
+    signInWithPolygonWallet,
+    signInWithPlayHubEmail,
+    connectPolygonWallet,
+  } = useAuth();
+  const [email, setEmail] = useState('');
+  const [authMode, setAuthMode] = useState<'google' | 'web3' | 'email' | 'polygon' | null>(null);
   const [authError, setAuthError] = useState<string | null>(error);
+  const [showEmailFallback, setShowEmailFallback] = useState(false);
+  const [now, setNow] = useState(() => Date.now());
   const authLoading = authMode !== null;
+  const magicLinkCooldownSeconds = magicLinkCooldownUntil
+    ? Math.max(0, Math.ceil((magicLinkCooldownUntil - now) / 1000))
+    : 0;
+  const magicLinkCoolingDown = magicLinkCooldownSeconds > 0;
 
   useEffect(() => {
-    if (!loading && user) {
-      console.log('[Home] User already logged in, redirecting to /lobby');
+    if (!loading && user && polygonWallet) {
       navigate('/lobby');
     }
     if (error) {
       setAuthError(error);
     }
-  }, [user, loading, navigate, error]);
+  }, [user, polygonWallet, loading, navigate, error]);
 
-  const handleConnectWallet = async () => {
-    setAuthMode('wallet');
+  useEffect(() => {
+    if (!magicLinkCooldownUntil) return;
+
+    setNow(Date.now());
+    const intervalId = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(intervalId);
+  }, [magicLinkCooldownUntil]);
+
+  const handleGoogleLogin = async () => {
+    if (authLoading) return;
+
+    setAuthMode('google');
     setAuthError(null);
-    
+
     try {
-      const result = await signInWithMetaMask();
-      if (result.success) {
-        console.log('[Home] Successfully authenticated with MetaMask');
-        // Navigation will happen automatically via useEffect when user state updates
-      } else {
-        setAuthError(result.error || 'Authentication failed');
-      }
+      await signInWithGoogle();
     } catch (error: any) {
-      console.error('[Home] Authentication error:', error);
-      setAuthError(error.message || 'Authentication failed');
+      setAuthError(error.message || 'Could not start Google sign-in.');
+      setAuthMode(null);
+    }
+  };
+
+  const handlePolygonLogin = async () => {
+    if (authLoading) return;
+
+    setAuthMode('web3');
+    setAuthError(null);
+
+    try {
+      await signInWithPolygonWallet();
+    } catch (error: any) {
+      setAuthError(error.message || 'Could not sign in with Polygon wallet.');
     } finally {
       setAuthMode(null);
     }
   };
 
-  const handleGuestLogin = async () => {
-    setAuthMode('guest');
+  const handleEmailLogin = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (authLoading || magicLinkCoolingDown) return;
+
+    setAuthMode('email');
     setAuthError(null);
 
     try {
-      const result = await signInAsGuest();
-      if (!result.success) {
-        setAuthError(result.error || 'Guest login failed');
-      }
+      await signInWithPlayHubEmail(email);
     } catch (error: any) {
-      console.error('[Home] Guest authentication error:', error);
-      setAuthError(error.message || 'Guest login failed');
+      setAuthError(error.message || 'Could not send Play Hub login link.');
+    } finally {
+      setAuthMode(null);
+    }
+  };
+
+  const handleConnectPolygon = async () => {
+    setAuthMode('polygon');
+    setAuthError(null);
+
+    try {
+      await connectPolygonWallet();
+    } catch (error: any) {
+      setAuthError(error.message || 'Could not link Polygon wallet.');
     } finally {
       setAuthMode(null);
     }
@@ -88,40 +147,112 @@ const Home: React.FC = () => {
             Collect powerful cards, command legendary beings, and battle for control of the arena.
           </p>
 
-          {!user && (
-            <>
-              <div className="mt-8 grid gap-3 sm:grid-cols-2">
-                <ArenaButton
-                  type="button"
-                  onClick={handleGuestLogin}
-                  loading={authMode === 'guest'}
-                  disabled={authLoading}
-                  size="lg"
-                  icon={<UserRound className="h-5 w-5" aria-hidden />}
-                  fullWidth
-                >
-                  {authMode === 'guest' ? 'Entering...' : 'Continue as Guest'}
-                </ArenaButton>
+          {!user ? (
+            <div className="mt-8 space-y-4">
+              <ArenaButton
+                type="button"
+                onClick={handleGoogleLogin}
+                loading={authMode === 'google'}
+                disabled={authLoading}
+                size="lg"
+                icon={<LogIn className="h-5 w-5" aria-hidden />}
+                fullWidth
+              >
+                {authMode === 'google' ? 'Redirecting...' : 'Continue with Google'}
+              </ArenaButton>
 
+              {PLAYHUB_ENABLE_WEB3_AUTH && (
                 <ArenaButton
                   type="button"
-                  onClick={handleConnectWallet}
-                  loading={authMode === 'wallet'}
+                  onClick={handlePolygonLogin}
+                  loading={authMode === 'web3'}
                   disabled={authLoading}
                   variant="secondary"
                   size="lg"
                   icon={<WalletCards className="h-5 w-5" aria-hidden />}
                   fullWidth
                 >
-                  {authMode === 'wallet' ? 'Connecting...' : 'Connect MetaMask'}
+                  {authMode === 'web3' ? 'Signing...' : 'Continue with Polygon Wallet'}
                 </ArenaButton>
-              </div>
+              )}
 
+              <button
+                type="button"
+                onClick={() => setShowEmailFallback((visible) => !visible)}
+                className="text-sm font-bold uppercase tracking-wide text-slate-400 transition hover:text-cyan-100"
+              >
+                {showEmailFallback ? 'Hide email link' : 'Use email link instead'}
+              </button>
+
+              {showEmailFallback && (
+                <form onSubmit={handleEmailLogin} className="space-y-4">
+                  <label htmlFor="playhub-email" className="sr-only">Play Hub email</label>
+                  <Input
+                    id="playhub-email"
+                    type="email"
+                    value={email}
+                    onChange={(event) => setEmail(event.target.value)}
+                    placeholder="player@example.com"
+                    autoComplete="email"
+                    required
+                  />
+                  <ArenaButton
+                    type="submit"
+                    loading={authMode === 'email'}
+                    disabled={authLoading || magicLinkCoolingDown}
+                    variant="ghost"
+                    size="lg"
+                    icon={<Mail className="h-5 w-5" aria-hidden />}
+                    fullWidth
+                  >
+                    {authMode === 'email'
+                      ? 'Sending...'
+                      : magicLinkCoolingDown
+                        ? `Resend in ${formatCooldown(magicLinkCooldownSeconds)}`
+                        : magicLinkSentTo
+                          ? 'Resend Play Hub link'
+                          : 'Send email link'}
+                  </ArenaButton>
+                </form>
+              )}
+
+              {magicLinkSentTo && showEmailFallback && (
+                <div className="rounded-2xl border border-emerald-300/30 bg-emerald-500/10 p-4 text-sm text-emerald-100" aria-live="polite">
+                  Login link sent to {magicLinkSentTo}.
+                  {magicLinkCoolingDown && (
+                    <span className="block pt-1 text-emerald-100/80">
+                      Resend available in {formatCooldown(magicLinkCooldownSeconds)}.
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+          ) : !polygonWallet ? (
+            <div className="mt-8 space-y-4">
+              <div className="rounded-2xl border border-cyan-300/25 bg-cyan-500/10 p-4 text-sm text-cyan-100">
+                Signed in as {profile?.display_name || profile?.username || user.email || 'Play Hub player'}.
+              </div>
+              <ArenaButton
+                type="button"
+                onClick={handleConnectPolygon}
+                loading={authMode === 'polygon'}
+                disabled={authLoading}
+                size="lg"
+                icon={<WalletCards className="h-5 w-5" aria-hidden />}
+                fullWidth
+              >
+                {authMode === 'polygon' ? 'Linking...' : 'Link Polygon Wallet'}
+              </ArenaButton>
+            </div>
+          ) : null}
+
+          {(!user || (user && !polygonWallet)) && (
+            <>
               <div className="mt-6 flex flex-col items-center justify-center gap-2 text-sm text-slate-400 sm:flex-row">
                 <ShieldCheck className="h-4 w-4 text-cyan-200" aria-hidden />
-                <span>No wallet? No problem. Play instantly.</span>
+                <span>Play Hub identity is required.</span>
                 <span className="hidden text-slate-600 sm:inline">|</span>
-                <span className="text-cyan-200">No gas required for wallet sign-in.</span>
+                <span className="text-cyan-200">Polygon wallet linking unlocks the arena.</span>
               </div>
 
               {authError && (
@@ -131,6 +262,7 @@ const Home: React.FC = () => {
               )}
             </>
           )}
+
         </Panel>
       </div>
     </div>

@@ -1,18 +1,15 @@
 import { supabase, normalizeProfile } from '../utils/supabaseClient.js';
 import type { ProfileInfo } from '../utils/supabaseClient.js';
+import { mythical } from './mythicalClient.js';
 
 export async function getOrCreatePlayHubProfile(displayName?: string | null): Promise<ProfileInfo | null> {
-  const { data, error } = await supabase.rpc('playhub_get_or_create_profile', {
-    p_display_name: displayName ?? null,
-  });
-
-  if (error) {
-    console.error('[playhub_get_or_create_profile] failed:', error);
+  try {
+    const profile = await mythical.profile.getOrCreate(displayName ?? undefined);
+    return normalizeProfile(profile);
+  } catch (error) {
+    console.error('[profile.getOrCreate] failed:', error);
     return null;
   }
-
-  const row = Array.isArray(data) ? (data[0] ?? null) : data;
-  return normalizeProfile(row as any);
 }
 
 export async function getProfile(userId: string): Promise<ProfileInfo | null> {
@@ -48,39 +45,22 @@ export async function updateProfile(
   userId: string,
   updates: { username?: string; avatar_url?: string },
 ): Promise<ProfileInfo | null> {
-  const payload = {
-    display_name: updates.username,
-    avatar_url: updates.avatar_url,
-    updated_at: new Date().toISOString(),
-  };
+  try {
+    const currentUser = await mythical.auth.getUser();
+    if (!currentUser || currentUser.id !== userId) {
+      throw new Error('Cannot update another Play Hub profile.');
+    }
 
-  const { data, error } = await supabase
-    .from('profiles')
-    .update(payload)
-    .eq('id', userId)
-    .select('id, display_name, avatar_url, is_guest')
-    .single();
-
-  if (!error) return normalizeProfile(data);
-
-  console.warn('[updateProfile] display_name update failed, trying legacy username:', error.message);
-  const legacy = await supabase
-    .from('profiles')
-    .update({
+    const profile = await mythical.profile.update({
       username: updates.username,
-      avatar_url: updates.avatar_url,
-      updated_at: new Date().toISOString(),
-    })
-    .eq('id', userId)
-    .select('id, username, avatar_url')
-    .single();
-
-  if (legacy.error) {
-    console.error('[updateProfile] failed:', legacy.error);
+      displayName: updates.username,
+      avatarUrl: updates.avatar_url,
+    });
+    return normalizeProfile(profile);
+  } catch (error) {
+    console.error('[profile.update] failed:', error);
     return null;
   }
-
-  return normalizeProfile(legacy.data);
 }
 
 export async function uploadAvatar(userId: string, file: File): Promise<string | null> {

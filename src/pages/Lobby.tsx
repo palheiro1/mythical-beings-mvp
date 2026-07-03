@@ -3,13 +3,17 @@ import { useNavigate } from 'react-router-dom';
 import { Bot, Clock, Play, PlusCircle, RefreshCw, Swords, Users } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth.js';
 import {
+  createCompetitiveSession,
   createPlayHubSession,
   getActiveGames,
   getAvailableGames,
-  getOrCreatePlayHubProfile,
   getProfile,
+  joinCompetitiveSession,
   joinPlayHubSession,
+  PLAYHUB_COMPETITIVE_MODE_ID,
   PLAYHUB_GAME_ID,
+  PLAYHUB_MODE_ID,
+  PLAYHUB_STAKE_TIERS_GEM,
   PlayHubSession,
   setPlayHubReady,
   supabase,
@@ -19,7 +23,11 @@ import { clearBotCreatureSelection } from '../utils/botSelection.js';
 
 interface SessionWithHost extends PlayHubSession {
   hostName: string | null;
+  stakeGem?: string | null;
+  competitionStatus?: string | null;
 }
+
+type LobbyMode = typeof PLAYHUB_MODE_ID | typeof PLAYHUB_COMPETITIVE_MODE_ID;
 
 const Lobby: React.FC = () => {
   const navigate = useNavigate();
@@ -33,13 +41,32 @@ const Lobby: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [isJoining, setIsJoining] = useState(false);
+  const [selectedMode, setSelectedMode] = useState<LobbyMode>(PLAYHUB_MODE_ID);
+  const [selectedStakeGem, setSelectedStakeGem] = useState<(typeof PLAYHUB_STAKE_TIERS_GEM)[number]>(PLAYHUB_STAKE_TIERS_GEM[0]);
 
-  const enrichSessions = useCallback(async (sessions: PlayHubSession[]): Promise<SessionWithHost[]> => {
+  const enrichSessions = useCallback(async (sessions: PlayHubSession[], modeId: LobbyMode): Promise<SessionWithHost[]> => {
+    const competitionBySession = new Map<string, { stake_gem?: string | number | null; status?: string | null }>();
+    if (modeId === PLAYHUB_COMPETITIVE_MODE_ID && sessions.length > 0) {
+      const { data, error } = await supabase
+        .from('card_game_competitions')
+        .select('session_id, stake_gem, status')
+        .in('session_id', sessions.map((session) => session.id));
+
+      if (!error) {
+        (data ?? []).forEach((row: any) => {
+          competitionBySession.set(row.session_id, row);
+        });
+      }
+    }
+
     return Promise.all(sessions.map(async (session) => {
       const profile = await getProfile(session.host_id);
+      const competition = competitionBySession.get(session.id);
       return {
         ...session,
         hostName: profile?.username || session.host_id.substring(0, 8),
+        stakeGem: competition?.stake_gem != null ? String(competition.stake_gem) : null,
+        competitionStatus: competition?.status ?? null,
       };
     }));
   }, []);
@@ -51,13 +78,13 @@ const Lobby: React.FC = () => {
     setError(null);
     try {
       const [waiting, playing] = await Promise.all([
-        getAvailableGames(),
-        getActiveGames(),
+        getAvailableGames(selectedMode),
+        getActiveGames(selectedMode),
       ]);
 
       const [waitingWithHosts, playingWithHosts] = await Promise.all([
-        enrichSessions(waiting),
-        enrichSessions(playing),
+        enrichSessions(waiting, selectedMode),
+        enrichSessions(playing, selectedMode),
       ]);
 
       setAvailableSessions(waitingWithHosts);
@@ -68,14 +95,13 @@ const Lobby: React.FC = () => {
     } finally {
       setLoadingSessions(false);
     }
-  }, [enrichSessions, playerId]);
+  }, [enrichSessions, playerId, selectedMode]);
 
   useEffect(() => {
     if (!authLoading && playerId) {
-      void getOrCreatePlayHubProfile(user?.user_metadata?.display_name ?? null);
       void fetchSessions();
     }
-  }, [authLoading, fetchSessions, playerId, user?.user_metadata?.display_name]);
+  }, [authLoading, fetchSessions, playerId]);
 
   useEffect(() => {
     if (!playerId) return;
@@ -124,19 +150,20 @@ const Lobby: React.FC = () => {
 
   const handleCreateSession = async () => {
     if (!playerId) {
-      showNotification('Please connect your wallet to create a session.');
+      showNotification('Please sign in with Play Hub and link a Polygon wallet to create a session.');
       return;
     }
 
     setIsCreating(true);
     try {
-      const profile = await getOrCreatePlayHubProfile(user?.user_metadata?.display_name ?? null);
-      if (!profile) throw new Error('Could not create player profile.');
-
-      const session = await createPlayHubSession();
+      const session = selectedMode === PLAYHUB_COMPETITIVE_MODE_ID
+        ? await createCompetitiveSession(selectedStakeGem)
+        : await createPlayHubSession();
       if (!session) throw new Error('Could not create session.');
 
-      await setPlayHubReady(session.id, true);
+      if (selectedMode === PLAYHUB_MODE_ID) {
+        await setPlayHubReady(session.id, true);
+      }
       navigate(`/waiting/${session.id}`);
     } catch (err: any) {
       console.error('[Lobby] Create session failed:', err);
@@ -148,7 +175,7 @@ const Lobby: React.FC = () => {
 
   const joinSessionByCode = async (code: string) => {
     if (!playerId) {
-      showNotification('Please connect your wallet to join a session.');
+      showNotification('Please sign in with Play Hub and link a Polygon wallet to join a session.');
       return;
     }
 
@@ -160,13 +187,14 @@ const Lobby: React.FC = () => {
 
     setIsJoining(true);
     try {
-      const profile = await getOrCreatePlayHubProfile(user?.user_metadata?.display_name ?? null);
-      if (!profile) throw new Error('Could not create player profile.');
-
-      const session = await joinPlayHubSession(trimmedCode);
+      const session = selectedMode === PLAYHUB_COMPETITIVE_MODE_ID
+        ? await joinCompetitiveSession(trimmedCode)
+        : await joinPlayHubSession(trimmedCode);
       if (!session) throw new Error('Could not join session.');
 
-      await setPlayHubReady(session.id, true);
+      if (selectedMode === PLAYHUB_MODE_ID) {
+        await setPlayHubReady(session.id, true);
+      }
       navigate(`/waiting/${session.id}`);
     } catch (err: any) {
       console.error('[Lobby] Join session failed:', err);
@@ -183,6 +211,7 @@ const Lobby: React.FC = () => {
   }
 
   const isLoading = authLoading || loadingSessions;
+  const isCompetitiveMode = selectedMode === PLAYHUB_COMPETITIVE_MODE_ID;
 
   return (
     <PageShell contentClassName="space-y-6 pb-24">
@@ -238,6 +267,44 @@ const Lobby: React.FC = () => {
 
             <div className="space-y-5">
               <div>
+                <p className="mb-3 text-xs font-bold uppercase tracking-widest text-slate-400">Mode</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedMode(PLAYHUB_MODE_ID)}
+                    className={`rounded-xl border px-3 py-2 text-sm font-bold uppercase transition ${!isCompetitiveMode ? 'border-cyan-300/45 bg-cyan-500/15 text-cyan-100' : 'border-white/10 bg-white/[0.04] text-slate-300 hover:bg-white/[0.07]'}`}
+                  >
+                    Casual
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedMode(PLAYHUB_COMPETITIVE_MODE_ID)}
+                    className={`rounded-xl border px-3 py-2 text-sm font-bold uppercase transition ${isCompetitiveMode ? 'border-amber-300/50 bg-amber-500/15 text-amber-100' : 'border-white/10 bg-white/[0.04] text-slate-300 hover:bg-white/[0.07]'}`}
+                  >
+                    GEM
+                  </button>
+                </div>
+              </div>
+
+              {isCompetitiveMode && (
+                <div>
+                  <p className="mb-3 text-xs font-bold uppercase tracking-widest text-slate-400">Stake</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {PLAYHUB_STAKE_TIERS_GEM.map((stake) => (
+                      <button
+                        key={stake}
+                        type="button"
+                        onClick={() => setSelectedStakeGem(stake)}
+                        className={`rounded-xl border px-2 py-2 text-sm font-black uppercase transition ${selectedStakeGem === stake ? 'border-amber-300/55 bg-amber-500/15 text-amber-100' : 'border-white/10 bg-white/[0.04] text-slate-300 hover:bg-white/[0.07]'}`}
+                      >
+                        {stake} GEM
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div>
                 <p className="mb-3 text-xs font-bold uppercase tracking-widest text-slate-400">Create your own session</p>
                 <ArenaButton
                   type="button"
@@ -246,7 +313,7 @@ const Lobby: React.FC = () => {
                   icon={<PlusCircle className="h-4 w-4" aria-hidden />}
                   fullWidth
                 >
-                  {isCreating ? 'Creating...' : 'Create Session'}
+                  {isCreating ? 'Creating...' : isCompetitiveMode ? `Create ${selectedStakeGem} GEM Session` : 'Create Session'}
                 </ArenaButton>
               </div>
 
@@ -315,6 +382,11 @@ const Lobby: React.FC = () => {
                           <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-slate-400">
                             <CopyChip label="Code" value={session.code} className="max-w-full" />
                             <StatusBadge tone="green">{session.participants?.length ?? 0}/{session.max_players} players</StatusBadge>
+                            {isCompetitiveMode ? (
+                              <StatusBadge tone="amber">{session.stakeGem ?? '?'} GEM</StatusBadge>
+                            ) : (
+                              <StatusBadge tone="blue">Casual</StatusBadge>
+                            )}
                           </div>
                         </div>
                         <ArenaButton
@@ -351,6 +423,7 @@ const Lobby: React.FC = () => {
                           <p className="truncate text-lg font-bold text-slate-100">{session.hostName || 'Unknown Host'}</p>
                           <div className="mt-2 flex flex-wrap items-center gap-2">
                             <StatusBadge tone="violet">In progress</StatusBadge>
+                            {isCompetitiveMode && <StatusBadge tone="amber">{session.stakeGem ?? '?'} GEM</StatusBadge>}
                             {isParticipant ? <StatusBadge tone="amber">Your match</StatusBadge> : <StatusBadge tone="muted">Playing</StatusBadge>}
                           </div>
                         </div>

@@ -48,7 +48,7 @@ const NFTSelectionSimplified: React.FC<NFTSelectionSimplifiedProps> = ({ mode = 
   const currentPlayerId = user?.id;
   
   const navigationManagerRef = useRef<NFTSelectionNavigationManager | null>(null);
-  const handPollIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const handPollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Timer logic
   useEffect(() => {

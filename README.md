@@ -132,7 +132,15 @@ Create a `.env.local` in the project root (see `.env.example`):
 ```
 VITE_SUPABASE_URL=your_supabase_url
 VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+VITE_ENABLE_WEB3_AUTH=true
+VITE_POLYGON_RPC_URL=your_polygon_rpc_url
+VITE_POLYGON_CHAIN_ID=137
+VITE_GEM_CONTRACT=0x5f790ffa0695967a2d711872ecb4c7553e24794d
+VITE_CARDS_CONTRACT=0xcf55f528492768330c0750a6527c1dfb50e2a7c3
+VITE_WISDOM_DUEL_ESCROW_ADDRESS=your_escrow_contract
 ```
+
+For competitive GEM matches, configure the matching Supabase Edge Function secrets listed in `.env.example`.
 
 Useful Commands
 ```bash

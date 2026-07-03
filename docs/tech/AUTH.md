@@ -1,59 +1,51 @@
-# Authentication (MetaMask + Supabase)
+# Authentication (Play Hub + Polygon)
 
 ## Current Flow
 
-1. The client connects to MetaMask and requests a `personal_sign` signature.
-   - Code: `src/services/metamaskAuth.ts`
-2. The client calls the Supabase Edge Function `moralis-auth` with `{ message, signature }`.
-   - Code: `supabase/functions/moralis-auth/index.ts`
-3. The Edge Function verifies the signature, ensures an Auth user + profile exists, then creates a real Supabase session via `signInWithPassword`.
-4. The Edge Function returns `{ access_token, refresh_token }` and the client establishes the session using `supabase.auth.setSession({ access_token, refresh_token })`.
+1. The app creates a single Mythical SDK client in `src/services/mythicalClient.ts`.
+2. Supabase session state is read through `mythical.auth`.
+3. Users sign in with Google, email magic link, or Polygon Web3 auth from `src/pages/Home.tsx`.
+4. Email/Google users link a Polygon wallet through `mythical.wallets.connect('polygon')`; Web3 sign-in ensures the authenticated Polygon wallet through `mythical.auth.signInWithPolygonWallet`.
+5. Protected routes require both a Play Hub user session and a linked Polygon wallet.
 
-Notes:
-- The Edge Function name is historical (`moralis-auth`) but signature verification is performed locally in the function (no Moralis SDK is required in the client).
-- A fallback Edge Function `simplified-moralis-auth` may be used if the primary function fails.
+Browser wallets are only accessed through the Play Hub SDK. The game does not call Moralis or maintain a separate wallet-auth backend.
 
 ## Environment Variables
 
 Frontend (`.env.local`, see `.env.example`):
+
 - `VITE_SUPABASE_URL`
 - `VITE_SUPABASE_ANON_KEY`
+- `VITE_ENABLE_WEB3_AUTH`
+- `VITE_POLYGON_RPC_URL`
+- `VITE_POLYGON_CHAIN_ID`
+- `VITE_GEM_CONTRACT`
+- `VITE_CARDS_CONTRACT`
+- `VITE_WISDOM_DUEL_ESCROW_ADDRESS`
 
-Edge Functions (Supabase project secrets):
-- `SUPABASE_URL`
-- `SUPABASE_SERVICE_ROLE_KEY`
-- `AUTH_PASSWORD_SECRET` (server-only secret used to derive per-wallet passwords deterministically)
+Supabase Edge Function secrets:
 
-## CORS / Connectivity Troubleshooting
-
-If you see browser errors like:
-- `CORS request did not succeed`
-- `FunctionsFetchError: Failed to send a request to the Edge Function`
-
-It is often a *connectivity* problem (DNS/TLS/network) or a Supabase Edge Function gateway rejection before your function code runs.
-
-1. Verify your Supabase project URL is valid/reachable:
-   - `nslookup <project-ref>.supabase.co`
-   - `curl -I https://<project-ref>.supabase.co/auth/v1/health`
-2. Ensure Edge Functions called from the browser have `verify_jwt = false` in `supabase/config.toml`.
-   - Reason: browser `OPTIONS` preflight requests do **not** include the `Authorization` header, so `verify_jwt = true` can cause preflight to be rejected, which surfaces as a CORS failure in the browser.
-3. Redeploy functions after changing `supabase/config.toml` or function code.
+- `POLYGON_RPC_URL`
+- `POLYGON_CHAIN_ID`
+- `WISDOM_DUEL_GEM_ADDRESS`
+- `WISDOM_DUEL_CARDS_ADDRESS`
+- `WISDOM_DUEL_ESCROW_ADDRESS`
+- `WISDOM_DUEL_ESCROW_SIGNER_PRIVATE_KEY`
+- `WISDOM_DUEL_GEM_DECIMALS`
 
 ## Deploying Edge Functions
 
-Typical workflow:
+The active app-specific Edge Function is:
 
 ```bash
-supabase login
-supabase link --project-ref <your-project-ref>
-supabase functions deploy moralis-auth
-supabase functions deploy simplified-moralis-auth
-supabase functions deploy create-game
 supabase functions deploy deal-cards
 ```
 
+Authentication, profiles, wallet linking, sessions, leaderboards, rewards, and competitive GEM functions are routed through `@mythicalb/sdk`.
+
 ## Source Of Truth
 
-- Client auth service: `src/services/metamaskAuth.ts`
+- SDK client: `src/services/mythicalClient.ts`
 - Auth state management: `src/context/AuthProvider.tsx`
-- Edge auth verification: `supabase/functions/moralis-auth/index.ts`
+- Login UI: `src/pages/Home.tsx`
+- Route gate: `src/components/ProtectedRoute.tsx`

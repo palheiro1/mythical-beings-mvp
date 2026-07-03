@@ -1,43 +1,127 @@
-// Global Authentication Provider for React StrictMode Compatibility
-// This prevents multiple useAuth instances from conflicting and causing loading state issues
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { User, Session } from '@supabase/supabase-js';
-import { getOrCreatePlayHubProfile, supabase } from '../utils/supabase.js';
-import { metamaskAuth, AuthenticationResult } from '../services/metamaskAuth.js';
+import { Session } from '@supabase/supabase-js';
+import { LinkedWallet, PlayHubProfile, PlayHubUser } from '@mythicalb/sdk';
+import { mythical } from '../services/mythicalClient.js';
+import { hasPolygonProvider, PLAYHUB_ENABLE_WEB3_AUTH } from '../config/playhub.js';
+import { signInWithGoogle, signInWithPolygonWeb3 } from '../services/playHubAuthService.js';
+import { connectLinkedPolygonWallet, getLinkedPolygonWallet } from '../services/playHubWalletService.js';
 
 export interface AuthState {
-  user: User | null;
+  user: PlayHubUser | null;
+  profile: PlayHubProfile | null;
+  polygonWallet: LinkedWallet | null;
   session: Session | null;
   loading: boolean;
   error: string | null;
+  magicLinkSentTo: string | null;
+  magicLinkCooldownUntil: number | null;
 }
 
 interface AuthContextType extends AuthState {
-  signInWithMetaMask: () => Promise<AuthenticationResult>;
-  signInAsGuest: () => Promise<AuthenticationResult>;
+  signInWithGoogle: () => Promise<void>;
+  signInWithPolygonWallet: () => Promise<LinkedWallet>;
+  signInWithPlayHubEmail: (email: string) => Promise<void>;
+  connectPolygonWallet: () => Promise<LinkedWallet>;
+  refreshAuthState: () => Promise<void>;
   signOut: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Singleton pattern to prevent React StrictMode race conditions
 let authStateManager: AuthStateManager | null = null;
 
-function getGuestAuthErrorMessage(error: any): string {
-  const message = error?.message || 'Guest authentication failed';
-  const lower = message.toLowerCase();
+const MAGIC_LINK_COOLDOWN_MS = 60_000;
+const MAGIC_LINK_RATE_LIMIT_COOLDOWN_MS = 5 * 60_000;
+const MAGIC_LINK_COOLDOWN_STORAGE_KEY = 'playhub.magicLinkCooldown';
 
-  if (lower.includes('anonymous') || lower.includes('provider') || lower.includes('disabled')) {
-    return 'Guest login is not enabled in Supabase Auth for this project.';
+function getStoredMagicLinkCooldown(): Pick<AuthState, 'magicLinkSentTo' | 'magicLinkCooldownUntil'> {
+  if (typeof window === 'undefined') {
+    return { magicLinkSentTo: null, magicLinkCooldownUntil: null };
   }
 
-  return message;
+  try {
+    const raw = window.localStorage.getItem(MAGIC_LINK_COOLDOWN_STORAGE_KEY);
+    if (!raw) {
+      return { magicLinkSentTo: null, magicLinkCooldownUntil: null };
+    }
+
+    const parsed = JSON.parse(raw) as { email?: unknown; until?: unknown };
+    const until = typeof parsed.until === 'number' ? parsed.until : null;
+    const email = typeof parsed.email === 'string' ? parsed.email : null;
+
+    if (!until || until <= Date.now()) {
+      window.localStorage.removeItem(MAGIC_LINK_COOLDOWN_STORAGE_KEY);
+      return { magicLinkSentTo: null, magicLinkCooldownUntil: null };
+    }
+
+    return { magicLinkSentTo: email, magicLinkCooldownUntil: until };
+  } catch {
+    return { magicLinkSentTo: null, magicLinkCooldownUntil: null };
+  }
 }
+
+function persistMagicLinkCooldown(email: string | null, until: number | null): void {
+  if (typeof window === 'undefined') return;
+
+  try {
+    if (!until || until <= Date.now()) {
+      window.localStorage.removeItem(MAGIC_LINK_COOLDOWN_STORAGE_KEY);
+      return;
+    }
+
+    window.localStorage.setItem(MAGIC_LINK_COOLDOWN_STORAGE_KEY, JSON.stringify({ email, until }));
+  } catch {
+    // The cooldown is a UX guard only; auth still works if browser storage is unavailable.
+  }
+}
+
+function formatWaitTime(milliseconds: number): string {
+  const seconds = Math.max(1, Math.ceil(milliseconds / 1000));
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = seconds % 60;
+
+  if (minutes === 0) {
+    return `${seconds}s`;
+  }
+
+  return remainingSeconds === 0 ? `${minutes}m` : `${minutes}m ${remainingSeconds}s`;
+}
+
+function isEmailRateLimitError(error: unknown): boolean {
+  const maybeError = error as { message?: unknown; status?: unknown; cause?: { message?: unknown; status?: unknown } };
+  const message = String(maybeError?.message ?? maybeError?.cause?.message ?? '').toLowerCase();
+  const status = maybeError?.status ?? maybeError?.cause?.status;
+
+  return status === 429 || message.includes('rate limit') || message.includes('too many requests');
+}
+
+function getAuthErrorMessage(error: unknown): string {
+  if (isEmailRateLimitError(error)) {
+    return 'Play Hub email login is temporarily rate-limited. Check the last login email first, or try again in a few minutes.';
+  }
+
+  const maybeError = error as { message?: unknown };
+  return typeof maybeError?.message === 'string' && maybeError.message
+    ? maybeError.message
+    : 'Could not send Play Hub login link.';
+}
+
+const storedMagicLinkCooldown = getStoredMagicLinkCooldown();
+
+const initialAuthState: AuthState = {
+  user: null,
+  profile: null,
+  polygonWallet: null,
+  session: null,
+  loading: true,
+  error: null,
+  magicLinkSentTo: storedMagicLinkCooldown.magicLinkSentTo,
+  magicLinkCooldownUntil: storedMagicLinkCooldown.magicLinkCooldownUntil,
+};
 
 class AuthStateManager {
   private listeners: Set<(state: AuthState) => void> = new Set();
-  private currentState: AuthState = { user: null, session: null, loading: true, error: null };
+  private currentState: AuthState = initialAuthState;
   private initialized = false;
 
   constructor() {
@@ -48,52 +132,10 @@ class AuthStateManager {
     if (this.initialized) return;
     this.initialized = true;
 
-    console.log('[AuthStateManager] Initializing...');
+    await this.refreshAuthState();
 
-    try {
-      // Get initial session with timeout
-      const sessionPromise = supabase.auth.getSession();
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('getSession timeout')), 3000)
-      );
-      
-      const { data: { session }, error: sessionError } = await Promise.race([
-        sessionPromise,
-        timeoutPromise
-      ]) as any;
-      
-      if (sessionError) {
-        console.error('[AuthStateManager] Session error:', sessionError);
-        this.updateState({ error: sessionError.message, loading: false });
-      } else {
-        console.log('[AuthStateManager] Initial session:', session ? 'Found' : 'Not found');
-        this.updateState({ 
-          session, 
-          user: session?.user ?? null, 
-          loading: false,
-          error: null 
-        });
-      }
-    } catch (error: any) {
-      console.error('[AuthStateManager] Session check failed:', error);
-      if (error.message === 'getSession timeout') {
-        console.warn('[AuthStateManager] Session timeout, assuming no session');
-        this.updateState({ session: null, user: null, loading: false, error: null });
-      } else {
-        this.updateState({ error: error.message, loading: false });
-      }
-    }
-
-    // Set up auth state listener (only once)
-    supabase.auth.onAuthStateChange((event, session) => {
-      console.log('[AuthStateManager] Auth state changed:', event, session ? 'Session exists' : 'No session');
-      
-      this.updateState({
-        session,
-        user: session?.user ?? null,
-        loading: false,
-        error: session ? null : this.currentState.error // Keep error if no session
-      });
+    mythical.auth.onAuthStateChange(() => {
+      void this.refreshAuthState();
     });
   }
 
@@ -112,86 +154,178 @@ class AuthStateManager {
     };
   }
 
-  async signInWithMetaMask(): Promise<AuthenticationResult> {
-    console.log('[AuthStateManager] Starting MetaMask authentication...');
+  async refreshAuthState(): Promise<void> {
     this.updateState({ loading: true, error: null });
 
     try {
-      const result = await metamaskAuth.authenticate();
-      
-      if (!result.success) {
-        this.updateState({ error: result.error || 'Authentication failed', loading: false });
-        return result;
-      }
+      const session = await mythical.auth.getSession();
 
-      console.log('[AuthStateManager] MetaMask authentication successful');
-      
-      // Update state immediately - auth listener will handle the final state
-      if (result.user && result.session) {
-        this.updateState({ 
-          user: result.user, 
-          session: result.session, 
+      if (!session) {
+        this.updateState({
+          user: null,
+          profile: null,
+          polygonWallet: null,
+          session: null,
           loading: false,
-          error: null 
+          error: null,
         });
-      }
-      
-      return result;
-
-    } catch (error: any) {
-      console.error('[AuthStateManager] MetaMask authentication error:', error);
-      const errorMessage = error.message || 'Authentication failed';
-      this.updateState({ error: errorMessage, loading: false });
-      
-      return {
-        success: false,
-        error: errorMessage
-      };
-    }
-  }
-
-  async signInAsGuest(): Promise<AuthenticationResult> {
-    console.log('[AuthStateManager] Starting guest authentication...');
-    this.updateState({ loading: true, error: null });
-
-    try {
-      const { data, error } = await supabase.auth.signInAnonymously();
-
-      if (error || !data.session || !data.user) {
-        const errorMessage = getGuestAuthErrorMessage(error);
-        this.updateState({ error: errorMessage, loading: false });
-        return { success: false, error: errorMessage };
+        return;
       }
 
-      await getOrCreatePlayHubProfile(null);
+      const user = await mythical.auth.getUser();
+
+      if (!user) {
+        this.updateState({
+          user: null,
+          profile: null,
+          polygonWallet: null,
+          session,
+          loading: false,
+          error: null,
+        });
+        return;
+      }
+
+      const profile = user.profile ?? await mythical.profile.getOrCreate();
+      let polygonWallet: LinkedWallet | null = null;
+
+      try {
+        polygonWallet = await getLinkedPolygonWallet();
+      } catch (walletError) {
+        console.warn('[AuthStateManager] Could not read linked Polygon wallet:', walletError);
+      }
 
       this.updateState({
-        user: data.user,
-        session: data.session,
+        user: { ...user, profile },
+        profile,
+        polygonWallet,
+        session,
         loading: false,
         error: null,
       });
-
-      return {
-        success: true,
-        user: data.user,
-        session: data.session,
-      };
     } catch (error: any) {
-      console.error('[AuthStateManager] Guest authentication error:', error);
-      const errorMessage = getGuestAuthErrorMessage(error);
-      this.updateState({ error: errorMessage, loading: false });
-      return { success: false, error: errorMessage };
+      console.error('[AuthStateManager] Play Hub auth refresh failed:', error);
+      this.updateState({
+        user: null,
+        profile: null,
+        polygonWallet: null,
+        session: null,
+        loading: false,
+        error: error?.message || 'Could not load Play Hub session.',
+      });
+    }
+  }
+
+  async signInWithPlayHubEmail(email: string): Promise<void> {
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!normalizedEmail) {
+      throw new Error('Enter an email address.');
+    }
+
+    const cooldownUntil = this.currentState.magicLinkCooldownUntil;
+    if (cooldownUntil && cooldownUntil > Date.now()) {
+      const message = `Login link already sent. Check your email or try again in ${formatWaitTime(cooldownUntil - Date.now())}.`;
+      this.updateState({ loading: false, error: message });
+      throw new Error(message);
+    }
+
+    this.updateState({ loading: true, error: null });
+
+    try {
+      await mythical.auth.signInWithMagicLink(normalizedEmail, window.location.origin);
+      const nextCooldownUntil = Date.now() + MAGIC_LINK_COOLDOWN_MS;
+      persistMagicLinkCooldown(normalizedEmail, nextCooldownUntil);
+      this.updateState({
+        loading: false,
+        error: null,
+        magicLinkSentTo: normalizedEmail,
+        magicLinkCooldownUntil: nextCooldownUntil,
+      });
+    } catch (error: any) {
+      const rateLimited = isEmailRateLimitError(error);
+      const nextCooldownUntil = rateLimited ? Date.now() + MAGIC_LINK_RATE_LIMIT_COOLDOWN_MS : null;
+      const message = getAuthErrorMessage(error);
+
+      if (nextCooldownUntil) {
+        persistMagicLinkCooldown(this.currentState.magicLinkSentTo ?? normalizedEmail, nextCooldownUntil);
+      }
+
+      this.updateState({
+        error: message,
+        loading: false,
+        magicLinkSentTo: this.currentState.magicLinkSentTo,
+        magicLinkCooldownUntil: nextCooldownUntil ?? this.currentState.magicLinkCooldownUntil,
+      });
+      throw new Error(message);
+    }
+  }
+
+  async signInWithGoogle(): Promise<void> {
+    this.updateState({ loading: true, error: null });
+
+    try {
+      await signInWithGoogle();
+    } catch (error: any) {
+      const message = error?.message || 'Could not start Google sign-in.';
+      this.updateState({ error: message, loading: false });
+      throw new Error(message);
+    }
+  }
+
+  async signInWithPolygonWallet(): Promise<LinkedWallet> {
+    this.updateState({ loading: true, error: null });
+
+    try {
+      if (!PLAYHUB_ENABLE_WEB3_AUTH) {
+        throw new Error('Polygon wallet sign-in is not enabled for this environment.');
+      }
+      if (!hasPolygonProvider()) {
+        throw new Error('No Polygon wallet provider found. Install or unlock a browser wallet first.');
+      }
+
+      const wallet = await signInWithPolygonWeb3();
+      await this.refreshAuthState();
+      this.updateState({ polygonWallet: wallet, loading: false, error: null });
+      return wallet;
+    } catch (error: any) {
+      const message = error?.message || 'Could not sign in with Polygon wallet.';
+      this.updateState({ error: message, loading: false });
+      throw new Error(message);
+    }
+  }
+
+  async connectPolygonWallet(): Promise<LinkedWallet> {
+    this.updateState({ loading: true, error: null });
+
+    try {
+      if (!hasPolygonProvider()) {
+        throw new Error('No Polygon wallet provider found. Install or unlock a browser wallet first.');
+      }
+
+      await mythical.profile.getOrCreate();
+      const wallet = await connectLinkedPolygonWallet();
+      await this.refreshAuthState();
+      this.updateState({ polygonWallet: wallet, loading: false, error: null });
+      return wallet;
+    } catch (error: any) {
+      const message = error?.message || 'Could not link Polygon wallet.';
+      this.updateState({ error: message, loading: false });
+      throw new Error(message);
     }
   }
 
   async signOut(): Promise<void> {
-    console.log('[AuthStateManager] Signing out...');
-    this.updateState({ loading: true, error: null });
+    this.updateState({ loading: true, error: null, magicLinkSentTo: null, magicLinkCooldownUntil: null });
+    persistMagicLinkCooldown(null, null);
 
     try {
-      await metamaskAuth.signOut();
-      // Auth listener will handle state update
+      await mythical.auth.signOut();
+      this.updateState({
+        ...initialAuthState,
+        loading: false,
+        magicLinkSentTo: null,
+        magicLinkCooldownUntil: null,
+      });
     } catch (error: any) {
       console.error('[AuthStateManager] Sign out error:', error);
       this.updateState({ error: error.message, loading: false });
@@ -207,12 +341,7 @@ function getAuthStateManager(): AuthStateManager {
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [authState, setAuthState] = useState<AuthState>({ 
-    user: null, 
-    session: null, 
-    loading: true, 
-    error: null 
-  });
+  const [authState, setAuthState] = useState<AuthState>(initialAuthState);
 
   useEffect(() => {
     const manager = getAuthStateManager();
@@ -221,14 +350,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return unsubscribe;
   }, []);
 
-  const signInWithMetaMask = async (): Promise<AuthenticationResult> => {
+  const signInWithPlayHubEmail = async (email: string): Promise<void> => {
     const manager = getAuthStateManager();
-    return manager.signInWithMetaMask();
+    return manager.signInWithPlayHubEmail(email);
   };
 
-  const signInAsGuest = async (): Promise<AuthenticationResult> => {
+  const signInWithGoogle = async (): Promise<void> => {
     const manager = getAuthStateManager();
-    return manager.signInAsGuest();
+    return manager.signInWithGoogle();
+  };
+
+  const signInWithPolygonWallet = async (): Promise<LinkedWallet> => {
+    const manager = getAuthStateManager();
+    return manager.signInWithPolygonWallet();
+  };
+
+  const connectPolygonWallet = async (): Promise<LinkedWallet> => {
+    const manager = getAuthStateManager();
+    return manager.connectPolygonWallet();
+  };
+
+  const refreshAuthState = async (): Promise<void> => {
+    const manager = getAuthStateManager();
+    return manager.refreshAuthState();
   };
 
   const signOut = async (): Promise<void> => {
@@ -238,8 +382,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const value: AuthContextType = {
     ...authState,
-    signInWithMetaMask,
-    signInAsGuest,
+    signInWithGoogle,
+    signInWithPolygonWallet,
+    signInWithPlayHubEmail,
+    connectPolygonWallet,
+    refreshAuthState,
     signOut
   };
 

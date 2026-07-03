@@ -18,7 +18,7 @@ export function useTurnTimer({
   currentPlayerIndex
 }: UseTurnTimerProps): number {
   const [remainingTime, setRemainingTime] = useState(turnDurationSeconds);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const onTimerEndRef = useRef(onTimerEnd); // Use ref to avoid effect dependency issues
 
   // Keep the callback ref up-to-date

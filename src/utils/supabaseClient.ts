@@ -1,29 +1,18 @@
-import { createClient, SupabaseClient, RealtimeChannel as SupabaseRealtimeChannel } from '@supabase/supabase-js';
+import { SupabaseClient, RealtimeChannel as SupabaseRealtimeChannel } from '@supabase/supabase-js';
 import { GameState } from '../game/types.js';
+import { playHubSupabase } from '../services/mythicalClient.js';
 
 export type RealtimeChannel = SupabaseRealtimeChannel;
 
-export const PLAYHUB_GAME_ID = 'card_game';
-export const PLAYHUB_MODE_ID = 'casual';
-export const PLAYHUB_SEASON_ID = 'card_game_casual_season_1';
+export {
+  PLAYHUB_COMPETITIVE_MODE_ID,
+  PLAYHUB_GAME_ID,
+  PLAYHUB_MODE_ID,
+  PLAYHUB_SEASON_ID,
+  PLAYHUB_STAKE_TIERS_GEM,
+} from '../config/playhub.js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-if (!supabaseUrl) {
-  throw new Error('VITE_SUPABASE_URL is not set. Please check your .env.local file.');
-}
-if (!supabaseAnonKey) {
-  throw new Error('VITE_SUPABASE_ANON_KEY is not set. Please check your .env.local file.');
-}
-
-export const supabase: SupabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: {
-    autoRefreshToken: true,
-    persistSession: true,
-    detectSessionInUrl: true,
-  },
-});
+export const supabase: SupabaseClient = playHubSupabase as unknown as SupabaseClient;
 
 export type PlayHubSessionStatus = 'waiting' | 'playing' | 'finished' | 'cancelled';
 
@@ -55,6 +44,7 @@ export interface PlayHubSession {
   created_at: string;
   updated_at?: string | null;
   participants?: SessionParticipant[];
+  competition?: unknown;
 }
 
 export interface CardGameSessionState {
@@ -99,5 +89,6 @@ export function normalizeSession(row: any, participants?: SessionParticipant[]):
     created_at: row.created_at,
     updated_at: row.updated_at ?? null,
     participants,
+    competition: row.competition,
   };
 }

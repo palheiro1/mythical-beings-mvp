@@ -26,7 +26,7 @@ export interface NavigationManagerOptions {
 
 export class NFTSelectionNavigationManager {
   private channel: RealtimeChannel | null = null;
-  private pollInterval: NodeJS.Timeout | null = null;
+  private pollInterval: ReturnType<typeof setInterval> | null = null;
   private destroyed = false;
   private options: NavigationManagerOptions;
 

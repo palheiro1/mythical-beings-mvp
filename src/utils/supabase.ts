@@ -21,11 +21,16 @@ export {
 
 export {
   createPlayHubSession,
+  createCompetitiveSession,
   joinPlayHubSession,
+  joinCompetitiveSession,
   leavePlayHubSession,
   setPlayHubReady,
   startPlayHubSession,
   finishPlayHubSession,
+  getCompetitionStatus,
+  depositCompetitionStake,
+  settleCompetitionSession,
   getSessionParticipants,
   getPlayHubSession,
   getAvailableGames,
@@ -33,6 +38,7 @@ export {
   getGameDetails,
   subscribeToSession,
   subscribeToParticipants,
+  subscribeToSessionLifecycle,
   createGame,
   joinGame,
 } from '../services/sessionService.js';
@@ -47,6 +53,11 @@ export {
 } from '../services/gameStateService.js';
 
 export {
+  COMPETITION_SETTLEMENT_EVENT,
+  getPendingCompetitionSettlement,
+  retryCompetitionSettlement,
   recordGameOutcomeAndUpdateStats,
   logMove,
 } from '../services/statsService.js';
+
+export type { CompetitionSettlementNotice } from '../services/statsService.js';

@@ -14,6 +14,14 @@ interface State {
   error?: Error;
 }
 
+function shouldShowErrorDetails(): boolean {
+  const nodeEnv = (globalThis as typeof globalThis & {
+    process?: { env?: { NODE_ENV?: string } };
+  }).process?.env?.NODE_ENV;
+
+  return nodeEnv ? nodeEnv !== 'production' : import.meta.env.DEV;
+}
+
 class NFTSelectionErrorBoundaryInner extends Component<InnerProps, State> {
   constructor(props: InnerProps) {
     super(props);
@@ -59,7 +67,7 @@ class NFTSelectionErrorBoundaryInner extends Component<InnerProps, State> {
             <p className="text-white/80 mb-6">
               We apologize for the inconvenience. There was an error loading your card selection.
             </p>
-            {process.env.NODE_ENV !== 'production' && this.state.error && (
+            {shouldShowErrorDetails() && this.state.error && (
               <div className="text-left bg-black/30 text-white p-3 rounded mb-4">
                 <div className="font-semibold mb-1">Error Details</div>
                 <pre className="whitespace-pre-wrap break-words text-sm">{this.state.error.message}</pre>

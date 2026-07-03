@@ -178,7 +178,7 @@ const ProfilePage: React.FC = () => {
         <Panel className="max-w-md p-6 text-center">
           <UserCircle className="mx-auto h-12 w-12 text-violet-200" aria-hidden />
           <h1 className="mt-4 font-display text-3xl text-slate-50">Profile unavailable</h1>
-          <p className="mt-2 text-slate-300">Please connect your wallet to view your profile.</p>
+          <p className="mt-2 text-slate-300">Please sign in with Play Hub and link a Polygon wallet to view your profile.</p>
         </Panel>
       </PageShell>
     );

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { RefreshCw } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth.js';
 import { useGameInitialization } from '../hooks/useGameInitialization.js';
 import { useGameActions } from '../hooks/useGameActions.js';
@@ -11,13 +12,20 @@ import TableArea from '../components/game/TableArea.js';
 import HandsColumn from '../components/game/HandsColumn.js';
 import MarketColumn from '../components/game/MarketColumn.js';
 import Logs from '../components/game/Logs.js'; // Import the Logs component
-import { getProfile, ProfileInfo } from '../utils/supabase.js';
+import {
+  COMPETITION_SETTLEMENT_EVENT,
+  getPendingCompetitionSettlement,
+  getProfile,
+  ProfileInfo,
+  retryCompetitionSettlement,
+} from '../utils/supabase.js';
+import type { CompetitionSettlementNotice } from '../utils/supabase.js';
 import GameAnnouncer from '../components/game/GameAnnouncer.js';
 import CardMoveLayer from '../components/game/CardMoveLayer.js';
 import CombatFloaters from '../components/game/CombatFloaters.js';
 import { useCardRegistry } from '../context/CardRegistry.js';
 import GameShell from '../components/game/GameShell.js';
-import { ErrorRecoveryPanel, SpinnerEmblem } from '../components/ui/index.js';
+import { ArenaButton, ErrorRecoveryPanel, SpinnerEmblem, StatusBadge } from '../components/ui/index.js';
 import PendingEffectPanel from '../components/game/PendingEffectPanel.js';
 
 const GameScreen: React.FC = () => {
@@ -33,6 +41,8 @@ const GameScreen: React.FC = () => {
   const [playerProfiles, setPlayerProfiles] = useState<{ [key: string]: ProfileInfo }>({});
   const [profilesLoading, setProfilesLoading] = useState(true);
   const [selectedKnowledgeId, setSelectedKnowledgeId] = useState<string | null>(null);
+  const [settlementRetry, setSettlementRetry] = useState<CompetitionSettlementNotice | null>(null);
+  const [settlementRetrying, setSettlementRetrying] = useState(false);
 
   const {
     handleRotateCreature,
@@ -49,6 +59,24 @@ const GameScreen: React.FC = () => {
   const registry = useCardRegistry();
   const prevPowersRef = React.useRef<{ p0: number; p1: number } | null>(null);
   const prevFieldRef = React.useRef<{ my: string[]; opp: string[]; idToCard: Record<string, { image: string }> } | null>(null);
+
+  useEffect(() => {
+    if (!gameId) return;
+
+    setSettlementRetry(getPendingCompetitionSettlement(gameId));
+
+    const handleSettlementNotice = (event: Event) => {
+      const notice = (event as CustomEvent<CompetitionSettlementNotice>).detail;
+      if (!notice || notice.sessionId !== gameId) return;
+      setSettlementRetry(notice.status === 'failed' ? notice : null);
+    };
+
+    window.addEventListener(COMPETITION_SETTLEMENT_EVENT, handleSettlementNotice);
+
+    return () => {
+      window.removeEventListener(COMPETITION_SETTLEMENT_EVENT, handleSettlementNotice);
+    };
+  }, [gameId]);
 
   // --- Turn Timer --- 
   const TURN_DURATION_SECONDS = 30;
@@ -360,6 +388,26 @@ const GameScreen: React.FC = () => {
     }
   };
 
+  const handleRetrySettlement = async () => {
+    if (!gameId) return;
+    setSettlementRetrying(true);
+
+    try {
+      await retryCompetitionSettlement(gameId);
+      setSettlementRetry(null);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Competitive GEM settlement failed.';
+      setSettlementRetry({
+        sessionId: gameId,
+        status: 'failed',
+        error: message,
+        updatedAt: Date.now(),
+      });
+    } finally {
+      setSettlementRetrying(false);
+    }
+  };
+
 
   console.log('[Render] Rendering main game screen.');
   return (
@@ -408,7 +456,30 @@ const GameScreen: React.FC = () => {
       )}
     >
 
-    <div className="grid h-full min-h-0 grid-cols-[minmax(170px,0.82fr)_minmax(620px,3.6fr)_minmax(170px,0.85fr)_minmax(190px,1fr)] gap-2 overflow-hidden">
+    <div className="flex h-full min-h-0 flex-col gap-2">
+      {settlementRetry && (
+        <div className="flex shrink-0 flex-col gap-3 rounded-xl border border-amber-300/35 bg-amber-500/10 px-4 py-3 text-sm text-amber-100 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <StatusBadge tone="amber">Settlement pending</StatusBadge>
+            <p className="mt-2 text-slate-200">
+              Competitive GEM settlement was not submitted. Retry from this browser to release escrow funds.
+            </p>
+            {settlementRetry.error && <p className="mt-1 truncate text-xs text-amber-100/75">{settlementRetry.error}</p>}
+          </div>
+          <ArenaButton
+            type="button"
+            variant="secondary"
+            size="sm"
+            loading={settlementRetrying}
+            icon={<RefreshCw className="h-4 w-4" aria-hidden />}
+            onClick={() => void handleRetrySettlement()}
+          >
+            Retry settlement
+          </ArenaButton>
+        </div>
+      )}
+
+    <div className="grid min-h-0 flex-1 grid-cols-[minmax(170px,0.82fr)_minmax(620px,3.6fr)_minmax(170px,0.85fr)_minmax(190px,1fr)] gap-2 overflow-hidden">
         {/* Hands Column - Adjusted width */}
   <div className="h-full min-h-0" id={`hand-anchor-${currentPlayerId || 'unknown'}`} ref={(el) => { if (el && currentPlayerId) registry.register(`hand:${currentPlayerId}`, el); }}>
           {player && opponent ? (
@@ -457,6 +528,7 @@ const GameScreen: React.FC = () => {
   <div className="h-full min-h-0" ref={(el) => { if (el) registry.register('discard:anchor', el); }}>
      <Logs logs={gameState.log} />
         </div>
+      </div>
       </div>
     </GameShell>
   );

@@ -6,7 +6,6 @@ import Home from './pages/Home.js';
 import ProtectedRoute from './components/ProtectedRoute.js';
 import NavBar from './components/NavBar.js';
 import { SpinnerEmblem } from './components/ui/index.js';
-import { useAuthProfileSync } from './hooks/useAuthProfileSync.js';
 
 // Moralis is now initialized in main.tsx to ensure polyfills are loaded first
 
@@ -21,9 +20,6 @@ const Leaderboard = lazy(() => import('./pages/Leaderboard.js'));
 const WaitingScreen = lazy(() => import('./pages/WaitingScreen.js'));
 
 function AppContent() {
-  // Initialize auth-profile synchronization
-  useAuthProfileSync();
-  
   return (
     <Router>
       <NavBar />

@@ -2,25 +2,30 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Signal, Users } from 'lucide-react';
 import {
+  depositCompetitionStake,
+  getCompetitionStatus,
   getPlayHubSession,
+  PLAYHUB_COMPETITIVE_MODE_ID,
   PlayHubSession,
   setPlayHubReady,
   startPlayHubSession,
-  subscribeToParticipants,
-  subscribeToSession,
+  subscribeToSessionLifecycle,
   supabase,
 } from '../utils/supabase';
 import { useAuth } from '../hooks/useAuth.js';
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { ArenaButton, CopyChip, ErrorRecoveryPanel, Panel, SpinnerEmblem, StatusBadge } from '../components/ui/index.js';
+import type { CompetitionStatus } from '@mythicalb/sdk';
 
 const WaitingScreen: React.FC = () => {
   const { gameId: sessionId } = useParams<{ gameId: string }>();
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
   const [session, setSession] = useState<PlayHubSession | null>(null);
+  const [competitionStatus, setCompetitionStatus] = useState<CompetitionStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [depositing, setDepositing] = useState(false);
   const startAttemptedRef = useRef(false);
 
   const startAndDealIfHost = useCallback(async (currentSession: PlayHubSession) => {
@@ -34,6 +39,22 @@ const WaitingScreen: React.FC = () => {
     startAttemptedRef.current = true;
     setLoading(true);
 
+    const isCompetitive = currentSession.mode_id === PLAYHUB_COMPETITIVE_MODE_ID;
+    let dealError: { message?: string } | null = null;
+
+    if (isCompetitive) {
+      ({ error: dealError } = await supabase.functions.invoke('deal-cards', {
+        body: { sessionId },
+      }));
+    }
+
+    if (dealError) {
+      startAttemptedRef.current = false;
+      setError(`Could not deal cards: ${dealError.message}`);
+      setLoading(false);
+      return;
+    }
+
     const started = await startPlayHubSession(sessionId);
     if (!started) {
       startAttemptedRef.current = false;
@@ -42,15 +63,17 @@ const WaitingScreen: React.FC = () => {
       return;
     }
 
-    const { error: dealError } = await supabase.functions.invoke('deal-cards', {
-      body: { sessionId },
-    });
+    if (!isCompetitive) {
+      ({ error: dealError } = await supabase.functions.invoke('deal-cards', {
+        body: { sessionId },
+      }));
 
-    if (dealError) {
-      startAttemptedRef.current = false;
-      setError(`Could not deal cards: ${dealError.message}`);
-      setLoading(false);
-      return;
+      if (dealError) {
+        startAttemptedRef.current = false;
+        setError(`Could not deal cards: ${dealError.message}`);
+        setLoading(false);
+        return;
+      }
     }
 
     navigate(`/nft-selection/${sessionId}`, { replace: true });
@@ -63,11 +86,31 @@ const WaitingScreen: React.FC = () => {
     return details;
   }, [sessionId]);
 
+  const refreshCompetition = useCallback(async () => {
+    if (!sessionId) return null;
+    const status = await getCompetitionStatus(sessionId);
+    setCompetitionStatus(status);
+    return status;
+  }, [sessionId]);
+
+  const ensureCompetitiveReady = useCallback(async (currentSession: PlayHubSession) => {
+    if (!sessionId || !user?.id || currentSession.mode_id !== PLAYHUB_COMPETITIVE_MODE_ID) return currentSession;
+    const status = await refreshCompetition();
+    const currentDeposit = status?.deposits.find((deposit) => deposit.player_id === user.id);
+    const currentParticipant = currentSession.participants?.find((participant) => participant.player_id === user.id);
+
+    if (currentDeposit?.status === 'confirmed' && currentParticipant?.is_ready !== true) {
+      await setPlayHubReady(sessionId, true);
+      return await refreshSession() ?? currentSession;
+    }
+
+    return currentSession;
+  }, [refreshCompetition, refreshSession, sessionId, user?.id]);
+
   useEffect(() => {
     if (authLoading || !sessionId || !user?.id) return;
 
     let sessionChannel: RealtimeChannel | null = null;
-    let participantChannel: RealtimeChannel | null = null;
     let isMounted = true;
 
     const setup = async () => {
@@ -85,8 +128,13 @@ const WaitingScreen: React.FC = () => {
           return;
         }
 
-        await setPlayHubReady(sessionId, true);
-        const readyDetails = await refreshSession();
+        let readyDetails = details;
+        if (details.mode_id === PLAYHUB_COMPETITIVE_MODE_ID) {
+          readyDetails = await ensureCompetitiveReady(details);
+        } else {
+          await setPlayHubReady(sessionId, true);
+          readyDetails = await refreshSession() ?? details;
+        }
         if (!isMounted || !readyDetails) return;
 
         if (readyDetails.status === 'playing') {
@@ -101,18 +149,28 @@ const WaitingScreen: React.FC = () => {
         await startAndDealIfHost(readyDetails);
         setLoading(false);
 
-        sessionChannel = subscribeToSession(sessionId, async (updated) => {
-          if (!isMounted) return;
-          setSession(updated);
-          if (updated.status === 'playing') {
-            navigate(`/nft-selection/${sessionId}`, { replace: true });
-          }
-        });
-
-        participantChannel = subscribeToParticipants(sessionId, async () => {
-          if (!isMounted) return;
-          const latest = await refreshSession();
-          if (latest) await startAndDealIfHost(latest);
+        sessionChannel = subscribeToSessionLifecycle(sessionId, {
+          onSessionChange: async (updated) => {
+            if (!isMounted) return;
+            setSession(updated);
+            if (updated.mode_id === PLAYHUB_COMPETITIVE_MODE_ID && updated.status === 'waiting') {
+              await ensureCompetitiveReady(updated);
+            }
+            if (updated.status === 'playing') {
+              navigate(`/nft-selection/${sessionId}`, { replace: true });
+            }
+          },
+          onParticipantsChange: async () => {
+            if (!isMounted) return;
+            const refreshed = await refreshSession();
+            const latest = refreshed?.mode_id === PLAYHUB_COMPETITIVE_MODE_ID
+              ? await ensureCompetitiveReady(refreshed)
+              : refreshed;
+            if (latest) await startAndDealIfHost(latest);
+          },
+          onError: (error) => {
+            console.error('[WaitingScreen] Realtime session subscription failed:', error);
+          },
         });
       } catch (err: any) {
         if (!isMounted) return;
@@ -126,9 +184,26 @@ const WaitingScreen: React.FC = () => {
     return () => {
       isMounted = false;
       if (sessionChannel) supabase.removeChannel(sessionChannel);
-      if (participantChannel) supabase.removeChannel(participantChannel);
     };
-  }, [authLoading, navigate, refreshSession, sessionId, startAndDealIfHost, user?.id]);
+  }, [authLoading, ensureCompetitiveReady, navigate, refreshSession, sessionId, startAndDealIfHost, user?.id]);
+
+  const handleDepositStake = async () => {
+    if (!sessionId) return;
+    setDepositing(true);
+    setError(null);
+
+    try {
+      const result = await depositCompetitionStake(sessionId);
+      setCompetitionStatus(result.status);
+      await setPlayHubReady(sessionId, true);
+      const latest = await refreshSession();
+      if (latest) await startAndDealIfHost(latest);
+    } catch (err: any) {
+      setError(err.message || 'Could not deposit GEM stake.');
+    } finally {
+      setDepositing(false);
+    }
+  };
 
   if (authLoading || loading) {
     return (
@@ -152,6 +227,13 @@ const WaitingScreen: React.FC = () => {
     );
   }
 
+  const isCompetitive = session?.mode_id === PLAYHUB_COMPETITIVE_MODE_ID;
+  const currentDeposit = competitionStatus?.deposits.find((deposit) => deposit.player_id === user?.id);
+  const confirmedDeposits = competitionStatus?.deposits.filter((deposit) => deposit.status === 'confirmed').length ?? 0;
+  const hasTwoPlayers = (session?.participants?.length ?? 0) >= 2;
+  const canDeposit = Boolean(isCompetitive && hasTwoPlayers && currentDeposit?.status !== 'confirmed');
+  const waitingForDepositAuth = Boolean(isCompetitive && hasTwoPlayers && currentDeposit?.status !== 'confirmed' && !competitionStatus?.depositAuthorization);
+
   return (
     <div className="arena-page relative flex min-h-[calc(100vh-var(--navbar-height))] items-center justify-center overflow-hidden px-4 py-10">
       <div className="pointer-events-none absolute inset-0 opacity-30">
@@ -164,10 +246,14 @@ const WaitingScreen: React.FC = () => {
         <Panel className="p-6 sm:p-8" glow>
           <StatusBadge tone="violet" className="mb-5">
             <Signal className="h-3.5 w-3.5" aria-hidden />
-            Live Session
+            {isCompetitive ? 'Competitive GEM' : 'Live Session'}
           </StatusBadge>
           <h1 className="font-display text-4xl font-black text-slate-50">Waiting for Opponent...</h1>
-          <p className="mt-3 text-sm text-slate-400">Share the session code with your opponent. The match starts automatically when everyone is ready.</p>
+          <p className="mt-3 text-sm text-slate-400">
+            {isCompetitive
+              ? 'The match starts after both players deposit their GEM stake on Polygon.'
+              : 'Share the session code with your opponent. The match starts automatically when everyone is ready.'}
+          </p>
 
           <div className="mt-8">
             <p className="text-xs font-bold uppercase tracking-[0.32em] text-slate-500">Session Code</p>
@@ -185,15 +271,52 @@ const WaitingScreen: React.FC = () => {
           <div className="mt-8 grid gap-4 sm:grid-cols-2">
             <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
               <p className="text-xs font-bold uppercase tracking-widest text-slate-500">Players Ready</p>
-              <p className="mt-2 text-4xl font-black text-cyan-200">{session?.participants?.length ?? 0}<span className="text-slate-500">/{session?.max_players ?? 2}</span></p>
+              <p className="mt-2 text-4xl font-black text-cyan-200">{session?.participants?.filter((participant) => participant.is_ready).length ?? 0}<span className="text-slate-500">/{session?.max_players ?? 2}</span></p>
             </div>
             <div className="flex items-center justify-center rounded-2xl border border-emerald-300/20 bg-emerald-500/10 p-4">
               <StatusBadge tone="green">
                 <Users className="h-3.5 w-3.5" aria-hidden />
-                {session?.participants?.length ?? 0}/{session?.max_players ?? 2} ready
+                {session?.participants?.length ?? 0}/{session?.max_players ?? 2} players
               </StatusBadge>
             </div>
           </div>
+
+          {isCompetitive && (
+            <div className="mt-6 rounded-2xl border border-amber-300/20 bg-amber-500/10 p-4 text-left">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-widest text-amber-100/70">Polygon escrow</p>
+                  <p className="mt-1 text-2xl font-black text-amber-100">{competitionStatus?.stake_gem ?? '?'} GEM</p>
+                </div>
+                <StatusBadge tone={competitionStatus?.status === 'ready' ? 'green' : 'amber'}>
+                  {confirmedDeposits}/{session?.max_players ?? 2} deposits
+                </StatusBadge>
+              </div>
+
+              <div className="mt-4 grid gap-2">
+                {(competitionStatus?.deposits ?? []).map((deposit) => (
+                  <div key={deposit.player_id} className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm">
+                    <span className="truncate font-mono text-slate-300">{deposit.wallet_address}</span>
+                    <StatusBadge tone={deposit.status === 'confirmed' ? 'green' : 'muted'}>{deposit.status}</StatusBadge>
+                  </div>
+                ))}
+              </div>
+
+              {canDeposit && (
+                <ArenaButton
+                  type="button"
+                  className="mt-4"
+                  variant="success"
+                  loading={depositing}
+                  disabled={waitingForDepositAuth}
+                  onClick={() => void handleDepositStake()}
+                  fullWidth
+                >
+                  {waitingForDepositAuth ? 'Waiting for authorization' : `Deposit ${competitionStatus?.stake_gem ?? ''} GEM`}
+                </ArenaButton>
+              )}
+            </div>
+          )}
 
           <div className="mt-8">
             <SpinnerEmblem label="Waiting for realtime updates..." />

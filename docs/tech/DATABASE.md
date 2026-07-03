@@ -7,18 +7,24 @@ This project uses Supabase Postgres + Realtime for multiplayer state synchroniza
 - `profiles`
   - Holds player profile data.
   - The primary key `id` is the **Supabase Auth user id**.
-  - Wallet address is stored separately (for example `eth_address`) and may be synced by the auth Edge Function.
+  - Play Hub profile operations are routed through `@mythicalb/sdk`.
+  - Polygon wallet linking is handled by Play Hub wallet APIs, not by a local auth Edge Function.
 
-- `apps`
-  - Registry of games/apps in the Play Hub (used to partition data by app).
+- `game_sessions`, `session_participants`
+  - Play Hub multiplayer lobby/session records.
+  - Wisdom Duel uses `game_id='card_game'`, `mode_id='casual'` and `mode_id='competitive_gem'`.
 
-- `games`
-  - Multiplayer game records (lobby + selection + running match).
-  - Stores player ids (`player1_id`, `player2_id`), selection fields, status, and a serialized `state` blob.
-  - `app_id` links a game instance to an app in `apps` (nullable for backwards compatibility).
+- `card_game_session_state`
+  - Stores dealt hands, selected creatures, and the serialized running `GameState`.
 
-- `moves`
-  - Optional append-only move log referencing `games.id`.
+- `card_game_competitions`, `card_game_competition_deposits`
+  - Competitive GEM metadata, stake/deposit status, escrow tx hashes, and settlement state.
+
+- `profile_wallets`, `profile_wallet_challenges`
+  - Linked Ardor/Polygon wallets and wallet-link challenges managed by Play Hub.
+
+- `mythical_assets`
+  - Shared asset catalog. Competitive card dealing reads Polygon ERC-1155 card metadata from this table.
 
 - `channels`, `channel_members`, `messages`
   - Chat support (global, game-scoped, or DM channels).
@@ -36,13 +42,21 @@ See:
 
 ## Edge Functions
 
-- `supabase/functions/moralis-auth`
-  - Verifies MetaMask signatures and issues Supabase JWTs.
-  - Ensures a profile exists via RPC (for example `ensure_user_profile_exists`).
-- `supabase/functions/simplified-moralis-auth`
-  - Fallback auth path.
-- `supabase/functions/create-game`
 - `supabase/functions/deal-cards`
+  - Deals the initial card hands after a Play Hub session starts.
+  - Casual mode deals random hands.
+  - Competitive GEM mode checks Polygon ERC-1155 ownership through `POLYGON_RPC_URL`.
+
+Play Hub SDK functions are maintained in the `mythicalSDK` repo:
+
+- `playhub-wallet-challenge`
+- `playhub-link-wallet`
+- `playhub-unlink-wallet`
+- `card-game-create-competition-session`
+- `card-game-join-competition-session`
+- `card-game-competition-status`
+- `card-game-verify-deposit`
+- `card-game-settlement-signature`
 
 ## Type Generation
 

@@ -8,6 +8,11 @@ export default defineConfig({
   plugins: [
     react(),
   ],
+  resolve: {
+    alias: {
+      '@mythical/ardor-core': '@mythicalb/ardor-core',
+    },
+  },
   test: {
     globals: true,
     environment: 'jsdom',

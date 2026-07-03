@@ -65,7 +65,7 @@ export function useGameInitialization(
   const currentInitializedGameId = useRef<string | null>(null); // Ref to track the gameId being initialized/initialized
   const lastRealtimeAtRef = useRef<number>(0);
   const lastDispatchAtRef = useRef<number>(0);
-  const pollingTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const pollingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const stateRef = useRef<GameScreenState>(null);
   const POLL_INTERVAL_MS = 2500;
   const REALTIME_STALE_MS = 3000;
