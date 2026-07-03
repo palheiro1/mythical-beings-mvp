@@ -6,7 +6,6 @@ export const PLAYHUB_STAKE_TIERS_GEM = ['5', '10', '25'] as const;
 
 export const PLAYHUB_APP_NAME = 'Wisdom Duel';
 export const PLAYHUB_APP_ICON_URL = '/logos/icon-192.png';
-export const PLAYHUB_ENABLE_WEB3_AUTH = import.meta.env.VITE_ENABLE_WEB3_AUTH !== 'false';
 
 export const PLAYHUB_SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 export const PLAYHUB_SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;

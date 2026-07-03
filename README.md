@@ -132,7 +132,6 @@ Create a `.env.local` in the project root (see `.env.example`):
 ```
 VITE_SUPABASE_URL=your_supabase_url
 VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
-VITE_ENABLE_WEB3_AUTH=true
 VITE_POLYGON_RPC_URL=your_polygon_rpc_url
 VITE_POLYGON_CHAIN_ID=137
 VITE_GEM_CONTRACT=0x5f790ffa0695967a2d711872ecb4c7553e24794d

@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { LogIn, Mail, ShieldCheck, Sparkles, WalletCards } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth.js';
 import { ArenaButton, Input, Panel, StatusBadge } from '../components/ui/index.js';
-import { PLAYHUB_ENABLE_WEB3_AUTH } from '../config/playhub.js';
 
 function formatCooldown(seconds: number): string {
   const minutes = Math.floor(seconds / 60);
@@ -27,12 +26,11 @@ const Home: React.FC = () => {
     magicLinkSentTo,
     magicLinkCooldownUntil,
     signInWithGoogle,
-    signInWithPolygonWallet,
     signInWithPlayHubEmail,
     connectPolygonWallet,
   } = useAuth();
   const [email, setEmail] = useState('');
-  const [authMode, setAuthMode] = useState<'google' | 'web3' | 'email' | 'polygon' | null>(null);
+  const [authMode, setAuthMode] = useState<'google' | 'email' | 'polygon' | null>(null);
   const [authError, setAuthError] = useState<string | null>(error);
   const [showEmailFallback, setShowEmailFallback] = useState(false);
   const [now, setNow] = useState(() => Date.now());
@@ -69,21 +67,6 @@ const Home: React.FC = () => {
       await signInWithGoogle();
     } catch (error: any) {
       setAuthError(error.message || 'Could not start Google sign-in.');
-      setAuthMode(null);
-    }
-  };
-
-  const handlePolygonLogin = async () => {
-    if (authLoading) return;
-
-    setAuthMode('web3');
-    setAuthError(null);
-
-    try {
-      await signInWithPolygonWallet();
-    } catch (error: any) {
-      setAuthError(error.message || 'Could not sign in with Polygon wallet.');
-    } finally {
       setAuthMode(null);
     }
   };
@@ -161,27 +144,12 @@ const Home: React.FC = () => {
                 {authMode === 'google' ? 'Redirecting...' : 'Continue with Google'}
               </ArenaButton>
 
-              {PLAYHUB_ENABLE_WEB3_AUTH && (
-                <ArenaButton
-                  type="button"
-                  onClick={handlePolygonLogin}
-                  loading={authMode === 'web3'}
-                  disabled={authLoading}
-                  variant="secondary"
-                  size="lg"
-                  icon={<WalletCards className="h-5 w-5" aria-hidden />}
-                  fullWidth
-                >
-                  {authMode === 'web3' ? 'Signing...' : 'Continue with Polygon Wallet'}
-                </ArenaButton>
-              )}
-
               <button
                 type="button"
                 onClick={() => setShowEmailFallback((visible) => !visible)}
                 className="text-sm font-bold uppercase tracking-wide text-slate-400 transition hover:text-cyan-100"
               >
-                {showEmailFallback ? 'Hide email link' : 'Use email link instead'}
+                {showEmailFallback ? 'Hide email link' : 'Use email link'}
               </button>
 
               {showEmailFallback && (

@@ -4,8 +4,8 @@
 
 1. The app creates a single Mythical SDK client in `src/services/mythicalClient.ts`.
 2. Supabase session state is read through `mythical.auth`.
-3. Users sign in with Google, email magic link, or Polygon Web3 auth from `src/pages/Home.tsx`.
-4. Email/Google users link a Polygon wallet through `mythical.wallets.connect('polygon')`; Web3 sign-in ensures the authenticated Polygon wallet through `mythical.auth.signInWithPolygonWallet`.
+3. Users sign in with Google or an email magic link from `src/pages/Home.tsx`.
+4. Authenticated users link a Polygon wallet through `mythical.wallets.connect('polygon')`.
 5. Protected routes require both a Play Hub user session and a linked Polygon wallet.
 
 Browser wallets are only accessed through the Play Hub SDK. The game does not call Moralis or maintain a separate wallet-auth backend.
@@ -16,7 +16,6 @@ Frontend (`.env.local`, see `.env.example`):
 
 - `VITE_SUPABASE_URL`
 - `VITE_SUPABASE_ANON_KEY`
-- `VITE_ENABLE_WEB3_AUTH`
 - `VITE_POLYGON_RPC_URL`
 - `VITE_POLYGON_CHAIN_ID`
 - `VITE_GEM_CONTRACT`

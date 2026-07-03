@@ -2,8 +2,8 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Session } from '@supabase/supabase-js';
 import { LinkedWallet, PlayHubProfile, PlayHubUser } from '@mythicalb/sdk';
 import { mythical } from '../services/mythicalClient.js';
-import { hasPolygonProvider, PLAYHUB_ENABLE_WEB3_AUTH } from '../config/playhub.js';
-import { signInWithGoogle, signInWithPolygonWeb3 } from '../services/playHubAuthService.js';
+import { hasPolygonProvider } from '../config/playhub.js';
+import { signInWithGoogle } from '../services/playHubAuthService.js';
 import { connectLinkedPolygonWallet, getLinkedPolygonWallet } from '../services/playHubWalletService.js';
 
 export interface AuthState {
@@ -19,7 +19,6 @@ export interface AuthState {
 
 interface AuthContextType extends AuthState {
   signInWithGoogle: () => Promise<void>;
-  signInWithPolygonWallet: () => Promise<LinkedWallet>;
   signInWithPlayHubEmail: (email: string) => Promise<void>;
   connectPolygonWallet: () => Promise<LinkedWallet>;
   refreshAuthState: () => Promise<void>;
@@ -272,28 +271,6 @@ class AuthStateManager {
     }
   }
 
-  async signInWithPolygonWallet(): Promise<LinkedWallet> {
-    this.updateState({ loading: true, error: null });
-
-    try {
-      if (!PLAYHUB_ENABLE_WEB3_AUTH) {
-        throw new Error('Polygon wallet sign-in is not enabled for this environment.');
-      }
-      if (!hasPolygonProvider()) {
-        throw new Error('No Polygon wallet provider found. Install or unlock a browser wallet first.');
-      }
-
-      const wallet = await signInWithPolygonWeb3();
-      await this.refreshAuthState();
-      this.updateState({ polygonWallet: wallet, loading: false, error: null });
-      return wallet;
-    } catch (error: any) {
-      const message = error?.message || 'Could not sign in with Polygon wallet.';
-      this.updateState({ error: message, loading: false });
-      throw new Error(message);
-    }
-  }
-
   async connectPolygonWallet(): Promise<LinkedWallet> {
     this.updateState({ loading: true, error: null });
 
@@ -360,11 +337,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return manager.signInWithGoogle();
   };
 
-  const signInWithPolygonWallet = async (): Promise<LinkedWallet> => {
-    const manager = getAuthStateManager();
-    return manager.signInWithPolygonWallet();
-  };
-
   const connectPolygonWallet = async (): Promise<LinkedWallet> => {
     const manager = getAuthStateManager();
     return manager.connectPolygonWallet();
@@ -383,7 +355,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const value: AuthContextType = {
     ...authState,
     signInWithGoogle,
-    signInWithPolygonWallet,
     signInWithPlayHubEmail,
     connectPolygonWallet,
     refreshAuthState,

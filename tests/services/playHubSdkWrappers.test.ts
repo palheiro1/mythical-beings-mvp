@@ -4,15 +4,12 @@ const sdkMocks = vi.hoisted(() => ({
   connect: vi.fn(),
   getStatus: vi.fn(),
   signInWithOAuth: vi.fn(),
-  signInWithPolygonWallet: vi.fn(),
-  provider: { request: vi.fn() },
 }));
 
 vi.mock('../../src/services/mythicalClient.js', () => ({
   mythical: {
     auth: {
       signInWithOAuth: sdkMocks.signInWithOAuth,
-      signInWithPolygonWallet: sdkMocks.signInWithPolygonWallet,
     },
     wallets: {
       connect: sdkMocks.connect,
@@ -21,11 +18,7 @@ vi.mock('../../src/services/mythicalClient.js', () => ({
   },
 }));
 
-vi.mock('../../src/config/playhub.js', () => ({
-  getPolygonProvider: () => sdkMocks.provider,
-}));
-
-import { signInWithGoogle, signInWithPolygonWeb3 } from '../../src/services/playHubAuthService.js';
+import { signInWithGoogle } from '../../src/services/playHubAuthService.js';
 import { connectLinkedPolygonWallet, getLinkedPolygonWallet } from '../../src/services/playHubWalletService.js';
 
 const linkedPolygonWallet = {
@@ -45,25 +38,12 @@ describe('Play Hub SDK wrappers', () => {
     sdkMocks.getStatus.mockResolvedValue(linkedPolygonWallet);
     sdkMocks.connect.mockResolvedValue(linkedPolygonWallet);
     sdkMocks.signInWithOAuth.mockResolvedValue(undefined);
-    sdkMocks.signInWithPolygonWallet.mockResolvedValue({ id: 'profile-1' });
   });
 
   it('uses SDK OAuth for Google sign-in', async () => {
     await signInWithGoogle();
 
     expect(sdkMocks.signInWithOAuth).toHaveBeenCalledWith('google', window.location.origin);
-  });
-
-  it('uses SDK Web3 auth and returns the ensured Polygon wallet', async () => {
-    const wallet = await signInWithPolygonWeb3();
-
-    expect(sdkMocks.signInWithPolygonWallet).toHaveBeenCalledWith({
-      wallet: sdkMocks.provider,
-      statement: 'Sign in to Wisdom Duel with your Polygon wallet.',
-      url: window.location.href,
-    });
-    expect(sdkMocks.getStatus).toHaveBeenCalledWith('polygon');
-    expect(wallet).toEqual(linkedPolygonWallet);
   });
 
   it('links Polygon wallets through mythical.wallets.connect', async () => {
