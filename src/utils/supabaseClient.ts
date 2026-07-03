@@ -8,8 +8,10 @@ export {
   PLAYHUB_COMPETITIVE_MODE_ID,
   PLAYHUB_DEFAULT_STAKE_GEM,
   PLAYHUB_GAME_ID,
+  PLAYHUB_JOINABLE_SESSION_TTL_MS,
   PLAYHUB_MODE_ID,
   PLAYHUB_SEASON_ID,
+  PLAYHUB_WAITING_SESSION_TTL_MS,
 } from '../config/playhub.js';
 
 export const supabase: SupabaseClient = playHubSupabase as unknown as SupabaseClient;

@@ -88,7 +88,7 @@ const Lobby: React.FC = () => {
     setError(null);
     try {
       const [waiting, playing] = await Promise.all([
-        getAvailableGames(selectedMode),
+        getAvailableGames(selectedMode, playerId),
         getActiveGames(selectedMode),
       ]);
 
@@ -393,7 +393,9 @@ const Lobby: React.FC = () => {
             <div className="arena-scrollbar flex-1 space-y-3 overflow-y-auto pr-1">
               {availableSessions.length > 0 ? (
                 availableSessions.map((session) => {
-                  const isHost = session.host_id === playerId;
+                  const participantCount = session.participants?.length ?? 0;
+                  const isParticipant = session.participants?.some(participant => participant.player_id === playerId) ?? false;
+                  const isFull = participantCount >= session.max_players;
                   return (
                     <div key={session.id} className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 transition hover:border-violet-300/35 hover:bg-white/[0.06]">
                       <div className="flex items-start justify-between gap-4">
@@ -401,7 +403,7 @@ const Lobby: React.FC = () => {
                           <p className="truncate text-lg font-bold text-slate-100">{session.hostName || 'Unknown Host'}</p>
                           <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-slate-400">
                             <CopyChip label="Code" value={session.code} className="max-w-full" />
-                            <StatusBadge tone="green">{session.participants?.length ?? 0}/{session.max_players} players</StatusBadge>
+                            <StatusBadge tone={isFull ? 'amber' : 'green'}>{participantCount}/{session.max_players} players</StatusBadge>
                             {isCompetitiveMode ? (
                               <StatusBadge tone="amber">{session.stakeGem ?? '?'} GEM</StatusBadge>
                             ) : (
@@ -412,10 +414,11 @@ const Lobby: React.FC = () => {
                         <ArenaButton
                           type="button"
                           size="sm"
-                          variant={isHost ? 'primary' : 'secondary'}
-                          onClick={() => isHost ? navigate(`/waiting/${session.id}`) : void joinSessionByCode(session.code)}
+                          variant={isParticipant ? 'primary' : 'secondary'}
+                          disabled={!isParticipant && isFull}
+                          onClick={() => isParticipant ? navigate(`/waiting/${session.id}`) : void joinSessionByCode(session.code)}
                         >
-                          {isHost ? 'Rejoin' : 'Join'}
+                          {isParticipant ? 'Rejoin' : isFull ? 'Full' : 'Join'}
                         </ArenaButton>
                       </div>
                     </div>

@@ -3,7 +3,9 @@ import {
   normalizeSession,
   PLAYHUB_COMPETITIVE_MODE_ID,
   PLAYHUB_GAME_ID,
+  PLAYHUB_JOINABLE_SESSION_TTL_MS,
   PLAYHUB_MODE_ID,
+  PLAYHUB_WAITING_SESSION_TTL_MS,
 } from '../utils/supabaseClient.js';
 import type { PlayHubSession, SessionParticipant, MatchDetails } from '../utils/supabaseClient.js';
 import { getCardGameSessionState } from './gameStateService.js';
@@ -42,6 +44,18 @@ function normalizeStakeGem(stakeGem: string | number): string {
     throw new Error('GEM stake must be a positive whole number.');
   }
   return stake;
+}
+
+function isWaitingSessionVisible(session: PlayHubSession, currentPlayerId?: string): boolean {
+  const createdAt = Date.parse(session.created_at);
+  if (!Number.isFinite(createdAt)) return false;
+
+  const ageMs = Date.now() - createdAt;
+  const participants = session.participants ?? [];
+  const isParticipant = Boolean(currentPlayerId && participants.some((participant) => participant.player_id === currentPlayerId));
+  if (isParticipant) return ageMs <= PLAYHUB_WAITING_SESSION_TTL_MS;
+
+  return ageMs <= PLAYHUB_JOINABLE_SESSION_TTL_MS && participants.length < session.max_players;
 }
 
 export async function createPlayHubSession(): Promise<PlayHubSession | null> {
@@ -177,13 +191,18 @@ export async function getPlayHubSession(sessionId: string): Promise<PlayHubSessi
   return normalizeSession(data as any, participants);
 }
 
-export async function getAvailableGames(modeId: PlayHubCardGameMode = PLAYHUB_MODE_ID): Promise<PlayHubSession[]> {
+export async function getAvailableGames(
+  modeId: PlayHubCardGameMode = PLAYHUB_MODE_ID,
+  currentPlayerId?: string,
+): Promise<PlayHubSession[]> {
+  const oldestVisibleCreatedAt = new Date(Date.now() - PLAYHUB_WAITING_SESSION_TTL_MS).toISOString();
   const { data, error } = await supabase
     .from('game_sessions')
     .select('id, code, status, game_id, mode_id, host_id, min_players, max_players, created_at, updated_at')
     .eq('game_id', PLAYHUB_GAME_ID)
     .eq('mode_id', modeId)
     .eq('status', 'waiting')
+    .gte('created_at', oldestVisibleCreatedAt)
     .order('created_at', { ascending: false });
 
   if (error) {
@@ -191,7 +210,8 @@ export async function getAvailableGames(modeId: PlayHubCardGameMode = PLAYHUB_MO
     return [];
   }
 
-  return Promise.all((data ?? []).map(async (row: any) => normalizeSession(row, await getSessionParticipants(row.id))));
+  const sessions = await Promise.all((data ?? []).map(async (row: any) => normalizeSession(row, await getSessionParticipants(row.id))));
+  return sessions.filter((session) => isWaitingSessionVisible(session, currentPlayerId));
 }
 
 export async function getActiveGames(modeId: PlayHubCardGameMode = PLAYHUB_MODE_ID): Promise<PlayHubSession[]> {
