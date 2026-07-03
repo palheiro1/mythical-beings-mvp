@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bot, Clock, Play, PlusCircle, RefreshCw, Swords, Users } from 'lucide-react';
+import { Bot, Clock, Eye, Play, PlusCircle, RefreshCw, Swords, Users } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth.js';
 import {
   createCompetitiveSession,
@@ -455,14 +455,16 @@ const Lobby: React.FC = () => {
                             Rejoin
                           </ArenaButton>
                         ) : (
-                          <StatusBadge tone="muted">Playing</StatusBadge>
+                          <ArenaButton type="button" size="sm" variant="secondary" icon={<Eye className="h-4 w-4" aria-hidden />} onClick={() => navigate(`/game/${session.id}`)}>
+                            Watch
+                          </ArenaButton>
                         )}
                       </div>
                     </div>
                   );
                 })
               ) : (
-                <EmptyState title="No live sessions at the moment." description="Active matches you can rejoin will appear here." />
+                <EmptyState title="No live sessions at the moment." description="Active matches you can watch or rejoin will appear here." />
               )}
             </div>
           </Panel>

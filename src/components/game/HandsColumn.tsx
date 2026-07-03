@@ -11,6 +11,9 @@ interface HandsColumnProps {
     phase: 'knowledge' | 'action' | 'end';
     selectedKnowledgeId: string | null;
     onHandCardClick: (instanceId: string) => void; // Change signature to expect instanceId
+    isSpectator?: boolean;
+    currentPlayerLabel?: string;
+    opponentPlayerLabel?: string;
 }
 
 const HandsColumn: React.FC<HandsColumnProps> = ({
@@ -19,7 +22,10 @@ const HandsColumn: React.FC<HandsColumnProps> = ({
     isMyTurn,
     phase,
     selectedKnowledgeId,
-    onHandCardClick
+    onHandCardClick,
+    isSpectator = false,
+    currentPlayerLabel = 'Your Hand',
+    opponentPlayerLabel = 'Opponent'
 }) => {
     const maxVisibleCards = 5; // Keep this logic for now
     const registry = useCardRegistry();
@@ -40,7 +46,7 @@ const HandsColumn: React.FC<HandsColumnProps> = ({
             {/* Opponent Hand Area - reduced from flex-1 to flex-none with fixed height */}
             <div className="relative flex h-1/5 flex-none flex-col items-center justify-center overflow-hidden p-2" ref={oppHandRef}>
                 <div className="absolute left-2 top-2 z-10">
-                    <StatusBadge tone="muted">Opponent ({opponentPlayerHand.length})</StatusBadge>
+                    <StatusBadge tone="muted">{opponentPlayerLabel} ({opponentPlayerHand.length})</StatusBadge>
                 </div>
                 <div className="flex justify-center items-center gap-2 w-full h-full p-1">
                     {opponentPlayerHand.length === 0 ? (
@@ -83,7 +89,7 @@ const HandsColumn: React.FC<HandsColumnProps> = ({
             {/* Player Hand Area - reduced from flex-1 to flex-none with fixed height */}
             <div className="relative flex h-1/5 flex-none flex-col items-center justify-center overflow-hidden p-2" ref={myHandRef}>
                 <div className="absolute bottom-2 left-2 z-10">
-                    <StatusBadge tone={isMyTurn && phase === 'action' ? 'violet' : 'muted'}>Your Hand ({currentPlayerHand.length}/5)</StatusBadge>
+                    <StatusBadge tone={isMyTurn && phase === 'action' ? 'violet' : 'muted'}>{currentPlayerLabel} ({currentPlayerHand.length}/5)</StatusBadge>
                 </div>
                 <div className="flex justify-center items-center gap-2 w-full h-full p-1">
                     {currentPlayerHand.length === 0 ? (
@@ -93,7 +99,7 @@ const HandsColumn: React.FC<HandsColumnProps> = ({
                         </div>
                     ) : (
                         currentPlayerHand.slice(0, maxVisibleCards).map((card, idx) => {
-                            const isDisabled = !isMyTurn || phase !== 'action';
+                            const isDisabled = isSpectator || !isMyTurn || phase !== 'action';
                             // Ensure card.instanceId exists before using it
                             const instanceId = card.instanceId || `fallback-instance-${card.id}-${idx}`;
                             if (!card.instanceId) {
@@ -103,7 +109,7 @@ const HandsColumn: React.FC<HandsColumnProps> = ({
                                 // Container defines size with hover effect - REMOVED hover:scale-110 and cursor-pointer
                                 <div
                                     key={instanceId} // Use instanceId for key
-                                    className={cn('h-[85%] aspect-[921/1217] rounded-xl transition-all', selectedKnowledgeId === instanceId ? 'scale-105 ring-2 ring-amber-300 shadow-[0_0_24px_rgba(246,184,59,0.35)]' : '')} // Compare with instanceId
+                                    className={cn('h-[85%] aspect-[921/1217] rounded-xl transition-all', !isSpectator && selectedKnowledgeId === instanceId ? 'scale-105 ring-2 ring-amber-300 shadow-[0_0_24px_rgba(246,184,59,0.35)]' : '')} // Compare with instanceId
                                     ref={(el) => {
                                         if (card.instanceId) registry.register(`hand:${card.instanceId}`, el as unknown as HTMLElement | null);
                                     }}
@@ -111,7 +117,8 @@ const HandsColumn: React.FC<HandsColumnProps> = ({
                                 >
                                     <Card
                                         card={card}
-                                        isSelected={selectedKnowledgeId === instanceId} // Compare with instanceId
+                                        showBack={isSpectator}
+                                        isSelected={!isSpectator && selectedKnowledgeId === instanceId} // Compare with instanceId
                                         isDisabled={isDisabled} // Pass isDisabled to Card
                                     />
                                 </div>

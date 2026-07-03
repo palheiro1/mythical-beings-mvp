@@ -16,10 +16,9 @@ import {
   COMPETITION_SETTLEMENT_EVENT,
   getPendingCompetitionSettlement,
   getProfile,
-  ProfileInfo,
   retryCompetitionSettlement,
 } from '../utils/supabase.js';
-import type { CompetitionSettlementNotice } from '../utils/supabase.js';
+import type { CompetitionSettlementNotice, ProfileInfo } from '../utils/supabase.js';
 import GameAnnouncer from '../components/game/GameAnnouncer.js';
 import CardMoveLayer from '../components/game/CardMoveLayer.js';
 import CombatFloaters from '../components/game/CombatFloaters.js';
@@ -27,6 +26,13 @@ import { useCardRegistry } from '../context/CardRegistry.js';
 import GameShell from '../components/game/GameShell.js';
 import { ArenaButton, ErrorRecoveryPanel, SpinnerEmblem, StatusBadge } from '../components/ui/index.js';
 import PendingEffectPanel from '../components/game/PendingEffectPanel.js';
+
+const fallbackProfile = (id: string, label: string): ProfileInfo => ({
+  id,
+  username: label,
+  display_name: null,
+  avatar_url: null,
+});
 
 const GameScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -198,9 +204,11 @@ const GameScreen: React.FC = () => {
 
   // Compute player/opponent indices and objects early so all hooks can safely run before any early returns
   const playerIndex = gameState?.players?.[0]?.id === currentPlayerId ? 0 : (gameState?.players?.[1]?.id === currentPlayerId ? 1 : -1);
-  const opponentIndex = playerIndex === 0 ? 1 : 0;
-  const player: PlayerState | undefined = playerIndex !== -1 && gameState ? gameState.players[playerIndex] : undefined;
-  const opponent: PlayerState | undefined = gameState ? gameState.players[opponentIndex] : undefined;
+  const isSpectator = playerIndex === -1;
+  const viewerPlayerIndex = isSpectator ? 0 : playerIndex;
+  const viewerOpponentIndex = viewerPlayerIndex === 0 ? 1 : 0;
+  const player: PlayerState | undefined = gameState ? gameState.players[viewerPlayerIndex] : undefined;
+  const opponent: PlayerState | undefined = gameState ? gameState.players[viewerOpponentIndex] : undefined;
 
   // Helper: parse defense info from latest logs for a target player
   const parseDefenseFromLogs = (targetId: string): { blocked?: number; bypass?: boolean } => {
@@ -244,8 +252,8 @@ const GameScreen: React.FC = () => {
   // Discard animation: detect knowledge leaving field (must run every render to keep hook order stable)
   useEffect(() => {
     if (!gameState) return;
-    const me = playerIndex !== -1 ? gameState.players[playerIndex] : null;
-    const opp = opponent;
+    const me = gameState.players[viewerPlayerIndex] ?? null;
+    const opp = gameState.players[viewerOpponentIndex] ?? null;
     const currentMy = me ? me.field.map(s => s.knowledge?.instanceId).filter(Boolean) as string[] : [];
     const currentOpp = opp ? opp.field.map(s => s.knowledge?.instanceId).filter(Boolean) as string[] : [];
 
@@ -269,7 +277,7 @@ const GameScreen: React.FC = () => {
     }
 
     prevFieldRef.current = { my: currentMy, opp: currentOpp, idToCard };
-  }, [gameState?.players]);
+  }, [gameState?.players, viewerPlayerIndex, viewerOpponentIndex]);
 
   // Knowledge-phase damage floater: react to new log lines mentioning deals <n> damage
   const lastLogIndexRef = React.useRef<number>(-1);
@@ -329,12 +337,17 @@ const GameScreen: React.FC = () => {
     return <div className="arena-page flex h-[calc(100vh-var(--navbar-height))] items-center justify-center px-4"><ErrorRecoveryPanel message="Invalid game data received." onBack={() => navigate('/lobby')} backLabel="Back to Lobby" /></div>;
   }
 
-  const playerProfileId = player?.id || '';
-  const opponentProfileId = opponent?.id || '';
-  const playerProfile = playerProfiles[playerProfileId] || { username: `Player ${playerIndex !== -1 ? playerIndex + 1 : '?'}`, avatar_url: null };
-  const opponentProfile = playerProfiles[opponentProfileId] || { username: `Player ${opponentIndex + 1}`, avatar_url: null };
+  const player1ProfileId = gameState.players[0]?.id || 'player-1';
+  const player2ProfileId = gameState.players[1]?.id || 'player-2';
+  const player1Profile = playerProfiles[player1ProfileId] || fallbackProfile(player1ProfileId, 'Player 1');
+  const player2Profile = playerProfiles[player2ProfileId] || fallbackProfile(player2ProfileId, 'Player 2');
+  const playerProfile = viewerPlayerIndex === 0 ? player1Profile : player2Profile;
+  const opponentProfile = viewerOpponentIndex === 0 ? player1Profile : player2Profile;
+  const topBarPlayer1Profile = !isSpectator && playerIndex === 0 ? { ...player1Profile, username: 'You' } : player1Profile;
+  const topBarPlayer2Profile = !isSpectator && playerIndex === 1 ? { ...player2Profile, username: 'You' } : player2Profile;
 
   const handleMarketClick = (knowledgeId: string) => {
+    if (isSpectator) return;
     if (handleDrawKnowledge) {
       // Try to build a move event from market to player's hand area
       const src = gameState?.market.find(k => k.id === knowledgeId);
@@ -360,6 +373,7 @@ const GameScreen: React.FC = () => {
   };
 
   const handleHandClick = (knowledgeId: string) => {
+    if (isSpectator) return;
     if (handleHandCardClick) {
       handleHandCardClick(knowledgeId);
       setSelectedKnowledgeId(prev => prev === knowledgeId ? null : knowledgeId);
@@ -370,6 +384,7 @@ const GameScreen: React.FC = () => {
   };
 
   const handleCreatureClick = (creatureId: string) => {
+    if (isSpectator) return;
     if (selectedKnowledgeId && handleCreatureClickForSummon) {
       // Build move event from hand:selected to table:creatureId
       const handCard = gameState?.players.find(p => p.id === currentPlayerId)?.hand.find(k => k.instanceId === selectedKnowledgeId);
@@ -423,23 +438,26 @@ const GameScreen: React.FC = () => {
             playerName={playerProfile.username || undefined}
             opponentName={opponentProfile.username || undefined}
           />
-          <PendingEffectPanel
-            gameState={gameState}
-            currentPlayerId={currentPlayerId}
-            onResolve={handleResolvePendingEffect}
-          />
+          {!isSpectator && (
+            <PendingEffectPanel
+              gameState={gameState}
+              currentPlayerId={currentPlayerId}
+              onResolve={handleResolvePendingEffect}
+            />
+          )}
         </>
       )}
       topBar={(
         <TopBar
-        player1Profile={playerIndex === 0 ? { ...playerProfile, username: 'You' } : opponentProfile}
-        player2Profile={playerIndex === 1 ? { ...playerProfile, username: 'You' } : opponentProfile}
+        player1Profile={topBarPlayer1Profile}
+        player2Profile={topBarPlayer2Profile}
         player1Power={gameState.players[0]?.power || 0}
         player2Power={gameState.players[1]?.power || 0}
         turn={gameState.turn}
         phase={gameState.phase}
   currentPlayerId={currentPlayerId || undefined}
   gameState={gameState}
+  isSpectator={isSpectator}
       />
       )}
       actionBar={(
@@ -450,14 +468,14 @@ const GameScreen: React.FC = () => {
           actionsTaken={gameState.actionsTakenThisTurn}
           turnTimer={remainingTime}
           actionsPerTurn={gameState.actionsPerTurn}
-          isSpectator={playerIndex === -1}
+          isSpectator={isSpectator}
           onEndTurnClick={handleEndTurn}
         />
       )}
     >
 
     <div className="flex h-full min-h-0 flex-col gap-2">
-      {settlementRetry && (
+      {settlementRetry && !isSpectator && (
         <div className="flex shrink-0 flex-col gap-3 rounded-xl border border-amber-300/35 bg-amber-500/10 px-4 py-3 text-sm text-amber-100 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
             <StatusBadge tone="amber">Settlement pending</StatusBadge>
@@ -490,6 +508,9 @@ const GameScreen: React.FC = () => {
               phase={mapPhaseForTableArea(gameState.phase)}
               selectedKnowledgeId={selectedKnowledgeId}
               onHandCardClick={handleHandClick}
+              isSpectator={isSpectator}
+              currentPlayerLabel={isSpectator ? 'Player 1 Hand' : 'Your Hand'}
+              opponentPlayerLabel={isSpectator ? 'Player 2 Hand' : 'Opponent'}
             />
           ) : (
             <div className="w-full h-full bg-black/20 rounded-lg flex items-center justify-center text-gray-500">Waiting for player data...</div>

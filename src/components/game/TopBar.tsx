@@ -16,6 +16,7 @@ interface TopBarProps {
   // New props to enable resign action
   currentPlayerId?: string;
   gameState?: GameState;
+  isSpectator?: boolean;
 }
 
 const TopBar: React.FC<TopBarProps> = ({
@@ -26,7 +27,8 @@ const TopBar: React.FC<TopBarProps> = ({
   turn,
   phase,
   currentPlayerId,
-  gameState
+  gameState,
+  isSpectator = false
 }) => {
   const registry = useCardRegistry();
   const p1Ref = useRef<HTMLSpanElement | null>(null);
@@ -43,10 +45,11 @@ const TopBar: React.FC<TopBarProps> = ({
 
   const handleResign = async () => {
     try {
-      if (!gameState || !currentPlayerId) return;
+      if (!gameState || !currentPlayerId || isSpectator) return;
       const p1 = gameState.players[0]?.id;
       const p2 = gameState.players[1]?.id;
       if (!p1 || !p2) return;
+      if (currentPlayerId !== p1 && currentPlayerId !== p2) return;
       const winner = currentPlayerId === p1 ? p2 : p1;
       const next: GameState = { ...gameState, winner, phase: 'gameOver', log: [...gameState.log, `[Game] ${currentPlayerId} resigns. ${winner} wins!`] };
       await updateGameState(gameState.gameId, next);
@@ -117,15 +120,17 @@ const TopBar: React.FC<TopBarProps> = ({
             className="rounded-full object-cover ring-2 ring-white/10 shadow"
           />
         ) : null}
-        <button
-          onClick={handleResign}
-          className="ml-2 inline-flex items-center gap-2 rounded-xl border border-red-300/35 bg-red-500/15 px-3 py-2 text-xs font-bold uppercase tracking-wide text-red-100 transition hover:bg-red-500/25 active:scale-[0.98]"
-          title="Resign and concede the match"
-          aria-label="Resign and concede the match"
-        >
-          <Flag className="h-4 w-4" aria-hidden />
-          Resign
-        </button>
+        {!isSpectator && gameState?.phase !== 'gameOver' && (
+          <button
+            onClick={handleResign}
+            className="ml-2 inline-flex items-center gap-2 rounded-xl border border-red-300/35 bg-red-500/15 px-3 py-2 text-xs font-bold uppercase tracking-wide text-red-100 transition hover:bg-red-500/25 active:scale-[0.98]"
+            title="Resign and concede the match"
+            aria-label="Resign and concede the match"
+          >
+            <Flag className="h-4 w-4" aria-hidden />
+            Resign
+          </button>
+        )}
       </div>
     </div>
     </div>

@@ -1,6 +1,6 @@
 import { useEffect, useReducer, useState, useRef } from 'react';
 import { useParams } from 'react-router-dom';
-import { getGameDetails, getGameState, subscribeToGameState, unsubscribeFromGameState, updateGameState, RealtimeChannel } from '../utils/supabase.js';
+import { getGameDetails, getGameState, getPublicGameState, subscribeToGameState, unsubscribeFromGameState, updateGameState, RealtimeChannel } from '../utils/supabase.js';
 // Remove unused Creature import
 import { GameState, GameAction, Knowledge, PlayerState } from '../game/types.js';
 import { initializeGame, gameReducer as originalGameReducer } from '../game/state.js';
@@ -149,6 +149,8 @@ export function useGameInitialization(
         }
         const player1Id = gameDetails.player1_id;
         const player2Id = gameDetails.player2_id;
+        const isCurrentUserParticipant = currentPlayerId === player1Id || currentPlayerId === player2Id;
+        const fetchReadableGameState = () => isCurrentUserParticipant ? getGameState(gameId) : getPublicGameState(gameId);
         
         // --- Get selected creature IDs from columns or state ---
         const player1SelectedIds = gameDetails.player1_selected_creatures;
@@ -168,7 +170,7 @@ export function useGameInitialization(
         console.log(`[setupGame] Fetched game details. P1: ${player1Id}, P2: ${player2Id}`);
 
         // 2. Fetch existing game state
-        let gameState = await getGameState(gameId);
+        let gameState = await fetchReadableGameState();
         if (!isMounted || currentInitializedGameId.current !== gameId) {
              console.log(`[setupGame] Aborting fetch state: isMounted=${isMounted}, gameId mismatch.`);
              isInitializing.current = false;
@@ -221,12 +223,14 @@ export function useGameInitialization(
                 console.log(`[setupGame] Successfully updated initial game state in Supabase.`);
                 // Proceed to dispatch this initializedState below
             }
-          } else {
-            // Player 2: State is null, but wait for Player 1 to initialize it.
-            console.log(`[setupGame] Game state for ${gameId} not found. Waiting for Player 1 to initialize...`);
-            // Keep loading=true, state=null. The subscription or next fetch should get the state.
-            // No return needed here, let it proceed to subscription setup. Loading remains true.
-          }
+	          } else if (isCurrentUserParticipant) {
+	            // Player 2: State is null, but wait for Player 1 to initialize it.
+	            console.log(`[setupGame] Game state for ${gameId} not found. Waiting for Player 1 to initialize...`);
+	            // Keep loading=true, state=null. The subscription or next fetch should get the state.
+	            // No return needed here, let it proceed to subscription setup. Loading remains true.
+	          } else {
+	            throw new Error('This match is still initializing. Try watching again once play has started.');
+	          }
         } else {
           // Game state WAS found initially
           console.log(`[setupGame] Game ${gameId} state found. Phase: ${gameState.phase}`);
@@ -246,9 +250,9 @@ export function useGameInitialization(
                 console.log(`[setupGame] Dispatched ${isNewGameInitialization ? 'new' : 'existing'} SET_GAME_STATE. Setting loading to false.`);
                 setLoading(false); // Set loading false *after* dispatching state
                 lastDispatchAtRef.current = Date.now();
-            } else if (currentPlayerId !== player1Id && !gameState) {
-                // Player 2 is still waiting, do nothing here, loading remains true
-                console.log(`[setupGame] Player 2 still waiting for initial state, keeping loading=true.`);
+	            } else if (isCurrentUserParticipant && currentPlayerId !== player1Id && !gameState) {
+	                // Player 2 is still waiting, do nothing here, loading remains true
+	                console.log(`[setupGame] Player 2 still waiting for initial state, keeping loading=true.`);
             } else {
                 // State is unexpectedly null (e.g., P1 init failed DB save)
                 console.error(`[setupGame] State is null after initialization/fetch attempt for ${gameId}.`);
@@ -266,8 +270,12 @@ export function useGameInitialization(
         if (isMounted && currentInitializedGameId.current === gameId) {
             // Avoid subscribing if already subscribed (e.g., due to HMR without full unmount)
             if (!subscription) {
-                console.log(`[setupGame] Subscribing to realtime updates for ${gameId} via useGameInitialization.`);
-                subscription = subscribeToGameState(gameId, handleRealtimeUpdate, "GameInitialization"); // Added subscriberId
+	                if (isCurrentUserParticipant) {
+	                  console.log(`[setupGame] Subscribing to realtime updates for ${gameId} via useGameInitialization.`);
+	                  subscription = subscribeToGameState(gameId, handleRealtimeUpdate, "GameInitialization"); // Added subscriberId
+	                } else {
+	                  console.log(`[setupGame] Spectator mode for ${gameId}: using redacted polling state.`);
+	                }
             } else {
                 console.log(`[setupGame] Already subscribed to ${gameId} via useGameInitialization.`);
             }
@@ -281,7 +289,7 @@ export function useGameInitialization(
                 const tooLongSinceDispatch = now - lastDispatchAtRef.current > REALTIME_STALE_MS;
                 if (tooLongSinceRealtime && tooLongSinceDispatch) {
                   try {
-                    const latest = await getGameState(gameId);
+	                    const latest = await fetchReadableGameState();
                     if (!latest) return;
                     // Compare a few key fields to avoid redundant dispatches
                     const cur = stateRef.current;

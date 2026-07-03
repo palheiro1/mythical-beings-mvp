@@ -48,6 +48,7 @@ export {
   getCardGameSessionState,
   setCardGameSelection,
   getGameState,
+  getPublicGameState,
   updateGameState,
   subscribeToGameState,
   unsubscribeFromGameState,

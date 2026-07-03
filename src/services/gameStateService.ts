@@ -53,6 +53,21 @@ export async function getGameState(sessionId: string): Promise<GameState | null>
   return isFullGameState(cardState?.state) ? cardState.state : null;
 }
 
+export async function getPublicGameState(sessionId: string): Promise<GameState | null> {
+  const { data, error } = await supabase.rpc('card_game_get_public_session_state', {
+    p_session_id: sessionId,
+  });
+
+  if (error) {
+    console.error('[card_game_get_public_session_state] failed:', error);
+    return null;
+  }
+
+  const row = Array.isArray(data) ? (data[0] ?? null) : data;
+  const cardState = normalizeCardGameState(row as any);
+  return isFullGameState(cardState?.state) ? cardState.state : null;
+}
+
 export async function updateGameState(sessionId: string, newState: GameState): Promise<boolean> {
   const { error } = await supabase.rpc('card_game_set_state', {
     p_session_id: sessionId,
