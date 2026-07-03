@@ -11,9 +11,9 @@ import {
   joinCompetitiveSession,
   joinPlayHubSession,
   PLAYHUB_COMPETITIVE_MODE_ID,
+  PLAYHUB_DEFAULT_STAKE_GEM,
   PLAYHUB_GAME_ID,
   PLAYHUB_MODE_ID,
-  PLAYHUB_STAKE_TIERS_GEM,
   PlayHubSession,
   setPlayHubReady,
   supabase,
@@ -29,6 +29,16 @@ interface SessionWithHost extends PlayHubSession {
 
 type LobbyMode = typeof PLAYHUB_MODE_ID | typeof PLAYHUB_COMPETITIVE_MODE_ID;
 
+const POSITIVE_WHOLE_GEM_STAKE = /^[1-9]\d*$/;
+
+function normalizeStakeInput(value: string): string {
+  return value.replace(/\D/g, '').replace(/^0+(?=\d)/, '');
+}
+
+function isValidStakeGem(value: string): boolean {
+  return POSITIVE_WHOLE_GEM_STAKE.test(value.trim());
+}
+
 const Lobby: React.FC = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading, error: authError } = useAuth();
@@ -42,7 +52,7 @@ const Lobby: React.FC = () => {
   const [isCreating, setIsCreating] = useState(false);
   const [isJoining, setIsJoining] = useState(false);
   const [selectedMode, setSelectedMode] = useState<LobbyMode>(PLAYHUB_MODE_ID);
-  const [selectedStakeGem, setSelectedStakeGem] = useState<(typeof PLAYHUB_STAKE_TIERS_GEM)[number]>(PLAYHUB_STAKE_TIERS_GEM[0]);
+  const [selectedStakeGem, setSelectedStakeGem] = useState(PLAYHUB_DEFAULT_STAKE_GEM);
 
   const enrichSessions = useCallback(async (sessions: PlayHubSession[], modeId: LobbyMode): Promise<SessionWithHost[]> => {
     const competitionBySession = new Map<string, { stake_gem?: string | number | null; status?: string | null }>();
@@ -154,10 +164,16 @@ const Lobby: React.FC = () => {
       return;
     }
 
+    const stakeGem = selectedStakeGem.trim();
+    if (selectedMode === PLAYHUB_COMPETITIVE_MODE_ID && !isValidStakeGem(stakeGem)) {
+      showNotification('Enter a whole GEM stake greater than zero.');
+      return;
+    }
+
     setIsCreating(true);
     try {
       const session = selectedMode === PLAYHUB_COMPETITIVE_MODE_ID
-        ? await createCompetitiveSession(selectedStakeGem)
+        ? await createCompetitiveSession(stakeGem)
         : await createPlayHubSession();
       if (!session) throw new Error('Could not create session.');
 
@@ -212,6 +228,7 @@ const Lobby: React.FC = () => {
 
   const isLoading = authLoading || loadingSessions;
   const isCompetitiveMode = selectedMode === PLAYHUB_COMPETITIVE_MODE_ID;
+  const isStakeValid = isValidStakeGem(selectedStakeGem);
 
   return (
     <PageShell contentClassName="space-y-6 pb-24">
@@ -288,19 +305,21 @@ const Lobby: React.FC = () => {
 
               {isCompetitiveMode && (
                 <div>
-                  <p className="mb-3 text-xs font-bold uppercase tracking-widest text-slate-400">Stake</p>
-                  <div className="grid grid-cols-3 gap-2">
-                    {PLAYHUB_STAKE_TIERS_GEM.map((stake) => (
-                      <button
-                        key={stake}
-                        type="button"
-                        onClick={() => setSelectedStakeGem(stake)}
-                        className={`rounded-xl border px-2 py-2 text-sm font-black uppercase transition ${selectedStakeGem === stake ? 'border-amber-300/55 bg-amber-500/15 text-amber-100' : 'border-white/10 bg-white/[0.04] text-slate-300 hover:bg-white/[0.07]'}`}
-                      >
-                        {stake} GEM
-                      </button>
-                    ))}
+                  <label htmlFor="stake-gem" className="mb-3 block text-xs font-bold uppercase tracking-widest text-slate-400">Stake</label>
+                  <div className="relative">
+                    <Input
+                      id="stake-gem"
+                      value={selectedStakeGem}
+                      onChange={(event) => setSelectedStakeGem(normalizeStakeInput(event.target.value))}
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      autoComplete="off"
+                      aria-invalid={!isStakeValid}
+                      className="pr-16 font-mono text-lg font-black"
+                    />
+                    <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-black uppercase tracking-widest text-amber-100/70">GEM</span>
                   </div>
+                  {!isStakeValid && <p className="mt-2 text-xs text-amber-100/80">Enter a whole GEM amount greater than zero.</p>}
                 </div>
               )}
 
@@ -310,10 +329,11 @@ const Lobby: React.FC = () => {
                   type="button"
                   onClick={handleCreateSession}
                   loading={isCreating}
+                  disabled={isCompetitiveMode && !isStakeValid}
                   icon={<PlusCircle className="h-4 w-4" aria-hidden />}
                   fullWidth
                 >
-                  {isCreating ? 'Creating...' : isCompetitiveMode ? `Create ${selectedStakeGem} GEM Session` : 'Create Session'}
+                  {isCreating ? 'Creating...' : isCompetitiveMode ? `Create ${selectedStakeGem || 'GEM'} Session` : 'Create Session'}
                 </ArenaButton>
               </div>
 

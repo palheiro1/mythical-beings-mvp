@@ -2,7 +2,7 @@ export const PLAYHUB_GAME_ID = 'card_game';
 export const PLAYHUB_MODE_ID = 'casual';
 export const PLAYHUB_COMPETITIVE_MODE_ID = 'competitive_gem';
 export const PLAYHUB_SEASON_ID = 'card_game_casual_season_1';
-export const PLAYHUB_STAKE_TIERS_GEM = ['5', '10', '25'] as const;
+export const PLAYHUB_DEFAULT_STAKE_GEM = '5';
 
 export const PLAYHUB_APP_NAME = 'Wisdom Duel';
 export const PLAYHUB_APP_ICON_URL = '/logos/icon-192.png';

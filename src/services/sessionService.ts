@@ -4,7 +4,6 @@ import {
   PLAYHUB_COMPETITIVE_MODE_ID,
   PLAYHUB_GAME_ID,
   PLAYHUB_MODE_ID,
-  PLAYHUB_STAKE_TIERS_GEM,
 } from '../utils/supabaseClient.js';
 import type { PlayHubSession, SessionParticipant, MatchDetails } from '../utils/supabaseClient.js';
 import { getCardGameSessionState } from './gameStateService.js';
@@ -39,8 +38,8 @@ function getPlayHubErrorMessage(error: any): string {
 
 function normalizeStakeGem(stakeGem: string | number): string {
   const stake = String(stakeGem).trim();
-  if (!(PLAYHUB_STAKE_TIERS_GEM as readonly string[]).includes(stake)) {
-    throw new Error(`Unsupported GEM stake tier. Choose ${PLAYHUB_STAKE_TIERS_GEM.join(', ')} GEM.`);
+  if (!/^[1-9]\d*$/.test(stake)) {
+    throw new Error('GEM stake must be a positive whole number.');
   }
   return stake;
 }

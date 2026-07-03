@@ -6,10 +6,10 @@ export type RealtimeChannel = SupabaseRealtimeChannel;
 
 export {
   PLAYHUB_COMPETITIVE_MODE_ID,
+  PLAYHUB_DEFAULT_STAKE_GEM,
   PLAYHUB_GAME_ID,
   PLAYHUB_MODE_ID,
   PLAYHUB_SEASON_ID,
-  PLAYHUB_STAKE_TIERS_GEM,
 } from '../config/playhub.js';
 
 export const supabase: SupabaseClient = playHubSupabase as unknown as SupabaseClient;

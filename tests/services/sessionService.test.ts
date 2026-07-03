@@ -14,9 +14,9 @@ vi.mock('../../src/services/mythicalClient.js', () => ({
 
 vi.mock('../../src/utils/supabaseClient.js', () => ({
   PLAYHUB_COMPETITIVE_MODE_ID: 'competitive_gem',
+  PLAYHUB_DEFAULT_STAKE_GEM: '5',
   PLAYHUB_GAME_ID: 'card_game',
   PLAYHUB_MODE_ID: 'casual',
-  PLAYHUB_STAKE_TIERS_GEM: ['5', '10', '25'],
   normalizeSession: (row: any) => ({
     id: row.session_id ?? row.id,
     code: row.session_code ?? row.code,
@@ -58,10 +58,10 @@ describe('sessionService competitive GEM sessions', () => {
     });
   });
 
-  it('normalizes and forwards supported GEM stake tiers to the SDK', async () => {
-    const session = await createCompetitiveSession(' 10 ');
+  it('normalizes and forwards whole GEM stakes to the SDK', async () => {
+    const session = await createCompetitiveSession(' 50 ');
 
-    expect(sessionMocks.createSession).toHaveBeenCalledWith({ stakeGem: '10' });
+    expect(sessionMocks.createSession).toHaveBeenCalledWith({ stakeGem: '50' });
     expect(session).toMatchObject({
       id: 'session-1',
       code: 'ABCD',
@@ -69,8 +69,8 @@ describe('sessionService competitive GEM sessions', () => {
     });
   });
 
-  it('rejects unsupported GEM stake tiers before calling the backend', async () => {
-    await expect(createCompetitiveSession('50')).rejects.toThrow('Unsupported GEM stake tier');
+  it.each(['0', '-1', '1.5', 'abc', ''])('rejects invalid GEM stake %s before calling the backend', async (stake) => {
+    await expect(createCompetitiveSession(stake)).rejects.toThrow('GEM stake must be a positive whole number');
 
     expect(sessionMocks.createSession).not.toHaveBeenCalled();
   });

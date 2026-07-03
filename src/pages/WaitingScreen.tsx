@@ -17,6 +17,8 @@ import { RealtimeChannel } from '@supabase/supabase-js';
 import { ArenaButton, CopyChip, ErrorRecoveryPanel, Panel, SpinnerEmblem, StatusBadge } from '../components/ui/index.js';
 import type { CompetitionStatus } from '@mythicalb/sdk';
 
+const STATUS_POLL_INTERVAL_MS = 4000;
+
 const WaitingScreen: React.FC = () => {
   const { gameId: sessionId } = useParams<{ gameId: string }>();
   const navigate = useNavigate();
@@ -153,11 +155,16 @@ const WaitingScreen: React.FC = () => {
           onSessionChange: async (updated) => {
             if (!isMounted) return;
             setSession(updated);
+            let latest = updated;
             if (updated.mode_id === PLAYHUB_COMPETITIVE_MODE_ID && updated.status === 'waiting') {
-              await ensureCompetitiveReady(updated);
+              latest = await ensureCompetitiveReady(updated);
             }
-            if (updated.status === 'playing') {
+            if (latest.status === 'playing') {
               navigate(`/nft-selection/${sessionId}`, { replace: true });
+              return;
+            }
+            if (latest.status === 'waiting') {
+              await startAndDealIfHost(latest);
             }
           },
           onParticipantsChange: async () => {
@@ -186,6 +193,59 @@ const WaitingScreen: React.FC = () => {
       if (sessionChannel) supabase.removeChannel(sessionChannel);
     };
   }, [authLoading, ensureCompetitiveReady, navigate, refreshSession, sessionId, startAndDealIfHost, user?.id]);
+
+  useEffect(() => {
+    if (authLoading || loading || error || !sessionId || !user?.id || session?.status !== 'waiting') return;
+
+    let cancelled = false;
+
+    const tick = async () => {
+      try {
+        const refreshed = await refreshSession();
+        if (cancelled || !refreshed) return;
+
+        let latest = refreshed;
+        if (refreshed.mode_id === PLAYHUB_COMPETITIVE_MODE_ID) {
+          latest = await ensureCompetitiveReady(refreshed);
+        } else {
+          const currentParticipant = refreshed.participants?.find((participant) => participant.player_id === user.id);
+          if (currentParticipant?.is_ready !== true) {
+            await setPlayHubReady(sessionId, true);
+            latest = await refreshSession() ?? refreshed;
+          }
+        }
+        if (cancelled) return;
+
+        if (latest.status === 'playing') {
+          navigate(`/nft-selection/${sessionId}`, { replace: true });
+          return;
+        }
+
+        if (latest.status === 'waiting') {
+          await startAndDealIfHost(latest);
+        }
+      } catch (err) {
+        console.warn('[WaitingScreen] Polling refresh failed:', err);
+      }
+    };
+
+    const intervalId = window.setInterval(() => void tick(), STATUS_POLL_INTERVAL_MS);
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+    };
+  }, [
+    authLoading,
+    ensureCompetitiveReady,
+    error,
+    loading,
+    navigate,
+    refreshSession,
+    session?.status,
+    sessionId,
+    startAndDealIfHost,
+    user?.id,
+  ]);
 
   const handleDepositStake = async () => {
     if (!sessionId) return;
@@ -230,9 +290,33 @@ const WaitingScreen: React.FC = () => {
   const isCompetitive = session?.mode_id === PLAYHUB_COMPETITIVE_MODE_ID;
   const currentDeposit = competitionStatus?.deposits.find((deposit) => deposit.player_id === user?.id);
   const confirmedDeposits = competitionStatus?.deposits.filter((deposit) => deposit.status === 'confirmed').length ?? 0;
-  const hasTwoPlayers = (session?.participants?.length ?? 0) >= 2;
+  const participantCount = session?.participants?.length ?? 0;
+  const readyCount = session?.participants?.filter((participant) => participant.is_ready).length ?? 0;
+  const maxPlayers = session?.max_players ?? 2;
+  const hasTwoPlayers = participantCount >= 2;
   const canDeposit = Boolean(isCompetitive && hasTwoPlayers && currentDeposit?.status !== 'confirmed');
   const waitingForDepositAuth = Boolean(isCompetitive && hasTwoPlayers && currentDeposit?.status !== 'confirmed' && !competitionStatus?.depositAuthorization);
+  let waitingStatus = 'Waiting for session update...';
+
+  if (isCompetitive) {
+    if (!hasTwoPlayers) {
+      waitingStatus = 'Waiting for opponent to join with this code.';
+    } else if (!competitionStatus) {
+      waitingStatus = 'Loading Polygon escrow status...';
+    } else if (waitingForDepositAuth) {
+      waitingStatus = 'Preparing Polygon deposit authorization...';
+    } else if (canDeposit) {
+      waitingStatus = 'Deposit your GEM stake to continue.';
+    } else if (currentDeposit?.status === 'confirmed' && confirmedDeposits < maxPlayers) {
+      waitingStatus = 'Waiting for opponent deposit.';
+    } else if (confirmedDeposits >= maxPlayers) {
+      waitingStatus = 'Deposits confirmed. Starting match...';
+    }
+  } else if (participantCount < maxPlayers) {
+    waitingStatus = 'Waiting for opponent to join with this code.';
+  } else if (readyCount < maxPlayers) {
+    waitingStatus = 'Waiting for players to be ready.';
+  }
 
   return (
     <div className="arena-page relative flex min-h-[calc(100vh-var(--navbar-height))] items-center justify-center overflow-hidden px-4 py-10">
@@ -271,12 +355,12 @@ const WaitingScreen: React.FC = () => {
           <div className="mt-8 grid gap-4 sm:grid-cols-2">
             <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
               <p className="text-xs font-bold uppercase tracking-widest text-slate-500">Players Ready</p>
-              <p className="mt-2 text-4xl font-black text-cyan-200">{session?.participants?.filter((participant) => participant.is_ready).length ?? 0}<span className="text-slate-500">/{session?.max_players ?? 2}</span></p>
+              <p className="mt-2 text-4xl font-black text-cyan-200">{readyCount}<span className="text-slate-500">/{maxPlayers}</span></p>
             </div>
             <div className="flex items-center justify-center rounded-2xl border border-emerald-300/20 bg-emerald-500/10 p-4">
               <StatusBadge tone="green">
                 <Users className="h-3.5 w-3.5" aria-hidden />
-                {session?.participants?.length ?? 0}/{session?.max_players ?? 2} players
+                {participantCount}/{maxPlayers} players
               </StatusBadge>
             </div>
           </div>
@@ -289,7 +373,7 @@ const WaitingScreen: React.FC = () => {
                   <p className="mt-1 text-2xl font-black text-amber-100">{competitionStatus?.stake_gem ?? '?'} GEM</p>
                 </div>
                 <StatusBadge tone={competitionStatus?.status === 'ready' ? 'green' : 'amber'}>
-                  {confirmedDeposits}/{session?.max_players ?? 2} deposits
+                  {confirmedDeposits}/{maxPlayers} deposits
                 </StatusBadge>
               </div>
 
@@ -319,7 +403,7 @@ const WaitingScreen: React.FC = () => {
           )}
 
           <div className="mt-8">
-            <SpinnerEmblem label="Waiting for realtime updates..." />
+            <SpinnerEmblem label={waitingStatus} />
           </div>
         </Panel>
 
