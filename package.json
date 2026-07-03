@@ -15,7 +15,7 @@
   "dependencies": {
     "@mythicalb/ardor-core": "0.1.1",
     "@mythicalb/ardor-provider": "0.1.1",
-    "@mythicalb/sdk": "0.1.1",
+    "@mythicalb/sdk": "0.1.2",
     "@supabase/supabase-js": "^2.49.4",
     "lucide-react": "^1.14.0",
     "react": "19.1.0",

@@ -137,7 +137,7 @@ VITE_POLYGON_RPC_URL=your_polygon_rpc_url
 VITE_POLYGON_CHAIN_ID=137
 VITE_GEM_CONTRACT=0x5f790ffa0695967a2d711872ecb4c7553e24794d
 VITE_CARDS_CONTRACT=0xcf55f528492768330c0750a6527c1dfb50e2a7c3
-VITE_WISDOM_DUEL_ESCROW_ADDRESS=your_escrow_contract
+VITE_WISDOM_DUEL_ESCROW_ADDRESS=0x4DF3B86B9b1332779d8EAE7c276BcC1bDe2e19e9
 ```
 
 For competitive GEM matches, configure the matching Supabase Edge Function secrets listed in `.env.example`.

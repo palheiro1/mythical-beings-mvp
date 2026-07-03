@@ -4,7 +4,7 @@ import { ArrowLeft, Bot, CheckCircle2, Clock3, Dices, ShieldCheck } from 'lucide
 import Card from '../components/Card.js';
 import GameStateDebug from '../components/GameStateDebug.js';
 import { Creature } from '../game/types.js';
-import { getCardGameSessionState, getGameDetails } from '../utils/supabase.js';
+import { getCardGameSessionState, getGameDetails, lockCompetitiveCards, PLAYHUB_COMPETITIVE_MODE_ID } from '../utils/supabase.js';
 import { useAuth } from '../context/AuthProvider.js';
 import { NFTSelectionNavigationManager } from '../utils/NavigationManager.js';
 // --- Import the base creature data ---
@@ -235,11 +235,19 @@ const NFTSelectionSimplified: React.FC<NFTSelectionSimplifiedProps> = ({ mode = 
         return;
       }
 
+      if (!gameId) {
+        throw new Error('Game ID missing from URL.');
+      }
+
       if (!navigationManagerRef.current) {
         throw new Error('Selection manager is not ready');
       }
 
       console.log('[NFTSelection] Confirming selection:', selected);
+      const sessionDetails = await getGameDetails(gameId);
+      if (sessionDetails?.mode_id === PLAYHUB_COMPETITIVE_MODE_ID) {
+        await lockCompetitiveCards(gameId, selected);
+      }
       
       // Stop hand polling if still active
       if (handPollIntervalRef.current) {

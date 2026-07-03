@@ -103,6 +103,15 @@ export async function depositCompetitionStake(sessionId: string) {
   }
 }
 
+export async function lockCompetitiveCards(sessionId: string, selectedCardIds: string[]) {
+  try {
+    return await mythical.competition.lockCards(sessionId, selectedCardIds);
+  } catch (error) {
+    console.error('[card-game-competition-card-lock] failed:', error);
+    throw new Error(getPlayHubErrorMessage(error));
+  }
+}
+
 export async function settleCompetitionSession(sessionId: string) {
   try {
     return await mythical.competition.settle(sessionId);

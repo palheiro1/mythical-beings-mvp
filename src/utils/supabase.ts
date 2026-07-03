@@ -30,6 +30,7 @@ export {
   finishPlayHubSession,
   getCompetitionStatus,
   depositCompetitionStake,
+  lockCompetitiveCards,
   settleCompetitionSession,
   getSessionParticipants,
   getPlayHubSession,
