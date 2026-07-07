@@ -10,8 +10,8 @@ interface ActionBarProps {
   actionsPerTurn: number;
   turnTimer: number; // Changed to required number
   isSpectator: boolean;
-  playerUsername?: string; // Optional: For winner message
-  opponentUsername?: string; // Optional: For winner message
+  winnerLabel?: string | null;
+  currentActorLabel?: string | null;
   onEndTurnClick: () => void; // Add callback for end turn button
 }
 
@@ -23,8 +23,8 @@ const ActionBar: React.FC<ActionBarProps> = ({
   actionsPerTurn,
   turnTimer,
   isSpectator,
-  playerUsername,
-  opponentUsername,
+  winnerLabel,
+  currentActorLabel,
   onEndTurnClick, // Destructure the new prop
 }) => {
 
@@ -32,25 +32,23 @@ const ActionBar: React.FC<ActionBarProps> = ({
   const validActionsPerTurn = typeof actionsPerTurn === 'number' && actionsPerTurn > 0 ? actionsPerTurn : 2;
   const actionsLeft = Math.max(0, validActionsPerTurn - validActionsTaken);
 
-  console.log('[ActionBar] Rendering. Props:', { isMyTurn, phase, winner, actionsTaken, actionsPerTurn, turnTimer, isSpectator });
-
   const getPhaseMessage = () => {
     if (winner) {
-        const winnerName = winner === playerUsername ? playerUsername : (winner === opponentUsername ? opponentUsername : `Player (${winner.substring(0, 6)})`);
-        return `Game Over! Winner: ${winnerName}`;
+        return `Game Over! Winner: ${winnerLabel || 'Player'}`;
     }
     if (isSpectator) return "Spectating";
-    if (!isMyTurn) return "Opponent's Turn";
+    if (!isMyTurn) return currentActorLabel ? `${currentActorLabel}'s Turn` : "Opponent's Turn";
 
     switch (phase) {
       case 'knowledge':
         return "Your Turn: Knowledge Phase";
-      case 'action':
+      case 'action': {
         const actionsText = isNaN(actionsLeft) ? '...' : actionsLeft;
         const turnText = isNaN(validActionsPerTurn) ? '...' : validActionsPerTurn;
         // Display timer only during action phase and if it's my turn
         const timerText = isMyTurn ? ` - Time: ${turnTimer}s` : ''; 
         return `Your Turn: Action Phase (${actionsText}/${turnText} actions left${timerText})`;
+      }
       case 'loading':
           return "Loading...";
       case 'end':

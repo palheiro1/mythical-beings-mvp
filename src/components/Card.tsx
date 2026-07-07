@@ -1,13 +1,19 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useCallback, useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { Info } from 'lucide-react';
 import { useCardRegistry } from '../context/CardRegistry.js';
 import { Creature, Knowledge } from '../game/types.js';
 import { cn } from './ui/index.js';
+import CardDetailOverlay from './CardDetailOverlay.js';
 
 interface CardProps {
   card: Creature | Knowledge;
   onClick?: (id: string) => void;
   isSelected?: boolean;
+  selected?: boolean;
+  interactive?: boolean;
+  ariaLabel?: string;
+  onInspect?: (card: Creature | Knowledge) => void;
   rotation?: number; // degrees (0, 90, 180, 270)
   showBack?: boolean; // If true, show card back
   isDisabled?: boolean; // For actions, not hover/zoom
@@ -29,6 +35,10 @@ const Card: React.FC<CardProps> = ({
   card,
   onClick,
   isSelected,
+  selected,
+  interactive,
+  ariaLabel,
+  onInspect,
   rotation = 0,
   showBack = false,
   isDisabled = false,
@@ -37,13 +47,30 @@ const Card: React.FC<CardProps> = ({
 }) => {
   const registry = useCardRegistry();
   const [isZoomed, setIsZoomed] = useState(false);
+  const [isInspecting, setIsInspecting] = useState(false);
   const [zoomFrame, setZoomFrame] = useState({ top: 80, left: 80, width: 280, height: 370 });
   const hoverTimer = useRef<number | null>(null);
   const cardRef = useRef<HTMLDivElement>(null);
   const normalizedRotation = normalizeRotation(rotation);
   const isBoardCard = fit === 'board';
+  const isCardSelected = Boolean(isSelected || selected);
+  const canUsePrimaryAction = Boolean(onClick) && !isDisabled;
+  const canInspect = true;
+  const hasPrimaryButton = canUsePrimaryAction || canInspect;
 
-  const calculateZoomFrame = () => {
+  const getCardTypeLabel = () => {
+    if (showBack) return 'Hidden card';
+    if ('cost' in card) return `${card.type} knowledge, cost ${card.cost}`;
+    return 'Creature';
+  };
+
+  const effectiveAriaLabel = ariaLabel || [
+    showBack ? 'Hidden card' : card.name,
+    getCardTypeLabel(),
+    isCardSelected ? 'selected' : null,
+  ].filter(Boolean).join(', ');
+
+  const calculateZoomFrame = useCallback(() => {
     if (!cardRef.current) return;
 
     const rect = cardRef.current.getBoundingClientRect();
@@ -73,7 +100,7 @@ const Card: React.FC<CardProps> = ({
     top = Math.min(Math.max(top, margin), viewportHeight - zoomHeight - margin);
 
     setZoomFrame({ top, left, width: zoomWidth, height: zoomHeight });
-  };
+  }, [isBoardCard]);
 
   const handleMouseEnter = (): void => {
     if (hoverTimer.current) clearTimeout(hoverTimer.current);
@@ -106,6 +133,22 @@ const Card: React.FC<CardProps> = ({
     }
   };
 
+  const handleInspect = (): void => {
+    handleCloseZoom();
+    onInspect?.(card);
+    setIsInspecting(true);
+  };
+
+  const handlePrimaryClick = (): void => {
+    if (canUsePrimaryAction) {
+      handleClick();
+      return;
+    }
+    if (canInspect) {
+      handleInspect();
+    }
+  };
+
   useEffect(() => {
     return (): void => {
       if (hoverTimer.current) {
@@ -131,50 +174,79 @@ const Card: React.FC<CardProps> = ({
       window.removeEventListener('resize', handleResize);
       window.removeEventListener('scroll', handleResize, true);
     };
-  }, [isZoomed]);
+  }, [calculateZoomFrame, isZoomed]);
 
   const imagePath = showBack ? '/images/spells/back.jpg' : card.image;
   const cardTransform = isBoardCard
     ? `translate(-50%, -50%) rotate(${normalizedRotation}deg)`
     : `rotate(${normalizedRotation}deg)`;
-  const boardCardHeight = knowledgeStatus ? 96 : 112;
-  const boardCardWidth = boardCardHeight * CARD_ASPECT_RATIO;
+  const boardCardHeight = knowledgeStatus ? 'clamp(70px, 18vw, 96px)' : 'clamp(82px, 22vw, 112px)';
+  const boardCardWidth = `calc(${boardCardHeight} * ${CARD_ASPECT_RATIO})`;
 
   return (
     <>
       <div
         ref={cardRef}
         className={cn(
-          'relative z-10 grid h-full w-full place-items-center overflow-visible',
-          onClick && !isDisabled ? 'cursor-pointer' : 'cursor-default',
+          'group/card relative z-10 grid h-full w-full place-items-center overflow-visible',
+          canUsePrimaryAction || canInspect ? 'cursor-pointer' : 'cursor-default',
           isDisabled ? 'opacity-80' : '',
         )}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeaveOriginalCard}
-        onClick={handleClick}
         title={showBack ? 'Hidden card' : card.name}
       >
-        <div
+        <button
+          type="button"
           className={cn(
-            'overflow-hidden rounded-[10px] bg-slate-900 shadow-[0_12px_28px_rgba(0,0,0,0.38)] ring-1 transition duration-300 ease-out will-change-transform',
+            'grid border-0 bg-transparent p-0 text-left focus:outline-none focus:ring-2 focus:ring-amber-300/55 focus:ring-offset-2 focus:ring-offset-slate-950',
             isBoardCard ? 'absolute left-1/2 top-1/2' : 'relative h-full max-h-full',
-            onClick && !isDisabled ? 'hover:-translate-y-0.5 hover:shadow-[0_18px_34px_rgba(0,0,0,0.45)]' : '',
-            isSelected ? 'ring-2 ring-amber-300 shadow-[0_0_28px_rgba(246,184,59,0.42)]' : 'ring-white/15',
+            hasPrimaryButton ? 'cursor-pointer' : 'cursor-default',
+            interactive === false ? 'cursor-default' : '',
           )}
           style={{
             aspectRatio: CARD_ASPECT_RATIO,
-            width: isBoardCard ? `${boardCardWidth}px` : undefined,
-            height: isBoardCard ? `${boardCardHeight}px` : undefined,
+            width: isBoardCard ? boardCardWidth : undefined,
+            height: isBoardCard ? boardCardHeight : undefined,
             transform: cardTransform,
           }}
+          onClick={handlePrimaryClick}
+          disabled={interactive === false}
+          aria-label={effectiveAriaLabel}
+          aria-pressed={canUsePrimaryAction ? isCardSelected : undefined}
         >
-          <img
-            src={imagePath}
-            alt={card.name}
-            className="h-full w-full object-cover"
-            draggable={false}
-          />
-        </div>
+          <span
+            className={cn(
+              'block h-full w-full overflow-hidden rounded-[10px] bg-slate-900 shadow-[0_12px_28px_rgba(0,0,0,0.38)] ring-1 transition duration-300 ease-out will-change-transform',
+              canUsePrimaryAction ? 'hover:-translate-y-0.5 hover:shadow-[0_18px_34px_rgba(0,0,0,0.45)]' : '',
+              isCardSelected ? 'ring-2 ring-amber-300 shadow-[0_0_28px_rgba(246,184,59,0.42)]' : 'ring-white/15',
+            )}
+          >
+            <img
+              src={imagePath}
+              alt={showBack ? 'Hidden card' : card.name}
+              className="h-full w-full object-cover"
+              draggable={false}
+            />
+          </span>
+        </button>
+
+        {!showBack && (
+          <button
+            type="button"
+            className={cn(
+              'absolute right-1.5 top-1.5 z-30 grid h-7 w-7 place-items-center rounded-full border border-white/15 bg-black/70 text-cyan-100 opacity-0 shadow-lg transition hover:bg-black/85 focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-cyan-300/50 group-hover/card:opacity-100',
+              isBoardCard && 'right-1 top-1 h-6 w-6',
+            )}
+            onClick={(event) => {
+              event.stopPropagation();
+              handleInspect();
+            }}
+            aria-label={`Inspect ${card.name}`}
+          >
+            <Info className="h-3.5 w-3.5" aria-hidden />
+          </button>
+        )}
 
         {knowledgeStatus && !showBack && (
           <div className="pointer-events-none absolute inset-x-1 bottom-1 z-20 flex items-end justify-between gap-1">
@@ -227,6 +299,13 @@ const Card: React.FC<CardProps> = ({
           </div>
         </div>
       ), document.body)}
+
+      <CardDetailOverlay
+        card={card}
+        open={isInspecting}
+        onClose={() => setIsInspecting(false)}
+        showBack={showBack}
+      />
     </>
   );
 };

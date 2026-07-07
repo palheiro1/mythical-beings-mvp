@@ -241,30 +241,31 @@ const BotGame: React.FC = () => {
           actionsPerTurn={gameState.actionsPerTurn}
           turnTimer={remainingTime}
           isSpectator={false}
-          playerUsername={'You'}
-          opponentUsername={BOT_NAME}
+          winnerLabel={gameState.winner === BOT_ID ? BOT_NAME : 'You'}
+          currentActorLabel={isMyTurn ? 'You' : BOT_NAME}
           onEndTurnClick={handleTrainingEndTurn}
         />
       )}
     >
-      <div className="mb-2 grid grid-cols-1 gap-2 lg:grid-cols-[minmax(0,1fr)_360px]">
-        <Panel className="flex items-center justify-between gap-3 px-4 py-3">
-          <div className="flex items-center gap-3">
-            <StatusBadge tone="amber">
-              <BotIcon className="h-3.5 w-3.5" aria-hidden />
-              Training Mode
-            </StatusBadge>
-            <span className="text-sm text-slate-300">Practice against AI</span>
-          </div>
-          <div className="hidden items-center gap-2 text-sm text-cyan-200 sm:flex">
-            <Info className="h-4 w-4" aria-hidden />
-            No competitive rewards are earned.
-          </div>
-        </Panel>
-      </div>
+      <div className="flex min-h-0 flex-col gap-2 xl:h-full">
+        <div className="grid grid-cols-1 gap-2 lg:grid-cols-[minmax(0,1fr)_360px]">
+          <Panel className="flex items-center justify-between gap-3 px-4 py-3">
+            <div className="flex items-center gap-3">
+              <StatusBadge tone="amber">
+                <BotIcon className="h-3.5 w-3.5" aria-hidden />
+                Training Mode
+              </StatusBadge>
+              <span className="text-sm text-slate-300">Practice against AI</span>
+            </div>
+            <div className="hidden items-center gap-2 text-sm text-cyan-200 sm:flex">
+              <Info className="h-4 w-4" aria-hidden />
+              No competitive rewards are earned.
+            </div>
+          </Panel>
+        </div>
 
-      <div className="grid h-[calc(100%-56px)] min-h-0 grid-cols-[minmax(170px,0.82fr)_minmax(620px,3.6fr)_minmax(170px,0.85fr)_minmax(190px,1fr)] gap-2">
-        <div className="min-h-0">
+        <div className="grid min-h-0 flex-1 grid-cols-1 gap-2 xl:grid-cols-[minmax(170px,0.82fr)_minmax(0,3.6fr)_minmax(170px,0.85fr)_minmax(190px,1fr)] xl:overflow-hidden">
+        <div className="order-2 min-h-[280px] xl:order-1 xl:h-full xl:min-h-0">
           <HandsColumn
             currentPlayerHand={player.hand}
             opponentPlayerHand={opponent.hand}
@@ -272,9 +273,11 @@ const BotGame: React.FC = () => {
             phase={(gameState.phase === 'action' || gameState.phase === 'knowledge' || gameState.phase === 'end') ? gameState.phase as any : 'end'}
             selectedKnowledgeId={selectedKnowledgeId}
             onHandCardClick={handleHandClick}
+            currentPlayerLabel="Your Hand"
+            opponentPlayerLabel={BOT_NAME}
           />
         </div>
-        <div className="min-h-0" ref={(el) => { if (el) registry.register('table:anchor', el); }}>
+        <div className="order-1 min-h-[460px] xl:order-2 xl:h-full xl:min-h-0" ref={(el) => { if (el) registry.register('table:anchor', el); }}>
           <TableArea
             currentPlayer={player}
             opponentPlayer={opponent}
@@ -285,17 +288,25 @@ const BotGame: React.FC = () => {
             onRotateCreature={handleCreatureClick}
           />
         </div>
-        <div className="min-h-0" ref={(el) => { if (el) registry.register('market:anchor', el); }}>
-          <MarketColumn
-            marketCards={gameState.market}
-            deckCount={gameState.knowledgeDeck.length}
-            isMyTurn={isMyTurn && !gameState.pendingEffect}
-            phase={(gameState.phase === 'action' || gameState.phase === 'knowledge' || gameState.phase === 'end') ? gameState.phase : 'end'}
-            onDrawKnowledge={handleMarketClick}
-          />
-        </div>
-        <div className="min-h-0" ref={(el) => { if (el) registry.register('discard:anchor', el); }}>
-          <Logs logs={gameState.log} />
+        <details className="order-3 min-h-0 xl:contents" open>
+          <summary className="mb-2 cursor-pointer rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm font-bold uppercase tracking-wide text-slate-200 xl:hidden">
+            Market and game log
+          </summary>
+          <div className="grid min-h-0 gap-2 md:grid-cols-2 xl:contents">
+            <div className="min-h-0 xl:h-full" ref={(el) => { if (el) registry.register('market:anchor', el); }}>
+              <MarketColumn
+                marketCards={gameState.market}
+                deckCount={gameState.knowledgeDeck.length}
+                isMyTurn={isMyTurn && !gameState.pendingEffect}
+                phase={(gameState.phase === 'action' || gameState.phase === 'knowledge' || gameState.phase === 'end') ? gameState.phase : 'end'}
+                onDrawKnowledge={handleMarketClick}
+              />
+            </div>
+            <div className="min-h-0 xl:h-full" ref={(el) => { if (el) registry.register('discard:anchor', el); }}>
+              <Logs logs={gameState.log} />
+            </div>
+          </div>
+        </details>
         </div>
       </div>
     </GameShell>

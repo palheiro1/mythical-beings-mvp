@@ -22,7 +22,7 @@ const MarketColumn: React.FC<MarketColumnProps> = ({
 }) => {
     const registry = useCardRegistry();
     return (
-        <div className="flex h-full flex-col items-center space-y-3 overflow-hidden rounded-2xl border border-white/10 bg-cyan-500/[0.04] px-2 py-3">
+        <div className="flex h-full min-h-[300px] flex-col items-center space-y-3 overflow-hidden rounded-2xl border border-white/10 bg-cyan-500/[0.04] px-2 py-3 xl:min-h-0">
             <div className="flex w-full items-center justify-between px-1">
                 <StatusBadge tone="blue">Market</StatusBadge>
                 <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.04] px-2 py-1 text-xs text-slate-300">

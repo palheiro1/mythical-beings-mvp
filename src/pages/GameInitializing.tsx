@@ -183,7 +183,6 @@ const GameInitializing: React.FC = () => {
           <SpinnerEmblem />
           <h2 className="mt-5 font-display text-4xl font-black text-slate-50">Preparing Game</h2>
           <p className="mt-2 text-slate-300">Please wait while we set up your match.</p>
-          {gameId && <CopyChip label="Game ID" value={gameId} className="mx-auto mt-5 max-w-full" />}
 
           <div className="mt-8 space-y-3 border-y border-white/10 py-6 text-left">
             {steps.map((step, index) => {
@@ -210,6 +209,15 @@ const GameInitializing: React.FC = () => {
           </div>
 
           <p className="mt-4 text-sm text-cyan-200">{status}</p>
+
+          {gameId && (
+            <details className="mt-5 rounded-2xl border border-white/10 bg-white/[0.035] p-4 text-left">
+              <summary className="cursor-pointer text-xs font-bold uppercase tracking-widest text-slate-400">
+                Technical details
+              </summary>
+              <CopyChip label="Game ID" value={gameId} className="mt-4 max-w-full" />
+            </details>
+          )}
 
           <div className="mt-7 flex flex-col justify-center gap-3 sm:flex-row">
             <ArenaButton type="button" variant="ghost" onClick={() => navigate('/lobby')}>Back to Lobby</ArenaButton>

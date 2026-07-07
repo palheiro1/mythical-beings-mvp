@@ -25,7 +25,7 @@ const Logs: React.FC<LogsProps> = ({ logs }) => {
   });
 
   return (
-    <div className="flex h-full w-full flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#070b15]/90 p-3 text-white shadow-inner">
+    <div className="flex h-full min-h-[220px] w-full flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#070b15]/90 p-3 text-white shadow-inner xl:min-h-0">
       <h3 className="mb-2 flex items-center gap-2 border-b border-white/10 px-1 pb-2 text-sm font-bold uppercase tracking-wide text-amber-200">
         <ScrollText className="h-4 w-4" aria-hidden />
         Game Log

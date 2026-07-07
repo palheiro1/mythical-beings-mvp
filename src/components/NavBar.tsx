@@ -1,7 +1,8 @@
 import { Link, NavLink } from 'react-router-dom';
-import { BookOpen, LogIn, LogOut, Swords, Trophy, User, UserCircle } from 'lucide-react';
+import { BookOpen, Home, LogIn, LogOut, Swords, Trophy, User, UserCircle, WalletCards } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth.js';
 import { cn } from './ui/index.js';
+import { formatAddress } from '../utils/format.js';
 
 const NavBar: React.FC = () => {
   const { user, profile, polygonWallet, loading, signOut } = useAuth();
@@ -15,11 +16,6 @@ const NavBar: React.FC = () => {
     }
   };
 
-  const formatAddress = (address: string | null) => {
-    if (!address) return '';
-    return `${address.substring(0, 6)}...${address.substring(address.length - 4)}`;
-  };
-
   const displayName = profile?.display_name ?? profile?.username;
   const identity = polygonWallet
     ? formatAddress(polygonWallet.address)
@@ -27,12 +23,17 @@ const NavBar: React.FC = () => {
       ? 'Guest'
       : displayName || user?.email || 'Player';
 
-  const navItems = [
-    { to: '/lobby', label: 'Lobby', icon: Swords },
-    { to: '/how-to-play', label: 'How to Play', icon: BookOpen },
-    { to: '/leaderboard', label: 'Leaderboard', icon: Trophy },
-    ...(user ? [{ to: '/profile', label: 'Profile', icon: User }] : []),
-  ];
+  const navItems = user
+    ? [
+        ...(polygonWallet ? [{ to: '/lobby', label: 'Lobby', icon: Swords }] : []),
+        { to: '/how-to-play', label: 'How to Play', icon: BookOpen },
+        { to: '/leaderboard', label: 'Leaderboard', icon: Trophy },
+        ...(polygonWallet ? [{ to: '/profile', label: 'Profile', icon: User }] : []),
+      ]
+    : [
+        { to: '/', label: 'Home', icon: Home },
+        { to: '/how-to-play', label: 'How to Play', icon: BookOpen },
+      ];
 
   const navClass = ({ isActive }: { isActive: boolean }) => cn(
     'inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold uppercase tracking-wide transition',
@@ -79,7 +80,7 @@ const NavBar: React.FC = () => {
                   Sign In
                 </button>
               </Link>
-            ) : (
+            ) : polygonWallet ? (
               <div className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-2 py-1.5">
                 <Link to="/profile" className="hidden items-center gap-2 rounded-xl px-2 py-1 text-sm text-slate-200 transition hover:bg-white/[0.06] md:flex">
                   <UserCircle className="h-4 w-4 text-cyan-200" aria-hidden />
@@ -89,6 +90,21 @@ const NavBar: React.FC = () => {
                   {identity}
                 </span>
                 <button 
+                  onClick={handleSignOut}
+                  className="inline-flex items-center gap-1 rounded-xl px-2 py-1 text-xs font-bold uppercase tracking-wide text-slate-300 transition hover:bg-red-500/12 hover:text-red-100"
+                  aria-label="Sign out"
+                >
+                  <LogOut className="h-4 w-4" aria-hidden />
+                  Sign Out
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 rounded-2xl border border-amber-300/20 bg-amber-500/[0.08] px-2 py-1.5">
+                <Link to="/" className="inline-flex items-center gap-2 rounded-xl px-2 py-1 text-sm font-bold uppercase tracking-wide text-amber-100 transition hover:bg-white/[0.06]">
+                  <WalletCards className="h-4 w-4" aria-hidden />
+                  Link Wallet
+                </Link>
+                <button
                   onClick={handleSignOut}
                   className="inline-flex items-center gap-1 rounded-xl px-2 py-1 text-xs font-bold uppercase tracking-wide text-slate-300 transition hover:bg-red-500/12 hover:text-red-100"
                   aria-label="Sign out"

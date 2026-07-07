@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useCallback, useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Bot, CheckCircle2, Clock3, Dices, ShieldCheck } from 'lucide-react';
 import Card from '../components/Card.js';
@@ -9,14 +9,12 @@ import { useAuth } from '../context/AuthProvider.js';
 import { NFTSelectionNavigationManager } from '../utils/NavigationManager.js';
 // --- Import the base creature data ---
 import creatureData from '../assets/creatures.json' with { type: 'json' };
-import { ArenaButton, cn, CopyChip, ErrorRecoveryPanel, Panel, SpinnerEmblem, StatusBadge } from '../components/ui/index.js';
+import { ArenaButton, cn, ErrorRecoveryPanel, Panel, SpinnerEmblem, StatusBadge } from '../components/ui/index.js';
 import { clearBotCreatureSelection, writeBotCreatureSelection } from '../utils/botSelection.js';
 
 // --- Define ALL_CREATURES constant ---
 const ALL_CREATURES: Creature[] = creatureData as Creature[];
 
-const CARD_ASPECT_RATIO = 2.5 / 3.5;
-const CARD_WIDTH_DESKTOP = '160px';
 const TRAINING_HAND_SIZE = 5;
 
 type SelectionMode = 'pvp' | 'bot';
@@ -36,7 +34,6 @@ const NFTSelectionSimplified: React.FC<NFTSelectionSimplifiedProps> = ({ mode = 
   const [selected, setSelected] = useState<string[]>([]);
   const [timer, setTimer] = useState(60);
   const [waiting, setWaiting] = useState(false);
-  const [lost, setLost] = useState(false);
   const [isLoadingHand, setIsLoadingHand] = useState(true);
   const [dealtCreatures, setDealtCreatures] = useState<Creature[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -52,16 +49,12 @@ const NFTSelectionSimplified: React.FC<NFTSelectionSimplifiedProps> = ({ mode = 
 
   // Timer logic
   useEffect(() => {
-    if (lost || waiting) return;
-    if (timer <= 0) {
-      setLost(true);
-      return;
-    }
+    if (waiting || timer <= 0) return;
     const intervalId = setInterval(() => {
-      setTimer(prev => prev - 1);
+      setTimer(prev => Math.max(0, prev - 1));
     }, 1000);
     return () => clearInterval(intervalId);
-  }, [timer, lost, waiting]);
+  }, [timer, waiting]);
 
   // Initialize navigation manager
   useEffect(() => {
@@ -102,13 +95,44 @@ const NFTSelectionSimplified: React.FC<NFTSelectionSimplifiedProps> = ({ mode = 
     };
   }, [gameId, currentPlayerId, authError, navigate, isBotMode]);
 
+  const startHandPolling = useCallback((slot: number) => {
+    if (handPollIntervalRef.current) return;
+
+    console.log('[NFTSelection] Starting hand polling');
+    
+    handPollIntervalRef.current = setInterval(async () => {
+      try {
+        if (!gameId) return;
+        const cardState = await getCardGameSessionState(gameId);
+        const hand = cardState?.dealt_hands?.[String(slot)];
+        
+        if (hand && hand.length > 0) {
+          const creatures = hand.map((id: string) => 
+            ALL_CREATURES.find(c => c.id === id)
+          ).filter(Boolean) as Creature[];
+          
+          setDealtCreatures(creatures);
+          setIsLoadingHand(false);
+          console.log('[NFTSelection] Hand loaded via polling:', creatures.length, 'cards');
+
+          // Stop polling
+          if (handPollIntervalRef.current) {
+            clearInterval(handPollIntervalRef.current);
+            handPollIntervalRef.current = null;
+          }
+        }
+      } catch (error: any) {
+        console.error('[NFTSelection] Hand polling error:', error);
+      }
+    }, 3000);
+  }, [gameId]);
+
   // Load hand data
   useEffect(() => {
     if (isBotMode) {
       clearBotCreatureSelection();
       setSelected([]);
       setWaiting(false);
-      setLost(false);
       setTimer(60);
       setError(null);
       setDealtCreatures(dealTrainingHand());
@@ -171,42 +195,10 @@ const NFTSelectionSimplified: React.FC<NFTSelectionSimplifiedProps> = ({ mode = 
         handPollIntervalRef.current = null;
       }
     };
-  }, [gameId, currentPlayerId, isBotMode]);
-
-  const startHandPolling = (slot: number) => {
-    if (handPollIntervalRef.current) return;
-
-    console.log('[NFTSelection] Starting hand polling');
-    
-    handPollIntervalRef.current = setInterval(async () => {
-      try {
-        if (!gameId) return;
-        const cardState = await getCardGameSessionState(gameId);
-        const hand = cardState?.dealt_hands?.[String(slot)];
-        
-        if (hand && hand.length > 0) {
-          const creatures = hand.map((id: string) => 
-            ALL_CREATURES.find(c => c.id === id)
-          ).filter(Boolean) as Creature[];
-          
-          setDealtCreatures(creatures);
-          setIsLoadingHand(false);
-          console.log('[NFTSelection] Hand loaded via polling:', creatures.length, 'cards');
-
-          // Stop polling
-          if (handPollIntervalRef.current) {
-            clearInterval(handPollIntervalRef.current);
-            handPollIntervalRef.current = null;
-          }
-        }
-      } catch (error: any) {
-        console.error('[NFTSelection] Hand polling error:', error);
-      }
-    }, 3000);
-  };
+  }, [gameId, currentPlayerId, isBotMode, startHandPolling]);
 
   const toggleSelect = (id: string) => {
-    if (lost || waiting || isConfirming) return;
+    if (waiting || isConfirming) return;
 
     setSelected(currentSelected => {
       if (currentSelected.includes(id)) {
@@ -220,7 +212,7 @@ const NFTSelectionSimplified: React.FC<NFTSelectionSimplifiedProps> = ({ mode = 
   };
 
   const handleConfirm = async () => {
-    if (selected.length !== 3 || lost || waiting || isConfirming) {
+    if (selected.length !== 3 || waiting || isConfirming) {
       console.warn('[NFTSelection] Confirm conditions not met');
       return;
     }
@@ -301,16 +293,10 @@ const NFTSelectionSimplified: React.FC<NFTSelectionSimplifiedProps> = ({ mode = 
     }
   };
 
-  const getCardHeight = (width: string) => {
-    const widthValue = parseFloat(width);
-    return `${widthValue / CARD_ASPECT_RATIO}px`;
-  };
-
   const handleShuffleTrainingHand = () => {
     if (!isBotMode || isConfirming) return;
     clearBotCreatureSelection();
     setSelected([]);
-    setLost(false);
     setTimer(60);
     setDealtCreatures(dealTrainingHand());
   };
@@ -332,7 +318,7 @@ const NFTSelectionSimplified: React.FC<NFTSelectionSimplifiedProps> = ({ mode = 
     );
   }
 
-  if (error && !lost) {
+  if (error) {
     return (
       <div className="arena-page flex min-h-[calc(100vh-var(--navbar-height))] items-center justify-center px-4">
         <ErrorRecoveryPanel title="Could not load selection" message={error} onBack={() => navigate('/lobby')} onRetry={() => window.location.reload()} backLabel="Back to Lobby" />
@@ -340,7 +326,7 @@ const NFTSelectionSimplified: React.FC<NFTSelectionSimplifiedProps> = ({ mode = 
     );
   }
 
-  if (!lost && dealtCreatures.length === 0) {
+  if (dealtCreatures.length === 0) {
     return (
       <div className="arena-page flex min-h-[calc(100vh-var(--navbar-height))] items-center justify-center px-4">
         <ErrorRecoveryPanel title="No cards available" message="Could not load your hand. Please refresh or return to the lobby." onBack={() => navigate('/lobby')} onRetry={() => window.location.reload()} backLabel="Back to Lobby" />
@@ -359,7 +345,7 @@ const NFTSelectionSimplified: React.FC<NFTSelectionSimplifiedProps> = ({ mode = 
             <ArrowLeft className="h-4 w-4" aria-hidden />
             Back
           </button>
-          {gameId && !isBotMode && <CopyChip label="Game ID" value={gameId} />}
+          {gameId && !isBotMode && <StatusBadge tone="violet">Live Match</StatusBadge>}
           {isBotMode && (
             <StatusBadge tone="amber">
               <Bot className="h-3.5 w-3.5" aria-hidden />
@@ -396,33 +382,39 @@ const NFTSelectionSimplified: React.FC<NFTSelectionSimplifiedProps> = ({ mode = 
                 </ArenaButton>
               )}
             </div>
-            <div className={cn('mx-auto grid h-28 w-28 place-items-center rounded-full border-4 bg-cyan-500/10 text-center shadow-[0_0_34px_rgba(34,211,238,0.24)] lg:mx-0', timer <= 10 ? 'border-red-300 text-red-200 animate-pulse' : 'border-cyan-300/50 text-cyan-100')}>
+            <div className={cn('mx-auto grid h-28 w-28 place-items-center rounded-full border-4 bg-cyan-500/10 text-center shadow-[0_0_34px_rgba(34,211,238,0.24)] lg:mx-0', timer <= 10 ? 'border-amber-300 text-amber-100' : 'border-cyan-300/50 text-cyan-100')}>
               <div>
                 <Clock3 className="mx-auto mb-1 h-5 w-5" aria-hidden />
                 <div className="text-4xl font-black leading-none">{timer}</div>
-                <div className="text-[10px] font-bold uppercase tracking-widest">sec</div>
+                <div className="text-[10px] font-bold uppercase tracking-widest">{timer === 0 ? 'expired' : 'sec'}</div>
               </div>
             </div>
           </div>
 
-          <div className="mb-8 grid grid-cols-2 justify-items-center gap-4 sm:grid-cols-3 lg:grid-cols-5">
+          {timer === 0 && !waiting && (
+            <div className="mb-6 rounded-2xl border border-amber-300/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+              Selection timer expired. You can still choose and confirm your team when ready.
+            </div>
+          )}
+
+          <div className="mb-8 grid grid-cols-[repeat(auto-fit,minmax(118px,1fr))] justify-items-center gap-4">
             {dealtCreatures.map((card) => {
               const isSelected = selected.includes(card.id);
               return (
                 <div
                   key={card.id}
-                  style={{ width: CARD_WIDTH_DESKTOP, height: getCardHeight(CARD_WIDTH_DESKTOP) }}
                   className={cn(
-                    'card-readable relative m-1 rounded-[14px] transition duration-300',
-                    lost || waiting || isConfirming ? 'cursor-not-allowed opacity-65' : 'cursor-pointer hover:-translate-y-1 hover:scale-[1.03]',
+                    'card-readable relative aspect-[921/1217] w-full max-w-[160px] rounded-[14px] transition duration-300',
+                    waiting || isConfirming ? 'opacity-65' : 'hover:-translate-y-1 hover:scale-[1.03]',
                     isSelected && 'shadow-[0_0_28px_rgba(246,184,59,0.45)]',
                   )}
-                  onClick={() => toggleSelect(card.id)}
                 >
                   <Card
                     card={card}
+                    onClick={() => toggleSelect(card.id)}
                     isSelected={isSelected}
-                    isDisabled={lost || waiting || isConfirming}
+                    isDisabled={waiting || isConfirming}
+                    ariaLabel={`${card.name}, ${isSelected ? 'selected' : 'not selected'} for team selection`}
                   />
                   {isSelected && (
                     <div className="absolute right-2 top-2 z-10 grid h-8 w-8 place-items-center rounded-full border border-amber-200 bg-amber-400 text-black shadow-lg">
@@ -448,14 +440,14 @@ const NFTSelectionSimplified: React.FC<NFTSelectionSimplifiedProps> = ({ mode = 
                       .map(card => (
                         <div
                           key={`selected-${card.id}`}
-                          style={{ width: '86px', height: getCardHeight('86px') }}
-                          className="relative cursor-pointer overflow-hidden rounded-[10px] border-2 border-amber-300 shadow-[0_0_18px_rgba(246,184,59,0.28)] transition hover:border-red-300"
-                          onClick={() => toggleSelect(card.id)}
+                          className="relative aspect-[921/1217] w-20 overflow-hidden rounded-[10px] border-2 border-amber-300 shadow-[0_0_18px_rgba(246,184,59,0.28)] transition hover:border-red-300 sm:w-[86px]"
                         >
                           <Card
                             card={card}
+                            onClick={() => toggleSelect(card.id)}
                             isSelected={true}
-                            isDisabled={lost || waiting || isConfirming}
+                            isDisabled={waiting || isConfirming}
+                            ariaLabel={`Remove ${card.name} from selected team`}
                           />
                         </div>
                       ))}
@@ -471,9 +463,7 @@ const NFTSelectionSimplified: React.FC<NFTSelectionSimplifiedProps> = ({ mode = 
               </div>
 
               <div className="text-center">
-                {lost ? (
-                  <StatusBadge tone="red">Time Expired - You Lost!</StatusBadge>
-                ) : waiting && !isBotMode ? (
+                {waiting && !isBotMode ? (
                   <StatusBadge tone="green">Waiting for opponent...</StatusBadge>
                 ) : (
                   <ArenaButton

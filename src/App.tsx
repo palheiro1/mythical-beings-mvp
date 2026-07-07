@@ -33,6 +33,8 @@ function AppContent() {
         <Routes>
           {/* Public Route */}
           <Route path="/" element={<Home />} />
+          <Route path="/how-to-play" element={<HowToPlay />} />
+          <Route path="/leaderboard" element={<Leaderboard />} />
           {/* Handle legacy/auth callback route by redirecting to lobby */}
           <Route path="/auth" element={<Navigate to="/lobby" replace />} />
 
@@ -45,8 +47,6 @@ function AppContent() {
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/nft-selection/:gameId" element={<NFTSelectionSimplified />} />
             <Route path="/bot-selection" element={<NFTSelectionSimplified mode="bot" />} />
-            <Route path="/how-to-play" element={<HowToPlay />} />
-            <Route path="/leaderboard" element={<Leaderboard />} />
             <Route path="/waiting/:gameId" element={<WaitingScreen />} />
           </Route>
         </Routes>

@@ -42,9 +42,9 @@ const HandsColumn: React.FC<HandsColumnProps> = ({
     }, [registry]);
 
     return (
-        <div className="flex h-full min-h-0 w-full flex-col overflow-hidden rounded-2xl border border-white/10 bg-white/[0.035]">
+        <div className="flex h-full min-h-[260px] w-full flex-col overflow-hidden rounded-2xl border border-white/10 bg-white/[0.035]">
             {/* Opponent Hand Area - reduced from flex-1 to flex-none with fixed height */}
-            <div className="relative flex h-1/5 flex-none flex-col items-center justify-center overflow-hidden p-2" ref={oppHandRef}>
+            <div className="relative flex min-h-[120px] flex-1 flex-col items-center justify-center overflow-hidden p-2" ref={oppHandRef}>
                 <div className="absolute left-2 top-2 z-10">
                     <StatusBadge tone="muted">{opponentPlayerLabel} ({opponentPlayerHand.length})</StatusBadge>
                 </div>
@@ -68,26 +68,10 @@ const HandsColumn: React.FC<HandsColumnProps> = ({
                 </div>
             </div>
 
-            <hr className="mx-auto w-full border-white/10" />
-
-            {/* Empty Middle Section 1 */}
-            <div className="flex flex-grow flex-col items-center justify-center text-white/40">
-                <div className="flex h-1/3 w-full items-center justify-center">
-                    <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-xs uppercase tracking-widest">Field Zone</span>
-                </div>
-            </div>
-
-            {/* Empty Middle Section 2 */}
-            <div className="flex flex-grow flex-col items-center justify-center text-white/40">
-                <div className="flex h-1/3 w-full items-center justify-center">
-                    <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-xs uppercase tracking-widest">Strategy Zone</span>
-                </div>
-            </div>
-
-            <hr className="mx-auto w-full border-white/10" />
+            <div className="mx-auto h-px w-full border-t border-white/10" />
 
             {/* Player Hand Area - reduced from flex-1 to flex-none with fixed height */}
-            <div className="relative flex h-1/5 flex-none flex-col items-center justify-center overflow-hidden p-2" ref={myHandRef}>
+            <div className="relative flex min-h-[120px] flex-1 flex-col items-center justify-center overflow-hidden p-2" ref={myHandRef}>
                 <div className="absolute bottom-2 left-2 z-10">
                     <StatusBadge tone={isMyTurn && phase === 'action' ? 'violet' : 'muted'}>{currentPlayerLabel} ({currentPlayerHand.length}/5)</StatusBadge>
                 </div>
@@ -113,13 +97,14 @@ const HandsColumn: React.FC<HandsColumnProps> = ({
                                     ref={(el) => {
                                         if (card.instanceId) registry.register(`hand:${card.instanceId}`, el as unknown as HTMLElement | null);
                                     }}
-                                    onClick={!isDisabled ? () => onHandCardClick(instanceId) : undefined} // Pass instanceId
                                 >
                                     <Card
                                         card={card}
+                                        onClick={!isDisabled ? () => onHandCardClick(instanceId) : undefined}
                                         showBack={isSpectator}
                                         isSelected={!isSpectator && selectedKnowledgeId === instanceId} // Compare with instanceId
                                         isDisabled={isDisabled} // Pass isDisabled to Card
+                                        ariaLabel={`${card.name}, hand card${selectedKnowledgeId === instanceId ? ', selected' : ''}`}
                                     />
                                 </div>
                             );

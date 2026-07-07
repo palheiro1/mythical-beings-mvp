@@ -16,6 +16,7 @@ import { useAuth } from '../hooks/useAuth.js';
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { ArenaButton, CopyChip, ErrorRecoveryPanel, Panel, SpinnerEmblem, StatusBadge } from '../components/ui/index.js';
 import type { CompetitionStatus } from '@mythicalb/sdk';
+import { formatAddress, formatShortId } from '../utils/format.js';
 
 const STATUS_POLL_INTERVAL_MS = 4000;
 
@@ -296,6 +297,7 @@ const WaitingScreen: React.FC = () => {
   const hasTwoPlayers = participantCount >= 2;
   const canDeposit = Boolean(isCompetitive && hasTwoPlayers && currentDeposit?.status !== 'confirmed');
   const waitingForDepositAuth = Boolean(isCompetitive && hasTwoPlayers && currentDeposit?.status !== 'confirmed' && !competitionStatus?.depositAuthorization);
+  const sessionCode = session?.code ?? '';
   let waitingStatus = 'Waiting for session update...';
 
   if (isCompetitive) {
@@ -348,10 +350,6 @@ const WaitingScreen: React.FC = () => {
             )}
           </div>
 
-          <div className="mt-6 flex justify-center">
-            <CopyChip label="Game ID" value={sessionId || ''} className="max-w-full" />
-          </div>
-
           <div className="mt-8 grid gap-4 sm:grid-cols-2">
             <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
               <p className="text-xs font-bold uppercase tracking-widest text-slate-500">Players Ready</p>
@@ -362,6 +360,17 @@ const WaitingScreen: React.FC = () => {
                 <Users className="h-3.5 w-3.5" aria-hidden />
                 {participantCount}/{maxPlayers} players
               </StatusBadge>
+            </div>
+          </div>
+
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+              <p className="text-xs font-bold uppercase tracking-widest text-slate-500">Mode</p>
+              <p className="mt-2 text-lg font-black text-slate-100">{isCompetitive ? 'Competitive GEM' : 'Casual'}</p>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+              <p className="text-xs font-bold uppercase tracking-widest text-slate-500">Session</p>
+              <p className="mt-2 font-mono text-lg font-black text-amber-100">{sessionCode || formatShortId(sessionId, 6)}</p>
             </div>
           </div>
 
@@ -380,7 +389,7 @@ const WaitingScreen: React.FC = () => {
               <div className="mt-4 grid gap-2">
                 {(competitionStatus?.deposits ?? []).map((deposit) => (
                   <div key={deposit.player_id} className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm">
-                    <span className="truncate font-mono text-slate-300">{deposit.wallet_address}</span>
+                    <span className="truncate font-mono text-slate-300">{formatAddress(deposit.wallet_address)}</span>
                     <StatusBadge tone={deposit.status === 'confirmed' ? 'green' : 'muted'}>{deposit.status}</StatusBadge>
                   </div>
                 ))}
@@ -401,6 +410,19 @@ const WaitingScreen: React.FC = () => {
               )}
             </div>
           )}
+
+          <details className="mt-6 rounded-2xl border border-white/10 bg-white/[0.035] p-4 text-left">
+            <summary className="cursor-pointer text-xs font-bold uppercase tracking-widest text-slate-400">
+              Technical details
+            </summary>
+            <div className="mt-4 grid gap-3">
+              {sessionId && <CopyChip label="Session ID" value={sessionId} className="max-w-full" />}
+              {sessionCode && <CopyChip label="Code" value={sessionCode} className="max-w-full" />}
+              {(competitionStatus?.deposits ?? []).map((deposit) => (
+                <CopyChip key={`wallet-${deposit.player_id}`} label="Wallet" value={deposit.wallet_address} className="max-w-full" />
+              ))}
+            </div>
+          </details>
 
           <div className="mt-8">
             <SpinnerEmblem label={waitingStatus} />

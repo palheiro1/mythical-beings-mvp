@@ -96,7 +96,7 @@ const TableArea: React.FC<TableAreaProps> = ({
     }) => {
         const isKnowledge = kind === 'knowledge';
         const knowledge = isKnowledge ? cardData as Knowledge | null : null;
-        const slotSize = isKnowledge ? 112 : 132;
+        const slotSize = isKnowledge ? 'clamp(78px, 20vw, 112px)' : 'clamp(92px, 24vw, 132px)';
 
         return (
             <div
@@ -117,7 +117,7 @@ const TableArea: React.FC<TableAreaProps> = ({
                 {cardData ? (
                     <div
                         className="mx-auto grid place-items-center overflow-visible"
-                        style={{ width: `${slotSize}px`, height: `${slotSize}px` }}
+                        style={{ width: slotSize, height: slotSize }}
                     >
                         <Card
                             card={cardData}
@@ -132,7 +132,7 @@ const TableArea: React.FC<TableAreaProps> = ({
                 ) : (
                     <div
                         className="mx-auto grid place-items-center"
-                        style={{ width: `${slotSize}px`, height: `${slotSize}px` }}
+                        style={{ width: slotSize, height: slotSize }}
                     >
                         {renderEmptySlot(emptyLabel, isKnowledge)}
                     </div>
@@ -144,7 +144,7 @@ const TableArea: React.FC<TableAreaProps> = ({
     const laneCount = Math.max(currentPlayer.creatures.length, opponentPlayer.creatures.length, 3);
 
     return (
-        <div className="relative grid h-full w-full grid-cols-3 gap-3 overflow-visible rounded-2xl border border-white/10 bg-[radial-gradient(circle_at_50%_48%,rgba(139,92,246,0.16),transparent_42%),linear-gradient(180deg,rgba(255,255,255,0.045),rgba(255,255,255,0.018))] p-3 shadow-inner">
+        <div className="relative grid h-full min-h-[460px] w-full grid-cols-3 gap-2 overflow-visible rounded-2xl border border-white/10 bg-[radial-gradient(circle_at_50%_48%,rgba(139,92,246,0.16),transparent_42%),linear-gradient(180deg,rgba(255,255,255,0.045),rgba(255,255,255,0.018))] p-2 shadow-inner sm:gap-3 sm:p-3 xl:min-h-0">
             <div className="pointer-events-none absolute inset-x-4 top-1/2 h-px bg-gradient-to-r from-transparent via-amber-200/25 to-transparent" />
 
             {Array.from({ length: laneCount }).map((_, index) => {

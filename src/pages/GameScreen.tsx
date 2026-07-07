@@ -26,6 +26,7 @@ import { useCardRegistry } from '../context/CardRegistry.js';
 import GameShell from '../components/game/GameShell.js';
 import { ArenaButton, ErrorRecoveryPanel, SpinnerEmblem, StatusBadge } from '../components/ui/index.js';
 import PendingEffectPanel from '../components/game/PendingEffectPanel.js';
+import { getPlayerDisplayName } from '../utils/format.js';
 
 const fallbackProfile = (id: string, label: string): ProfileInfo => ({
   id,
@@ -137,7 +138,7 @@ const GameScreen: React.FC = () => {
           const profile = await getProfile(playerId);
           fetchedProfiles[playerId] = {
             id: playerId,
-            username: profile?.username || `Player (${playerId.substring(0, 6)})`,
+            username: profile?.username || null,
             display_name: profile?.display_name || null,
             avatar_url: profile?.avatar_url || null,
           };
@@ -148,7 +149,7 @@ const GameScreen: React.FC = () => {
         console.error("Error fetching player profiles:", profileError);
         playerIds.forEach(playerId => {
           if (playerId && !fetchedProfiles[playerId]) {
-            fetchedProfiles[playerId] = { id: playerId, username: `Player (${playerId.substring(0, 6)})`, display_name: null, avatar_url: null };
+            fetchedProfiles[playerId] = { id: playerId, username: null, display_name: null, avatar_url: null };
           }
         });
         setPlayerProfiles(fetchedProfiles);
@@ -341,8 +342,17 @@ const GameScreen: React.FC = () => {
   const player2ProfileId = gameState.players[1]?.id || 'player-2';
   const player1Profile = playerProfiles[player1ProfileId] || fallbackProfile(player1ProfileId, 'Player 1');
   const player2Profile = playerProfiles[player2ProfileId] || fallbackProfile(player2ProfileId, 'Player 2');
-  const playerProfile = viewerPlayerIndex === 0 ? player1Profile : player2Profile;
-  const opponentProfile = viewerOpponentIndex === 0 ? player1Profile : player2Profile;
+  const player1Label = getPlayerDisplayName({ name: player1Profile.display_name || player1Profile.username, fallback: 'Player 1' });
+  const player2Label = getPlayerDisplayName({ name: player2Profile.display_name || player2Profile.username, fallback: 'Player 2' });
+  const playerProfileLabel = viewerPlayerIndex === 0 ? player1Label : player2Label;
+  const opponentProfileLabel = viewerOpponentIndex === 0 ? player1Label : player2Label;
+  const playerLabelsById: Record<string, string> = {
+    [player1ProfileId]: player1Label,
+    [player2ProfileId]: player2Label,
+  };
+  const winnerLabel = gameState.winner ? playerLabelsById[gameState.winner] || getPlayerDisplayName({ id: gameState.winner, fallback: 'Player' }) : null;
+  const currentActorId = gameState.players[gameState.currentPlayerIndex]?.id;
+  const currentActorLabel = currentActorId ? playerLabelsById[currentActorId] || null : null;
   const topBarPlayer1Profile = !isSpectator && playerIndex === 0 ? { ...player1Profile, username: 'You' } : player1Profile;
   const topBarPlayer2Profile = !isSpectator && playerIndex === 1 ? { ...player2Profile, username: 'You' } : player2Profile;
 
@@ -435,8 +445,8 @@ const GameScreen: React.FC = () => {
             turn={gameState.turn}
             phase={mapPhaseForTableArea(gameState.phase)}
             isMyTurn={isMyTurn}
-            playerName={playerProfile.username || undefined}
-            opponentName={opponentProfile.username || undefined}
+            playerName={playerProfileLabel}
+            opponentName={opponentProfileLabel}
           />
           {!isSpectator && (
             <PendingEffectPanel
@@ -469,12 +479,14 @@ const GameScreen: React.FC = () => {
           turnTimer={remainingTime}
           actionsPerTurn={gameState.actionsPerTurn}
           isSpectator={isSpectator}
+          winnerLabel={winnerLabel}
+          currentActorLabel={currentActorLabel}
           onEndTurnClick={handleEndTurn}
         />
       )}
     >
 
-    <div className="flex h-full min-h-0 flex-col gap-2">
+    <div className="flex min-h-0 flex-col gap-2 xl:h-full">
       {settlementRetry && !isSpectator && (
         <div className="flex shrink-0 flex-col gap-3 rounded-xl border border-amber-300/35 bg-amber-500/10 px-4 py-3 text-sm text-amber-100 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
@@ -497,9 +509,9 @@ const GameScreen: React.FC = () => {
         </div>
       )}
 
-    <div className="grid min-h-0 flex-1 grid-cols-[minmax(170px,0.82fr)_minmax(620px,3.6fr)_minmax(170px,0.85fr)_minmax(190px,1fr)] gap-2 overflow-hidden">
+    <div className="grid min-h-0 flex-1 grid-cols-1 gap-2 xl:grid-cols-[minmax(170px,0.82fr)_minmax(0,3.6fr)_minmax(170px,0.85fr)_minmax(190px,1fr)] xl:overflow-hidden">
         {/* Hands Column - Adjusted width */}
-  <div className="h-full min-h-0" id={`hand-anchor-${currentPlayerId || 'unknown'}`} ref={(el) => { if (el && currentPlayerId) registry.register(`hand:${currentPlayerId}`, el); }}>
+  <div className="order-2 min-h-[280px] xl:order-1 xl:h-full xl:min-h-0" id={`hand-anchor-${currentPlayerId || 'unknown'}`} ref={(el) => { if (el && currentPlayerId) registry.register(`hand:${currentPlayerId}`, el); }}>
           {player && opponent ? (
             <HandsColumn
               currentPlayerHand={player.hand}
@@ -509,8 +521,8 @@ const GameScreen: React.FC = () => {
               selectedKnowledgeId={selectedKnowledgeId}
               onHandCardClick={handleHandClick}
               isSpectator={isSpectator}
-              currentPlayerLabel={isSpectator ? 'Player 1 Hand' : 'Your Hand'}
-              opponentPlayerLabel={isSpectator ? 'Player 2 Hand' : 'Opponent'}
+              currentPlayerLabel={isSpectator ? `${playerProfileLabel} Hand` : 'Your Hand'}
+              opponentPlayerLabel={isSpectator ? `${opponentProfileLabel} Hand` : 'Opponent'}
             />
           ) : (
             <div className="w-full h-full bg-black/20 rounded-lg flex items-center justify-center text-gray-500">Waiting for player data...</div>
@@ -518,7 +530,7 @@ const GameScreen: React.FC = () => {
         </div>
 
     {/* Table Area - Adjusted width */}
-  <div className="h-full min-h-0">
+  <div className="order-1 min-h-[460px] xl:order-2 xl:h-full xl:min-h-0">
           {player && opponent ? (
             <TableArea
               currentPlayer={player}
@@ -534,8 +546,13 @@ const GameScreen: React.FC = () => {
           )}
         </div>
 
-    {/* Market Column - Adjusted width */}
-  <div className="h-full min-h-0" ref={(el) => { if (el) registry.register('market:anchor', el); }}>
+    <details className="order-3 min-h-0 xl:contents" open>
+      <summary className="mb-2 cursor-pointer rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm font-bold uppercase tracking-wide text-slate-200 xl:hidden">
+        Market and game log
+      </summary>
+      <div className="grid min-h-0 gap-2 md:grid-cols-2 xl:contents">
+        {/* Market Column - Adjusted width */}
+        <div className="min-h-0 xl:h-full" ref={(el) => { if (el) registry.register('market:anchor', el); }}>
           <MarketColumn
             marketCards={gameState.market}
             deckCount={gameState.knowledgeDeck.length}
@@ -545,10 +562,12 @@ const GameScreen: React.FC = () => {
           />
         </div>
 
-    {/* Logs Column - New dedicated column */}
-  <div className="h-full min-h-0" ref={(el) => { if (el) registry.register('discard:anchor', el); }}>
-     <Logs logs={gameState.log} />
+        {/* Logs Column - New dedicated column */}
+        <div className="min-h-0 xl:h-full" ref={(el) => { if (el) registry.register('discard:anchor', el); }}>
+          <Logs logs={gameState.log} />
         </div>
+      </div>
+    </details>
       </div>
       </div>
     </GameShell>
