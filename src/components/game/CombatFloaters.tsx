@@ -31,9 +31,9 @@ const CombatFloaters: React.FC<CombatFloatersProps> = ({ event, onDone }) => {
   if (!event || !visible) return null;
 
   const parts: { text: string; className: string }[] = [];
-  if (event.damage && event.damage > 0) parts.push({ text: `-${event.damage}`, className: 'text-red-400 drop-shadow-[0_1px_2px_rgba(0,0,0,0.7)]' });
-  if (event.blocked && event.blocked > 0) parts.push({ text: `(${event.blocked})`, className: 'text-blue-300' });
-  if (event.crit) parts.push({ text: 'CRIT', className: 'text-yellow-300' });
+  if (event.damage && event.damage > 0) parts.push({ text: `-${event.damage}`, className: 'text-[#ff806f] drop-shadow-[0_1px_2px_rgba(0,0,0,0.75)]' });
+  if (event.blocked && event.blocked > 0) parts.push({ text: `(${event.blocked})`, className: 'text-cyan-200' });
+  if (event.crit) parts.push({ text: 'CRIT', className: 'text-amber-200' });
   if (event.bypass) parts.push({ text: 'BYPASS', className: 'text-gray-200' });
 
   return (
@@ -42,7 +42,7 @@ const CombatFloaters: React.FC<CombatFloatersProps> = ({ event, onDone }) => {
       style={{ left: event.x, top: event.y, transform: 'translate(-50%, -50%)' }}
     >
       <div className="animate-floatAndFade">
-        <div className="flex gap-1 text-xl font-extrabold">
+        <div className="flex gap-1 rounded-lg border border-white/10 bg-black/45 px-2 py-1 text-xl font-extrabold shadow-[0_0_24px_rgba(240,91,66,0.18)] backdrop-blur-sm">
           {parts.map((p, i) => (
             <span key={i} className={p.className}>{p.text}</span>
           ))}

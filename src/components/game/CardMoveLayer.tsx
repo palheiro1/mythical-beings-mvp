@@ -39,7 +39,7 @@ const CardMoveLayer: React.FC<CardMoveLayerProps> = ({ event, onDone, durationMs
       zIndex: 70,
       transition: `transform ${durationMs}ms ease-out, opacity ${durationMs}ms ease-out`,
       transform: 'translate(0px, 0px)',
-      opacity: 0.95,
+      opacity: 0.96,
     });
     setVisible(true);
 
@@ -60,7 +60,7 @@ const CardMoveLayer: React.FC<CardMoveLayerProps> = ({ event, onDone, durationMs
 
   return (
     <div style={style} className="pointer-events-none select-none">
-      <img src={event.image} alt="moving-card" className="w-full h-full object-cover rounded-[10px] shadow-xl" />
+      <img src={event.image} alt="moving-card" className="h-full w-full rounded-[8px] border border-amber-200/35 object-cover shadow-[0_18px_42px_rgba(0,0,0,0.58),0_0_22px_rgba(56,223,248,0.16)]" />
     </div>
   );
 };

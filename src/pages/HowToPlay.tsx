@@ -41,12 +41,12 @@ const HowToPlay: React.FC = () => {
     <PageShell contentClassName="grid gap-6 pb-24 lg:grid-cols-[240px_minmax(0,1fr)]">
       <aside className="hidden lg:block">
         <Panel className="sticky top-[calc(var(--navbar-height)+24px)] p-4">
-          <p className="mb-4 text-xs font-bold uppercase tracking-[0.28em] text-slate-500">Compendium</p>
+          <p className="mb-4 text-xs font-bold uppercase tracking-normal text-slate-500">Compendium</p>
           <nav className="space-y-2 text-sm">
-            <a href="#overview" className="flex items-center gap-2 rounded-xl bg-violet-500/15 px-3 py-2 text-violet-100"><BookOpen className="h-4 w-4" aria-hidden /> Overview</a>
-            <a href="#rulebook" className="flex items-center gap-2 rounded-xl px-3 py-2 text-slate-300 hover:bg-white/[0.05]"><ScrollText className="h-4 w-4" aria-hidden /> Rulebook</a>
-            <a href="#creatures" className="flex items-center gap-2 rounded-xl px-3 py-2 text-slate-300 hover:bg-white/[0.05]"><Sparkles className="h-4 w-4" aria-hidden /> Creatures</a>
-            <a href="#knowledge" className="flex items-center gap-2 rounded-xl px-3 py-2 text-slate-300 hover:bg-white/[0.05]"><Sparkles className="h-4 w-4" aria-hidden /> Knowledge</a>
+            <a href="#overview" className="flex items-center gap-2 rounded-lg bg-violet-500/15 px-3 py-2 text-violet-100"><BookOpen className="h-4 w-4" aria-hidden /> Overview</a>
+            <a href="#rulebook" className="flex items-center gap-2 rounded-lg px-3 py-2 text-slate-300 hover:bg-white/[0.05]"><ScrollText className="h-4 w-4" aria-hidden /> Rulebook</a>
+            <a href="#creatures" className="flex items-center gap-2 rounded-lg px-3 py-2 text-slate-300 hover:bg-white/[0.05]"><Sparkles className="h-4 w-4" aria-hidden /> Creatures</a>
+            <a href="#knowledge" className="flex items-center gap-2 rounded-lg px-3 py-2 text-slate-300 hover:bg-white/[0.05]"><Sparkles className="h-4 w-4" aria-hidden /> Knowledge</a>
           </nav>
         </Panel>
       </aside>
@@ -59,7 +59,7 @@ const HowToPlay: React.FC = () => {
         </Panel>
 
         <Panel id="rulebook" className="grid gap-5 p-5 md:grid-cols-[180px_1fr_auto] md:items-center">
-          <div className="mx-auto h-40 w-32 overflow-hidden rounded-2xl border border-amber-300/25 shadow-[0_0_28px_rgba(246,184,59,0.18)] md:mx-0">
+          <div className="mx-auto h-40 w-32 overflow-hidden rounded-xl border border-amber-300/25 shadow-[0_16px_34px_rgba(0,0,0,0.34)] md:mx-0">
             <img src="/images/spells/back.jpg" alt="" className="h-full w-full object-cover" />
           </div>
           <div>

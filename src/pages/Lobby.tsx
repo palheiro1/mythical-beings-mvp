@@ -232,17 +232,23 @@ const Lobby: React.FC = () => {
 
   return (
     <PageShell contentClassName="space-y-6 pb-24">
-      <Panel className="arena-banner overflow-hidden p-6 sm:p-8" glow>
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+      <Panel className="arena-banner relative overflow-hidden p-6 sm:p-8" glow>
+        <div className="pointer-events-none absolute bottom-[-28px] right-[18%] hidden h-44 w-32 rotate-[-10deg] overflow-hidden rounded-xl border border-amber-200/15 opacity-45 shadow-2xl lg:block">
+          <img src="/images/spells/back.jpg" alt="" className="h-full w-full object-cover" aria-hidden />
+        </div>
+        <div className="pointer-events-none absolute bottom-[-34px] right-[8%] hidden h-48 w-36 rotate-[9deg] overflow-hidden rounded-xl border border-cyan-200/15 opacity-45 shadow-2xl lg:block">
+          <img src="/images/spells/back.jpg" alt="" className="h-full w-full object-cover" aria-hidden />
+        </div>
+        <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <StatusBadge tone="violet" className="mb-4">
               <Swords className="h-3.5 w-3.5" aria-hidden />
               Play Hub
             </StatusBadge>
-            <h1 className="font-display text-4xl font-black uppercase text-slate-50 sm:text-5xl">Enter the Arena</h1>
-            <p className="mt-3 max-w-2xl text-slate-300">Create a duel, join by code, rejoin an active match, or train locally against the bot.</p>
+            <h1 className="font-display text-4xl font-black text-slate-50 sm:text-5xl">Enter the Arena</h1>
+            <p className="state-parchment mt-3 max-w-2xl text-sm sm:text-base">Create a duel, join by code, rejoin an active match, or train locally against the bot.</p>
           </div>
-          <div className="grid min-w-[220px] gap-3 rounded-2xl border border-white/10 bg-black/25 p-4">
+          <div className="surface-obsidian grid min-w-[220px] gap-3 rounded-xl border p-4">
             <div className="flex items-center justify-between gap-4">
               <span className="text-sm text-slate-400">Available</span>
               <strong className="text-2xl text-emerald-300">{availableSessions.length}</strong>
@@ -279,24 +285,24 @@ const Lobby: React.FC = () => {
           <Panel className="p-5">
             <div className="mb-5 flex items-center gap-3">
               <Users className="h-5 w-5 text-violet-200" aria-hidden />
-              <h2 className="font-display text-xl font-bold uppercase text-slate-100">Create or Join</h2>
+              <h2 className="font-display text-xl font-bold text-slate-100">Create or Join</h2>
             </div>
 
             <div className="space-y-5">
               <div>
-                <p className="mb-3 text-xs font-bold uppercase tracking-widest text-slate-400">Mode</p>
+                <p className="mb-3 text-xs font-bold uppercase tracking-normal text-slate-400">Mode</p>
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
                     onClick={() => setSelectedMode(PLAYHUB_MODE_ID)}
-                    className={`rounded-xl border px-3 py-2 text-sm font-bold uppercase transition ${!isCompetitiveMode ? 'border-cyan-300/45 bg-cyan-500/15 text-cyan-100' : 'border-white/10 bg-white/[0.04] text-slate-300 hover:bg-white/[0.07]'}`}
+                    className={`rounded-lg border px-3 py-2 text-sm font-bold uppercase transition ${!isCompetitiveMode ? 'state-arcane' : 'border-white/10 bg-white/[0.04] text-slate-300 hover:bg-white/[0.07]'}`}
                   >
                     Casual
                   </button>
                   <button
                     type="button"
                     onClick={() => setSelectedMode(PLAYHUB_COMPETITIVE_MODE_ID)}
-                    className={`rounded-xl border px-3 py-2 text-sm font-bold uppercase transition ${isCompetitiveMode ? 'border-amber-300/50 bg-amber-500/15 text-amber-100' : 'border-white/10 bg-white/[0.04] text-slate-300 hover:bg-white/[0.07]'}`}
+                    className={`rounded-lg border px-3 py-2 text-sm font-bold uppercase transition ${isCompetitiveMode ? 'state-relic' : 'border-white/10 bg-white/[0.04] text-slate-300 hover:bg-white/[0.07]'}`}
                   >
                     GEM
                   </button>
@@ -305,7 +311,7 @@ const Lobby: React.FC = () => {
 
               {isCompetitiveMode && (
                 <div>
-                  <label htmlFor="stake-gem" className="mb-3 block text-xs font-bold uppercase tracking-widest text-slate-400">Stake</label>
+                  <label htmlFor="stake-gem" className="mb-3 block text-xs font-bold uppercase tracking-normal text-slate-400">Stake</label>
                   <div className="relative">
                     <Input
                       id="stake-gem"
@@ -317,14 +323,14 @@ const Lobby: React.FC = () => {
                       aria-invalid={!isStakeValid}
                       className="pr-16 font-mono text-lg font-black"
                     />
-                    <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-black uppercase tracking-widest text-amber-100/70">GEM</span>
+                    <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-black uppercase tracking-normal text-amber-100/70">GEM</span>
                   </div>
                   {!isStakeValid && <p className="mt-2 text-xs text-amber-100/80">Enter a whole GEM amount greater than zero.</p>}
                 </div>
               )}
 
               <div>
-                <p className="mb-3 text-xs font-bold uppercase tracking-widest text-slate-400">Create your own session</p>
+                <p className="mb-3 text-xs font-bold uppercase tracking-normal text-slate-400">Create your own session</p>
                 <ArenaButton
                   type="button"
                   onClick={handleCreateSession}
@@ -338,7 +344,7 @@ const Lobby: React.FC = () => {
               </div>
 
               <div className="border-t border-white/10 pt-5">
-                <label htmlFor="join-code" className="mb-2 block text-xs font-bold uppercase tracking-widest text-slate-400">Join with a session code</label>
+                <label htmlFor="join-code" className="mb-2 block text-xs font-bold uppercase tracking-normal text-slate-400">Join with a session code</label>
                 <Input
                   id="join-code"
                   value={joinCode}
@@ -384,9 +390,9 @@ const Lobby: React.FC = () => {
             <div className="mb-4 flex items-center justify-between gap-3">
               <div className="flex items-center gap-3">
                 <Swords className="h-5 w-5 text-amber-200" aria-hidden />
-                <h2 className="font-display text-xl font-bold uppercase text-slate-100">Available Sessions</h2>
+              <h2 className="font-display text-xl font-bold text-slate-100">Available Sessions</h2>
               </div>
-              <button type="button" onClick={() => void fetchSessions()} className="rounded-xl border border-white/10 bg-white/[0.04] p-2 text-slate-300 transition hover:text-white" aria-label="Refresh sessions">
+              <button type="button" onClick={() => void fetchSessions()} className="rounded-lg border border-white/10 bg-white/[0.04] p-2 text-slate-300 transition hover:text-white" aria-label="Refresh sessions">
                 <RefreshCw className="h-4 w-4" aria-hidden />
               </button>
             </div>
@@ -397,7 +403,7 @@ const Lobby: React.FC = () => {
                   const isParticipant = session.participants?.some(participant => participant.player_id === playerId) ?? false;
                   const isFull = participantCount >= session.max_players;
                   return (
-                    <div key={session.id} className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 transition hover:border-violet-300/35 hover:bg-white/[0.06]">
+                    <div key={session.id} className="surface-obsidian rounded-xl border p-4 transition hover:border-cyan-300/30">
                       <div className="flex items-start justify-between gap-4">
                         <div className="min-w-0">
                           <p className="truncate text-lg font-bold text-slate-100">{session.hostName || 'Unknown Host'}</p>
@@ -433,14 +439,14 @@ const Lobby: React.FC = () => {
           <Panel className="flex min-h-[440px] flex-col p-5">
             <div className="mb-4 flex items-center gap-3">
               <Clock className="h-5 w-5 text-cyan-200" aria-hidden />
-              <h2 className="font-display text-xl font-bold uppercase text-slate-100">Active Sessions</h2>
+              <h2 className="font-display text-xl font-bold text-slate-100">Active Sessions</h2>
             </div>
             <div className="arena-scrollbar flex-1 space-y-3 overflow-y-auto pr-1">
               {activeSessions.length > 0 ? (
                 activeSessions.map((session) => {
                   const isParticipant = session.participants?.some(participant => participant.player_id === playerId);
                   return (
-                    <div key={session.id} className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+                    <div key={session.id} className="surface-obsidian rounded-xl border p-4">
                       <div className="flex items-start justify-between gap-4">
                         <div className="min-w-0">
                           <p className="truncate text-lg font-bold text-slate-100">{session.hostName || 'Unknown Host'}</p>

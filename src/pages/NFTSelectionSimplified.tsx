@@ -341,7 +341,7 @@ const NFTSelectionSimplified: React.FC<NFTSelectionSimplifiedProps> = ({ mode = 
 
       <div className="mx-auto w-full max-w-7xl">
         <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <button type="button" onClick={() => navigate('/lobby')} className="inline-flex w-fit items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-slate-300 transition hover:text-white">
+          <button type="button" onClick={() => navigate('/lobby')} className="inline-flex w-fit items-center gap-2 rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-slate-300 transition hover:text-white">
             <ArrowLeft className="h-4 w-4" aria-hidden />
             Back
           </button>
@@ -354,7 +354,10 @@ const NFTSelectionSimplified: React.FC<NFTSelectionSimplifiedProps> = ({ mode = 
           )}
         </div>
 
-        <Panel className="p-5 sm:p-8" glow>
+        <Panel className="relative overflow-hidden p-5 sm:p-8" glow>
+          <div className="pointer-events-none absolute -right-12 -top-16 h-56 w-40 rotate-12 overflow-hidden rounded-xl border border-amber-200/12 opacity-20">
+            <img src="/images/spells/back.jpg" alt="" className="h-full w-full object-cover" aria-hidden />
+          </div>
           <div className="mb-8 grid gap-6 border-b border-white/10 pb-6 lg:grid-cols-[1fr_auto] lg:items-center">
             <div className="text-center lg:text-left">
               <StatusBadge tone={selected.length === 3 ? 'green' : 'violet'} className="mb-4">
@@ -362,7 +365,7 @@ const NFTSelectionSimplified: React.FC<NFTSelectionSimplifiedProps> = ({ mode = 
                 {selected.length === 3 ? 'Ready' : 'Choose exactly 3'}
               </StatusBadge>
               <h1 className="font-display text-4xl font-black text-slate-50">
-                {isBotMode ? 'Select Your Training Team (Choose 3)' : 'Select Your Team (Choose 3)'}
+                {isBotMode ? 'Select Your Training Team' : 'Select Your Team'}
               </h1>
               <p className="mt-3 text-slate-300">
                 {isBotMode
@@ -382,31 +385,31 @@ const NFTSelectionSimplified: React.FC<NFTSelectionSimplifiedProps> = ({ mode = 
                 </ArenaButton>
               )}
             </div>
-            <div className={cn('mx-auto grid h-28 w-28 place-items-center rounded-full border-4 bg-cyan-500/10 text-center shadow-[0_0_34px_rgba(34,211,238,0.24)] lg:mx-0', timer <= 10 ? 'border-amber-300 text-amber-100' : 'border-cyan-300/50 text-cyan-100')}>
+            <div className={cn('mx-auto grid h-28 w-28 place-items-center rounded-full border-4 bg-cyan-500/10 text-center shadow-[0_0_28px_rgba(34,211,238,0.16)] lg:mx-0', timer <= 10 ? 'border-amber-300 text-amber-100' : 'border-cyan-300/50 text-cyan-100')}>
               <div>
                 <Clock3 className="mx-auto mb-1 h-5 w-5" aria-hidden />
                 <div className="text-4xl font-black leading-none">{timer}</div>
-                <div className="text-[10px] font-bold uppercase tracking-widest">{timer === 0 ? 'expired' : 'sec'}</div>
+                <div className="text-[10px] font-bold uppercase tracking-normal">{timer === 0 ? 'expired' : 'sec'}</div>
               </div>
             </div>
           </div>
 
           {timer === 0 && !waiting && (
-            <div className="mb-6 rounded-2xl border border-amber-300/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+            <div className="state-relic mb-6 rounded-xl border px-4 py-3 text-sm">
               Selection timer expired. You can still choose and confirm your team when ready.
             </div>
           )}
 
-          <div className="mb-8 grid grid-cols-[repeat(auto-fit,minmax(118px,1fr))] justify-items-center gap-4">
+          <div className="surface-obsidian mb-8 grid grid-cols-[repeat(auto-fit,minmax(118px,1fr))] justify-items-center gap-4 rounded-xl border p-4 sm:p-5">
             {dealtCreatures.map((card) => {
               const isSelected = selected.includes(card.id);
               return (
                 <div
                   key={card.id}
                   className={cn(
-                    'card-readable relative aspect-[921/1217] w-full max-w-[160px] rounded-[14px] transition duration-300',
+                    'card-readable relative aspect-[921/1217] w-full max-w-[160px] rounded-xl transition duration-300',
                     waiting || isConfirming ? 'opacity-65' : 'hover:-translate-y-1 hover:scale-[1.03]',
-                    isSelected && 'shadow-[0_0_28px_rgba(246,184,59,0.45)]',
+                    isSelected && 'card-state-ring',
                   )}
                 >
                   <Card
@@ -426,7 +429,7 @@ const NFTSelectionSimplified: React.FC<NFTSelectionSimplifiedProps> = ({ mode = 
             })}
           </div>
 
-          <div className="rounded-2xl border border-white/10 bg-black/25 p-4 sm:p-5">
+          <div className="surface-obsidian rounded-xl border p-4 sm:p-5">
             <div className="grid gap-5 lg:grid-cols-[1fr_auto_auto] lg:items-center">
               <div>
                 <h2 className="font-display text-2xl font-bold text-amber-200">Your Team ({selected.length}/3)</h2>
@@ -440,7 +443,7 @@ const NFTSelectionSimplified: React.FC<NFTSelectionSimplifiedProps> = ({ mode = 
                       .map(card => (
                         <div
                           key={`selected-${card.id}`}
-                          className="relative aspect-[921/1217] w-20 overflow-hidden rounded-[10px] border-2 border-amber-300 shadow-[0_0_18px_rgba(246,184,59,0.28)] transition hover:border-red-300 sm:w-[86px]"
+                          className="relative aspect-[921/1217] w-20 overflow-hidden rounded-lg border-2 border-amber-300 shadow-[0_0_18px_rgba(246,184,59,0.22)] transition hover:border-red-300 sm:w-[86px]"
                         >
                           <Card
                             card={card}
@@ -455,10 +458,10 @@ const NFTSelectionSimplified: React.FC<NFTSelectionSimplifiedProps> = ({ mode = 
                 )}
               </div>
 
-              <div className="grid h-20 w-20 place-items-center rounded-2xl border border-amber-300/30 bg-amber-500/10 text-center">
+              <div className="state-relic grid h-20 w-20 place-items-center rounded-xl border text-center">
                 <div>
                   <div className="text-3xl font-black text-amber-200">{selected.length}/3</div>
-                  <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Selected</div>
+                  <div className="text-[10px] font-bold uppercase tracking-normal text-slate-400">Selected</div>
                 </div>
               </div>
 

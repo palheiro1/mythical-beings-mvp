@@ -210,7 +210,7 @@ const ProfilePage: React.FC = () => {
               {uploading && <div className="absolute inset-0 grid place-items-center rounded-full bg-black/60 text-sm text-cyan-100">Uploading...</div>}
             </div>
 
-            <label htmlFor="avatar-upload" className="mt-5 inline-flex cursor-pointer items-center gap-2 rounded-xl border border-cyan-300/35 bg-cyan-500/10 px-4 py-2 text-sm font-bold uppercase tracking-wide text-cyan-100 transition hover:bg-cyan-500/15">
+            <label htmlFor="avatar-upload" className="mt-5 inline-flex cursor-pointer items-center gap-2 rounded-lg border border-cyan-300/35 bg-cyan-500/10 px-4 py-2 text-sm font-bold uppercase tracking-normal text-cyan-100 transition hover:bg-cyan-500/15">
               <Upload className="h-4 w-4" aria-hidden />
               {uploading ? 'Uploading...' : 'Upload New Avatar'}
             </label>
@@ -230,7 +230,7 @@ const ProfilePage: React.FC = () => {
         <Panel className="p-6">
           <div className="space-y-5">
             <div>
-              <label htmlFor="username" className="mb-2 block text-xs font-bold uppercase tracking-widest text-slate-400">Username</label>
+              <label htmlFor="username" className="mb-2 block text-xs font-bold uppercase tracking-normal text-slate-400">Username</label>
               <Input
                 id="username"
                 type="text"

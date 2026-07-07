@@ -36,9 +36,9 @@ const NavBar: React.FC = () => {
       ];
 
   const navClass = ({ isActive }: { isActive: boolean }) => cn(
-    'inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold uppercase tracking-wide transition',
+    'inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-bold uppercase tracking-normal transition',
     isActive
-      ? 'border border-violet-300/35 bg-violet-500/15 text-violet-100 shadow-[0_0_22px_rgba(139,92,246,0.18)]'
+      ? 'border border-violet-300/35 bg-violet-500/15 text-violet-100'
       : 'text-slate-300 hover:bg-white/[0.06] hover:text-white',
   );
 
@@ -46,12 +46,12 @@ const NavBar: React.FC = () => {
     <nav className="sticky top-0 z-40 flex h-[var(--navbar-height)] items-center justify-between border-b border-white/10 bg-[#060912]/88 px-4 text-white shadow-[0_18px_36px_-24px_rgba(0,0,0,0.9)] backdrop-blur-xl">
       <div className="flex min-w-0 items-center gap-5">
         <Link to={user ? '/lobby' : '/'} className="group flex min-w-0 items-center gap-3">
-          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl border border-violet-300/30 bg-violet-500/10 shadow-[0_0_24px_rgba(139,92,246,0.2)]">
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-violet-300/30 bg-violet-500/10 shadow-[0_10px_24px_rgba(0,0,0,0.25)]">
             <img src="/logos/logo-header-dark.png" alt="Wisdom Duel" className="h-7 w-7 object-contain opacity-90 transition group-hover:opacity-100" />
           </span>
           <span className="hidden min-w-0 flex-col leading-none sm:flex">
             <span className="font-display text-lg font-bold uppercase text-slate-100">Wisdom</span>
-            <span className="text-[10px] font-bold uppercase tracking-[0.38em] text-violet-300">Duel</span>
+            <span className="text-[10px] font-bold uppercase tracking-normal text-violet-300">Duel</span>
           </span>
         </Link>
 
@@ -75,23 +75,23 @@ const NavBar: React.FC = () => {
           <>
             {!user ? (
               <Link to="/">
-                <button className="inline-flex items-center gap-2 rounded-xl border border-amber-300/40 bg-amber-500/15 px-3 py-2 text-sm font-bold uppercase tracking-wide text-amber-100 transition hover:bg-amber-400/20">
+                <button className="inline-flex items-center gap-2 rounded-lg border border-amber-300/40 bg-amber-500/15 px-3 py-2 text-sm font-bold uppercase tracking-normal text-amber-100 transition hover:bg-amber-400/20">
                   <LogIn className="h-4 w-4" aria-hidden />
                   Sign In
                 </button>
               </Link>
             ) : polygonWallet ? (
-              <div className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-2 py-1.5">
-                <Link to="/profile" className="hidden items-center gap-2 rounded-xl px-2 py-1 text-sm text-slate-200 transition hover:bg-white/[0.06] md:flex">
+              <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-2 py-1.5">
+                <Link to="/profile" className="hidden items-center gap-2 rounded-lg px-2 py-1 text-sm text-slate-200 transition hover:bg-white/[0.06] md:flex">
                   <UserCircle className="h-4 w-4 text-cyan-200" aria-hidden />
                   Profile
                 </Link>
-                <span className="max-w-[150px] truncate rounded-xl border border-cyan-300/20 bg-cyan-500/10 px-2.5 py-1 font-mono text-xs text-cyan-100">
+                <span className="max-w-[150px] truncate rounded-lg border border-cyan-300/20 bg-cyan-500/10 px-2.5 py-1 font-mono text-xs text-cyan-100">
                   {identity}
                 </span>
                 <button 
                   onClick={handleSignOut}
-                  className="inline-flex items-center gap-1 rounded-xl px-2 py-1 text-xs font-bold uppercase tracking-wide text-slate-300 transition hover:bg-red-500/12 hover:text-red-100"
+                  className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-bold uppercase tracking-normal text-slate-300 transition hover:bg-red-500/12 hover:text-red-100"
                   aria-label="Sign out"
                 >
                   <LogOut className="h-4 w-4" aria-hidden />
@@ -99,14 +99,14 @@ const NavBar: React.FC = () => {
                 </button>
               </div>
             ) : (
-              <div className="flex items-center gap-2 rounded-2xl border border-amber-300/20 bg-amber-500/[0.08] px-2 py-1.5">
-                <Link to="/" className="inline-flex items-center gap-2 rounded-xl px-2 py-1 text-sm font-bold uppercase tracking-wide text-amber-100 transition hover:bg-white/[0.06]">
+              <div className="flex items-center gap-2 rounded-xl border border-amber-300/20 bg-amber-500/[0.08] px-2 py-1.5">
+                <Link to="/" className="inline-flex items-center gap-2 rounded-lg px-2 py-1 text-sm font-bold uppercase tracking-normal text-amber-100 transition hover:bg-white/[0.06]">
                   <WalletCards className="h-4 w-4" aria-hidden />
                   Link Wallet
                 </Link>
                 <button
                   onClick={handleSignOut}
-                  className="inline-flex items-center gap-1 rounded-xl px-2 py-1 text-xs font-bold uppercase tracking-wide text-slate-300 transition hover:bg-red-500/12 hover:text-red-100"
+                  className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-bold uppercase tracking-normal text-slate-300 transition hover:bg-red-500/12 hover:text-red-100"
                   aria-label="Sign out"
                 >
                   <LogOut className="h-4 w-4" aria-hidden />

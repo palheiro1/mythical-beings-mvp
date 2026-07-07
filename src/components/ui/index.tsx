@@ -27,7 +27,7 @@ type PanelProps = {
 export function Panel({ children, className, glow = false, as = 'div', ...props }: PanelProps) {
   const Component = as;
   return (
-    <Component className={cn('arena-surface rounded-2xl', glow && 'arena-border-glow', className)} {...props}>
+    <Component className={cn('arena-surface rounded-xl', glow && 'arena-border-glow', className)} {...props}>
       {children}
     </Component>
   );
@@ -55,15 +55,15 @@ type ButtonSize = 'sm' | 'md' | 'lg';
 
 const buttonVariants: Record<ButtonVariant, string> = {
   primary:
-    'border-amber-300/60 bg-gradient-to-b from-amber-400 to-amber-700 text-amber-950 shadow-[0_0_28px_rgba(246,184,59,0.22)] hover:from-amber-300 hover:to-amber-600',
+    'trim-bronze border-amber-300/60 bg-gradient-to-b from-[#f5c766] via-[#d7952b] to-[#8c4f13] text-amber-950 shadow-[0_12px_24px_rgba(0,0,0,0.28)] hover:from-[#ffd77b] hover:to-[#a35d17]',
   secondary:
-    'border-cyan-300/40 bg-cyan-500/10 text-cyan-100 shadow-[0_0_22px_rgba(34,211,238,0.12)] hover:bg-cyan-400/15',
+    'state-arcane shadow-[0_10px_22px_rgba(0,0,0,0.22)] hover:bg-cyan-400/15',
   success:
     'border-emerald-300/40 bg-emerald-500/15 text-emerald-100 hover:bg-emerald-400/20',
   danger:
-    'border-red-300/45 bg-red-500/15 text-red-100 hover:bg-red-500/25',
+    'state-ember hover:bg-red-500/20',
   ghost:
-    'border-white/10 bg-white/[0.04] text-slate-200 hover:bg-white/[0.08]',
+    'border-white/10 bg-white/[0.035] text-slate-200 hover:bg-white/[0.07]',
 };
 
 const buttonSizes: Record<ButtonSize, string> = {
@@ -94,7 +94,7 @@ export function ArenaButton({
   return (
     <button
       className={cn(
-        'inline-flex items-center justify-center gap-2 rounded-xl border font-bold uppercase tracking-wide transition duration-200 focus:outline-none focus:ring-2 focus:ring-amber-300/40 disabled:opacity-55 disabled:shadow-none',
+        'inline-flex items-center justify-center gap-2 rounded-lg border font-bold uppercase tracking-normal transition duration-200 focus:outline-none focus:ring-2 focus:ring-amber-300/40 disabled:opacity-55 disabled:shadow-none',
         buttonVariants[variant],
         buttonSizes[size],
         fullWidth && 'w-full',
@@ -111,7 +111,7 @@ export function ArenaButton({
 
 export function StatusBadge({ children, tone = 'default', className }: { children: ReactNode; tone?: Tone; className?: string }) {
   return (
-    <span className={cn('inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-bold uppercase tracking-wide', toneClasses[tone], className)}>
+    <span className={cn('inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-bold uppercase tracking-normal', toneClasses[tone], className)}>
       {children}
     </span>
   );
@@ -128,7 +128,7 @@ export function Toast({
 }) {
   if (!message) return null;
   return (
-    <div className={cn('fixed bottom-5 left-1/2 z-50 -translate-x-1/2 rounded-2xl border px-4 py-3 text-sm shadow-2xl backdrop-blur-xl', toneClasses[tone], className)}>
+    <div className={cn('fixed bottom-5 left-1/2 z-50 -translate-x-1/2 rounded-xl border px-4 py-3 text-sm shadow-2xl backdrop-blur-xl', toneClasses[tone], className)}>
       {message}
     </div>
   );
@@ -167,11 +167,11 @@ export function CopyChip({
     <button
       type="button"
       onClick={handleCopy}
-      className={cn('inline-flex items-center gap-2 rounded-xl border border-violet-300/25 bg-violet-500/10 px-3 py-2 text-left font-mono text-sm text-violet-100 transition hover:border-violet-200/50 hover:bg-violet-500/15', className)}
+      className={cn('inline-flex items-center gap-2 rounded-lg border border-violet-300/25 bg-violet-500/10 px-3 py-2 text-left font-mono text-sm text-violet-100 transition hover:border-violet-200/50 hover:bg-violet-500/15', className)}
       aria-label={`Copy ${label || 'value'}`}
       title={`Copy ${value}`}
     >
-      {label && <span className="font-sans text-[10px] font-bold uppercase tracking-widest text-violet-200/70">{label}</span>}
+      {label && <span className="font-sans text-[10px] font-bold uppercase tracking-normal text-violet-200/70">{label}</span>}
       <span className="truncate">{value}</span>
       {copied ? <Check className="h-4 w-4 text-emerald-300" aria-hidden /> : <Clipboard className="h-4 w-4 text-violet-200" aria-hidden />}
     </button>
@@ -190,7 +190,7 @@ export function EmptyState({
   className?: string;
 }) {
   return (
-    <div className={cn('flex min-h-40 flex-col items-center justify-center rounded-2xl border border-dashed border-white/10 bg-white/[0.025] p-6 text-center', className)}>
+    <div className={cn('surface-obsidian flex min-h-40 flex-col items-center justify-center rounded-xl border border-dashed p-6 text-center', className)}>
       <p className="font-display text-xl text-slate-100">{title}</p>
       {description && <p className="mt-2 max-w-md text-sm text-slate-400">{description}</p>}
       {action && <div className="mt-4">{action}</div>}
@@ -229,7 +229,7 @@ export function Input(props: InputHTMLAttributes<HTMLInputElement>) {
     <input
       {...props}
       className={cn(
-        'w-full rounded-xl border border-white/10 bg-black/25 px-4 py-3 text-sm text-slate-100 outline-none transition placeholder:text-slate-500 focus:border-cyan-300/60 focus:ring-2 focus:ring-cyan-400/15',
+        'w-full rounded-lg border border-white/10 bg-black/25 px-4 py-3 text-sm text-slate-100 outline-none transition placeholder:text-slate-500 focus:border-cyan-300/60 focus:ring-2 focus:ring-cyan-400/15',
         props.className,
       )}
     />
@@ -239,7 +239,7 @@ export function Input(props: InputHTMLAttributes<HTMLInputElement>) {
 export function SpinnerEmblem({ label }: { label?: string }) {
   return (
     <div className="flex flex-col items-center gap-3">
-      <div className="grid h-20 w-20 place-items-center rounded-full border border-cyan-300/30 bg-cyan-400/10 shadow-[0_0_36px_rgba(34,211,238,0.25)] animate-[arenaPulse_1.8s_ease-in-out_infinite]">
+      <div className="grid h-20 w-20 place-items-center rounded-full border border-cyan-300/30 bg-cyan-400/10 shadow-[0_0_30px_rgba(34,211,238,0.18)] animate-[arenaPulse_1.8s_ease-in-out_infinite]">
         <LoaderCircle className="h-10 w-10 animate-spin text-cyan-200" aria-hidden />
       </div>
       {label && <p className="text-sm text-slate-400">{label}</p>}
@@ -261,9 +261,9 @@ export function StatCard({
   subtext?: ReactNode;
 }) {
   return (
-    <div className={cn('rounded-2xl border p-4', toneClasses[tone])}>
+    <div className={cn('rounded-xl border p-4', toneClasses[tone])}>
       <div className="flex items-center justify-between gap-3">
-        <p className="text-xs font-bold uppercase tracking-widest text-slate-400">{label}</p>
+        <p className="text-xs font-bold uppercase tracking-normal text-slate-400">{label}</p>
         {icon}
       </div>
       <div className="mt-3 text-3xl font-black text-slate-50">{value}</div>

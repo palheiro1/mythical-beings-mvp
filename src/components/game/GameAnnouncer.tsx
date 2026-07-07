@@ -49,11 +49,11 @@ const GameAnnouncer: React.FC<GameAnnouncerProps> = ({
 
   return (
     <div className="pointer-events-none fixed inset-0 z-[60] flex items-start justify-center">
-      <div className="mt-16 px-6 py-4 rounded-2xl bg-black/75 text-white shadow-2xl backdrop-blur-sm border border-violet-300/25
+      <div className="surface-obsidian mt-16 rounded-xl border px-6 py-4 text-white shadow-2xl backdrop-blur-sm
                       transform transition-all duration-700 ease-out animate-[fadeIn_200ms_ease-out]
                      ">
-        <div className="text-sm opacity-80 text-center">Turn {turn}</div>
-        <div className="text-2xl font-semibold tracking-wide text-center">
+        <div className="text-center text-sm text-amber-100/75">Turn {turn}</div>
+        <div className="font-display text-center text-2xl font-semibold">
           {message}
         </div>
       </div>

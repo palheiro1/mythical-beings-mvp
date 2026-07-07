@@ -199,7 +199,7 @@ const Card: React.FC<CardProps> = ({
         <button
           type="button"
           className={cn(
-            'grid border-0 bg-transparent p-0 text-left focus:outline-none focus:ring-2 focus:ring-amber-300/55 focus:ring-offset-2 focus:ring-offset-slate-950',
+            'grid border-0 bg-transparent p-0 text-left focus:outline-none focus:ring-2 focus:ring-cyan-300/55 focus:ring-offset-2 focus:ring-offset-slate-950',
             isBoardCard ? 'absolute left-1/2 top-1/2' : 'relative h-full max-h-full',
             hasPrimaryButton ? 'cursor-pointer' : 'cursor-default',
             interactive === false ? 'cursor-default' : '',
@@ -217,9 +217,10 @@ const Card: React.FC<CardProps> = ({
         >
           <span
             className={cn(
-              'block h-full w-full overflow-hidden rounded-[10px] bg-slate-900 shadow-[0_12px_28px_rgba(0,0,0,0.38)] ring-1 transition duration-300 ease-out will-change-transform',
-              canUsePrimaryAction ? 'hover:-translate-y-0.5 hover:shadow-[0_18px_34px_rgba(0,0,0,0.45)]' : '',
-              isCardSelected ? 'ring-2 ring-amber-300 shadow-[0_0_28px_rgba(246,184,59,0.42)]' : 'ring-white/15',
+              'block h-full w-full overflow-hidden rounded-[8px] bg-slate-950 shadow-[0_12px_28px_rgba(0,0,0,0.42)] ring-1 transition duration-300 ease-out will-change-transform',
+              canUsePrimaryAction ? 'hover:-translate-y-0.5 hover:shadow-[0_18px_34px_rgba(0,0,0,0.48),0_0_18px_rgba(56,223,248,0.12)]' : '',
+              isCardSelected ? 'card-state-ring ring-amber-200' : 'ring-[rgba(220,200,162,0.18)]',
+              isDisabled ? 'saturate-[0.72]' : '',
             )}
           >
             <img
@@ -235,7 +236,7 @@ const Card: React.FC<CardProps> = ({
           <button
             type="button"
             className={cn(
-              'absolute right-1.5 top-1.5 z-30 grid h-7 w-7 place-items-center rounded-full border border-white/15 bg-black/70 text-cyan-100 opacity-0 shadow-lg transition hover:bg-black/85 focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-cyan-300/50 group-hover/card:opacity-100',
+              'absolute right-1.5 top-1.5 z-30 grid h-7 w-7 place-items-center rounded-full border border-cyan-200/25 bg-black/72 text-cyan-100 opacity-0 shadow-lg transition hover:bg-black/85 focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-cyan-300/50 group-hover/card:opacity-100',
               isBoardCard && 'right-1 top-1 h-6 w-6',
             )}
             onClick={(event) => {
@@ -250,7 +251,7 @@ const Card: React.FC<CardProps> = ({
 
         {knowledgeStatus && !showBack && (
           <div className="pointer-events-none absolute inset-x-1 bottom-1 z-20 flex items-end justify-between gap-1">
-            <div className="flex gap-0.5 rounded-full border border-black/50 bg-black/[0.72] px-1.5 py-1 shadow">
+            <div className="flex gap-0.5 rounded-md border border-black/50 bg-black/[0.72] px-1.5 py-1 shadow">
               {Array.from({ length: knowledgeStatus.steps }).map((_, index) => (
                 <span
                   key={index}
@@ -264,7 +265,7 @@ const Card: React.FC<CardProps> = ({
               ))}
             </div>
             <div className={cn(
-              'max-w-[58%] truncate rounded-full border px-2 py-0.5 text-[10px] font-black uppercase tracking-wide shadow',
+              'max-w-[58%] truncate rounded-md border px-2 py-0.5 text-[10px] font-black uppercase tracking-normal shadow',
               knowledgeStatus.isFinalNext
                 ? 'border-red-300/60 bg-red-500/[0.85] text-white'
                 : 'border-cyan-200/50 bg-cyan-500/[0.85] text-slate-950',
@@ -279,7 +280,7 @@ const Card: React.FC<CardProps> = ({
 
       {isZoomed && typeof document !== 'undefined' && createPortal((
         <div
-          className="pointer-events-none fixed z-50 overflow-hidden rounded-[14px] border border-amber-200/70 bg-slate-950 shadow-[0_24px_70px_rgba(0,0,0,0.7),0_0_42px_rgba(246,184,59,0.2)]"
+          className="surface-obsidian pointer-events-none fixed z-50 overflow-hidden rounded-xl border border-amber-200/55 shadow-[0_24px_70px_rgba(0,0,0,0.7),0_0_26px_rgba(183,121,42,0.2)]"
           style={{
             top: zoomFrame.top,
             left: zoomFrame.left,

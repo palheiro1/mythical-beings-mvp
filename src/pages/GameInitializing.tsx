@@ -173,7 +173,7 @@ const GameInitializing: React.FC = () => {
         <button
           type="button"
           onClick={() => navigate('/lobby')}
-          className="mb-5 inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-slate-300 transition hover:text-white"
+          className="mb-5 inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-slate-300 transition hover:text-white"
         >
           <ArrowLeft className="h-4 w-4" aria-hidden />
           Back to Lobby
@@ -190,7 +190,7 @@ const GameInitializing: React.FC = () => {
               const isActive = statusIndex === index && !status.includes('Launching');
               const Icon = isComplete ? CheckCircle2 : isActive ? CircleDot : Circle;
               return (
-                <div key={step} className="flex items-center justify-between gap-4 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3">
+                <div key={step} className="flex items-center justify-between gap-4 rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3">
                   <div className="flex min-w-0 items-center gap-3">
                     <Icon className={cn('h-5 w-5 shrink-0', isComplete ? 'text-emerald-300' : isActive ? 'text-cyan-300' : 'text-slate-500')} aria-hidden />
                     <span className={cn('truncate text-sm', isComplete ? 'text-slate-200' : isActive ? 'text-cyan-100' : 'text-slate-500')}>{step}</span>
@@ -211,8 +211,8 @@ const GameInitializing: React.FC = () => {
           <p className="mt-4 text-sm text-cyan-200">{status}</p>
 
           {gameId && (
-            <details className="mt-5 rounded-2xl border border-white/10 bg-white/[0.035] p-4 text-left">
-              <summary className="cursor-pointer text-xs font-bold uppercase tracking-widest text-slate-400">
+            <details className="mt-5 rounded-xl border border-white/10 bg-white/[0.035] p-4 text-left">
+              <summary className="cursor-pointer text-xs font-bold uppercase tracking-normal text-slate-400">
                 Technical details
               </summary>
               <CopyChip label="Game ID" value={gameId} className="mt-4 max-w-full" />

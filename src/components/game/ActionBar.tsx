@@ -61,8 +61,8 @@ const ActionBar: React.FC<ActionBarProps> = ({
   const canEndTurn = isMyTurn && phase === 'action' && !winner;
 
   return (
-    <div className="border-t border-white/10 bg-[#060912]/92 px-3 py-3 text-white shadow-[0_-18px_45px_-30px_rgba(0,0,0,0.95)] backdrop-blur-xl">
-      <div className="grid min-h-16 grid-cols-1 items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 md:grid-cols-[240px_1fr_260px]">
+    <div className="border-t border-white/10 bg-[#050810]/94 px-3 py-3 text-white shadow-[0_-18px_45px_-30px_rgba(0,0,0,0.95)] backdrop-blur-xl">
+      <div className="surface-obsidian grid min-h-16 grid-cols-1 items-center gap-3 rounded-xl border px-4 py-3 md:grid-cols-[240px_1fr_260px]">
       <div className="flex items-center gap-2">
         <StatusBadge tone={winner ? 'red' : isMyTurn ? 'violet' : 'muted'}>
           {winner ? 'Game Over' : isMyTurn ? 'Your Turn' : isSpectator ? 'Spectating' : 'Opponent Turn'}
@@ -77,7 +77,7 @@ const ActionBar: React.FC<ActionBarProps> = ({
         {isMyTurn && phase === 'action' && (
           <div className="hidden min-w-[136px] items-center gap-2 sm:flex">
             <Clock3 className="h-4 w-4 text-cyan-200" aria-hidden />
-            <div className="h-2 flex-1 overflow-hidden rounded-full bg-white/10" aria-hidden>
+            <div className="h-2 flex-1 overflow-hidden rounded-md bg-white/10" aria-hidden>
               <div
                 className="h-full bg-gradient-to-r from-cyan-300 to-violet-400 transition-all duration-500"
                 style={{ width: `${Math.max(0, Math.min(100, (turnTimer / 30) * 100))}%` }}

@@ -289,7 +289,7 @@ const BotGame: React.FC = () => {
           />
         </div>
         <details className="order-3 min-h-0 xl:contents" open>
-          <summary className="mb-2 cursor-pointer rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm font-bold uppercase tracking-wide text-slate-200 xl:hidden">
+          <summary className="mb-2 cursor-pointer rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-sm font-bold uppercase tracking-normal text-slate-200 xl:hidden">
             Market and game log
           </summary>
           <div className="grid min-h-0 gap-2 md:grid-cols-2 xl:contents">

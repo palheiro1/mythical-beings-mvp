@@ -323,9 +323,15 @@ const WaitingScreen: React.FC = () => {
   return (
     <div className="arena-page relative flex min-h-[calc(100vh-var(--navbar-height))] items-center justify-center overflow-hidden px-4 py-10">
       <div className="pointer-events-none absolute inset-0 opacity-30">
-        <div className="absolute left-[10%] top-[18%] h-52 w-36 -rotate-12 rounded-2xl border border-white/10 bg-white/[0.03]" />
-        <div className="absolute right-[12%] top-[28%] h-60 w-40 rotate-12 rounded-2xl border border-white/10 bg-white/[0.03]" />
-        <div className="absolute bottom-[16%] left-[18%] h-48 w-32 rotate-6 rounded-2xl border border-white/10 bg-white/[0.03]" />
+        <div className="absolute left-[10%] top-[18%] h-52 w-36 -rotate-12 overflow-hidden rounded-xl border border-amber-200/18 shadow-2xl">
+          <img src="/images/spells/back.jpg" alt="" className="h-full w-full object-cover" aria-hidden />
+        </div>
+        <div className="absolute right-[12%] top-[28%] h-60 w-40 rotate-12 overflow-hidden rounded-xl border border-cyan-200/18 shadow-2xl">
+          <img src="/images/spells/back.jpg" alt="" className="h-full w-full object-cover" aria-hidden />
+        </div>
+        <div className="absolute bottom-[16%] left-[18%] h-48 w-32 rotate-6 overflow-hidden rounded-xl border border-violet-200/18 shadow-2xl">
+          <img src="/images/spells/back.jpg" alt="" className="h-full w-full object-cover" aria-hidden />
+        </div>
       </div>
 
       <div className="relative z-10 w-full max-w-2xl text-center">
@@ -342,20 +348,20 @@ const WaitingScreen: React.FC = () => {
           </p>
 
           <div className="mt-8">
-            <p className="text-xs font-bold uppercase tracking-[0.32em] text-slate-500">Session Code</p>
+            <p className="text-xs font-bold uppercase tracking-normal text-slate-500">Session Code</p>
             {session?.code ? (
-              <CopyChip value={session.code} className="mt-3 justify-center px-6 py-4 text-4xl font-black tracking-[0.18em] text-amber-100 sm:text-5xl" />
+              <CopyChip value={session.code} className="state-relic mt-3 justify-center px-6 py-4 text-4xl font-black tracking-normal text-amber-100 sm:text-5xl" />
             ) : (
-              <div className="mt-3 rounded-2xl border border-white/10 bg-white/[0.04] px-6 py-4 text-slate-500">No code available</div>
+              <div className="mt-3 rounded-xl border border-white/10 bg-white/[0.04] px-6 py-4 text-slate-500">No code available</div>
             )}
           </div>
 
           <div className="mt-8 grid gap-4 sm:grid-cols-2">
-            <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
-              <p className="text-xs font-bold uppercase tracking-widest text-slate-500">Players Ready</p>
+            <div className="surface-obsidian rounded-xl border p-4">
+              <p className="text-xs font-bold uppercase tracking-normal text-slate-500">Players Ready</p>
               <p className="mt-2 text-4xl font-black text-cyan-200">{readyCount}<span className="text-slate-500">/{maxPlayers}</span></p>
             </div>
-            <div className="flex items-center justify-center rounded-2xl border border-emerald-300/20 bg-emerald-500/10 p-4">
+            <div className="flex items-center justify-center rounded-xl border border-emerald-300/20 bg-emerald-500/10 p-4">
               <StatusBadge tone="green">
                 <Users className="h-3.5 w-3.5" aria-hidden />
                 {participantCount}/{maxPlayers} players
@@ -364,21 +370,21 @@ const WaitingScreen: React.FC = () => {
           </div>
 
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
-            <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
-              <p className="text-xs font-bold uppercase tracking-widest text-slate-500">Mode</p>
+            <div className="surface-obsidian rounded-xl border p-4">
+              <p className="text-xs font-bold uppercase tracking-normal text-slate-500">Mode</p>
               <p className="mt-2 text-lg font-black text-slate-100">{isCompetitive ? 'Competitive GEM' : 'Casual'}</p>
             </div>
-            <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
-              <p className="text-xs font-bold uppercase tracking-widest text-slate-500">Session</p>
+            <div className="surface-obsidian rounded-xl border p-4">
+              <p className="text-xs font-bold uppercase tracking-normal text-slate-500">Session</p>
               <p className="mt-2 font-mono text-lg font-black text-amber-100">{sessionCode || formatShortId(sessionId, 6)}</p>
             </div>
           </div>
 
           {isCompetitive && (
-            <div className="mt-6 rounded-2xl border border-amber-300/20 bg-amber-500/10 p-4 text-left">
+            <div className="state-relic mt-6 rounded-xl border p-4 text-left">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <p className="text-xs font-bold uppercase tracking-widest text-amber-100/70">Polygon escrow</p>
+                  <p className="text-xs font-bold uppercase tracking-normal text-amber-100/70">Polygon escrow</p>
                   <p className="mt-1 text-2xl font-black text-amber-100">{competitionStatus?.stake_gem ?? '?'} GEM</p>
                 </div>
                 <StatusBadge tone={competitionStatus?.status === 'ready' ? 'green' : 'amber'}>
@@ -388,7 +394,7 @@ const WaitingScreen: React.FC = () => {
 
               <div className="mt-4 grid gap-2">
                 {(competitionStatus?.deposits ?? []).map((deposit) => (
-                  <div key={deposit.player_id} className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm">
+                  <div key={deposit.player_id} className="flex items-center justify-between gap-3 rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-sm">
                     <span className="truncate font-mono text-slate-300">{formatAddress(deposit.wallet_address)}</span>
                     <StatusBadge tone={deposit.status === 'confirmed' ? 'green' : 'muted'}>{deposit.status}</StatusBadge>
                   </div>
@@ -411,8 +417,8 @@ const WaitingScreen: React.FC = () => {
             </div>
           )}
 
-          <details className="mt-6 rounded-2xl border border-white/10 bg-white/[0.035] p-4 text-left">
-            <summary className="cursor-pointer text-xs font-bold uppercase tracking-widest text-slate-400">
+          <details className="mt-6 rounded-xl border border-white/10 bg-white/[0.035] p-4 text-left">
+            <summary className="cursor-pointer text-xs font-bold uppercase tracking-normal text-slate-400">
               Technical details
             </summary>
             <div className="mt-4 grid gap-3">

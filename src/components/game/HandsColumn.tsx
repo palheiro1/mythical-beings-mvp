@@ -42,13 +42,13 @@ const HandsColumn: React.FC<HandsColumnProps> = ({
     }, [registry]);
 
     return (
-        <div className="flex h-full min-h-[260px] w-full flex-col overflow-hidden rounded-2xl border border-white/10 bg-white/[0.035]">
+        <div className="surface-obsidian flex h-full min-h-[260px] w-full flex-col overflow-hidden rounded-xl border">
             {/* Opponent Hand Area - reduced from flex-1 to flex-none with fixed height */}
             <div className="relative flex min-h-[120px] flex-1 flex-col items-center justify-center overflow-hidden p-2" ref={oppHandRef}>
                 <div className="absolute left-2 top-2 z-10">
                     <StatusBadge tone="muted">{opponentPlayerLabel} ({opponentPlayerHand.length})</StatusBadge>
                 </div>
-                <div className="flex justify-center items-center gap-2 w-full h-full p-1">
+                <div className="flex h-full w-full items-center justify-center gap-2 p-1">
                     {opponentPlayerHand.length === 0 ? (
                          // Container defines size
                          <div className="h-[85%] aspect-[921/1217]">
@@ -63,7 +63,7 @@ const HandsColumn: React.FC<HandsColumnProps> = ({
                         ))
                     )}
                     {opponentPlayerHand.length > maxVisibleCards && (
-                         <span className="text-xs text-white bg-black/50 px-2 py-1 rounded-full">+{opponentPlayerHand.length - maxVisibleCards}</span>
+                         <span className="rounded-md border border-white/10 bg-black/50 px-2 py-1 text-xs text-white">+{opponentPlayerHand.length - maxVisibleCards}</span>
                     )}
                 </div>
             </div>
@@ -75,7 +75,7 @@ const HandsColumn: React.FC<HandsColumnProps> = ({
                 <div className="absolute bottom-2 left-2 z-10">
                     <StatusBadge tone={isMyTurn && phase === 'action' ? 'violet' : 'muted'}>{currentPlayerLabel} ({currentPlayerHand.length}/5)</StatusBadge>
                 </div>
-                <div className="flex justify-center items-center gap-2 w-full h-full p-1">
+                <div className="flex h-full w-full items-center justify-center gap-2 p-1">
                     {currentPlayerHand.length === 0 ? (
                         // Container defines size
                         <div className="h-[85%] aspect-[921/1217]">
@@ -93,7 +93,7 @@ const HandsColumn: React.FC<HandsColumnProps> = ({
                                 // Container defines size with hover effect - REMOVED hover:scale-110 and cursor-pointer
                                 <div
                                     key={instanceId} // Use instanceId for key
-                                    className={cn('h-[85%] aspect-[921/1217] rounded-xl transition-all', !isSpectator && selectedKnowledgeId === instanceId ? 'scale-105 ring-2 ring-amber-300 shadow-[0_0_24px_rgba(246,184,59,0.35)]' : '')} // Compare with instanceId
+                                    className={cn('h-[85%] aspect-[921/1217] rounded-lg transition-all', !isSpectator && selectedKnowledgeId === instanceId ? 'scale-105 card-state-ring' : '')} // Compare with instanceId
                                     ref={(el) => {
                                         if (card.instanceId) registry.register(`hand:${card.instanceId}`, el as unknown as HTMLElement | null);
                                     }}
@@ -111,7 +111,7 @@ const HandsColumn: React.FC<HandsColumnProps> = ({
                         })
                     )}
                     {currentPlayerHand.length > maxVisibleCards && (
-                        <span className="text-xs text-white bg-black/50 px-2 py-1 rounded-full">+{currentPlayerHand.length - maxVisibleCards}</span>
+                        <span className="rounded-md border border-white/10 bg-black/50 px-2 py-1 text-xs text-white">+{currentPlayerHand.length - maxVisibleCards}</span>
                     )}
                 </div>
             </div>

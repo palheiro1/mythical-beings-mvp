@@ -488,7 +488,7 @@ const GameScreen: React.FC = () => {
 
     <div className="flex min-h-0 flex-col gap-2 xl:h-full">
       {settlementRetry && !isSpectator && (
-        <div className="flex shrink-0 flex-col gap-3 rounded-xl border border-amber-300/35 bg-amber-500/10 px-4 py-3 text-sm text-amber-100 sm:flex-row sm:items-center sm:justify-between">
+        <div className="state-relic flex shrink-0 flex-col gap-3 rounded-xl border px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
             <StatusBadge tone="amber">Settlement pending</StatusBadge>
             <p className="mt-2 text-slate-200">
@@ -547,7 +547,7 @@ const GameScreen: React.FC = () => {
         </div>
 
     <details className="order-3 min-h-0 xl:contents" open>
-      <summary className="mb-2 cursor-pointer rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm font-bold uppercase tracking-wide text-slate-200 xl:hidden">
+      <summary className="mb-2 cursor-pointer rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-sm font-bold uppercase tracking-normal text-slate-200 xl:hidden">
         Market and game log
       </summary>
       <div className="grid min-h-0 gap-2 md:grid-cols-2 xl:contents">

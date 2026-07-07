@@ -7,6 +7,14 @@
   --arena-bg-850: #080d19;
   --arena-bg-800: #0b1020;
   --arena-bg-700: #11182a;
+  --material-obsidian: #04070d;
+  --material-obsidian-soft: #09101b;
+  --material-bronze: #b7792a;
+  --material-bronze-soft: rgba(183, 121, 42, 0.18);
+  --material-arcane-cyan: #38dff8;
+  --material-relic-gold: #f6c15d;
+  --material-ember-red: #f05b42;
+  --material-parchment: #dcc8a2;
   --arena-border: rgba(255, 255, 255, 0.1);
   --arena-border-strong: rgba(246, 184, 59, 0.7);
   --arena-amber: #f6b83b;
@@ -66,7 +74,7 @@ button:disabled {
 
 .font-display {
   font-family: Georgia, "Times New Roman", serif;
-  letter-spacing: 0.02em;
+  letter-spacing: 0;
 }
 
 .arena-page {
@@ -79,17 +87,17 @@ button:disabled {
 
 .arena-surface {
   background:
-    linear-gradient(180deg, rgba(17, 24, 42, 0.86), rgba(8, 13, 25, 0.9)),
-    radial-gradient(circle at 50% 0%, rgba(139, 92, 246, 0.12), transparent 42%);
-  border: 1px solid var(--arena-border);
-  box-shadow: 0 22px 80px rgba(0, 0, 0, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    linear-gradient(180deg, rgba(12, 18, 31, 0.9), rgba(5, 9, 16, 0.94)),
+    radial-gradient(circle at 50% 0%, rgba(183, 121, 42, 0.08), transparent 44%);
+  border: 1px solid rgba(220, 200, 162, 0.11);
+  box-shadow: 0 18px 56px rgba(0, 0, 0, 0.34), inset 0 1px 0 rgba(255, 255, 255, 0.045);
   backdrop-filter: blur(14px);
 }
 
 .arena-border-glow {
   box-shadow:
-    0 0 0 1px rgba(246, 184, 59, 0.28),
-    0 0 36px rgba(139, 92, 246, 0.18),
+    0 0 0 1px rgba(183, 121, 42, 0.36),
+    0 22px 60px rgba(0, 0, 0, 0.42),
     inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
@@ -101,10 +109,10 @@ button:disabled {
 
 .arena-banner {
   background:
-    linear-gradient(90deg, rgba(6, 9, 18, 0.97) 30%, rgba(6, 9, 18, 0.35) 58%, rgba(6, 9, 18, 0.90) 100%),
+    linear-gradient(90deg, rgba(4, 7, 13, 0.97) 28%, rgba(4, 7, 13, 0.52) 58%, rgba(4, 7, 13, 0.94) 100%),
     url("/logos/logo-primary-dark.png") 70% center / auto 88% no-repeat,
-    radial-gradient(circle at 70% 50%, rgba(139, 92, 246, 0.10), transparent 45%),
-    linear-gradient(135deg, #121832, #080b16);
+    radial-gradient(circle at 70% 50%, rgba(246, 184, 59, 0.11), transparent 42%),
+    linear-gradient(135deg, #101523, #050811);
 }
 
 .arena-banner-center {
@@ -139,6 +147,65 @@ button:disabled {
   filter: drop-shadow(0 12px 24px rgba(0, 0, 0, 0.34));
 }
 
+.surface-obsidian {
+  background:
+    linear-gradient(180deg, rgba(8, 13, 22, 0.96), rgba(3, 6, 11, 0.98)),
+    radial-gradient(circle at 50% 0%, rgba(183, 121, 42, 0.08), transparent 42%);
+  border-color: rgba(220, 200, 162, 0.12);
+}
+
+.surface-playmat {
+  background:
+    linear-gradient(rgba(3, 6, 11, 0.9), rgba(3, 6, 11, 0.94)),
+    url("/images/spells/back.jpg") center / 360px auto repeat,
+    radial-gradient(circle at 50% 50%, rgba(56, 223, 248, 0.1), transparent 50%),
+    linear-gradient(180deg, var(--material-obsidian-soft), var(--material-obsidian));
+  box-shadow:
+    inset 0 0 0 1px rgba(220, 200, 162, 0.1),
+    inset 0 0 80px rgba(0, 0, 0, 0.64),
+    0 18px 50px rgba(0, 0, 0, 0.35);
+}
+
+.trim-bronze {
+  border-color: rgba(183, 121, 42, 0.42);
+  box-shadow: inset 0 1px 0 rgba(246, 193, 93, 0.1);
+}
+
+.state-arcane {
+  border-color: rgba(56, 223, 248, 0.48);
+  background-color: rgba(56, 223, 248, 0.09);
+  color: #b8f5ff;
+}
+
+.state-ember {
+  border-color: rgba(240, 91, 66, 0.5);
+  background-color: rgba(240, 91, 66, 0.1);
+  color: #ffc1b7;
+}
+
+.state-relic {
+  border-color: rgba(246, 193, 93, 0.5);
+  background-color: rgba(246, 193, 93, 0.11);
+  color: #ffe0a1;
+}
+
+.state-parchment {
+  color: var(--material-parchment);
+}
+
+.card-state-ring {
+  box-shadow:
+    0 0 0 2px rgba(246, 193, 93, 0.84),
+    0 0 0 5px rgba(56, 223, 248, 0.16),
+    0 16px 36px rgba(0, 0, 0, 0.46);
+}
+
+.arcane-focus {
+  box-shadow:
+    0 0 0 1px rgba(56, 223, 248, 0.54),
+    0 0 20px rgba(56, 223, 248, 0.2);
+}
+
 @keyframes fadeIn {
   from {
     opacity: 0;
@@ -162,6 +229,24 @@ button:disabled {
 @keyframes shimmer {
   100% {
     transform: translateX(100%);
+  }
+}
+
+@keyframes emberPulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(240, 91, 66, 0.32);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(240, 91, 66, 0);
+  }
+}
+
+@keyframes relicGleam {
+  0% {
+    transform: translateX(-120%) skewX(-18deg);
+  }
+  100% {
+    transform: translateX(220%) skewX(-18deg);
   }
 }
 

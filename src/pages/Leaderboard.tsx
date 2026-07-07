@@ -75,7 +75,7 @@ const Leaderboard: React.FC = () => {
   const topThree = sortedData.slice(0, 3);
   const formatNumber = (value: number) => new Intl.NumberFormat().format(value);
   const sortButton = (key: typeof sortKey, label: string) => (
-    <button type="button" onClick={() => setSortKey(key)} className="inline-flex items-center justify-center gap-1 text-xs font-bold uppercase tracking-widest text-slate-300 hover:text-white">
+    <button type="button" onClick={() => setSortKey(key)} className="inline-flex items-center justify-center gap-1 text-xs font-bold uppercase tracking-normal text-slate-300 hover:text-white">
       {label}
       <ArrowDownUp className={`h-3.5 w-3.5 ${sortKey === key ? 'text-amber-200' : 'text-slate-500'}`} aria-hidden />
     </button>
@@ -130,10 +130,10 @@ const Leaderboard: React.FC = () => {
                   src={entry.avatar_url || `/api/placeholder-avatar?text=${entry.username?.charAt(0).toUpperCase() || '?'}`}
                   alt={entry.username || 'User Avatar'}
                 />
-                <p className="mt-3 text-sm uppercase tracking-widest text-slate-500">Rank {index + 1}</p>
+                <p className="mt-3 text-sm uppercase tracking-normal text-slate-500">Rank {index + 1}</p>
                 <h2 className="mt-1 text-xl font-bold text-slate-100">{entry.username || `User (${entry.id.substring(0, 6)})`}</h2>
                 <p className="mt-2 text-3xl font-black text-amber-200">{formatNumber(entry.points)}</p>
-                <p className="text-xs uppercase tracking-widest text-slate-500">Points</p>
+                <p className="text-xs uppercase tracking-normal text-slate-500">Points</p>
               </Panel>
             ))}
           </div>
@@ -143,8 +143,8 @@ const Leaderboard: React.FC = () => {
               <table className="min-w-full divide-y divide-white/10">
                 <thead className="bg-white/[0.04]">
                   <tr>
-                    <th scope="col" className="w-16 px-4 py-4 text-left text-xs font-bold uppercase tracking-widest text-slate-400">Rank</th>
-                    <th scope="col" className="px-6 py-4 text-left text-xs font-bold uppercase tracking-widest text-slate-400">Player</th>
+                    <th scope="col" className="w-16 px-4 py-4 text-left text-xs font-bold uppercase tracking-normal text-slate-400">Rank</th>
+                    <th scope="col" className="px-6 py-4 text-left text-xs font-bold uppercase tracking-normal text-slate-400">Player</th>
                     <th scope="col" className="px-6 py-4 text-center">{sortButton('points', 'Points')}</th>
                     <th scope="col" className="px-6 py-4 text-center">{sortButton('wins', 'Wins')}</th>
                     <th scope="col" className="px-6 py-4 text-center">{sortButton('games_played', 'Games Played')}</th>

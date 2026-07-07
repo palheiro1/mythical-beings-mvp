@@ -106,13 +106,13 @@ const Home: React.FC = () => {
 
   return (
     <div className="arena-page arena-card-backdrop relative flex min-h-[calc(100vh-var(--navbar-height))] items-center justify-center overflow-hidden px-4 py-12 text-white">
-      <div className="pointer-events-none absolute left-[6%] top-[22%] hidden h-56 w-40 -rotate-12 overflow-hidden rounded-2xl border border-violet-300/30 opacity-70 shadow-[0_0_48px_rgba(139,92,246,0.35)] lg:block">
+      <div className="pointer-events-none absolute left-[6%] top-[22%] hidden h-56 w-40 -rotate-12 overflow-hidden rounded-xl border border-violet-300/25 opacity-70 shadow-[0_24px_54px_rgba(0,0,0,0.42)] lg:block">
         <img src="/images/beings/zhar-ptitsa.jpg" alt="" className="h-full w-full object-cover" />
       </div>
-      <div className="pointer-events-none absolute right-[8%] top-[25%] hidden h-60 w-44 rotate-12 overflow-hidden rounded-2xl border border-amber-300/30 opacity-70 shadow-[0_0_48px_rgba(246,184,59,0.24)] lg:block">
+      <div className="pointer-events-none absolute right-[8%] top-[25%] hidden h-60 w-44 rotate-12 overflow-hidden rounded-xl border border-amber-300/25 opacity-70 shadow-[0_24px_54px_rgba(0,0,0,0.42)] lg:block">
         <img src="/images/spells/aerial3.jpg" alt="" className="h-full w-full object-cover" />
       </div>
-      <div className="pointer-events-none absolute bottom-[14%] right-[18%] hidden h-44 w-32 -rotate-6 overflow-hidden rounded-2xl border border-cyan-300/30 opacity-60 shadow-[0_0_38px_rgba(34,211,238,0.24)] xl:block">
+      <div className="pointer-events-none absolute bottom-[14%] right-[18%] hidden h-44 w-32 -rotate-6 overflow-hidden rounded-xl border border-cyan-300/25 opacity-60 shadow-[0_20px_44px_rgba(0,0,0,0.38)] xl:block">
         <img src="/images/beings/kappa.jpg" alt="" className="h-full w-full object-cover" />
       </div>
 
@@ -122,7 +122,9 @@ const Home: React.FC = () => {
           Digital Card Arena
         </StatusBadge>
         <Panel glow className="w-full max-w-2xl px-6 py-8 sm:px-10 sm:py-10">
-          <img src="/logos/logo-primary-dark.png" alt="Wisdom Duel" className="mx-auto mb-6 h-20 w-auto object-contain opacity-95 sm:h-24" />
+          <div className="mx-auto mb-6 grid h-20 w-20 place-items-center overflow-hidden rounded-xl border border-amber-200/25 bg-black/30 sm:h-24 sm:w-24">
+            <img src="/logos/logo-header-dark.png" alt="Wisdom Duel" className="h-16 w-16 object-contain opacity-95 sm:h-20 sm:w-20" />
+          </div>
           <h1 className="font-display text-4xl font-black text-slate-50 sm:text-6xl">
             Welcome to Wisdom Duel
           </h1>
@@ -147,7 +149,7 @@ const Home: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setShowEmailFallback((visible) => !visible)}
-                className="text-sm font-bold uppercase tracking-wide text-slate-400 transition hover:text-cyan-100"
+                className="text-sm font-bold uppercase tracking-normal text-slate-400 transition hover:text-cyan-100"
               >
                 {showEmailFallback ? 'Hide email link' : 'Use email link'}
               </button>
@@ -185,7 +187,7 @@ const Home: React.FC = () => {
               )}
 
               {magicLinkSentTo && showEmailFallback && (
-                <div className="rounded-2xl border border-emerald-300/30 bg-emerald-500/10 p-4 text-sm text-emerald-100" aria-live="polite">
+                <div className="rounded-xl border border-emerald-300/30 bg-emerald-500/10 p-4 text-sm text-emerald-100" aria-live="polite">
                   Login link sent to {magicLinkSentTo}.
                   {magicLinkCoolingDown && (
                     <span className="block pt-1 text-emerald-100/80">
@@ -197,7 +199,7 @@ const Home: React.FC = () => {
             </div>
           ) : !polygonWallet ? (
             <div className="mt-8 space-y-4">
-              <div className="rounded-2xl border border-cyan-300/25 bg-cyan-500/10 p-4 text-sm text-cyan-100">
+              <div className="rounded-xl border border-cyan-300/25 bg-cyan-500/10 p-4 text-sm text-cyan-100">
                 Signed in as {profile?.display_name || profile?.username || user.email || 'Play Hub player'}.
               </div>
               <ArenaButton
@@ -224,7 +226,7 @@ const Home: React.FC = () => {
               </div>
 
               {authError && (
-                <div className="mt-6 rounded-2xl border border-red-300/35 bg-red-500/10 p-4 text-sm text-red-100">
+                <div className="mt-6 rounded-xl border border-red-300/35 bg-red-500/10 p-4 text-sm text-red-100">
                   {authError}
                 </div>
               )}

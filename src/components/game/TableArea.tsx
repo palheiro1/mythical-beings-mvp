@@ -62,15 +62,15 @@ const TableArea: React.FC<TableAreaProps> = ({
 
     const renderEmptySlot = (label: string, compact = false) => (
         <div className={cn(
-            'grid h-full w-full place-items-center rounded-xl border border-dashed border-white/[0.12] bg-white/[0.018]',
+            'grid h-full w-full place-items-center rounded-lg border border-dashed border-[rgba(220,200,162,0.14)] bg-black/[0.18]',
             compact ? 'min-h-0' : '',
         )}>
             <div className="grid place-items-center gap-1 text-center">
                 <div className={cn(
-                    'rounded-full border border-violet-200/[0.15] bg-violet-500/10 shadow-inner',
+                    'rounded-full border border-cyan-200/[0.18] bg-cyan-500/[0.06] shadow-inner',
                     compact ? 'h-7 w-7' : 'h-10 w-10',
                 )} />
-                <span className="max-w-full truncate px-2 text-[10px] font-bold uppercase tracking-widest text-slate-500">{label}</span>
+                <span className="max-w-full truncate px-2 text-[10px] font-bold uppercase tracking-normal text-slate-500">{label}</span>
             </div>
         </div>
     );
@@ -102,9 +102,9 @@ const TableArea: React.FC<TableAreaProps> = ({
             <div
                 key={keyName}
                 className={cn(
-                    'relative min-h-0 min-w-0 overflow-visible rounded-xl border bg-black/[0.14] p-1.5',
-                    isKnowledge ? 'border-cyan-200/10' : 'border-amber-200/[0.12]',
-                    selectedKnowledgeId && !isKnowledge && onClick && !isDisabled ? 'ring-1 ring-amber-300/50' : '',
+                    'relative min-h-0 min-w-0 overflow-visible rounded-lg border bg-black/[0.2] p-1.5 shadow-[inset_0_1px_12px_rgba(0,0,0,0.28)]',
+                    isKnowledge ? 'border-cyan-200/[0.13]' : 'border-amber-200/[0.16]',
+                    selectedKnowledgeId && !isKnowledge && onClick && !isDisabled ? 'arcane-focus' : '',
                 )}
                 ref={(el) => {
                     if (!el) return;
@@ -144,8 +144,11 @@ const TableArea: React.FC<TableAreaProps> = ({
     const laneCount = Math.max(currentPlayer.creatures.length, opponentPlayer.creatures.length, 3);
 
     return (
-        <div className="relative grid h-full min-h-[460px] w-full grid-cols-3 gap-2 overflow-visible rounded-2xl border border-white/10 bg-[radial-gradient(circle_at_50%_48%,rgba(139,92,246,0.16),transparent_42%),linear-gradient(180deg,rgba(255,255,255,0.045),rgba(255,255,255,0.018))] p-2 shadow-inner sm:gap-3 sm:p-3 xl:min-h-0">
-            <div className="pointer-events-none absolute inset-x-4 top-1/2 h-px bg-gradient-to-r from-transparent via-amber-200/25 to-transparent" />
+        <div className="surface-playmat relative grid h-full min-h-[460px] w-full grid-cols-3 gap-2 overflow-visible rounded-xl border p-2 sm:gap-3 sm:p-3 xl:min-h-0">
+            <div className="pointer-events-none absolute inset-x-4 top-1/2 h-px bg-gradient-to-r from-transparent via-amber-200/45 to-transparent" />
+            <div className="pointer-events-none absolute left-1/2 top-1/2 grid h-16 w-16 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border border-amber-200/16 bg-black/20 text-[10px] font-black uppercase tracking-normal text-amber-100/35 shadow-inner">
+                Duel
+            </div>
 
             {Array.from({ length: laneCount }).map((_, index) => {
                 const opponentCreature = opponentPlayer.creatures[index];
@@ -157,9 +160,10 @@ const TableArea: React.FC<TableAreaProps> = ({
                 return (
                     <div
                         key={`lane-${index}`}
-                        className="relative grid min-h-0 grid-rows-[minmax(0,1.05fr)_minmax(0,0.86fr)_minmax(0,0.86fr)_minmax(0,1.05fr)] gap-2 overflow-visible rounded-xl border border-white/[0.08] bg-black/[0.16] p-2"
+                        className="relative grid min-h-0 grid-rows-[minmax(0,1.05fr)_minmax(0,0.86fr)_minmax(0,0.86fr)_minmax(0,1.05fr)] gap-2 overflow-visible rounded-lg border border-[rgba(220,200,162,0.11)] bg-black/[0.18] p-2 shadow-[inset_0_0_28px_rgba(0,0,0,0.34)]"
                     >
-                        <div className="pointer-events-none absolute inset-y-2 left-1/2 w-px -translate-x-1/2 bg-gradient-to-b from-violet-200/0 via-violet-200/[0.12] to-violet-200/0" />
+                        <div className="pointer-events-none absolute inset-y-2 left-1/2 w-px -translate-x-1/2 bg-gradient-to-b from-violet-200/0 via-cyan-200/[0.14] to-violet-200/0" />
+                        <div className="pointer-events-none absolute inset-x-3 top-1/2 h-px -translate-y-1/2 bg-gradient-to-r from-transparent via-amber-200/[0.11] to-transparent" />
 
                         {renderSlot({
                             cardData: opponentCreature ?? null,

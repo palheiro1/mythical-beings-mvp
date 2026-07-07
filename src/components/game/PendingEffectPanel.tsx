@@ -62,7 +62,7 @@ const PendingEffectPanel: React.FC<PendingEffectPanelProps> = ({ gameState, curr
                   type="button"
                   onClick={() => onResolve({ effectId: pending.id, choice })}
                   className={cn(
-                    'group rounded-xl border border-white/10 bg-black/30 p-2 text-left transition hover:border-amber-300/60 hover:bg-amber-400/10',
+                    'group rounded-lg border border-white/10 bg-black/30 p-2 text-left transition hover:border-amber-300/60 hover:bg-amber-400/10',
                     'focus:outline-none focus:ring-2 focus:ring-amber-300/50',
                   )}
                 >
@@ -70,13 +70,13 @@ const PendingEffectPanel: React.FC<PendingEffectPanelProps> = ({ gameState, curr
                     {choice.image ? (
                       <img src={choice.image} alt={choice.label} className="h-full w-full object-cover" />
                     ) : (
-                      <div className="grid h-full place-items-center text-xs uppercase tracking-widest text-slate-500">
+                      <div className="grid h-full place-items-center text-xs uppercase tracking-normal text-slate-500">
                         {choice.kind}
                       </div>
                     )}
                   </div>
                   <p className="mt-2 truncate text-sm font-bold text-slate-100">{choice.label}</p>
-                  <p className="truncate text-[11px] uppercase tracking-widest text-slate-500">{choiceSubtitle(choice)}</p>
+                  <p className="truncate text-[11px] uppercase tracking-normal text-slate-500">{choiceSubtitle(choice)}</p>
                 </button>
               ))}
             </div>
