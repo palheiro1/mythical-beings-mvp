@@ -356,7 +356,9 @@ const NFTSelectionSimplified: React.FC<NFTSelectionSimplifiedProps> = ({ mode = 
 
         <Panel className="relative overflow-hidden p-5 sm:p-8" glow>
           <div className="pointer-events-none absolute -right-12 -top-16 h-56 w-40 rotate-12 overflow-hidden rounded-xl border border-amber-200/12 opacity-20">
-            <img src="/images/spells/back.jpg" alt="" className="h-full w-full object-cover" aria-hidden />
+            <div className="card-back-face h-full w-full" aria-hidden>
+              <img src="/logos/logo-header-dark.png" alt="" className="card-back-crest" />
+            </div>
           </div>
           <div className="mb-8 grid gap-6 border-b border-white/10 pb-6 lg:grid-cols-[1fr_auto] lg:items-center">
             <div className="text-center lg:text-left">

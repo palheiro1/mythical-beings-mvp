@@ -324,13 +324,19 @@ const WaitingScreen: React.FC = () => {
     <div className="arena-page relative flex min-h-[calc(100vh-var(--navbar-height))] items-center justify-center overflow-hidden px-4 py-10">
       <div className="pointer-events-none absolute inset-0 opacity-30">
         <div className="absolute left-[10%] top-[18%] h-52 w-36 -rotate-12 overflow-hidden rounded-xl border border-amber-200/18 shadow-2xl">
-          <img src="/images/spells/back.jpg" alt="" className="h-full w-full object-cover" aria-hidden />
+          <div className="card-back-face h-full w-full" aria-hidden>
+            <img src="/logos/logo-header-dark.png" alt="" className="card-back-crest" />
+          </div>
         </div>
         <div className="absolute right-[12%] top-[28%] h-60 w-40 rotate-12 overflow-hidden rounded-xl border border-cyan-200/18 shadow-2xl">
-          <img src="/images/spells/back.jpg" alt="" className="h-full w-full object-cover" aria-hidden />
+          <div className="card-back-face h-full w-full" aria-hidden>
+            <img src="/logos/logo-header-dark.png" alt="" className="card-back-crest" />
+          </div>
         </div>
         <div className="absolute bottom-[16%] left-[18%] h-48 w-32 rotate-6 overflow-hidden rounded-xl border border-violet-200/18 shadow-2xl">
-          <img src="/images/spells/back.jpg" alt="" className="h-full w-full object-cover" aria-hidden />
+          <div className="card-back-face h-full w-full" aria-hidden>
+            <img src="/logos/logo-header-dark.png" alt="" className="card-back-crest" />
+          </div>
         </div>
       </div>
 

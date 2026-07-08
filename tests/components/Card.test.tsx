@@ -43,4 +43,12 @@ describe('Card', () => {
     expect(screen.getByRole('dialog', { name: /adaro/i })).toBeInTheDocument();
     expect(screen.getByText(/draw a card/i)).toBeInTheDocument();
   });
+
+  it('uses the dark card back for hidden cards', () => {
+    const { container } = renderCard(<Card card={adaro} showBack isDisabled />);
+
+    expect(screen.getByRole('button', { name: /hidden card/i })).toBeInTheDocument();
+    expect(container.querySelector('.card-back-face')).toBeInTheDocument();
+    expect(container.querySelector('img[alt="Hidden card"]')).not.toBeInTheDocument();
+  });
 });

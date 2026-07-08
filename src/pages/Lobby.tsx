@@ -234,10 +234,14 @@ const Lobby: React.FC = () => {
     <PageShell contentClassName="space-y-6 pb-24">
       <Panel className="arena-banner relative overflow-hidden p-6 sm:p-8" glow>
         <div className="pointer-events-none absolute bottom-[-28px] right-[18%] hidden h-44 w-32 rotate-[-10deg] overflow-hidden rounded-xl border border-amber-200/15 opacity-45 shadow-2xl lg:block">
-          <img src="/images/spells/back.jpg" alt="" className="h-full w-full object-cover" aria-hidden />
+          <div className="card-back-face h-full w-full" aria-hidden>
+            <img src="/logos/logo-header-dark.png" alt="" className="card-back-crest" />
+          </div>
         </div>
         <div className="pointer-events-none absolute bottom-[-34px] right-[8%] hidden h-48 w-36 rotate-[9deg] overflow-hidden rounded-xl border border-cyan-200/15 opacity-45 shadow-2xl lg:block">
-          <img src="/images/spells/back.jpg" alt="" className="h-full w-full object-cover" aria-hidden />
+          <div className="card-back-face h-full w-full" aria-hidden>
+            <img src="/logos/logo-header-dark.png" alt="" className="card-back-crest" />
+          </div>
         </div>
         <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
           <div>

@@ -176,12 +176,24 @@ const Card: React.FC<CardProps> = ({
     };
   }, [calculateZoomFrame, isZoomed]);
 
-  const imagePath = showBack ? '/images/spells/back.jpg' : card.image;
+  const imagePath = card.image;
   const cardTransform = isBoardCard
     ? `translate(-50%, -50%) rotate(${normalizedRotation}deg)`
     : `rotate(${normalizedRotation}deg)`;
   const boardCardHeight = knowledgeStatus ? 'clamp(70px, 18vw, 96px)' : 'clamp(82px, 22vw, 112px)';
   const boardCardWidth = `calc(${boardCardHeight} * ${CARD_ASPECT_RATIO})`;
+  const cardVisual = showBack ? (
+    <span className="card-back-face" aria-hidden>
+      <img src="/logos/logo-header-dark.png" alt="" className="card-back-crest" draggable={false} />
+    </span>
+  ) : (
+    <img
+      src={imagePath}
+      alt={card.name}
+      className="h-full w-full object-cover"
+      draggable={false}
+    />
+  );
 
   return (
     <>
@@ -223,12 +235,7 @@ const Card: React.FC<CardProps> = ({
               isDisabled ? 'saturate-[0.72]' : '',
             )}
           >
-            <img
-              src={imagePath}
-              alt={showBack ? 'Hidden card' : card.name}
-              className="h-full w-full object-cover"
-              draggable={false}
-            />
+            {cardVisual}
           </span>
         </button>
 
@@ -289,12 +296,18 @@ const Card: React.FC<CardProps> = ({
           }}
           aria-hidden
         >
-          <img
-            src={imagePath}
-            alt=""
-            className="h-full w-full object-cover"
-            draggable={false}
-          />
+          {showBack ? (
+            <div className="card-back-face h-full w-full" aria-hidden>
+              <img src="/logos/logo-header-dark.png" alt="" className="card-back-crest" draggable={false} />
+            </div>
+          ) : (
+            <img
+              src={imagePath}
+              alt=""
+              className="h-full w-full object-cover"
+              draggable={false}
+            />
+          )}
           <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/78 via-black/28 to-transparent px-3 pb-3 pt-10">
             <div className="truncate font-display text-lg font-bold text-white">{showBack ? 'Hidden card' : card.name}</div>
           </div>

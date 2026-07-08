@@ -30,7 +30,7 @@ const CardDetailOverlay: React.FC<CardDetailOverlayProps> = ({ card, open, onClo
 
   if (!open || !card || typeof document === 'undefined') return null;
 
-  const imagePath = showBack ? '/images/spells/back.jpg' : card.image;
+  const imagePath = card.image;
   const description = showBack
     ? 'This card is hidden.'
     : isKnowledge(card)
@@ -50,7 +50,13 @@ const CardDetailOverlay: React.FC<CardDetailOverlayProps> = ({ card, open, onClo
         onMouseDown={(event) => event.stopPropagation()}
       >
         <div className="mx-auto aspect-[921/1217] w-full max-w-[220px] overflow-hidden rounded-xl border border-amber-200/40 bg-slate-950 shadow-[0_18px_44px_rgba(0,0,0,0.48)] sm:max-w-none">
-          <img src={imagePath} alt={showBack ? 'Hidden card' : card.name} className="h-full w-full object-cover" draggable={false} />
+          {showBack ? (
+            <div className="card-back-face h-full w-full" aria-label="Hidden card">
+              <img src="/logos/logo-header-dark.png" alt="" className="card-back-crest" draggable={false} />
+            </div>
+          ) : (
+            <img src={imagePath} alt={card.name} className="h-full w-full object-cover" draggable={false} />
+          )}
         </div>
 
         <div className="flex min-w-0 flex-col">

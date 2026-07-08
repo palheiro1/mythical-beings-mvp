@@ -70,7 +70,7 @@ const TableArea: React.FC<TableAreaProps> = ({
                     'rounded-full border border-cyan-200/[0.18] bg-cyan-500/[0.06] shadow-inner',
                     compact ? 'h-7 w-7' : 'h-10 w-10',
                 )} />
-                <span className="max-w-full truncate px-2 text-[10px] font-bold uppercase tracking-normal text-slate-500">{label}</span>
+                <span className="hidden max-w-full truncate px-2 text-[10px] font-bold uppercase tracking-normal text-slate-500 sm:block">{label}</span>
             </div>
         </div>
     );

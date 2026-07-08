@@ -60,7 +60,9 @@ const HowToPlay: React.FC = () => {
 
         <Panel id="rulebook" className="grid gap-5 p-5 md:grid-cols-[180px_1fr_auto] md:items-center">
           <div className="mx-auto h-40 w-32 overflow-hidden rounded-xl border border-amber-300/25 shadow-[0_16px_34px_rgba(0,0,0,0.34)] md:mx-0">
-            <img src="/images/spells/back.jpg" alt="" className="h-full w-full object-cover" />
+            <div className="card-back-face h-full w-full" aria-hidden>
+              <img src="/logos/logo-header-dark.png" alt="" className="card-back-crest" />
+            </div>
           </div>
           <div>
             <h2 className="font-display text-3xl font-bold text-slate-50">Official Rulebook</h2>
