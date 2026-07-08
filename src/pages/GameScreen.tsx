@@ -10,8 +10,6 @@ import TopBar from '../components/game/TopBar.js';
 import ActionBar from '../components/game/ActionBar.js';
 import TableArea from '../components/game/TableArea.js';
 import HandsColumn from '../components/game/HandsColumn.js';
-import MarketColumn from '../components/game/MarketColumn.js';
-import Logs from '../components/game/Logs.js'; // Import the Logs component
 import {
   COMPETITION_SETTLEMENT_EVENT,
   getPendingCompetitionSettlement,
@@ -24,6 +22,7 @@ import CardMoveLayer from '../components/game/CardMoveLayer.js';
 import CombatFloaters from '../components/game/CombatFloaters.js';
 import { useCardRegistry } from '../context/CardRegistry.js';
 import GameShell from '../components/game/GameShell.js';
+import GameAuxPanels from '../components/game/GameAuxPanels.js';
 import { ArenaButton, ErrorRecoveryPanel, SpinnerEmblem, StatusBadge } from '../components/ui/index.js';
 import PendingEffectPanel from '../components/game/PendingEffectPanel.js';
 import { getPlayerDisplayName } from '../utils/format.js';
@@ -509,7 +508,7 @@ const GameScreen: React.FC = () => {
         </div>
       )}
 
-    <div className="grid min-h-0 flex-1 grid-cols-1 gap-2 xl:grid-cols-[minmax(170px,0.82fr)_minmax(0,3.6fr)_minmax(170px,0.85fr)_minmax(190px,1fr)] xl:overflow-hidden">
+    <div className="grid min-h-0 flex-1 grid-cols-1 gap-2 xl:grid-cols-[minmax(160px,0.78fr)_minmax(480px,3.25fr)_minmax(230px,0.95fr)] xl:overflow-hidden">
         {/* Hands Column - Adjusted width */}
   <div className="order-2 min-h-[280px] xl:order-1 xl:h-full xl:min-h-0" id={`hand-anchor-${currentPlayerId || 'unknown'}`} ref={(el) => { if (el && currentPlayerId) registry.register(`hand:${currentPlayerId}`, el); }}>
           {player && opponent ? (
@@ -546,28 +545,14 @@ const GameScreen: React.FC = () => {
           )}
         </div>
 
-    <details className="order-3 min-h-0 xl:contents" open>
-      <summary className="mb-2 cursor-pointer rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-sm font-bold uppercase tracking-normal text-slate-200 xl:hidden">
-        Market and game log
-      </summary>
-      <div className="grid min-h-0 gap-2 md:grid-cols-2 xl:contents">
-        {/* Market Column - Adjusted width */}
-        <div className="min-h-0 xl:h-full" ref={(el) => { if (el) registry.register('market:anchor', el); }}>
-          <MarketColumn
-            marketCards={gameState.market}
-            deckCount={gameState.knowledgeDeck.length}
-            isMyTurn={isMyTurn && !gameState.pendingEffect}
-            phase={mapPhaseForTableArea(gameState.phase)}
-            onDrawKnowledge={handleMarketClick}
-          />
-        </div>
-
-        {/* Logs Column - New dedicated column */}
-        <div className="min-h-0 xl:h-full" ref={(el) => { if (el) registry.register('discard:anchor', el); }}>
-          <Logs logs={gameState.log} />
-        </div>
-      </div>
-    </details>
+    <GameAuxPanels
+      marketCards={gameState.market}
+      deckCount={gameState.knowledgeDeck.length}
+      isMyTurn={isMyTurn && !gameState.pendingEffect}
+      phase={mapPhaseForTableArea(gameState.phase)}
+      logs={gameState.log}
+      onDrawKnowledge={handleMarketClick}
+    />
       </div>
       </div>
     </GameShell>
