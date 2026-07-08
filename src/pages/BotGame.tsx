@@ -263,7 +263,7 @@ const BotGame: React.FC = () => {
           </Panel>
         </div>
 
-        <div className="grid min-h-0 flex-1 grid-cols-1 gap-2 xl:grid-cols-[minmax(160px,0.78fr)_minmax(480px,3.25fr)_minmax(230px,0.95fr)] xl:overflow-hidden">
+        <div className="grid min-h-0 flex-1 grid-cols-1 gap-2 xl:grid-cols-[minmax(260px,0.92fr)_minmax(540px,2.45fr)_minmax(300px,0.95fr)] xl:overflow-hidden">
         <div className="order-2 min-h-[280px] xl:order-1 xl:h-full xl:min-h-0">
           <HandsColumn
             currentPlayerHand={player.hand}
@@ -276,7 +276,7 @@ const BotGame: React.FC = () => {
             opponentPlayerLabel={BOT_NAME}
           />
         </div>
-        <div className="order-1 min-h-[460px] xl:order-2 xl:h-full xl:min-h-0" ref={(el) => { if (el) registry.register('table:anchor', el); }}>
+        <div className="order-1 min-h-[360px] sm:min-h-[460px] xl:order-2 xl:h-full xl:min-h-0" ref={(el) => { if (el) registry.register('table:anchor', el); }}>
           <TableArea
             currentPlayer={player}
             opponentPlayer={opponent}

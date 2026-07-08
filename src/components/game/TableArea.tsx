@@ -144,7 +144,7 @@ const TableArea: React.FC<TableAreaProps> = ({
     const laneCount = Math.max(currentPlayer.creatures.length, opponentPlayer.creatures.length, 3);
 
     return (
-        <div className="surface-playmat relative grid h-full min-h-[460px] w-full grid-cols-3 gap-2 overflow-visible rounded-xl border p-2 sm:gap-3 sm:p-3 xl:min-h-0">
+        <div className="surface-playmat relative grid h-full min-h-[360px] w-full grid-cols-3 gap-2 overflow-visible rounded-xl border p-2 sm:min-h-[460px] sm:gap-3 sm:p-3 xl:min-h-0">
             <div className="pointer-events-none absolute inset-x-4 top-1/2 h-px bg-gradient-to-r from-transparent via-amber-200/45 to-transparent" />
             <div className="pointer-events-none absolute left-1/2 top-1/2 grid h-16 w-16 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border border-amber-200/16 bg-black/20 text-[10px] font-black uppercase tracking-normal text-amber-100/35 shadow-inner">
                 Duel

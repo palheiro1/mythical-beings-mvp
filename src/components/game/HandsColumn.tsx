@@ -43,21 +43,20 @@ const HandsColumn: React.FC<HandsColumnProps> = ({
 
     return (
         <div className="surface-obsidian flex h-full min-h-[260px] w-full flex-col overflow-hidden rounded-xl border">
-            {/* Opponent Hand Area - reduced from flex-1 to flex-none with fixed height */}
-            <div className="relative flex min-h-[120px] flex-1 flex-col items-center justify-center overflow-hidden p-2" ref={oppHandRef}>
-                <div className="absolute left-2 top-2 z-10">
+            <div className="flex min-h-[108px] shrink-0 flex-col gap-2 overflow-hidden p-2 xl:min-h-0 xl:basis-[24%]" ref={oppHandRef}>
+                <div className="shrink-0">
                     <StatusBadge tone="muted">{opponentPlayerLabel} ({opponentPlayerHand.length})</StatusBadge>
                 </div>
-                <div className="flex h-full w-full items-center justify-center gap-2 p-1">
+                <div className="arena-scrollbar flex min-h-0 flex-1 items-center gap-2 overflow-x-auto overflow-y-hidden p-1 xl:grid xl:grid-cols-2 xl:place-items-center xl:gap-1.5 xl:overflow-hidden">
                     {opponentPlayerHand.length === 0 ? (
                          // Container defines size
-                         <div className="h-[85%] aspect-[921/1217]">
+                         <div className="aspect-[921/1217] h-[82px] shrink-0 xl:h-auto xl:w-full xl:max-w-[68px]">
                             <Card card={{ id: 'opp-back', name: 'Back', image: '/images/spells/back.jpg', type: 'spell', cost: 0, effect: '', element: 'neutral' }} showBack isDisabled />
                          </div>
                     ) : (
                         opponentPlayerHand.slice(0, maxVisibleCards).map((card, idx) => (
                             // Container defines size - REMOVED hover:scale-105
-                            <div key={card.id + idx + '-opp'} className="h-[85%] aspect-[921/1217] transition-all">
+                            <div key={card.id + idx + '-opp'} className="aspect-[921/1217] h-[82px] shrink-0 transition-all xl:h-auto xl:w-full xl:max-w-[68px]">
                                 <Card card={card} showBack isDisabled />
                             </div>
                         ))
@@ -70,15 +69,14 @@ const HandsColumn: React.FC<HandsColumnProps> = ({
 
             <div className="mx-auto h-px w-full border-t border-white/10" />
 
-            {/* Player Hand Area - reduced from flex-1 to flex-none with fixed height */}
-            <div className="relative flex min-h-[120px] flex-1 flex-col items-center justify-center overflow-hidden p-2" ref={myHandRef}>
-                <div className="absolute bottom-2 left-2 z-10">
+            <div className="flex min-h-[190px] flex-1 flex-col gap-2 overflow-hidden p-2 xl:min-h-0" ref={myHandRef}>
+                <div className="shrink-0">
                     <StatusBadge tone={isMyTurn && phase === 'action' ? 'violet' : 'muted'}>{currentPlayerLabel} ({currentPlayerHand.length}/5)</StatusBadge>
                 </div>
-                <div className="flex h-full w-full items-center justify-center gap-2 p-1">
+                <div className="arena-scrollbar flex min-h-0 flex-1 items-center gap-2 overflow-x-auto overflow-y-hidden p-1 xl:grid xl:grid-cols-2 xl:content-start xl:items-start xl:justify-items-center xl:overflow-x-hidden xl:overflow-y-auto xl:pr-1">
                     {currentPlayerHand.length === 0 ? (
                         // Container defines size
-                        <div className="h-[85%] aspect-[921/1217]">
+                        <div className="aspect-[921/1217] h-[142px] shrink-0 xl:h-auto xl:w-full xl:max-w-[112px]">
                             <Card card={{ id: 'player-back', name: 'Back', image: '/images/spells/back.jpg', type: 'spell', cost: 0, effect: '', element: 'neutral' }} showBack isDisabled />
                         </div>
                     ) : (
@@ -93,7 +91,7 @@ const HandsColumn: React.FC<HandsColumnProps> = ({
                                 // Container defines size with hover effect - REMOVED hover:scale-110 and cursor-pointer
                                 <div
                                     key={instanceId} // Use instanceId for key
-                                    className={cn('h-[85%] aspect-[921/1217] rounded-lg transition-all', !isSpectator && selectedKnowledgeId === instanceId ? 'scale-105 card-state-ring' : '')} // Compare with instanceId
+                                    className={cn('aspect-[921/1217] h-[142px] shrink-0 rounded-lg transition-all xl:h-auto xl:w-full xl:max-w-[112px]', !isSpectator && selectedKnowledgeId === instanceId ? 'card-state-ring' : '')} // Compare with instanceId
                                     ref={(el) => {
                                         if (card.instanceId) registry.register(`hand:${card.instanceId}`, el as unknown as HTMLElement | null);
                                     }}

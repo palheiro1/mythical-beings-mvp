@@ -61,10 +61,10 @@ const GameAuxPanels: React.FC<GameAuxPanelsProps> = ({
   if (isDesktop) {
     return (
       <aside className="order-3 flex h-full min-h-0 flex-col gap-2">
-        <div className="min-h-0 flex-[1.08]">
+        <div className="min-h-0 flex-[1.35]">
           {renderMarketPanel()}
         </div>
-        <div className="min-h-0 flex-1">
+        <div className="min-h-0 flex-[0.82]">
           {renderLogsPanel()}
         </div>
       </aside>
