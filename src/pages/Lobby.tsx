@@ -1,6 +1,21 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bot, Clock, Eye, Play, PlusCircle, RefreshCw, Swords, Users } from 'lucide-react';
+import {
+  ArrowRight,
+  BookOpenCheck,
+  Bot,
+  Clock,
+  Eye,
+  FlaskConical,
+  Play,
+  PlusCircle,
+  RefreshCw,
+  Sparkles,
+  Swords,
+  Target,
+  Trophy,
+  Users,
+} from 'lucide-react';
 import { useAuth } from '../hooks/useAuth.js';
 import {
   createCompetitiveSession,
@@ -20,6 +35,11 @@ import {
 } from '../utils/supabase.js';
 import { ArenaButton, CopyChip, EmptyState, Input, PageShell, Panel, Skeleton, StatusBadge, Toast } from '../components/ui/index.js';
 import { clearBotCreatureSelection } from '../utils/botSelection.js';
+import {
+  CHAMPIONSHIP_MESSAGE,
+  TRAINING_PREVIEW_ENABLED,
+  TRAINING_PREVIEW_LABEL,
+} from '../config/release.js';
 
 interface SessionWithHost extends PlayHubSession {
   hostName: string | null;
@@ -39,7 +59,131 @@ function isValidStakeGem(value: string): boolean {
   return POSITIVE_WHOLE_GEM_STAKE.test(value.trim());
 }
 
-const Lobby: React.FC = () => {
+const trainingGoals = [
+  {
+    icon: BookOpenCheck,
+    title: 'Master the rules',
+    description: 'Learn the turn phases, card timing, and how each arena zone changes your decisions.',
+  },
+  {
+    icon: FlaskConical,
+    title: 'Test combinations',
+    description: 'Shuffle your training hand and discover creature and knowledge-card interactions.',
+  },
+  {
+    icon: Target,
+    title: 'Refine your strategy',
+    description: 'Practice sequencing, power management, and when to commit your strongest cards.',
+  },
+];
+
+const TrainingPreviewLobby: React.FC = () => {
+  const navigate = useNavigate();
+  const { user, profile } = useAuth();
+  const playerName = profile?.display_name || profile?.username || user?.email?.split('@')[0] || 'Player';
+
+  const startTraining = () => {
+    clearBotCreatureSelection();
+    navigate('/bot-selection');
+  };
+
+  return (
+    <PageShell contentClassName="space-y-6 pb-24">
+      <section className="arena-banner relative overflow-hidden rounded-xl border border-amber-200/20 px-6 py-10 shadow-[0_24px_70px_rgba(0,0,0,0.38)] sm:px-10 sm:py-12">
+        <div className="pointer-events-none absolute -bottom-20 right-[7%] hidden aspect-[921/1217] w-44 rotate-[9deg] overflow-hidden rounded-xl border border-cyan-200/15 opacity-55 shadow-2xl lg:block">
+          <div className="card-back-face h-full w-full" aria-hidden>
+            <img src="/logos/logo-header-dark.png" alt="" className="card-back-crest" />
+          </div>
+        </div>
+        <div className="pointer-events-none absolute -bottom-24 right-[18%] hidden aspect-[921/1217] w-40 -rotate-[8deg] overflow-hidden rounded-xl border border-amber-200/15 opacity-45 shadow-2xl lg:block">
+          <img src="/images/beings/zhar-ptitsa.jpg" alt="" className="h-full w-full object-cover" />
+        </div>
+
+        <div className="relative max-w-3xl">
+          <StatusBadge tone="amber" className="mb-5">
+            <Sparkles className="h-3.5 w-3.5" aria-hidden />
+            {TRAINING_PREVIEW_LABEL}
+          </StatusBadge>
+          <p className="mb-2 text-sm text-cyan-100">Welcome, {playerName}</p>
+          <h1 className="font-display text-4xl font-black text-slate-50 sm:text-6xl">Enter the Training Grounds</h1>
+          <p className="state-parchment mt-4 max-w-2xl text-base leading-7 sm:text-lg">
+            Wisdom Duel is open for solo practice. Learn the game, try new lineups, and build the instincts you will need when the championship begins.
+          </p>
+
+          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+            <ArenaButton
+              type="button"
+              size="lg"
+              icon={<Bot className="h-5 w-5" aria-hidden />}
+              onClick={startTraining}
+            >
+              Choose Your Training Team
+            </ArenaButton>
+            <ArenaButton
+              type="button"
+              size="lg"
+              variant="secondary"
+              icon={<BookOpenCheck className="h-5 w-5" aria-hidden />}
+              onClick={() => navigate('/how-to-play')}
+            >
+              Read How to Play
+            </ArenaButton>
+          </div>
+        </div>
+      </section>
+
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
+        <section aria-labelledby="training-goals-title">
+          <div className="mb-4 flex items-end justify-between gap-4">
+            <div>
+              <p className="text-xs font-bold uppercase text-cyan-200">Make the preview count</p>
+              <h2 id="training-goals-title" className="mt-1 font-display text-3xl font-bold text-slate-50">What to practice</h2>
+            </div>
+            <Bot className="hidden h-8 w-8 text-cyan-200/60 sm:block" aria-hidden />
+          </div>
+          <div className="grid gap-4 md:grid-cols-3">
+            {trainingGoals.map(({ icon: Icon, title, description }, index) => (
+              <Panel key={title} as="article" className="relative overflow-hidden p-5">
+                <span className="absolute right-4 top-3 font-display text-4xl text-white/[0.04]" aria-hidden>
+                  0{index + 1}
+                </span>
+                <div className="state-arcane grid h-10 w-10 place-items-center rounded-lg border">
+                  <Icon className="h-5 w-5" aria-hidden />
+                </div>
+                <h3 className="mt-4 font-display text-xl font-bold text-slate-100">{title}</h3>
+                <p className="mt-2 text-sm leading-6 text-slate-400">{description}</p>
+              </Panel>
+            ))}
+          </div>
+        </section>
+
+        <Panel as="aside" className="trim-bronze flex flex-col justify-between border p-6">
+          <div>
+            <StatusBadge tone="violet">
+              <Trophy className="h-3.5 w-3.5" aria-hidden />
+              Championship
+            </StatusBadge>
+            <h2 className="mt-5 font-display text-2xl font-bold text-amber-100">The arena is preparing</h2>
+            <p className="mt-3 text-sm leading-6 text-slate-300">{CHAMPIONSHIP_MESSAGE}</p>
+            <p className="mt-4 text-sm leading-6 text-slate-400">
+              PvP sessions, GEM stakes, rankings, and competitive rewards are not available during this preview.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={startTraining}
+            className="mt-6 inline-flex items-center justify-between gap-3 border-t border-white/10 pt-4 text-left text-sm font-bold text-cyan-100 transition hover:text-white"
+          >
+            Start preparing now
+            <ArrowRight className="h-4 w-4" aria-hidden />
+          </button>
+        </Panel>
+      </div>
+    </PageShell>
+  );
+};
+
+const MultiplayerLobby: React.FC = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading, error: authError } = useAuth();
   const playerId = user?.id;
@@ -485,5 +629,9 @@ const Lobby: React.FC = () => {
     </PageShell>
   );
 };
+
+const Lobby: React.FC = () => (
+  TRAINING_PREVIEW_ENABLED ? <TrainingPreviewLobby /> : <MultiplayerLobby />
+);
 
 export default Lobby;

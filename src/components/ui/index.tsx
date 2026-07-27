@@ -21,7 +21,7 @@ type PanelProps = {
   children: ReactNode;
   className?: string;
   glow?: boolean;
-  as?: 'div' | 'section' | 'article';
+  as?: 'div' | 'section' | 'article' | 'aside';
 } & React.HTMLAttributes<HTMLElement>;
 
 export function Panel({ children, className, glow = false, as = 'div', ...props }: PanelProps) {

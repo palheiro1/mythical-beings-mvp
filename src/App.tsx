@@ -6,6 +6,7 @@ import Home from './pages/Home.js';
 import ProtectedRoute from './components/ProtectedRoute.js';
 import NavBar from './components/NavBar.js';
 import { SpinnerEmblem } from './components/ui/index.js';
+import { PVP_ENABLED } from './config/release.js';
 
 // Moralis is now initialized in main.tsx to ensure polyfills are loaded first
 
@@ -34,7 +35,7 @@ function AppContent() {
           {/* Public Route */}
           <Route path="/" element={<Home />} />
           <Route path="/how-to-play" element={<HowToPlay />} />
-          <Route path="/leaderboard" element={<Leaderboard />} />
+          <Route path="/leaderboard" element={PVP_ENABLED ? <Leaderboard /> : <Navigate to="/" replace />} />
           {/* Handle legacy/auth callback route by redirecting to lobby */}
           <Route path="/auth" element={<Navigate to="/lobby" replace />} />
 
@@ -42,13 +43,25 @@ function AppContent() {
           <Route element={<ProtectedRoute />}>
             <Route path="/lobby" element={<Lobby />} />
             <Route path="/bot-game" element={<BotGame />} />
-            <Route path="/game/:gameId" element={<GameScreen />} />
-            <Route path="/game-initializing/:gameId" element={<GameInitializing />} />
             <Route path="/profile" element={<ProfilePage />} />
-            <Route path="/nft-selection/:gameId" element={<NFTSelectionSimplified />} />
             <Route path="/bot-selection" element={<NFTSelectionSimplified mode="bot" />} />
-            <Route path="/waiting/:gameId" element={<WaitingScreen />} />
+            {PVP_ENABLED ? (
+              <>
+                <Route path="/game/:gameId" element={<GameScreen />} />
+                <Route path="/game-initializing/:gameId" element={<GameInitializing />} />
+                <Route path="/nft-selection/:gameId" element={<NFTSelectionSimplified />} />
+                <Route path="/waiting/:gameId" element={<WaitingScreen />} />
+              </>
+            ) : (
+              <>
+                <Route path="/game/:gameId" element={<Navigate to="/lobby" replace />} />
+                <Route path="/game-initializing/:gameId" element={<Navigate to="/lobby" replace />} />
+                <Route path="/nft-selection/:gameId" element={<Navigate to="/lobby" replace />} />
+                <Route path="/waiting/:gameId" element={<Navigate to="/lobby" replace />} />
+              </>
+            )}
           </Route>
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Suspense>
     </Router>

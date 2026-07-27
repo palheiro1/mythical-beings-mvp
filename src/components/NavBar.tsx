@@ -1,8 +1,9 @@
 import { Link, NavLink } from 'react-router-dom';
-import { BookOpen, Home, LogIn, LogOut, Swords, Trophy, User, UserCircle, WalletCards } from 'lucide-react';
+import { BookOpen, Bot, Home, LogIn, LogOut, Swords, Trophy, User, UserCircle, WalletCards } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth.js';
 import { cn } from './ui/index.js';
 import { formatAddress } from '../utils/format.js';
+import { PVP_ENABLED, TRAINING_PREVIEW_ENABLED } from '../config/release.js';
 
 const NavBar: React.FC = () => {
   const { user, profile, polygonWallet, loading, signOut } = useAuth();
@@ -25,9 +26,15 @@ const NavBar: React.FC = () => {
 
   const navItems = user
     ? [
-        ...(polygonWallet ? [{ to: '/lobby', label: 'Lobby', icon: Swords }] : []),
+        ...(polygonWallet
+          ? [{
+              to: '/lobby',
+              label: TRAINING_PREVIEW_ENABLED ? 'Training' : 'Lobby',
+              icon: TRAINING_PREVIEW_ENABLED ? Bot : Swords,
+            }]
+          : []),
         { to: '/how-to-play', label: 'How to Play', icon: BookOpen },
-        { to: '/leaderboard', label: 'Leaderboard', icon: Trophy },
+        ...(PVP_ENABLED ? [{ to: '/leaderboard', label: 'Leaderboard', icon: Trophy }] : []),
         ...(polygonWallet ? [{ to: '/profile', label: 'Profile', icon: User }] : []),
       ]
     : [
@@ -54,6 +61,13 @@ const NavBar: React.FC = () => {
             <span className="text-[10px] font-bold uppercase tracking-normal text-violet-300">Duel</span>
           </span>
         </Link>
+
+        {TRAINING_PREVIEW_ENABLED && (
+          <span className="hidden items-center gap-1.5 rounded-md border border-amber-300/30 bg-amber-500/10 px-2 py-1 text-[11px] font-bold uppercase text-amber-100 md:inline-flex">
+            <Bot className="h-3.5 w-3.5" aria-hidden />
+            Training Preview
+          </span>
+        )}
 
         <div className="hidden items-center gap-1 lg:flex">
           {navItems.map((item) => {

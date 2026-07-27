@@ -18,6 +18,11 @@ import { Panel, SpinnerEmblem, StatusBadge } from '../components/ui/index.js';
 import { clearBotCreatureSelection, isValidBotCreatureSelection, readBotCreatureSelection } from '../utils/botSelection.js';
 import PendingEffectPanel from '../components/game/PendingEffectPanel.js';
 import { getEffectiveCreatureWisdom } from '../game/utils.js';
+import {
+  CHAMPIONSHIP_MESSAGE,
+  TRAINING_PREVIEW_ENABLED,
+  TRAINING_PREVIEW_LABEL,
+} from '../config/release.js';
 
 const BOT_ID = 'bot';
 const BOT_NAME = 'Bot';
@@ -252,13 +257,13 @@ const BotGame: React.FC = () => {
             <div className="flex items-center gap-3">
               <StatusBadge tone="amber">
                 <BotIcon className="h-3.5 w-3.5" aria-hidden />
-                Training Mode
+                {TRAINING_PREVIEW_ENABLED ? TRAINING_PREVIEW_LABEL : 'Training Mode'}
               </StatusBadge>
-              <span className="text-sm text-slate-300">Practice against AI</span>
+              <span className="text-sm text-slate-300">Practice against the bot</span>
             </div>
             <div className="hidden items-center gap-2 text-sm text-cyan-200 sm:flex">
               <Info className="h-4 w-4" aria-hidden />
-              No competitive rewards are earned.
+              {TRAINING_PREVIEW_ENABLED ? CHAMPIONSHIP_MESSAGE : 'No competitive rewards are earned.'}
             </div>
           </Panel>
         </div>

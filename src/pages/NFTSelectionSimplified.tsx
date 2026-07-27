@@ -11,6 +11,11 @@ import { NFTSelectionNavigationManager } from '../utils/NavigationManager.js';
 import creatureData from '../assets/creatures.json' with { type: 'json' };
 import { ArenaButton, cn, ErrorRecoveryPanel, Panel, SpinnerEmblem, StatusBadge } from '../components/ui/index.js';
 import { clearBotCreatureSelection, writeBotCreatureSelection } from '../utils/botSelection.js';
+import {
+  CHAMPIONSHIP_MESSAGE,
+  TRAINING_PREVIEW_ENABLED,
+  TRAINING_PREVIEW_LABEL,
+} from '../config/release.js';
 
 // --- Define ALL_CREATURES constant ---
 const ALL_CREATURES: Creature[] = creatureData as Creature[];
@@ -349,7 +354,7 @@ const NFTSelectionSimplified: React.FC<NFTSelectionSimplifiedProps> = ({ mode = 
           {isBotMode && (
             <StatusBadge tone="amber">
               <Bot className="h-3.5 w-3.5" aria-hidden />
-              Training Setup
+              {TRAINING_PREVIEW_ENABLED ? TRAINING_PREVIEW_LABEL : 'Training Setup'}
             </StatusBadge>
           )}
         </div>
@@ -374,6 +379,9 @@ const NFTSelectionSimplified: React.FC<NFTSelectionSimplifiedProps> = ({ mode = 
                   ? 'Choose exactly 3 creatures before facing the bot. Practice mode does not change competitive stats.'
                   : 'Choose exactly 3 creatures to enter the arena. You cannot select more than 3.'}
               </p>
+              {isBotMode && TRAINING_PREVIEW_ENABLED && (
+                <p className="mt-2 text-sm text-amber-100/80">{CHAMPIONSHIP_MESSAGE}</p>
+              )}
               {isBotMode && (
                 <ArenaButton
                   type="button"

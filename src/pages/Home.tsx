@@ -1,8 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LogIn, Mail, ShieldCheck, Sparkles, WalletCards } from 'lucide-react';
+import { BookOpenCheck, FlaskConical, LogIn, Mail, ShieldCheck, Sparkles, Trophy, WalletCards } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth.js';
 import { ArenaButton, Input, Panel, StatusBadge } from '../components/ui/index.js';
+import {
+  CHAMPIONSHIP_MESSAGE,
+  TRAINING_PREVIEW_ENABLED,
+  TRAINING_PREVIEW_LABEL,
+} from '../config/release.js';
 
 function formatCooldown(seconds: number): string {
   const minutes = Math.floor(seconds / 60);
@@ -117,20 +122,43 @@ const Home: React.FC = () => {
       </div>
 
       <div className="relative z-10 flex w-full max-w-5xl flex-col items-center text-center">
-        <StatusBadge tone="violet" className="mb-5">
+        <StatusBadge tone={TRAINING_PREVIEW_ENABLED ? 'amber' : 'violet'} className="mb-5">
           <Sparkles className="h-3.5 w-3.5" aria-hidden />
-          Digital Card Arena
+          {TRAINING_PREVIEW_ENABLED ? TRAINING_PREVIEW_LABEL : 'Digital Card Arena'}
         </StatusBadge>
         <Panel glow className="w-full max-w-2xl px-6 py-8 sm:px-10 sm:py-10">
           <div className="mx-auto mb-6 grid h-20 w-20 place-items-center overflow-hidden rounded-xl border border-amber-200/25 bg-black/30 sm:h-24 sm:w-24">
             <img src="/logos/logo-header-dark.png" alt="Wisdom Duel" className="h-16 w-16 object-contain opacity-95 sm:h-20 sm:w-20" />
           </div>
           <h1 className="font-display text-4xl font-black text-slate-50 sm:text-6xl">
-            Welcome to Wisdom Duel
+            {TRAINING_PREVIEW_ENABLED ? 'Train for Wisdom Duel' : 'Welcome to Wisdom Duel'}
           </h1>
           <p className="mx-auto mt-4 max-w-xl text-base leading-7 text-slate-300 sm:text-lg">
-            Collect powerful cards, command legendary beings, and battle for control of the arena.
+            {TRAINING_PREVIEW_ENABLED
+              ? 'Learn the rules, test card combinations, and refine your strategy against the bot before the multiplayer arena opens.'
+              : 'Collect powerful cards, command legendary beings, and battle for control of the arena.'}
           </p>
+
+          {TRAINING_PREVIEW_ENABLED && (
+            <>
+              <div className="mt-6 grid gap-2 text-left sm:grid-cols-3">
+                {[
+                  { icon: BookOpenCheck, label: 'Learn the rules' },
+                  { icon: FlaskConical, label: 'Test strategies' },
+                  { icon: Trophy, label: 'Prepare to compete' },
+                ].map(({ icon: Icon, label }) => (
+                  <div key={label} className="flex items-center gap-2 rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-sm text-slate-200">
+                    <Icon className="h-4 w-4 shrink-0 text-cyan-200" aria-hidden />
+                    <span>{label}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-5 rounded-lg border border-amber-300/25 bg-amber-500/[0.08] px-4 py-3 text-sm text-amber-100">
+                <p className="font-bold">This preview is training-only.</p>
+                <p className="mt-1 text-amber-100/75">{CHAMPIONSHIP_MESSAGE}</p>
+              </div>
+            </>
+          )}
 
           {!user ? (
             <div className="mt-8 space-y-4">
@@ -222,7 +250,9 @@ const Home: React.FC = () => {
                 <ShieldCheck className="h-4 w-4 text-cyan-200" aria-hidden />
                 <span>Play Hub identity is required.</span>
                 <span className="hidden text-slate-600 sm:inline">|</span>
-                <span className="text-cyan-200">Polygon wallet linking unlocks the arena.</span>
+                <span className="text-cyan-200">
+                  Polygon wallet linking unlocks {TRAINING_PREVIEW_ENABLED ? 'training' : 'the arena'}.
+                </span>
               </div>
 
               {authError && (

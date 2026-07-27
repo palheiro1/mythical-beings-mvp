@@ -40,7 +40,7 @@ describe('NavBar', () => {
     expect(screen.queryByRole('link', { name: /leaderboard/i })).not.toBeInTheDocument();
   });
 
-  it('shows game navigation only when a Polygon wallet is linked', () => {
+  it('shows training navigation only when a Polygon wallet is linked during preview', () => {
     authState = {
       ...baseAuthState,
       user: { id: 'user-1', email: 'player@example.com' },
@@ -50,8 +50,9 @@ describe('NavBar', () => {
 
     renderNavBar();
 
-    expect(screen.getAllByRole('link', { name: /lobby/i }).length).toBeGreaterThan(0);
-    expect(screen.getAllByRole('link', { name: /leaderboard/i }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('link', { name: /training/i }).length).toBeGreaterThan(0);
+    expect(screen.queryByRole('link', { name: /lobby/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /leaderboard/i })).not.toBeInTheDocument();
     expect(screen.getAllByRole('link', { name: /profile/i }).length).toBeGreaterThan(0);
   });
 
