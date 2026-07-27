@@ -116,7 +116,7 @@ These examples illustrate how passives shape your plan: time rotations, line up 
 ## Play Locally
 
 Prerequisites
-- Node.js 18+
+- Node.js 20+
 - npm (or yarn)
 
 Install & Run
