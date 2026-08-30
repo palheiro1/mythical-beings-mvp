@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { isValidAction } from '../../src/game/rules.js';
 import { createInitialTestState, createTestKnowledge } from '../utils/testHelpers.js';
 import { GameState, GameAction, RotateCreaturePayload, DrawKnowledgePayload, SummonKnowledgePayload, EndTurnPayload, Player } from '../../src/game/types.js'; // Import necessary types

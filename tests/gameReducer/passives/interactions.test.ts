@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { gameReducer } from '../../../src/game/state';
-import { GameState, Knowledge } from '../../../src/game/types';
+import { GameState } from '../../../src/game/types';
 import { createInitialTestState, createTestKnowledge } from '../../utils/testHelpers';
 
 describe('Passive Interactions', () => {
@@ -135,7 +135,6 @@ describe('Passive Interactions', () => {
   describe('Scenario 5: Multiple AFTER_PLAYER_SUMMON (Owner) Passives', () => {
     it('should trigger Japinunus and Tulpar when owner summons air', () => {
       const p1Id = 'player1'; // Owner of Japinunus and Tulpar
-      const p2Id = 'player2';
       const initialState = createInitialTestState('interaction5', ['japinunus', 'tulpar'], ['pele'], {
         currentPlayerIndex: 0,
         phase: 'action',
@@ -168,7 +167,6 @@ describe('Passive Interactions', () => {
   describe('Scenario 6: Chain Reaction - Summon -> Draw -> Discard', () => {
     it('should trigger Adaro draw, then Inkanyamba discard', () => {
       const p1Id = 'player1'; // Owner of Adaro and Inkanyamba
-      const p2Id = 'player2';
       const initialState = createInitialTestState('interaction6', ['adaro', 'inkanyamba'], ['pele'], {
         currentPlayerIndex: 0,
         phase: 'action',
@@ -183,7 +181,6 @@ describe('Passive Interactions', () => {
       const initialMarketSize = initialState.market.length;
       const initialDiscardSize = initialState.discardPile.length;
       const cardToDraw = initialState.market[0];
-      const cardToDiscard = initialState.market[1]; // Inkanyamba should discard the *next* card
 
       const summonAction = {
         type: 'SUMMON_KNOWLEDGE' as const, // Fix type
@@ -214,7 +211,6 @@ describe('Passive Interactions', () => {
   describe('Scenario 7: Chain Reaction - Summon -> Knowledge Leave', () => {
     it('should trigger Pele discard, then Lisovik damage', () => {
       const p1Id = 'player1'; // Pele owner and summoner
-      const p2Id = 'player2'; // Lisovik owner
       const initialState = createInitialTestState('interaction7a', ['pele', 'adaro'], ['lisovik', 'kyzy'], {
         currentPlayerIndex: 0,
         phase: 'action',
@@ -253,7 +249,6 @@ describe('Passive Interactions', () => {
 
     it('should trigger Pele discard, then Tsenehale power gain', () => {
       const p1Id = 'player1'; // Pele owner and summoner
-      const p2Id = 'player2'; // Tsenehale owner
       const initialState = createInitialTestState('interaction7b', ['pele', 'adaro'], ['tsenehale', 'kyzy'], {
         currentPlayerIndex: 0,
         phase: 'action',
@@ -293,7 +288,6 @@ describe('Passive Interactions', () => {
   describe('Scenario 8: Interaction with Free Action Summons', () => {
     it('should trigger Adaro draw even when summon is free via Kappa', () => {
       const p1Id = 'player1'; // Owner of Kappa and Adaro
-      const p2Id = 'player2';
       const initialState = createInitialTestState('interaction8a', ['kappa', 'adaro'], ['pele'], {
         currentPlayerIndex: 0,
         phase: 'action',
@@ -368,7 +362,6 @@ describe('Passive Interactions', () => {
 
   describe('Scenario 9: TURN_START Draw vs AFTER_PLAYER_DRAW', () => {
     it('should not treat Zhar-Ptitsa as a draw trigger for Inkanyamba', () => {
-      const p1Id = 'player1'; // Owner of Zhar-Ptitsa and Inkanyamba
       const p2Id = 'player2';
       const initialState = createInitialTestState('interaction9', ['zhar-ptitsa', 'inkanyamba'], ['pele'], {
         currentPlayerIndex: 1, // P2's turn

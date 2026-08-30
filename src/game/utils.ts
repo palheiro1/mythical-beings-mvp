@@ -2,6 +2,11 @@ import { GameState, PlayerState, Creature, Knowledge, PendingEffect, PendingEffe
 // Import the JSON data
 import creaturesData from '../assets/creatures.json';
 import knowledgesData from '../assets/knowledges.json';
+import {
+  createGameRandomState,
+  shuffleWithGameRandom,
+  takeGameRandomUuid,
+} from './random.js';
 
 // Helper function to get the state for a specific player
 export function getPlayerState(state: GameState, playerId: string): PlayerState | undefined {
@@ -101,18 +106,23 @@ export function getEffectiveCreatureWisdom(state: GameState, playerIndex: number
 }
 
 export function makeKnowledgeInstance(card: Knowledge): Knowledge {
-  return { ...card, instanceId: card.instanceId || crypto.randomUUID(), rotation: card.rotation ?? 0 };
+  if (!card.instanceId) {
+    throw new Error('Knowledge instances must be assigned by the private game random stream.');
+  }
+  return { ...card, instanceId: card.instanceId, rotation: card.rotation ?? 0 };
 }
 
 export function refillMarket(state: GameState, minimumSize = 5): GameState {
   const newState = structuredClone(state);
+  newState.privateRandom ??= createGameRandomState();
+  const privateRandom = newState.privateRandom;
   while (newState.market.length < minimumSize) {
     if (newState.knowledgeDeck.length === 0) {
       if (newState.discardPile.length === 0) break;
-      const reshuffled = [...newState.discardPile].sort(() => Math.random() - 0.5).map(card => ({
+      const reshuffled = shuffleWithGameRandom([...newState.discardPile], privateRandom).map(card => ({
         ...card,
         rotation: 0,
-        instanceId: crypto.randomUUID(),
+        instanceId: takeGameRandomUuid(privateRandom),
       }));
       newState.knowledgeDeck = reshuffled;
       newState.discardPile = [];
@@ -137,14 +147,14 @@ export function createPendingEffect(
     };
   }
 
-  return {
-    ...state,
-    pendingEffect: {
-      ...effect,
-      id: crypto.randomUUID(),
-    },
-    log: [...state.log, `[Pending Effect] ${effect.prompt}`],
+  const newState = structuredClone(state);
+  newState.privateRandom ??= createGameRandomState();
+  newState.pendingEffect = {
+    ...effect,
+    id: takeGameRandomUuid(newState.privateRandom),
   };
+  newState.log.push(`[Pending Effect] ${effect.prompt}`);
+  return newState;
 }
 
 export function buildKnowledgeChoices(

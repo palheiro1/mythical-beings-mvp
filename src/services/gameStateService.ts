@@ -1,6 +1,7 @@
 import { supabase } from '../utils/supabaseClient.js';
 import type { CardGameSessionState, RealtimeChannel } from '../utils/supabaseClient.js';
 import { GameState } from '../game/types.js';
+import { assertPvpEnabled } from '../config/release.js';
 
 function normalizeCardGameState(row: any): CardGameSessionState | null {
   if (!row) return null;
@@ -34,6 +35,7 @@ export async function getCardGameSessionState(sessionId: string): Promise<CardGa
 }
 
 export async function setCardGameSelection(sessionId: string, selectedCreatures: string[]): Promise<CardGameSessionState | null> {
+  assertPvpEnabled();
   const { data, error } = await supabase.rpc('card_game_set_selection', {
     p_session_id: sessionId,
     p_selected_creatures: selectedCreatures,
@@ -69,6 +71,7 @@ export async function getPublicGameState(sessionId: string): Promise<GameState |
 }
 
 export async function updateGameState(sessionId: string, newState: GameState): Promise<boolean> {
+  assertPvpEnabled();
   const { error } = await supabase.rpc('card_game_set_state', {
     p_session_id: sessionId,
     p_state: newState,

@@ -1,16 +1,13 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { initializeGame } from '../../src/game/state';
-import type { GameState, Creature, Knowledge } from '../../src/game/types';
-import { findCreature, findKnowledge, createInitialTestState } from '../utils/testHelpers';
+import type { GameState, Knowledge } from '../../src/game/types';
+import { findCreature } from '../utils/testHelpers';
 
 // Use real IDs from your data
 const player1Id = 'player1';
 const player2Id = 'player2';
 const dudugeraData = findCreature('dudugera')!;
 const adaroData = findCreature('adaro')!;
-const terrestrial1Data = findKnowledge('terrestrial1')!;
-const aquatic2Data = findKnowledge('aquatic2')!;
-
 // testHelpers ensures these exist
 
 // Mock console methods before each test
@@ -27,14 +24,8 @@ afterEach(() => {
 
 describe('initializeGame', () => {
   let initialState: GameState;
-  let mockCounter: number;
 
   beforeEach(() => {
-    mockCounter = 0;
-    vi.spyOn(global, 'crypto', 'get').mockImplementation(() => ({
-      randomUUID: () => `init-game-uuid-${mockCounter++}`,
-    }));
-
     initialState = initializeGame({
       gameId: 'game1',
       player1Id,

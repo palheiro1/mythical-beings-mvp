@@ -98,7 +98,6 @@ describe('Pele Passive', () => {
 
     it('should NOT discard if opponent only has equal/higher cost knowledge', () => {
       const p1Id = 'player1'; // Pele's owner and summoner
-      const p2Id = 'player2'; // Opponent
       const initialState = createInitialTestState('game27', ['pele', 'adaro'], ['kyzy', 'lisovik'], { // P1 has Pele
         currentPlayerIndex: 0, // Player 1's turn
         phase: 'action',
@@ -144,7 +143,6 @@ describe('Pele Passive', () => {
 
     it('should NOT discard if opponent has no knowledge cards', () => {
       const p1Id = 'player1'; // Pele's owner and summoner
-      const p2Id = 'player2'; // Opponent
       const initialState = createInitialTestState('game28', ['pele', 'adaro'], ['kyzy', 'lisovik'], { // P1 has Pele
         currentPlayerIndex: 0, // Player 1's turn
         phase: 'action',
@@ -185,7 +183,6 @@ describe('Pele Passive', () => {
 
     it('should NOT discard if owner summons non-earth knowledge', () => {
       const p1Id = 'player1'; // Pele's owner and summoner
-      const p2Id = 'player2'; // Opponent
       const initialState = createInitialTestState('game29', ['pele', 'adaro'], ['kyzy'], { // P1 has Pele
         currentPlayerIndex: 0, // Player 1's turn
         phase: 'action',
