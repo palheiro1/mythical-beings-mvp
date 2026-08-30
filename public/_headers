@@ -1,5 +1,6 @@
+# Netlify's static-file default keeps HTML at max-age=0. Do not set a catch-all
+# Cache-Control value here: it would also override hashed assets.
 /*
-  Cache-Control: public, max-age=0, must-revalidate
   Strict-Transport-Security: max-age=63072000; includeSubDomains; preload
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
