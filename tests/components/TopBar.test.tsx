@@ -38,4 +38,29 @@ describe('TopBar', () => {
     expect(updateGameState).not.toHaveBeenCalled();
     expect(recordGameOutcomeAndUpdateStats).not.toHaveBeenCalled();
   });
+
+  it('renders the terminal phase as a readable game-over label', () => {
+    const gameState = createInitialTestState('finished-game', ['adaro'], ['pele'], {
+      phase: 'gameOver',
+      winner: 'player2',
+    });
+
+    render(
+      <CardRegistryProvider>
+        <TopBar
+          player1Profile={{ id: 'player1', username: 'You', display_name: null, avatar_url: null }}
+          player2Profile={{ id: 'player2', username: 'Bot', display_name: null, avatar_url: null }}
+          player1Power={0}
+          player2Power={12}
+          turn={7}
+          phase={gameState.phase}
+          currentPlayerId={gameState.players[0].id}
+          gameState={gameState}
+        />
+      </CardRegistryProvider>,
+    );
+
+    expect(screen.getByText('GAME OVER')).toBeInTheDocument();
+    expect(screen.queryByText('GAMEOVER PHASE')).not.toBeInTheDocument();
+  });
 });

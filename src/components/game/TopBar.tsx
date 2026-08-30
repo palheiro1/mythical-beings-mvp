@@ -101,7 +101,7 @@ const TopBar: React.FC<TopBarProps> = ({
           </div>
         </div>
         <StatusBadge tone={phase === 'action' ? 'violet' : phase === 'knowledge' ? 'blue' : phase === 'gameOver' ? 'red' : 'amber'} className="mt-1">
-          {phase.toUpperCase()} PHASE
+          {phase === 'gameOver' ? 'GAME OVER' : `${phase.toUpperCase()} PHASE`}
         </StatusBadge>
         <div className="mt-1 hidden justify-center sm:flex">
           <img src="/logos/logo-header-dark.webp" alt="Wisdom Duel" width="520" height="388" className="h-5 w-auto opacity-70" />

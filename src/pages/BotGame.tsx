@@ -98,7 +98,7 @@ const BotGame: React.FC = () => {
         ...state,
         winner: BOT_ID,
         phase: 'gameOver',
-        log: [...state.log, `[Training] ${LOCAL_PLAYER_ID} resigns. ${BOT_NAME} wins.`],
+        log: [...state.log, `[Training] ${LOCAL_PLAYER_ID} resigned. ${BOT_NAME} wins.`],
       };
     });
   };
