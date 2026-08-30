@@ -1821,3 +1821,91 @@ DDL/DML em produção, secret, policy, grant, catálogo, Hub ou SDK partilhado f
 
 Relatório técnico e patch: `docs/tech/WISDOM_DUEL_CONTAINMENT_C32.md` e
 `docs/tech/patches/WISDOM_DUEL_CONTAINMENT_C32.patch`.
+
+## Checkpoint C33 — contenção publicada e treino promovido a produção
+
+**Data:** 2026-08-30
+
+**Estado do ciclo:** Fases 0/1 concluídas para o frontend standalone e contenção runtime; Hub
+publicado ainda aguarda o PR isolado; Fase 2 permanece bloqueada pela baseline partilhada
+
+**Limite de segurança:** nenhuma migração, policy, grant, RPC, tabela, catálogo ou linha de dados da
+base partilhada foi alterada. Bestiary Trails e Swarm Hunt não receberam mudanças.
+
+### Entregas
+
+| Código | Estado | Entrega | Evidência/nota |
+|---|---|---|---|
+| C33-1 | 🟢 | Preservação recuperável | Snapshot `18c0a03`, branch backup e branch de upgrade separada; integração dividida em commits temáticos |
+| C33-2 | 🟢 | SDK/runtime alinhados | Wisdom fixa `@mythicalb/sdk`, `@mythicalb/ardor-core` e `@mythicalb/ardor-provider` em `0.2.0` |
+| C33-3 | 🟢 | Treino público sem identidade | Seleção, partida e resignação contra bot funcionam sem Play Hub, conta ou carteira |
+| C33-4 | 🟢 | Hosting endurecido | Fallback SPA, CSP aplicada, HSTS, nosniff, referrer/permissions policy, HTML revalidável e assets com hash imutáveis |
+| C33-5 | 🟢 | Contenção C32 publicada | Oito Edge Functions recusam execução competitiva por omissão antes de body/segredos/service role |
+| C33-6 | 🟢 | Release standalone | Commit `2948ddd`, deploy Netlify `6a94067fb54da37c14aa8e4f`, mesmo artefacto nos dois domínios |
+| C33-7 | 🟡 | Hub corrigido em PR isolado | PR `Tarasca-DAO/card-game-wallet-v2#176`, commit `11d3e9c`; 112 testes verdes, preview Vercel bloqueado por plano da conta |
+| C33-8 | 🔴 P0 | Baseline DB ainda não reproduzível | 36 migrações inventariadas; reset limpo falha quando `games.slug` é usado antes de existir na cadeia |
+| C33-9 | 🟡 | Escrow implementado localmente | Repo `wisdom-duel-escrow`, commit `895817a`; contrato não-upgradeable e 10 testes/invariantes verdes; falta auditoria externa |
+| PERF-C33 | 🔴 | Trace CWV | Chrome DevTools MCP continua indisponível; nenhuma métrica LCP/INP/CLS foi inventada |
+
+### Evidência de produção
+
+1. `https://mythical-mvp.netlify.app` e `https://wisdomduel.mythicalbeings.io` servem o asset
+   `assets/index-CobMpAUg.js` e apresentam o build `2948ddd`.
+2. SHA-256 do HTML publicado: `568cd5e1d9f611891fbb2b1ff06160704343e56abe8ec9a62ac2b2c2e8c31cfa`.
+3. SHA-256 do entry chunk: `e6eb5532788cb91d4a0036849c613a3d171f2cedadc154aa2aff95f2c384db7d`.
+4. Bundles com hash devolvem `Cache-Control: public,max-age=31536000,immutable`; HTML e rotas
+   SPA devolvem `max-age=0,must-revalidate`.
+5. Browser real confirmou home, rota direta, refresh, seleção de três criaturas, partida local,
+   tutorial e resignação: `You resigned. Bot wins.` / `GAME OVER`.
+6. Viewport 390×844 confirmou CTA visível e ausência de overflow horizontal. Ativação completa por
+   teclado fica como QA manual: o CTA é um `button` nativo e recebe foco, mas a automação disponível
+   não sintetizou o Enter de forma fiável.
+7. Smoke remoto pós-release confirmou `503` nas oito funções: `deal-cards` devolve
+   `multiplayer_disabled`; as sete funções SDK devolvem `wisdom_duel_disabled`.
+
+### Validação de fecho
+
+| Superfície | Resultado |
+|---|---|
+| Testes Wisdom Duel + cobertura | 91 ficheiros, 433 testes, 100% aprovados |
+| Cobertura | 86,91% statements/lines, 80,19% branches, 98,69% functions; 18/18 críticos aprovados |
+| TypeScript/Deno/build | Typecheck web e Edge aprovados; Vite build aprovado |
+| Lint | Zero warnings |
+| Bundle | 94,48 KiB JS inicial; 69,12 KiB maior chunk; 14,86 KiB CSS inicial |
+| Artefacto público | 115 ficheiros, 41 textuais; sem material privilegiado nem sourcemaps |
+| Dependências | `npm audit --omit=dev --audit-level=high`: zero vulnerabilidades |
+| Escrow | 8 unit/fuzz + 2 invariantes; 256 runs e 128.000 calls por invariante; zero falhas/reverts |
+| Hub main isolado | 25 ficheiros/112 testes verdes; só cartão Wisdom e teste alterados no PR #176 |
+| Base partilhada | Zero DDL/DML/repair/push; catálogo, grants, policies e RPCs inalterados |
+
+### Estado das fases
+
+1. **Fase 0 — concluída no runtime:** oito funções default-off em produção. A alteração de catálogo
+   continua adiada para uma janela coordenada; o bloqueio server-side impede operação privilegiada.
+2. **Fase 1 — concluída no standalone:** ambos os domínios executam o novo treino. O cartão publicado
+   do Hub ainda usa a cópia antiga `Live/GEM`; o href canónico está correto e o PR #176 contém a
+   correção mínima.
+3. **Fase 2 — bloqueada corretamente:** não executar `migration repair`, `db push` ou nova branch até
+   existir baseline schema-only, ensaio isolado e janela exclusiva dos três jogos.
+4. **Fase 3 — protótipo local apenas:** executor, CAS/idempotência, replay, HTTP e projeções têm testes;
+   não existe ainda persistência/Edge Function Postgres autorizada para produção.
+5. **Fase 4 — implementação local:** contrato e invariantes existem; testnet, Safe/HSM, auditoria
+   externa, retest e reconciliador continuam obrigatórios.
+6. **Fase 5 — NO-GO:** beta GEM não abre antes dos gates DB, contrato, jurídico, allowlist e operação.
+
+### Tarefas pendentes prioritárias
+
+1. Rever e integrar o PR Hub #176; resolver o bloqueio Vercel de organização privada e validar em
+   guest e sessão real que `Start Training` abre o domínio canónico.
+2. Executar QA manual de teclado, leitor de ecrã, contraste/áudio e trace Lighthouse/CWV com Chrome
+   DevTools MCP configurado.
+3. Convocar janela exclusiva DB com os donos de Wisdom, Bestiary Trails e Swarm Hunt; recolher dump
+   schema-only, ledger, grants/policies/checksums e ensaiar baseline + diff zero fora de produção.
+4. Só depois do gate anterior, criar migrações forward-only do schema privado/projeções e a matriz
+   pgTAP multi-ator/multi-jogo; não tocar no schema `realtime`.
+5. Materializar a Edge Function autoritativa, timeout de 120 s, 20 auto-passes, load test de 50
+   partidas e canário allowlisted sem GEM.
+6. Publicar o escrow em testnet apenas após definir tokens/chain/Safe/signer; contratar auditoria
+   independente e fechar retest antes de qualquer mainnet.
+7. Concluir parecer jurídico, allowlist, retenção, monitorização financeira e runbooks antes da beta
+   mainnet fechada.
