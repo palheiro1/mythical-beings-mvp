@@ -28,9 +28,9 @@
     "verify:production-logging": "node scripts/verify-production-logging.mjs"
   },
   "dependencies": {
-    "@mythicalb/ardor-core": "0.1.1",
-    "@mythicalb/ardor-provider": "0.1.1",
-    "@mythicalb/sdk": "0.1.3",
+    "@mythicalb/ardor-core": "0.2.0",
+    "@mythicalb/ardor-provider": "0.2.0",
+    "@mythicalb/sdk": "0.2.0",
     "@supabase/supabase-js": "^2.49.4",
     "lucide-react": "^1.14.0",
     "react": "19.1.0",

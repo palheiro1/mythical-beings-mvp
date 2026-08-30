@@ -21,7 +21,10 @@ The frontend uses `@mythicalb/sdk` through `src/services/mythicalClient.ts`.
 
 ## SDK Dependency
 
-`@mythicalb/sdk@0.1.1` is required for Polygon auth, tokens, assets, and competition modules. If `0.1.1` is not published to npm yet, keep the generated in-repo tarball under `vendor/` as the reproducible dependency for builds. Replace it with `@mythicalb/sdk:^0.1.1` after publishing.
+The frontend pins `@mythicalb/sdk@0.2.0`, `@mythicalb/ardor-core@0.2.0`, and
+`@mythicalb/ardor-provider@0.2.0` so standalone builds use the same protocol
+generation as Play Hub. Upgrade these three packages together and commit the
+resulting lockfile; do not mix SDK 0.1.x and 0.2.x packages.
 
 ## Supabase Deploy Checklist
 
