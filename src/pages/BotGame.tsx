@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Bot as BotIcon, Info } from 'lucide-react';
-import { useAuth } from '../hooks/useAuth.js';
+import { Bot as BotIcon, GraduationCap, Info } from 'lucide-react';
 import { GameState } from '../game/types.js';
 import { initializeGame } from '../game/state.js';
 import TopBar from '../components/game/TopBar.js';
@@ -11,12 +10,13 @@ import HandsColumn from '../components/game/HandsColumn.js';
 import GameAnnouncer from '../components/game/GameAnnouncer.js';
 import { useTurnTimer } from '../hooks/useTurnTimer.js';
 import { useLocalGameActions } from '../hooks/useLocalGameActions.js';
-import { useCardRegistry } from '../context/CardRegistry.js';
+import { useCardRegistry } from '../hooks/useCardRegistry.js';
 import GameShell from '../components/game/GameShell.js';
 import GameAuxPanels from '../components/game/GameAuxPanels.js';
-import { Panel, SpinnerEmblem, StatusBadge } from '../components/ui/index.js';
+import { ArenaButton, Panel, SpinnerEmblem, StatusBadge } from '../components/ui/index.js';
 import { clearBotCreatureSelection, isValidBotCreatureSelection, readBotCreatureSelection } from '../utils/botSelection.js';
 import PendingEffectPanel from '../components/game/PendingEffectPanel.js';
+import TrainingTutorial from '../components/game/TrainingTutorial.js';
 import { getEffectiveCreatureWisdom } from '../game/utils.js';
 import {
   CHAMPIONSHIP_MESSAGE,
@@ -26,16 +26,26 @@ import {
 
 const BOT_ID = 'bot';
 const BOT_NAME = 'Bot';
+const LOCAL_PLAYER_ID = 'local-player';
 
 const BOT_CREATURES = ['adaro', 'lisovik', 'kappa'];
+const BOT_PLAYER_LABELS = { [LOCAL_PLAYER_ID]: 'You', [BOT_ID]: BOT_NAME };
+const TRAINING_TUTORIAL_STORAGE_KEY = 'wisdom-duel-training-tutorial-v1';
 
 const BotGame: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, loading: authLoading } = useAuth();
-  const currentPlayerId = user?.id || 'local-user';
+  const currentPlayerId = LOCAL_PLAYER_ID;
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [selectedKnowledgeId, setSelectedKnowledgeId] = useState<string | null>(null);
+  const [tutorialOpen, setTutorialOpen] = useState(() => {
+    if (typeof window === 'undefined') return true;
+    try {
+      return window.localStorage.getItem(TRAINING_TUTORIAL_STORAGE_KEY) !== 'seen';
+    } catch {
+      return true;
+    }
+  });
   const [playerCreatureIds] = useState<string[] | null>(() => {
     const state = location.state as { selectedCreatures?: unknown } | null;
     const selectedCreatures = state?.selectedCreatures;
@@ -80,10 +90,17 @@ const BotGame: React.FC = () => {
     handleEndTurn();
   };
 
+  const handleTutorialClose = () => {
+    setTutorialOpen(false);
+    try {
+      window.localStorage.setItem(TRAINING_TUTORIAL_STORAGE_KEY, 'seen');
+    } catch {
+      // The guide still closes when storage is unavailable or blocked.
+    }
+  };
+
   // Initialize a local game only after the shared creature selection screen has completed.
   useEffect(() => {
-    if (authLoading) return;
-
     if (!playerCreatureIds) {
       navigate('/bot-selection', { replace: true });
       return;
@@ -104,13 +121,13 @@ const BotGame: React.FC = () => {
       clearBotCreatureSelection();
       navigate('/bot-selection', { replace: true });
     }
-  }, [authLoading, currentPlayerId, navigate, playerCreatureIds]);
+  }, [currentPlayerId, navigate, playerCreatureIds]);
 
   // Bot resolves its own pending choices deterministically.
   const botThinking = useRef(false);
+  const pendingEffect = gameState?.pendingEffect;
   useEffect(() => {
-    if (!gameState || !gameState.pendingEffect) return;
-    if (gameState.pendingEffect.playerId !== BOT_ID) return;
+    if (!pendingEffect || pendingEffect.playerId !== BOT_ID) return;
 
     const timeout = window.setTimeout(() => {
       const pending = latestStateRef.current?.pendingEffect;
@@ -127,7 +144,7 @@ const BotGame: React.FC = () => {
     }, 450);
 
     return () => window.clearTimeout(timeout);
-  }, [gameState?.pendingEffect, handleAction]);
+  }, [pendingEffect, handleAction]);
 
   // Simple Bot AI loop: on bot's action phase, try rotate → play → draw, with small delays
   useEffect(() => {
@@ -185,13 +202,13 @@ const BotGame: React.FC = () => {
     };
 
     runBot();
-  }, [gameState]);
+  }, [gameState, handleAction]);
 
   // Timer
   const TURN_DURATION_SECONDS = 30;
   const isMyTurn = !!gameState && gameState.players[gameState.currentPlayerIndex]?.id === currentPlayerId;
   const remainingTime = useTurnTimer({
-    isMyTurn: isMyTurn && !gameState?.pendingEffect,
+    isMyTurn: isMyTurn && !gameState?.pendingEffect && !tutorialOpen,
     phase: gameState?.pendingEffect ? null : gameState?.phase === 'action' || gameState?.phase === 'knowledge' || gameState?.phase === 'end' ? gameState.phase : null,
     turnDurationSeconds: TURN_DURATION_SECONDS,
     onTimerEnd: handleTrainingEndTurn,
@@ -199,7 +216,7 @@ const BotGame: React.FC = () => {
     currentPlayerIndex: gameState?.currentPlayerIndex ?? null,
   });
 
-  if (authLoading || !gameState) {
+  if (!gameState) {
     return <div className="arena-page flex h-[calc(100vh-var(--navbar-height))] items-center justify-center"><SpinnerEmblem label="Loading bot game..." /></div>;
   }
 
@@ -222,6 +239,7 @@ const BotGame: React.FC = () => {
             currentPlayerId={currentPlayerId}
             onResolve={(resolution) => handleAction({ type: 'RESOLVE_PENDING_EFFECT', payload: { playerId: currentPlayerId, resolution } })}
           />
+          <TrainingTutorial open={tutorialOpen} onClose={handleTutorialClose} />
         </>
       )}
       topBar={(
@@ -237,7 +255,8 @@ const BotGame: React.FC = () => {
         />
       )}
       actionBar={(
-        <ActionBar
+        <div ref={(element) => registry.register('action:anchor', element)}>
+          <ActionBar
           isMyTurn={isMyTurn && !gameState.pendingEffect}
           phase={gameState.phase}
           winner={gameState.winner}
@@ -248,12 +267,13 @@ const BotGame: React.FC = () => {
           winnerLabel={gameState.winner === BOT_ID ? BOT_NAME : 'You'}
           currentActorLabel={isMyTurn ? 'You' : BOT_NAME}
           onEndTurnClick={handleTrainingEndTurn}
-        />
+          />
+        </div>
       )}
     >
       <div className="flex min-h-0 flex-col gap-2 xl:h-full">
         <div className="grid grid-cols-1 gap-2 lg:grid-cols-[minmax(0,1fr)_360px]">
-          <Panel className="flex items-center justify-between gap-3 px-4 py-3">
+          <Panel className="flex flex-col items-start justify-between gap-3 px-4 py-3 sm:flex-row sm:items-center">
             <div className="flex items-center gap-3">
               <StatusBadge tone="amber">
                 <BotIcon className="h-3.5 w-3.5" aria-hidden />
@@ -261,15 +281,29 @@ const BotGame: React.FC = () => {
               </StatusBadge>
               <span className="text-sm text-slate-300">Practice against the bot</span>
             </div>
-            <div className="hidden items-center gap-2 text-sm text-cyan-200 sm:flex">
-              <Info className="h-4 w-4" aria-hidden />
-              {TRAINING_PREVIEW_ENABLED ? CHAMPIONSHIP_MESSAGE : 'No competitive rewards are earned.'}
+            <div className="flex w-full flex-wrap items-center justify-between gap-2 sm:w-auto sm:justify-end">
+              <div className="hidden items-center gap-2 text-sm text-cyan-200 md:flex">
+                <Info className="h-4 w-4" aria-hidden />
+                {TRAINING_PREVIEW_ENABLED ? CHAMPIONSHIP_MESSAGE : 'No competitive rewards are earned.'}
+              </div>
+              <ArenaButton
+                type="button"
+                variant="ghost"
+                size="sm"
+                icon={<GraduationCap className="h-4 w-4" aria-hidden />}
+                onClick={() => setTutorialOpen(true)}
+              >
+                Show tutorial
+              </ArenaButton>
             </div>
           </Panel>
         </div>
 
         <div className="grid min-h-0 flex-1 grid-cols-1 gap-2 xl:grid-cols-[minmax(260px,0.92fr)_minmax(540px,2.45fr)_minmax(300px,0.95fr)] xl:overflow-hidden">
-        <div className="order-2 min-h-[280px] xl:order-1 xl:h-full xl:min-h-0">
+        <div
+          className="order-2 min-h-[280px] xl:order-1 xl:h-full xl:min-h-0"
+          ref={(element) => registry.register('hand:anchor', element)}
+        >
           <HandsColumn
             currentPlayerHand={player.hand}
             opponentPlayerHand={opponent.hand}
@@ -298,6 +332,7 @@ const BotGame: React.FC = () => {
           isMyTurn={isMyTurn && !gameState.pendingEffect}
           phase={(gameState.phase === 'action' || gameState.phase === 'knowledge' || gameState.phase === 'end') ? gameState.phase : 'end'}
           logs={gameState.log}
+          playerLabels={BOT_PLAYER_LABELS}
           onDrawKnowledge={handleMarketClick}
         />
         </div>

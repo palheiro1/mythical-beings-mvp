@@ -1,8 +1,10 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { Creature, Knowledge } from '../game/types.js';
-import { cn, StatusBadge } from './ui/index.js';
+import { StatusBadge } from './ui/index.js';
+import { cn } from './ui/cn.js';
+import CardArtwork from './CardArtwork.js';
 
 interface CardDetailOverlayProps {
   card: Creature | Knowledge | null;
@@ -17,15 +19,66 @@ function isKnowledge(card: Creature | Knowledge): card is Knowledge {
 }
 
 const CardDetailOverlay: React.FC<CardDetailOverlayProps> = ({ card, open, onClose, contextLabel, showBack = false }) => {
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const previouslyFocusedRef = useRef<HTMLElement | null>(null);
+
   useEffect(() => {
     if (!open) return undefined;
 
+    previouslyFocusedRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const root = document.getElementById('root');
+    const rootWasInert = root?.hasAttribute('inert') ?? false;
+    const rootAriaHidden = root?.getAttribute('aria-hidden');
+    const previousOverflow = document.body.style.overflow;
+
+    root?.setAttribute('inert', '');
+    root?.setAttribute('aria-hidden', 'true');
+    document.body.style.overflow = 'hidden';
+    window.requestAnimationFrame(() => closeButtonRef.current?.focus());
+
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose();
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        onClose();
+        return;
+      }
+
+      if (event.key !== 'Tab' || !dialogRef.current) return;
+
+      const focusable = Array.from(dialogRef.current.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      )).filter(element => !element.hasAttribute('hidden'));
+
+      if (focusable.length === 0) {
+        event.preventDefault();
+        dialogRef.current.focus();
+        return;
+      }
+
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
     };
 
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      document.body.style.overflow = previousOverflow;
+      if (!rootWasInert) root?.removeAttribute('inert');
+      if (rootAriaHidden === null || rootAriaHidden === undefined) {
+        root?.removeAttribute('aria-hidden');
+      } else {
+        root?.setAttribute('aria-hidden', rootAriaHidden);
+      }
+      window.requestAnimationFrame(() => previouslyFocusedRef.current?.focus());
+    };
   }, [onClose, open]);
 
   if (!open || !card || typeof document === 'undefined') return null;
@@ -43,19 +96,24 @@ const CardDetailOverlay: React.FC<CardDetailOverlayProps> = ({ card, open, onClo
       role="dialog"
       aria-modal="true"
       aria-labelledby="card-detail-title"
-      onMouseDown={onClose}
+      aria-describedby="card-detail-description"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onClose();
+      }}
     >
       <div
+        ref={dialogRef}
+        tabIndex={-1}
         className="surface-obsidian grid w-full max-w-3xl gap-4 rounded-xl border p-4 text-white shadow-[0_28px_90px_rgba(0,0,0,0.72)] sm:grid-cols-[minmax(180px,260px)_1fr] sm:p-5"
         onMouseDown={(event) => event.stopPropagation()}
       >
         <div className="mx-auto aspect-[921/1217] w-full max-w-[220px] overflow-hidden rounded-xl border border-amber-200/40 bg-slate-950 shadow-[0_18px_44px_rgba(0,0,0,0.48)] sm:max-w-none">
           {showBack ? (
             <div className="card-back-face h-full w-full" aria-label="Hidden card">
-              <img src="/logos/logo-header-dark.png" alt="" className="card-back-crest" draggable={false} />
+              <img src="/logos/logo-header-dark.webp" alt="" width="520" height="388" className="card-back-crest" draggable={false} />
             </div>
           ) : (
-            <img src={imagePath} alt={card.name} className="h-full w-full object-cover" draggable={false} />
+            <CardArtwork src={imagePath} alt={card.name} className="h-full w-full object-cover" sizes="260px" />
           )}
         </div>
 
@@ -68,6 +126,7 @@ const CardDetailOverlay: React.FC<CardDetailOverlayProps> = ({ card, open, onClo
               </h2>
             </div>
             <button
+              ref={closeButtonRef}
               type="button"
               className="grid h-10 w-10 shrink-0 place-items-center rounded-lg border border-white/10 bg-white/[0.04] text-slate-200 transition hover:bg-white/[0.08] focus:outline-none focus:ring-2 focus:ring-amber-300/40"
               onClick={onClose}
@@ -91,7 +150,7 @@ const CardDetailOverlay: React.FC<CardDetailOverlayProps> = ({ card, open, onClo
             </div>
           )}
 
-          <div className={cn('mt-5 rounded-xl border border-white/10 bg-white/[0.04] p-4', showBack ? 'text-slate-400' : 'text-slate-200')}>
+          <div id="card-detail-description" className={cn('mt-5 rounded-xl border border-white/10 bg-white/[0.04] p-4', showBack ? 'text-slate-400' : 'text-slate-200')}>
             <p className="text-sm leading-6">{description}</p>
           </div>
         </div>

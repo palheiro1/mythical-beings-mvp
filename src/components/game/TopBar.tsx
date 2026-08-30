@@ -2,8 +2,9 @@ import React, { useRef, useEffect } from 'react';
 import { Flag, HeartPulse, Swords } from 'lucide-react';
 import { GameState } from '../../game/types.js';
 import { updateGameState, recordGameOutcomeAndUpdateStats, ProfileInfo } from '../../utils/supabase.js';
-import { useCardRegistry } from '../../context/CardRegistry.js';
-import { cn, StatusBadge } from '../ui/index.js';
+import { useCardRegistry } from '../../hooks/useCardRegistry.js';
+import { StatusBadge } from '../ui/index.js';
+import { cn } from '../ui/cn.js';
 
 interface TopBarProps {
   player1Profile: ProfileInfo;
@@ -97,7 +98,7 @@ const TopBar: React.FC<TopBarProps> = ({
           {phase.toUpperCase()} PHASE
         </StatusBadge>
         <div className="mt-1 hidden justify-center sm:flex">
-          <img src="/logos/logo-header-dark.png" alt="Wisdom Duel" className="h-5 w-auto opacity-70" />
+          <img src="/logos/logo-header-dark.webp" alt="Wisdom Duel" width="520" height="388" className="h-5 w-auto opacity-70" />
         </div>
       </div>
 

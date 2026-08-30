@@ -31,16 +31,17 @@ describe('NavBar', () => {
     authState = { ...baseAuthState, signOut: vi.fn() };
   });
 
-  it('shows only public navigation to visitors', () => {
+  it('offers public training navigation to visitors', () => {
     renderNavBar();
 
     expect(screen.getAllByRole('link', { name: /home/i }).length).toBeGreaterThan(0);
     expect(screen.getAllByRole('link', { name: /how to play/i }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('link', { name: /training/i }).length).toBeGreaterThan(0);
     expect(screen.queryByRole('link', { name: /lobby/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: /leaderboard/i })).not.toBeInTheDocument();
   });
 
-  it('shows training navigation only when a Polygon wallet is linked during preview', () => {
+  it('keeps profile navigation limited to players with a linked Polygon wallet', () => {
     authState = {
       ...baseAuthState,
       user: { id: 'user-1', email: 'player@example.com' },
@@ -56,7 +57,7 @@ describe('NavBar', () => {
     expect(screen.getAllByRole('link', { name: /profile/i }).length).toBeGreaterThan(0);
   });
 
-  it('avoids protected lobby/profile links for signed-in users without a wallet', () => {
+  it('keeps training public and avoids wallet-only links for signed-in users without a wallet', () => {
     authState = {
       ...baseAuthState,
       user: { id: 'user-1', email: 'player@example.com' },
@@ -66,7 +67,8 @@ describe('NavBar', () => {
 
     renderNavBar();
 
-    expect(screen.getByRole('link', { name: /link wallet/i })).toBeInTheDocument();
+    expect(screen.getAllByRole('link', { name: /training/i }).length).toBeGreaterThan(0);
+    expect(screen.queryByRole('link', { name: /link wallet/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: /lobby/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: /profile/i })).not.toBeInTheDocument();
   });

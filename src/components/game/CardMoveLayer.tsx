@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useCardRegistry } from '../../context/CardRegistry.js';
+import { useCardRegistry } from '../../hooks/useCardRegistry.js';
 
 export type MoveEvent = {
   id: string;        // instanceId

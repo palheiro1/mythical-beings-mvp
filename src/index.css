@@ -110,7 +110,7 @@ button:disabled {
 .arena-banner {
   background:
     linear-gradient(90deg, rgba(4, 7, 13, 0.97) 28%, rgba(4, 7, 13, 0.52) 58%, rgba(4, 7, 13, 0.94) 100%),
-    url("/logos/logo-primary-dark.png") 70% center / auto 88% no-repeat,
+    url("/logos/logo-primary-dark.webp") 70% center / auto 88% no-repeat,
     radial-gradient(circle at 70% 50%, rgba(246, 184, 59, 0.11), transparent 42%),
     linear-gradient(135deg, #101523, #050811);
 }
@@ -118,7 +118,7 @@ button:disabled {
 .arena-banner-center {
   background:
     linear-gradient(rgba(6, 9, 18, 0.72), rgba(6, 9, 18, 0.72)),
-    url("/logos/logo-primary-dark.png") center / auto 92% no-repeat,
+    url("/logos/logo-primary-dark.webp") center / auto 92% no-repeat,
     radial-gradient(circle at 50% 50%, rgba(139, 92, 246, 0.10), transparent 55%),
     linear-gradient(135deg, #121832, #080b16);
 }
@@ -295,4 +295,28 @@ button:disabled {
   :root {
     color-scheme: dark;
   }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto !important;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0ms !important;
+  }
+}
+
+[data-training-highlight="true"] {
+  position: relative;
+  z-index: 45;
+  border-radius: 0.75rem;
+  outline: 3px solid rgba(103, 232, 249, 0.88);
+  outline-offset: 4px;
+  box-shadow: 0 0 0 9999px rgba(2, 6, 18, 0.48), 0 0 30px rgba(34, 211, 238, 0.32);
 }

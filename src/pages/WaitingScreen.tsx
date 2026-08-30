@@ -17,6 +17,7 @@ import { RealtimeChannel } from '@supabase/supabase-js';
 import { ArenaButton, CopyChip, ErrorRecoveryPanel, Panel, SpinnerEmblem, StatusBadge } from '../components/ui/index.js';
 import type { CompetitionStatus } from '@mythicalb/sdk';
 import { formatAddress, formatShortId } from '../utils/format.js';
+import { assertPvpEnabled } from '../config/release.js';
 
 const STATUS_POLL_INTERVAL_MS = 4000;
 
@@ -34,6 +35,8 @@ const WaitingScreen: React.FC = () => {
   const startAndDealIfHost = useCallback(async (currentSession: PlayHubSession) => {
     if (!sessionId || !user?.id || startAttemptedRef.current) return;
     if (currentSession.host_id !== user.id || currentSession.status !== 'waiting') return;
+
+    assertPvpEnabled();
 
     const participants = currentSession.participants ?? [];
     const everyoneReady = participants.length >= currentSession.min_players && participants.every(p => p.is_ready);
@@ -325,17 +328,17 @@ const WaitingScreen: React.FC = () => {
       <div className="pointer-events-none absolute inset-0 opacity-30">
         <div className="absolute left-[10%] top-[18%] h-52 w-36 -rotate-12 overflow-hidden rounded-xl border border-amber-200/18 shadow-2xl">
           <div className="card-back-face h-full w-full" aria-hidden>
-            <img src="/logos/logo-header-dark.png" alt="" className="card-back-crest" />
+            <img src="/logos/logo-header-dark.webp" alt="" width="520" height="388" className="card-back-crest" />
           </div>
         </div>
         <div className="absolute right-[12%] top-[28%] h-60 w-40 rotate-12 overflow-hidden rounded-xl border border-cyan-200/18 shadow-2xl">
           <div className="card-back-face h-full w-full" aria-hidden>
-            <img src="/logos/logo-header-dark.png" alt="" className="card-back-crest" />
+            <img src="/logos/logo-header-dark.webp" alt="" width="520" height="388" className="card-back-crest" />
           </div>
         </div>
         <div className="absolute bottom-[16%] left-[18%] h-48 w-32 rotate-6 overflow-hidden rounded-xl border border-violet-200/18 shadow-2xl">
           <div className="card-back-face h-full w-full" aria-hidden>
-            <img src="/logos/logo-header-dark.png" alt="" className="card-back-crest" />
+            <img src="/logos/logo-header-dark.webp" alt="" width="520" height="388" className="card-back-crest" />
           </div>
         </div>
       </div>

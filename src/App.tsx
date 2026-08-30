@@ -19,22 +19,29 @@ const NFTSelectionSimplified = lazy(() => import('./pages/NFTSelectionSimplified
 const HowToPlay = lazy(() => import('./pages/HowToPlay.js'));
 const Leaderboard = lazy(() => import('./pages/Leaderboard.js'));
 const WaitingScreen = lazy(() => import('./pages/WaitingScreen.js'));
+const NotFound = lazy(() => import('./pages/NotFound.js'));
 
 function AppContent() {
   return (
     <Router>
+      <a href="#main-content" className="sr-only fixed left-3 top-3 z-[100] rounded-lg bg-amber-300 px-4 py-3 font-bold text-slate-950 focus:not-sr-only">
+        Skip to main content
+      </a>
       <NavBar />
-      <Suspense
-        fallback={
-          <div className="arena-page grid min-h-[calc(100vh-var(--navbar-height))] place-items-center p-6 text-white">
-            <SpinnerEmblem label="Loading arena..." />
-          </div>
-        }
-      >
-        <Routes>
+      <main id="main-content" tabIndex={-1}>
+        <Suspense
+          fallback={
+            <div className="arena-page grid min-h-[calc(100vh-var(--navbar-height))] place-items-center p-6 text-white">
+              <SpinnerEmblem label="Loading arena..." />
+            </div>
+          }
+        >
+          <Routes>
           {/* Public Route */}
           <Route path="/" element={<Home />} />
           <Route path="/how-to-play" element={<HowToPlay />} />
+          <Route path="/bot-selection" element={<NFTSelectionSimplified mode="bot" />} />
+          <Route path="/bot-game" element={<BotGame />} />
           <Route path="/leaderboard" element={PVP_ENABLED ? <Leaderboard /> : <Navigate to="/" replace />} />
           {/* Handle legacy/auth callback route by redirecting to lobby */}
           <Route path="/auth" element={<Navigate to="/lobby" replace />} />
@@ -42,9 +49,7 @@ function AppContent() {
           {/* Protected Routes */}
           <Route element={<ProtectedRoute />}>
             <Route path="/lobby" element={<Lobby />} />
-            <Route path="/bot-game" element={<BotGame />} />
             <Route path="/profile" element={<ProfilePage />} />
-            <Route path="/bot-selection" element={<NFTSelectionSimplified mode="bot" />} />
             {PVP_ENABLED ? (
               <>
                 <Route path="/game/:gameId" element={<GameScreen />} />
@@ -61,9 +66,10 @@ function AppContent() {
               </>
             )}
           </Route>
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </Suspense>
+          <Route path="*" element={<NotFound />} />
+          </Routes>
+        </Suspense>
+      </main>
     </Router>
   );
 }

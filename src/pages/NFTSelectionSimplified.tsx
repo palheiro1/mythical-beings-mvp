@@ -5,11 +5,12 @@ import Card from '../components/Card.js';
 import GameStateDebug from '../components/GameStateDebug.js';
 import { Creature } from '../game/types.js';
 import { getCardGameSessionState, getGameDetails, lockCompetitiveCards, PLAYHUB_COMPETITIVE_MODE_ID } from '../utils/supabase.js';
-import { useAuth } from '../context/AuthProvider.js';
+import { useAuth } from '../hooks/useAuth.js';
 import { NFTSelectionNavigationManager } from '../utils/NavigationManager.js';
 // --- Import the base creature data ---
 import creatureData from '../assets/creatures.json' with { type: 'json' };
-import { ArenaButton, cn, ErrorRecoveryPanel, Panel, SpinnerEmblem, StatusBadge } from '../components/ui/index.js';
+import { ArenaButton, ErrorRecoveryPanel, Panel, SpinnerEmblem, StatusBadge } from '../components/ui/index.js';
+import { cn } from '../components/ui/cn.js';
 import { clearBotCreatureSelection, writeBotCreatureSelection } from '../utils/botSelection.js';
 import {
   CHAMPIONSHIP_MESSAGE,
@@ -48,18 +49,19 @@ const NFTSelectionSimplified: React.FC<NFTSelectionSimplifiedProps> = ({ mode = 
   const { gameId } = useParams<{ gameId: string }>();
   const { user, error: authError } = useAuth();
   const currentPlayerId = user?.id;
+  const backTarget = isBotMode ? '/' : '/lobby';
   
   const navigationManagerRef = useRef<NFTSelectionNavigationManager | null>(null);
   const handPollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Timer logic
   useEffect(() => {
-    if (waiting || timer <= 0) return;
+    if (isBotMode || waiting || timer <= 0) return;
     const intervalId = setInterval(() => {
       setTimer(prev => Math.max(0, prev - 1));
     }, 1000);
     return () => clearInterval(intervalId);
-  }, [timer, waiting]);
+  }, [isBotMode, timer, waiting]);
 
   // Initialize navigation manager
   useEffect(() => {
@@ -138,7 +140,6 @@ const NFTSelectionSimplified: React.FC<NFTSelectionSimplifiedProps> = ({ mode = 
       clearBotCreatureSelection();
       setSelected([]);
       setWaiting(false);
-      setTimer(60);
       setError(null);
       setDealtCreatures(dealTrainingHand());
       setIsLoadingHand(false);
@@ -302,15 +303,14 @@ const NFTSelectionSimplified: React.FC<NFTSelectionSimplifiedProps> = ({ mode = 
     if (!isBotMode || isConfirming) return;
     clearBotCreatureSelection();
     setSelected([]);
-    setTimer(60);
     setDealtCreatures(dealTrainingHand());
   };
 
   // Render loading state
-  if (authError) {
+  if (authError && !isBotMode) {
     return (
       <div className="arena-page flex min-h-[calc(100vh-var(--navbar-height))] items-center justify-center px-4">
-        <ErrorRecoveryPanel title="Could not identify player" message={authError} onBack={() => navigate('/lobby')} backLabel="Back to Lobby" />
+        <ErrorRecoveryPanel title="Could not identify player" message={authError} onBack={() => navigate(backTarget)} backLabel="Back" />
       </div>
     );
   }
@@ -326,7 +326,7 @@ const NFTSelectionSimplified: React.FC<NFTSelectionSimplifiedProps> = ({ mode = 
   if (error) {
     return (
       <div className="arena-page flex min-h-[calc(100vh-var(--navbar-height))] items-center justify-center px-4">
-        <ErrorRecoveryPanel title="Could not load selection" message={error} onBack={() => navigate('/lobby')} onRetry={() => window.location.reload()} backLabel="Back to Lobby" />
+        <ErrorRecoveryPanel title="Could not load selection" message={error} onBack={() => navigate(backTarget)} onRetry={() => window.location.reload()} backLabel="Back" />
       </div>
     );
   }
@@ -334,7 +334,7 @@ const NFTSelectionSimplified: React.FC<NFTSelectionSimplifiedProps> = ({ mode = 
   if (dealtCreatures.length === 0) {
     return (
       <div className="arena-page flex min-h-[calc(100vh-var(--navbar-height))] items-center justify-center px-4">
-        <ErrorRecoveryPanel title="No cards available" message="Could not load your hand. Please refresh or return to the lobby." onBack={() => navigate('/lobby')} onRetry={() => window.location.reload()} backLabel="Back to Lobby" />
+        <ErrorRecoveryPanel title="No cards available" message="Could not load your hand. Please refresh or go back." onBack={() => navigate(backTarget)} onRetry={() => window.location.reload()} backLabel="Back" />
       </div>
     );
   }
@@ -346,7 +346,7 @@ const NFTSelectionSimplified: React.FC<NFTSelectionSimplifiedProps> = ({ mode = 
 
       <div className="mx-auto w-full max-w-7xl">
         <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <button type="button" onClick={() => navigate('/lobby')} className="inline-flex w-fit items-center gap-2 rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-slate-300 transition hover:text-white">
+          <button type="button" onClick={() => navigate(backTarget)} className="inline-flex min-h-11 w-fit items-center gap-2 rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-slate-300 transition hover:text-white">
             <ArrowLeft className="h-4 w-4" aria-hidden />
             Back
           </button>
@@ -362,7 +362,7 @@ const NFTSelectionSimplified: React.FC<NFTSelectionSimplifiedProps> = ({ mode = 
         <Panel className="relative overflow-hidden p-5 sm:p-8" glow>
           <div className="pointer-events-none absolute -right-12 -top-16 h-56 w-40 rotate-12 overflow-hidden rounded-xl border border-amber-200/12 opacity-20">
             <div className="card-back-face h-full w-full" aria-hidden>
-              <img src="/logos/logo-header-dark.png" alt="" className="card-back-crest" />
+              <img src="/logos/logo-header-dark.webp" alt="" width="520" height="388" className="card-back-crest" />
             </div>
           </div>
           <div className="mb-8 grid gap-6 border-b border-white/10 pb-6 lg:grid-cols-[1fr_auto] lg:items-center">
@@ -376,7 +376,7 @@ const NFTSelectionSimplified: React.FC<NFTSelectionSimplifiedProps> = ({ mode = 
               </h1>
               <p className="mt-3 text-slate-300">
                 {isBotMode
-                  ? 'Choose exactly 3 creatures before facing the bot. Practice mode does not change competitive stats.'
+                  ? 'Choose exactly 3 creatures before facing the bot. Training runs locally and does not require an account or wallet.'
                   : 'Choose exactly 3 creatures to enter the arena. You cannot select more than 3.'}
               </p>
               {isBotMode && TRAINING_PREVIEW_ENABLED && (
@@ -395,16 +395,18 @@ const NFTSelectionSimplified: React.FC<NFTSelectionSimplifiedProps> = ({ mode = 
                 </ArenaButton>
               )}
             </div>
-            <div className={cn('mx-auto grid h-28 w-28 place-items-center rounded-full border-4 bg-cyan-500/10 text-center shadow-[0_0_28px_rgba(34,211,238,0.16)] lg:mx-0', timer <= 10 ? 'border-amber-300 text-amber-100' : 'border-cyan-300/50 text-cyan-100')}>
-              <div>
-                <Clock3 className="mx-auto mb-1 h-5 w-5" aria-hidden />
-                <div className="text-4xl font-black leading-none">{timer}</div>
-                <div className="text-[10px] font-bold uppercase tracking-normal">{timer === 0 ? 'expired' : 'sec'}</div>
+            {!isBotMode && (
+              <div className={cn('mx-auto grid h-28 w-28 place-items-center rounded-full border-4 bg-cyan-500/10 text-center shadow-[0_0_28px_rgba(34,211,238,0.16)] lg:mx-0', timer <= 10 ? 'border-amber-300 text-amber-100' : 'border-cyan-300/50 text-cyan-100')}>
+                <div>
+                  <Clock3 className="mx-auto mb-1 h-5 w-5" aria-hidden />
+                  <div className="text-4xl font-black leading-none">{timer}</div>
+                  <div className="text-[10px] font-bold uppercase tracking-normal">{timer === 0 ? 'expired' : 'sec'}</div>
+                </div>
               </div>
-            </div>
+            )}
           </div>
 
-          {timer === 0 && !waiting && (
+          {!isBotMode && timer === 0 && !waiting && (
             <div className="state-relic mb-6 rounded-xl border px-4 py-3 text-sm">
               Selection timer expired. You can still choose and confirm your team when ready.
             </div>

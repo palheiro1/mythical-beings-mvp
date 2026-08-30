@@ -4,7 +4,7 @@
     "name": "Adaro",
     "element": "water",
     "passiveAbility": "When Adaro summons an aquatic Knowledge, draw a card from the Market (no Action cost).",
-    "image": "/images/beings/adaro.jpg",
+    "image": "/images/beings/adaro.webp",
     "wisdomCycle": [0, 1, 4, 5]
   },
   {
@@ -12,7 +12,7 @@
     "name": "Caapora",
     "element": "earth",
     "passiveAbility": "At the start of your turn, if the Opponent has more cards in hand than you, deal 1 damage to the Opponent.",
-    "image": "/images/beings/caapora.jpg",
+    "image": "/images/beings/caapora.webp",
     "wisdomCycle": [0, 1, 4, 5]
   },
   {
@@ -20,7 +20,7 @@
     "name": "Dudugera",
     "element": "air",
     "passiveAbility": "Dudugera can summon Knowledges without spending Actions.",
-    "image": "/images/beings/dudugera.jpg",
+    "image": "/images/beings/dudugera.webp",
     "wisdomCycle": [0, 1, 4, 5]
   },
   {
@@ -28,7 +28,7 @@
     "name": "Inkanyamba",
     "element": "water",
     "passiveAbility": "When you draw an aquatic Knowledge, you may discard 1 card from the Market.",
-    "image": "/images/beings/inkanyamba.jpg",
+    "image": "/images/beings/inkanyamba.webp",
     "wisdomCycle": [0, 2, 3, 5]
   },
   {
@@ -36,7 +36,7 @@
     "name": "Japinunus",
     "element": "air",
     "passiveAbility": "Your aeric Knowledges gain: 'On Summon: +1 Power'.",
-    "image": "/images/beings/japinunus.jpg",
+    "image": "/images/beings/japinunus.webp",
     "wisdomCycle": [0, 1, 4, 5]
   },
   {
@@ -44,7 +44,7 @@
     "name": "Kappa",
     "element": "water",
     "passiveAbility": "Kappa can summon aquatic Knowledges without spending Actions.",
-    "image": "/images/beings/kappa.jpg",
+    "image": "/images/beings/kappa.webp",
     "wisdomCycle": [0, 1, 4, 5]
   },
   {
@@ -52,7 +52,7 @@
     "name": "Kyzy",
     "element": "fire",
     "passiveAbility": "When any player summons a terrestrial Knowledge, the Opponent must discard 1 card.",
-    "image": "/images/beings/kyzy.jpg",
+    "image": "/images/beings/kyzy.webp",
     "wisdomCycle": [1, 2, 3, 4]
   },
   {
@@ -60,7 +60,7 @@
     "name": "Lisovik",
     "element": "earth",
     "passiveAbility": "Your terrestrial Knowledges gain: 'On Leave: Deal 1 damage'.",
-    "image": "/images/beings/lisovik.jpg",
+    "image": "/images/beings/lisovik.webp",
     "wisdomCycle": [0, 2, 3, 5]
   },
   {
@@ -68,7 +68,7 @@
     "name": "Pele",
     "element": "fire",
     "passiveAbility": "When Pele summons a terrestrial Knowledge, discard an Opponent's Knowledge with a lower Wisdom cost.",
-    "image": "/images/beings/pele.jpg",
+    "image": "/images/beings/pele.webp",
     "wisdomCycle": [1, 2, 3, 4]
   },
   {
@@ -76,7 +76,7 @@
     "name": "Tarasca",
     "element": "earth",
     "passiveAbility": "When the Opponent summons a terrestrial Knowledge, deal 1 damage to the Opponent.",
-    "image": "/images/beings/tarasca.jpg",
+    "image": "/images/beings/tarasca.webp",
     "wisdomCycle": [0, 2, 3, 5]
   },
   {
@@ -84,7 +84,7 @@
     "name": "Trempulcahue",
     "element": "water",
     "passiveAbility": "Your Knowledges gain +1 Defense.",
-    "image": "/images/beings/trempulcahue.jpg",
+    "image": "/images/beings/trempulcahue.webp",
     "wisdomCycle": [1, 2, 3, 4]
   },
   {
@@ -92,7 +92,7 @@
     "name": "Lafaic",
     "element": "water",
     "passiveAbility": "Each time Lafaic summons an aquatic Knowledge in its slot, other knowledges rotate 90°.",
-    "image": "/images/beings/lafaic.jpg",
+    "image": "/images/beings/lafaic.svg",
     "wisdomCycle": [1, 2, 3, 4]
   },
   {
@@ -100,7 +100,7 @@
     "name": "Tsenehale",
     "element": "air",
     "passiveAbility": "Your aeric Knowledges gain: 'On Leave: +1 Power'.",
-    "image": "/images/beings/tsenehale.jpg",
+    "image": "/images/beings/tsenehale.webp",
     "wisdomCycle": [0, 2, 3, 5]
   },
   {
@@ -108,7 +108,7 @@
     "name": "Tulpar",
     "element": "air",
     "passiveAbility": "When Tulpar summons an aeric Knowledge, you can rotate any Creature 1 time (no Action cost).",
-    "image": "/images/beings/tulpar.jpg",
+    "image": "/images/beings/tulpar.webp",
     "wisdomCycle": [0, 2, 3, 5]
   },
   {
@@ -116,7 +116,7 @@
     "name": "Zhar Ptitsa",
     "element": "fire",
     "passiveAbility": "Your aeric Knowledges cannot be blocked.",
-    "image": "/images/beings/zhar-ptitsa.jpg",
+    "image": "/images/beings/zhar-ptitsa.webp",
     "wisdomCycle": [1, 2, 3, 4]
   }
 ]

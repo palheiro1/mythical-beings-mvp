@@ -1,7 +1,8 @@
 import React from 'react';
 import { Wand2 } from 'lucide-react';
 import { GameState, PendingEffectChoice, PendingEffectResolution } from '../../game/types.js';
-import { ArenaButton, cn, Panel, StatusBadge } from '../ui/index.js';
+import { ArenaButton, Panel, StatusBadge } from '../ui/index.js';
+import { cn } from '../ui/cn.js';
 
 type PendingEffectPanelProps = {
   gameState: GameState;

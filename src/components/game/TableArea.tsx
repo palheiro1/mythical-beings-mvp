@@ -1,8 +1,8 @@
 import React from 'react';
 import { Creature, Knowledge, PlayerState } from '../../game/types.js';
 import Card from '../Card.js';
-import { useCardRegistry } from '../../context/CardRegistry.js';
-import { cn } from '../ui/index.js';
+import { useCardRegistry } from '../../hooks/useCardRegistry.js';
+import { cn } from '../ui/cn.js';
 
 interface TableAreaProps {
     currentPlayer: PlayerState;

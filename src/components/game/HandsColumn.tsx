@@ -1,8 +1,9 @@
 import React, { useRef, useEffect } from 'react';
 import { Knowledge } from '../../game/types.js';
 import Card from '../Card.js';
-import { useCardRegistry } from '../../context/CardRegistry.js';
-import { cn, StatusBadge } from '../ui/index.js';
+import { useCardRegistry } from '../../hooks/useCardRegistry.js';
+import { StatusBadge } from '../ui/index.js';
+import { cn } from '../ui/cn.js';
 
 interface HandsColumnProps {
     currentPlayerHand: Knowledge[];
@@ -51,7 +52,7 @@ const HandsColumn: React.FC<HandsColumnProps> = ({
                     {opponentPlayerHand.length === 0 ? (
                          // Container defines size
                          <div className="aspect-[921/1217] h-[82px] shrink-0 xl:h-auto xl:w-full xl:max-w-[68px]">
-                            <Card card={{ id: 'opp-back', name: 'Back', image: '/images/spells/back.jpg', type: 'spell', cost: 0, effect: '', element: 'neutral' }} showBack isDisabled />
+                            <Card card={{ id: 'opp-back', name: 'Back', image: '/images/spells/back.webp', type: 'spell', cost: 0, effect: '', element: 'neutral' }} showBack isDisabled />
                          </div>
                     ) : (
                         opponentPlayerHand.slice(0, maxVisibleCards).map((card, idx) => (
@@ -77,7 +78,7 @@ const HandsColumn: React.FC<HandsColumnProps> = ({
                     {currentPlayerHand.length === 0 ? (
                         // Container defines size
                         <div className="aspect-[921/1217] h-[142px] shrink-0 xl:h-auto xl:w-full xl:max-w-[112px]">
-                            <Card card={{ id: 'player-back', name: 'Back', image: '/images/spells/back.jpg', type: 'spell', cost: 0, effect: '', element: 'neutral' }} showBack isDisabled />
+                            <Card card={{ id: 'player-back', name: 'Back', image: '/images/spells/back.webp', type: 'spell', cost: 0, effect: '', element: 'neutral' }} showBack isDisabled />
                         </div>
                     ) : (
                         currentPlayerHand.slice(0, maxVisibleCards).map((card, idx) => {

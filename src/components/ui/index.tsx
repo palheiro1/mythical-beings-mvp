@@ -1,9 +1,6 @@
-import React, { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode, useState } from 'react';
+import React, { AnchorHTMLAttributes, ButtonHTMLAttributes, InputHTMLAttributes, ReactNode, useState } from 'react';
 import { Check, Clipboard, LoaderCircle, RefreshCw } from 'lucide-react';
-
-export function cn(...classes: Array<string | false | null | undefined>): string {
-  return classes.filter(Boolean).join(' ');
-}
+import { cn } from './cn.js';
 
 type Tone = 'default' | 'amber' | 'blue' | 'violet' | 'green' | 'red' | 'muted';
 
@@ -42,11 +39,11 @@ type PageShellProps = {
 
 export function PageShell({ children, className, contentClassName, fullHeight = false }: PageShellProps) {
   return (
-    <main className={cn('arena-page text-slate-100', fullHeight ? 'min-h-[calc(100vh-var(--navbar-height))]' : 'min-h-screen', className)}>
+    <div className={cn('arena-page text-slate-100', fullHeight ? 'min-h-[calc(100vh-var(--navbar-height))]' : 'min-h-screen', className)}>
       <div className={cn('mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8', contentClassName)}>
         {children}
       </div>
-    </main>
+    </div>
   );
 }
 
@@ -106,6 +103,39 @@ export function ArenaButton({
       {loading ? <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden /> : icon}
       <span>{children}</span>
     </button>
+  );
+}
+
+export interface ArenaLinkProps extends AnchorHTMLAttributes<HTMLAnchorElement> {
+  variant?: ButtonVariant;
+  size?: ButtonSize;
+  icon?: ReactNode;
+  fullWidth?: boolean;
+}
+
+export function ArenaLink({
+  children,
+  variant = 'primary',
+  size = 'md',
+  icon,
+  fullWidth = false,
+  className,
+  ...props
+}: ArenaLinkProps) {
+  return (
+    <a
+      className={cn(
+        'inline-flex items-center justify-center gap-2 rounded-lg border font-bold uppercase tracking-normal transition duration-200 focus:outline-none focus:ring-2 focus:ring-amber-300/40',
+        buttonVariants[variant],
+        buttonSizes[size],
+        fullWidth && 'w-full',
+        className,
+      )}
+      {...props}
+    >
+      {icon}
+      <span>{children}</span>
+    </a>
   );
 }
 

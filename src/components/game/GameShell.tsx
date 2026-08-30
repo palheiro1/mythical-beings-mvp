@@ -1,5 +1,5 @@
 import React, { ReactNode } from 'react';
-import { cn } from '../ui/index.js';
+import { cn } from '../ui/cn.js';
 
 interface GameShellProps {
   topBar: ReactNode;
