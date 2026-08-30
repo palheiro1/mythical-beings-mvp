@@ -21,6 +21,7 @@ describe('static hosting configuration', () => {
     expect(headers).toContain('X-Content-Type-Options: nosniff');
     expect(headers).toContain('Content-Security-Policy:');
     expect(headers).not.toContain('Content-Security-Policy-Report-Only:');
+    expect(headers.indexOf('/*')).toBeLessThan(headers.indexOf('/assets/*'));
     expect(redirects).toContain('/bot-selection /index.html 200');
     expect(redirects.trim().endsWith('/* /404.html 404')).toBe(true);
   });
