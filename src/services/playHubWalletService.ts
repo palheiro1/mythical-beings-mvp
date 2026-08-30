@@ -1,4 +1,4 @@
-import { LinkedWallet } from '@mythicalb/sdk';
+import type { LinkedWallet } from '@mythicalb/sdk';
 import { mythical } from './mythicalClient.js';
 
 function isLinkedPolygonWallet(wallet: unknown): wallet is LinkedWallet {

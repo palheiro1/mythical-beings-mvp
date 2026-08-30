@@ -10,6 +10,7 @@ import {
 import type { PlayHubSession, SessionParticipant, MatchDetails } from '../utils/supabaseClient.js';
 import { getCardGameSessionState } from './gameStateService.js';
 import { mythical } from './mythicalClient.js';
+import { assertPvpEnabled } from '../config/release.js';
 
 export type PlayHubCardGameMode = typeof PLAYHUB_MODE_ID | typeof PLAYHUB_COMPETITIVE_MODE_ID;
 
@@ -59,6 +60,7 @@ function isWaitingSessionVisible(session: PlayHubSession, currentPlayerId?: stri
 }
 
 export async function createPlayHubSession(): Promise<PlayHubSession | null> {
+  assertPvpEnabled();
   try {
     const session = await mythical.sessions.create();
     return normalizeSession(session as any);
@@ -69,6 +71,7 @@ export async function createPlayHubSession(): Promise<PlayHubSession | null> {
 }
 
 export async function joinPlayHubSession(code: string): Promise<PlayHubSession | null> {
+  assertPvpEnabled();
   try {
     const session = await mythical.sessions.join({ code: code.trim().toUpperCase() });
     return normalizeSession(session as any);
@@ -79,6 +82,7 @@ export async function joinPlayHubSession(code: string): Promise<PlayHubSession |
 }
 
 export async function createCompetitiveSession(stakeGem: string | number): Promise<PlayHubSession | null> {
+  assertPvpEnabled();
   try {
     const session = await mythical.competition.createSession({ stakeGem: normalizeStakeGem(stakeGem) });
     return normalizeSession(session as any);
@@ -89,6 +93,7 @@ export async function createCompetitiveSession(stakeGem: string | number): Promi
 }
 
 export async function joinCompetitiveSession(code: string): Promise<PlayHubSession | null> {
+  assertPvpEnabled();
   try {
     const session = await mythical.competition.joinSession({ code: code.trim().toUpperCase() });
     return normalizeSession(session as any);
@@ -99,6 +104,7 @@ export async function joinCompetitiveSession(code: string): Promise<PlayHubSessi
 }
 
 export async function getCompetitionStatus(sessionId: string) {
+  assertPvpEnabled();
   try {
     return await mythical.competition.getStatus(sessionId);
   } catch (error) {
@@ -108,6 +114,7 @@ export async function getCompetitionStatus(sessionId: string) {
 }
 
 export async function depositCompetitionStake(sessionId: string) {
+  assertPvpEnabled();
   try {
     return await mythical.competition.depositStake(sessionId);
   } catch (error) {
@@ -117,6 +124,7 @@ export async function depositCompetitionStake(sessionId: string) {
 }
 
 export async function lockCompetitiveCards(sessionId: string, selectedCardIds: string[]) {
+  assertPvpEnabled();
   try {
     return await mythical.competition.lockCards(sessionId, selectedCardIds);
   } catch (error) {
@@ -126,6 +134,7 @@ export async function lockCompetitiveCards(sessionId: string, selectedCardIds: s
 }
 
 export async function settleCompetitionSession(sessionId: string) {
+  assertPvpEnabled();
   try {
     return await mythical.competition.settle(sessionId);
   } catch (error) {
@@ -135,6 +144,7 @@ export async function settleCompetitionSession(sessionId: string) {
 }
 
 export async function leavePlayHubSession(sessionId: string): Promise<boolean> {
+  assertPvpEnabled();
   try {
     await mythical.sessions.leave(sessionId);
     return true;
@@ -145,6 +155,7 @@ export async function leavePlayHubSession(sessionId: string): Promise<boolean> {
 }
 
 export async function setPlayHubReady(sessionId: string, ready: boolean): Promise<boolean> {
+  assertPvpEnabled();
   try {
     await mythical.sessions.setReady(sessionId, ready);
     return true;
@@ -155,6 +166,7 @@ export async function setPlayHubReady(sessionId: string, ready: boolean): Promis
 }
 
 export async function startPlayHubSession(sessionId: string): Promise<boolean> {
+  assertPvpEnabled();
   try {
     await mythical.sessions.start(sessionId);
     return true;
@@ -165,6 +177,7 @@ export async function startPlayHubSession(sessionId: string): Promise<boolean> {
 }
 
 export async function finishPlayHubSession(sessionId: string, results: any[]): Promise<boolean> {
+  assertPvpEnabled();
   try {
     await mythical.sessions.finish({ sessionId, results });
     return true;

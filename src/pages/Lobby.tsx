@@ -92,11 +92,11 @@ const TrainingPreviewLobby: React.FC = () => {
       <section className="arena-banner relative overflow-hidden rounded-xl border border-amber-200/20 px-6 py-10 shadow-[0_24px_70px_rgba(0,0,0,0.38)] sm:px-10 sm:py-12">
         <div className="pointer-events-none absolute -bottom-20 right-[7%] hidden aspect-[921/1217] w-44 rotate-[9deg] overflow-hidden rounded-xl border border-cyan-200/15 opacity-55 shadow-2xl lg:block">
           <div className="card-back-face h-full w-full" aria-hidden>
-            <img src="/logos/logo-header-dark.png" alt="" className="card-back-crest" />
+            <img src="/logos/logo-header-dark.webp" alt="" width="520" height="388" className="card-back-crest" />
           </div>
         </div>
         <div className="pointer-events-none absolute -bottom-24 right-[18%] hidden aspect-[921/1217] w-40 -rotate-[8deg] overflow-hidden rounded-xl border border-amber-200/15 opacity-45 shadow-2xl lg:block">
-          <img src="/images/beings/zhar-ptitsa.jpg" alt="" className="h-full w-full object-cover" />
+          <img src="/images/beings/zhar-ptitsa.webp" srcSet="/images/beings/zhar-ptitsa-360.webp 360w, /images/beings/zhar-ptitsa.webp 720w" sizes="160px" alt="" width="720" height="951" loading="lazy" decoding="async" className="h-full w-full object-cover" />
         </div>
 
         <div className="relative max-w-3xl">
@@ -379,12 +379,12 @@ const MultiplayerLobby: React.FC = () => {
       <Panel className="arena-banner relative overflow-hidden p-6 sm:p-8" glow>
         <div className="pointer-events-none absolute bottom-[-28px] right-[18%] hidden h-44 w-32 rotate-[-10deg] overflow-hidden rounded-xl border border-amber-200/15 opacity-45 shadow-2xl lg:block">
           <div className="card-back-face h-full w-full" aria-hidden>
-            <img src="/logos/logo-header-dark.png" alt="" className="card-back-crest" />
+            <img src="/logos/logo-header-dark.webp" alt="" width="520" height="388" className="card-back-crest" />
           </div>
         </div>
         <div className="pointer-events-none absolute bottom-[-34px] right-[8%] hidden h-48 w-36 rotate-[9deg] overflow-hidden rounded-xl border border-cyan-200/15 opacity-45 shadow-2xl lg:block">
           <div className="card-back-face h-full w-full" aria-hidden>
-            <img src="/logos/logo-header-dark.png" alt="" className="card-back-crest" />
+            <img src="/logos/logo-header-dark.webp" alt="" width="520" height="388" className="card-back-crest" />
           </div>
         </div>
         <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">

@@ -1,37 +1,40 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Session } from '@supabase/supabase-js';
-import { LinkedWallet, PlayHubProfile, PlayHubUser } from '@mythicalb/sdk';
-import { mythical } from '../services/mythicalClient.js';
+import React, { useState, useEffect } from 'react';
+import type { LinkedWallet } from '@mythicalb/sdk';
 import { hasPolygonProvider } from '../config/playhub.js';
-import { signInWithGoogle } from '../services/playHubAuthService.js';
-import { connectLinkedPolygonWallet, getLinkedPolygonWallet } from '../services/playHubWalletService.js';
+import { scheduleAuthInitialization } from './authBootstrap.js';
+import { AuthContext, type AuthContextType, type AuthState } from './AuthContext.js';
 
-export interface AuthState {
-  user: PlayHubUser | null;
-  profile: PlayHubProfile | null;
-  polygonWallet: LinkedWallet | null;
-  session: Session | null;
-  loading: boolean;
-  error: string | null;
-  magicLinkSentTo: string | null;
-  magicLinkCooldownUntil: number | null;
-}
-
-interface AuthContextType extends AuthState {
-  signInWithGoogle: () => Promise<void>;
-  signInWithPlayHubEmail: (email: string) => Promise<void>;
-  connectPolygonWallet: () => Promise<LinkedWallet>;
-  refreshAuthState: () => Promise<void>;
-  signOut: () => Promise<void>;
-}
-
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+export type { AuthState } from './AuthContext.js';
 
 let authStateManager: AuthStateManager | null = null;
 
 const MAGIC_LINK_COOLDOWN_MS = 60_000;
 const MAGIC_LINK_RATE_LIMIT_COOLDOWN_MS = 5 * 60_000;
 const MAGIC_LINK_COOLDOWN_STORAGE_KEY = 'playhub.magicLinkCooldown';
+
+type AuthServices = {
+  mythical: typeof import('../services/mythicalClient.js')['mythical'];
+  signInWithGoogle: typeof import('../services/playHubAuthService.js')['signInWithGoogle'];
+  connectLinkedPolygonWallet: typeof import('../services/playHubWalletService.js')['connectLinkedPolygonWallet'];
+  getLinkedPolygonWallet: typeof import('../services/playHubWalletService.js')['getLinkedPolygonWallet'];
+};
+
+let authServicesPromise: Promise<AuthServices> | null = null;
+
+function loadAuthServices(): Promise<AuthServices> {
+  authServicesPromise ??= Promise.all([
+    import('../services/mythicalClient.js'),
+    import('../services/playHubAuthService.js'),
+    import('../services/playHubWalletService.js'),
+  ]).then(([mythicalModule, authModule, walletModule]) => ({
+    mythical: mythicalModule.mythical,
+    signInWithGoogle: authModule.signInWithGoogle,
+    connectLinkedPolygonWallet: walletModule.connectLinkedPolygonWallet,
+    getLinkedPolygonWallet: walletModule.getLinkedPolygonWallet,
+  }));
+
+  return authServicesPromise;
+}
 
 function getStoredMagicLinkCooldown(): Pick<AuthState, 'magicLinkSentTo' | 'magicLinkCooldownUntil'> {
   if (typeof window === 'undefined') {
@@ -121,21 +124,23 @@ const initialAuthState: AuthState = {
 class AuthStateManager {
   private listeners: Set<(state: AuthState) => void> = new Set();
   private currentState: AuthState = initialAuthState;
-  private initialized = false;
+  private initializationPromise: Promise<void> | null = null;
 
-  constructor() {
-    this.initialize();
+  start(): void {
+    this.initializationPromise ??= this.initialize();
   }
 
   private async initialize() {
-    if (this.initialized) return;
-    this.initialized = true;
-
     await this.refreshAuthState();
 
-    mythical.auth.onAuthStateChange(() => {
-      void this.refreshAuthState();
-    });
+    try {
+      const { mythical } = await loadAuthServices();
+      mythical.auth.onAuthStateChange(() => {
+        void this.refreshAuthState();
+      });
+    } catch {
+      // refreshAuthState already exposes a user-facing loading error.
+    }
   }
 
   private updateState(newState: Partial<AuthState>) {
@@ -157,6 +162,7 @@ class AuthStateManager {
     this.updateState({ loading: true, error: null });
 
     try {
+      const { mythical, getLinkedPolygonWallet } = await loadAuthServices();
       const session = await mythical.auth.getSession();
 
       if (!session) {
@@ -231,6 +237,7 @@ class AuthStateManager {
     this.updateState({ loading: true, error: null });
 
     try {
+      const { mythical } = await loadAuthServices();
       await mythical.auth.signInWithMagicLink(normalizedEmail, window.location.origin);
       const nextCooldownUntil = Date.now() + MAGIC_LINK_COOLDOWN_MS;
       persistMagicLinkCooldown(normalizedEmail, nextCooldownUntil);
@@ -263,6 +270,7 @@ class AuthStateManager {
     this.updateState({ loading: true, error: null });
 
     try {
+      const { signInWithGoogle } = await loadAuthServices();
       await signInWithGoogle();
     } catch (error: any) {
       const message = error?.message || 'Could not start Google sign-in.';
@@ -279,6 +287,7 @@ class AuthStateManager {
         throw new Error('No Polygon wallet provider found. Install or unlock a browser wallet first.');
       }
 
+      const { mythical, connectLinkedPolygonWallet } = await loadAuthServices();
       await mythical.profile.getOrCreate();
       const wallet = await connectLinkedPolygonWallet();
       await this.refreshAuthState();
@@ -296,6 +305,7 @@ class AuthStateManager {
     persistMagicLinkCooldown(null, null);
 
     try {
+      const { mythical } = await loadAuthServices();
       await mythical.auth.signOut();
       this.updateState({
         ...initialAuthState,
@@ -323,8 +333,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const manager = getAuthStateManager();
     const unsubscribe = manager.subscribe(setAuthState);
-    
-    return unsubscribe;
+    const cancelInitialization = scheduleAuthInitialization(
+      () => manager.start(),
+      window.location.pathname,
+    );
+
+    return () => {
+      cancelInitialization();
+      unsubscribe();
+    };
   }, []);
 
   const signInWithPlayHubEmail = async (email: string): Promise<void> => {
@@ -366,12 +383,4 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       {children}
     </AuthContext.Provider>
   );
-}
-
-export function useAuth(): AuthContextType {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
 }

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import { supabase } from '../utils/supabase.js';
 
 interface GameStateDebugProps {
@@ -10,7 +10,7 @@ export const GameStateDebug: React.FC<GameStateDebugProps> = ({ gameId, classNam
   const [gameState, setGameState] = useState<any>(null);
   const [loading, setLoading] = useState(false);
 
-  const fetchGameState = async () => {
+  const fetchGameState = useCallback(async () => {
     setLoading(true);
     try {
       const { data, error } = await supabase
@@ -31,7 +31,7 @@ export const GameStateDebug: React.FC<GameStateDebugProps> = ({ gameId, classNam
     } finally {
       setLoading(false);
     }
-  };
+  }, [gameId]);
 
   useEffect(() => {
     fetchGameState();
@@ -53,7 +53,7 @@ export const GameStateDebug: React.FC<GameStateDebugProps> = ({ gameId, classNam
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [gameId]);
+  }, [fetchGameState, gameId]);
 
   if (!gameState) {
     return (

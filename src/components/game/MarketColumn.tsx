@@ -1,9 +1,10 @@
 import React from 'react';
 import { Knowledge } from '../../game/types.js';
 import Card from '../Card.js'; // Adjust path if needed
-import { useCardRegistry } from '../../context/CardRegistry.js';
+import { useCardRegistry } from '../../hooks/useCardRegistry.js';
 import { RefreshCw } from 'lucide-react';
-import { cn, StatusBadge } from '../ui/index.js';
+import { StatusBadge } from '../ui/index.js';
+import { cn } from '../ui/cn.js';
 
 interface MarketColumnProps {
     marketCards: Knowledge[];
@@ -33,7 +34,7 @@ const MarketColumn: React.FC<MarketColumnProps> = ({
             {/* Deck */}
             {/* Container defines size and aspect ratio */}
             <div className="relative mx-auto aspect-[921/1217] w-[34%] max-w-[92px] flex-shrink-0 sm:w-[28%] xl:w-[38%] xl:max-w-[86px]">
-                <Card card={{ id: 'marketdeck', name: 'Deck', image: '/images/spells/back.jpg', type: 'spell', cost: 0, effect: '', element: 'neutral' }} showBack isDisabled /> {/* Removed size, added isDisabled */}
+                <Card card={{ id: 'marketdeck', name: 'Deck', image: '/images/spells/back.webp', type: 'spell', cost: 0, effect: '', element: 'neutral' }} showBack isDisabled /> {/* Removed size, added isDisabled */}
                 <span className="absolute -bottom-2 -right-2 flex h-7 w-7 items-center justify-center rounded-md border border-cyan-300/30 bg-black/80 text-xs font-bold text-cyan-100">{deckCount}</span>
             </div>
 

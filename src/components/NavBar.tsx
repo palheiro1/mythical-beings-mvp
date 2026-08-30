@@ -1,9 +1,10 @@
 import { Link, NavLink } from 'react-router-dom';
 import { BookOpen, Bot, Home, LogIn, LogOut, Swords, Trophy, User, UserCircle, WalletCards } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth.js';
-import { cn } from './ui/index.js';
+import { cn } from './ui/cn.js';
 import { formatAddress } from '../utils/format.js';
 import { PVP_ENABLED, TRAINING_PREVIEW_ENABLED } from '../config/release.js';
+import { BUILD_LABEL, BUILD_SHA } from '../config/build.js';
 
 const NavBar: React.FC = () => {
   const { user, profile, polygonWallet, loading, signOut } = useAuth();
@@ -24,23 +25,17 @@ const NavBar: React.FC = () => {
       ? 'Guest'
       : displayName || user?.email || 'Player';
 
-  const navItems = user
-    ? [
-        ...(polygonWallet
-          ? [{
-              to: '/lobby',
-              label: TRAINING_PREVIEW_ENABLED ? 'Training' : 'Lobby',
-              icon: TRAINING_PREVIEW_ENABLED ? Bot : Swords,
-            }]
-          : []),
-        { to: '/how-to-play', label: 'How to Play', icon: BookOpen },
-        ...(PVP_ENABLED ? [{ to: '/leaderboard', label: 'Leaderboard', icon: Trophy }] : []),
-        ...(polygonWallet ? [{ to: '/profile', label: 'Profile', icon: User }] : []),
-      ]
-    : [
-        { to: '/', label: 'Home', icon: Home },
-        { to: '/how-to-play', label: 'How to Play', icon: BookOpen },
-      ];
+  const navItems = [
+    { to: '/', label: 'Home', icon: Home },
+    ...(TRAINING_PREVIEW_ENABLED
+      ? [{ to: '/bot-selection', label: 'Training', icon: Bot }]
+      : user && polygonWallet
+        ? [{ to: '/lobby', label: 'Lobby', icon: Swords }]
+        : []),
+    { to: '/how-to-play', label: 'How to Play', icon: BookOpen },
+    ...(PVP_ENABLED ? [{ to: '/leaderboard', label: 'Leaderboard', icon: Trophy }] : []),
+    ...(user && polygonWallet ? [{ to: '/profile', label: 'Profile', icon: User }] : []),
+  ];
 
   const navClass = ({ isActive }: { isActive: boolean }) => cn(
     'inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-bold uppercase tracking-normal transition',
@@ -52,9 +47,13 @@ const NavBar: React.FC = () => {
   return (
     <nav className="sticky top-0 z-40 flex h-[var(--navbar-height)] items-center justify-between border-b border-white/10 bg-[#060912]/88 px-4 text-white shadow-[0_18px_36px_-24px_rgba(0,0,0,0.9)] backdrop-blur-xl">
       <div className="flex min-w-0 items-center gap-5">
-        <Link to={user ? '/lobby' : '/'} className="group flex min-w-0 items-center gap-3">
+        <Link
+          to={TRAINING_PREVIEW_ENABLED ? '/' : user ? '/lobby' : '/'}
+          className="group flex min-w-0 items-center gap-3"
+          aria-label="Wisdom Duel home"
+        >
           <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-violet-300/30 bg-violet-500/10 shadow-[0_10px_24px_rgba(0,0,0,0.25)]">
-            <img src="/logos/logo-header-dark.png" alt="Wisdom Duel" className="h-7 w-7 object-contain opacity-90 transition group-hover:opacity-100" />
+            <img src="/logos/logo-header-dark.webp" alt="" width="520" height="388" aria-hidden className="h-7 w-7 object-contain opacity-90 transition group-hover:opacity-100" />
           </span>
           <span className="hidden min-w-0 flex-col leading-none sm:flex">
             <span className="font-display text-lg font-bold uppercase text-slate-100">Wisdom</span>
@@ -68,6 +67,10 @@ const NavBar: React.FC = () => {
             Training Preview
           </span>
         )}
+
+        <span className="hidden font-mono text-[10px] text-slate-600 xl:inline" title={`Build ${BUILD_SHA}`} aria-label={`Application ${BUILD_LABEL}`}>
+          {BUILD_LABEL}
+        </span>
 
         <div className="hidden items-center gap-1 lg:flex">
           {navItems.map((item) => {
@@ -88,18 +91,18 @@ const NavBar: React.FC = () => {
         ) : (
           <>
             {!user ? (
-              <Link to="/">
-                <button className="inline-flex items-center gap-2 rounded-lg border border-amber-300/40 bg-amber-500/15 px-3 py-2 text-sm font-bold uppercase tracking-normal text-amber-100 transition hover:bg-amber-400/20">
-                  <LogIn className="h-4 w-4" aria-hidden />
-                  Sign In
-                </button>
+              <Link to="/" className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-amber-300/40 bg-amber-500/15 px-3 py-2 text-sm font-bold uppercase tracking-normal text-amber-100 transition hover:bg-amber-400/20">
+                <LogIn className="h-4 w-4" aria-hidden />
+                Sign In
               </Link>
-            ) : polygonWallet ? (
+            ) : polygonWallet || TRAINING_PREVIEW_ENABLED ? (
               <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-2 py-1.5">
-                <Link to="/profile" className="hidden items-center gap-2 rounded-lg px-2 py-1 text-sm text-slate-200 transition hover:bg-white/[0.06] md:flex">
-                  <UserCircle className="h-4 w-4 text-cyan-200" aria-hidden />
-                  Profile
-                </Link>
+                {polygonWallet && (
+                  <Link to="/profile" className="hidden items-center gap-2 rounded-lg px-2 py-1 text-sm text-slate-200 transition hover:bg-white/[0.06] md:flex">
+                    <UserCircle className="h-4 w-4 text-cyan-200" aria-hidden />
+                    Profile
+                  </Link>
+                )}
                 <span className="max-w-[150px] truncate rounded-lg border border-cyan-300/20 bg-cyan-500/10 px-2.5 py-1 font-mono text-xs text-cyan-100">
                   {identity}
                 </span>
@@ -136,7 +139,7 @@ const NavBar: React.FC = () => {
         {navItems.map((item) => {
           const Icon = item.icon;
           return (
-            <NavLink key={item.to} to={item.to} className={({ isActive }) => cn('rounded-full p-2 text-slate-300 transition', isActive ? 'bg-violet-500/20 text-violet-100' : 'hover:bg-white/[0.06] hover:text-white')} aria-label={item.label}>
+            <NavLink key={item.to} to={item.to} className={({ isActive }) => cn('grid min-h-11 min-w-11 place-items-center rounded-full p-2 text-slate-300 transition', isActive ? 'bg-violet-500/20 text-violet-100' : 'hover:bg-white/[0.06] hover:text-white')} aria-label={item.label}>
               <Icon className="h-4 w-4" aria-hidden />
             </NavLink>
           );

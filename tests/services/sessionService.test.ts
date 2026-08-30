@@ -3,6 +3,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const sessionMocks = vi.hoisted(() => ({
   createSession: vi.fn(),
   from: vi.fn(),
+  assertPvpEnabled: vi.fn(),
+}));
+
+vi.mock('../../src/config/release.js', () => ({
+  assertPvpEnabled: sessionMocks.assertPvpEnabled,
 }));
 
 vi.mock('../../src/services/mythicalClient.js', () => ({
@@ -88,6 +93,7 @@ describe('sessionService competitive GEM sessions', () => {
   it('normalizes and forwards whole GEM stakes to the SDK', async () => {
     const session = await createCompetitiveSession(' 50 ');
 
+    expect(sessionMocks.assertPvpEnabled).toHaveBeenCalledOnce();
     expect(sessionMocks.createSession).toHaveBeenCalledWith({ stakeGem: '50' });
     expect(session).toMatchObject({
       id: 'session-1',

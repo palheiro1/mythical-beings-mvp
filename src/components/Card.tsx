@@ -1,10 +1,11 @@
 import React, { useCallback, useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Info } from 'lucide-react';
-import { useCardRegistry } from '../context/CardRegistry.js';
+import { useCardRegistry } from '../hooks/useCardRegistry.js';
 import { Creature, Knowledge } from '../game/types.js';
-import { cn } from './ui/index.js';
+import { cn } from './ui/cn.js';
 import CardDetailOverlay from './CardDetailOverlay.js';
+import CardArtwork from './CardArtwork.js';
 
 interface CardProps {
   card: Creature | Knowledge;
@@ -24,6 +25,7 @@ interface CardProps {
     effectLabel?: string;
     isFinalNext?: boolean;
   };
+  imageLoading?: 'eager' | 'lazy';
 }
 
 const CARD_ASPECT_RATIO = 921 / 1217;
@@ -44,6 +46,7 @@ const Card: React.FC<CardProps> = ({
   isDisabled = false,
   fit = 'card',
   knowledgeStatus,
+  imageLoading = 'eager',
 }) => {
   const registry = useCardRegistry();
   const [isZoomed, setIsZoomed] = useState(false);
@@ -184,14 +187,15 @@ const Card: React.FC<CardProps> = ({
   const boardCardWidth = `calc(${boardCardHeight} * ${CARD_ASPECT_RATIO})`;
   const cardVisual = showBack ? (
     <span className="card-back-face" aria-hidden>
-      <img src="/logos/logo-header-dark.png" alt="" className="card-back-crest" draggable={false} />
+      <img src="/logos/logo-header-dark.webp" alt="" width="520" height="388" className="card-back-crest" draggable={false} />
     </span>
   ) : (
-    <img
+    <CardArtwork
       src={imagePath}
       alt={card.name}
       className="h-full w-full object-cover"
-      draggable={false}
+      loading={imageLoading}
+      sizes={isBoardCard ? '112px' : '(max-width: 639px) 46vw, (max-width: 1279px) 180px, 240px'}
     />
   );
 
@@ -243,8 +247,8 @@ const Card: React.FC<CardProps> = ({
           <button
             type="button"
             className={cn(
-              'absolute right-1.5 top-1.5 z-30 grid h-7 w-7 place-items-center rounded-full border border-cyan-200/25 bg-black/72 text-cyan-100 opacity-0 shadow-lg transition hover:bg-black/85 focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-cyan-300/50 group-hover/card:opacity-100',
-              isBoardCard && 'right-1 top-1 h-6 w-6',
+              'absolute right-1.5 top-1.5 z-30 grid h-11 w-11 place-items-center rounded-full border border-cyan-200/25 bg-black/72 text-cyan-100 opacity-0 shadow-lg transition hover:bg-black/85 focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-cyan-300/50 group-hover/card:opacity-100',
+              isBoardCard && 'right-1 top-1 h-9 w-9',
             )}
             onClick={(event) => {
               event.stopPropagation();
@@ -298,14 +302,14 @@ const Card: React.FC<CardProps> = ({
         >
           {showBack ? (
             <div className="card-back-face h-full w-full" aria-hidden>
-              <img src="/logos/logo-header-dark.png" alt="" className="card-back-crest" draggable={false} />
+              <img src="/logos/logo-header-dark.webp" alt="" width="520" height="388" className="card-back-crest" draggable={false} />
             </div>
           ) : (
-            <img
+            <CardArtwork
               src={imagePath}
               alt=""
               className="h-full w-full object-cover"
-              draggable={false}
+              sizes={`${Math.ceil(zoomFrame.width)}px`}
             />
           )}
           <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/78 via-black/28 to-transparent px-3 pb-3 pt-10">

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Knowledge } from '../../game/types.js';
-import { useCardRegistry } from '../../context/CardRegistry.js';
+import { useCardRegistry } from '../../hooks/useCardRegistry.js';
 import MarketColumn from './MarketColumn.js';
 import Logs from './Logs.js';
 
@@ -10,6 +10,7 @@ interface GameAuxPanelsProps {
   isMyTurn: boolean;
   phase: 'knowledge' | 'action' | 'end';
   logs: string[];
+  playerLabels?: Record<string, string>;
   onDrawKnowledge: (knowledgeId: string) => void;
 }
 
@@ -25,6 +26,7 @@ const GameAuxPanels: React.FC<GameAuxPanelsProps> = ({
   isMyTurn,
   phase,
   logs,
+  playerLabels,
   onDrawKnowledge,
 }) => {
   const registry = useCardRegistry();
@@ -54,7 +56,7 @@ const GameAuxPanels: React.FC<GameAuxPanelsProps> = ({
 
   const renderLogsPanel = () => (
     <div className="h-full min-h-0" ref={(el) => { if (el) registry.register('discard:anchor', el); }}>
-      <Logs logs={logs} />
+      <Logs logs={logs} playerLabels={playerLabels} />
     </div>
   );
 
@@ -72,15 +74,20 @@ const GameAuxPanels: React.FC<GameAuxPanelsProps> = ({
   }
 
   return (
-    <details className="order-3 min-h-0">
-      <summary className="mb-2 cursor-pointer rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-sm font-bold uppercase tracking-normal text-slate-200">
-        Market and game log
-      </summary>
-      <div className="grid min-h-0 gap-2 md:grid-cols-2">
+    <aside className="order-3 grid min-h-0 gap-2 md:grid-cols-2" aria-label="Market and game information">
+      <details open className="min-h-0">
+        <summary className="mb-2 cursor-pointer rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-sm font-bold uppercase tracking-normal text-slate-200">
+          Market · {marketCards.length} face-up {marketCards.length === 1 ? 'card' : 'cards'}
+        </summary>
         {renderMarketPanel()}
+      </details>
+      <details open className="min-h-0">
+        <summary className="mb-2 cursor-pointer rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-sm font-bold uppercase tracking-normal text-slate-200">
+          Game history · {logs.length} {logs.length === 1 ? 'event' : 'events'}
+        </summary>
         {renderLogsPanel()}
-      </div>
-    </details>
+      </details>
+    </aside>
   );
 };
 

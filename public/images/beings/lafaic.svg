@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 921 1217" role="img" aria-labelledby="title description">
+  <title id="title">Lafaic</title>
+  <desc id="description">Temporary Lafaic card artwork placeholder for the training preview.</desc>
+  <defs>
+    <linearGradient id="background" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#07152c"/>
+      <stop offset="0.55" stop-color="#08101f"/>
+      <stop offset="1" stop-color="#241037"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="38%" r="55%">
+      <stop offset="0" stop-color="#38dff8" stop-opacity=".42"/>
+      <stop offset="1" stop-color="#38dff8" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="921" height="1217" rx="48" fill="url(#background)"/>
+  <rect width="921" height="1217" rx="48" fill="url(#glow)"/>
+  <rect x="30" y="30" width="861" height="1157" rx="32" fill="none" stroke="#f6c15d" stroke-width="10"/>
+  <rect x="52" y="52" width="817" height="1113" rx="24" fill="none" stroke="#38dff8" stroke-opacity=".5" stroke-width="3"/>
+  <text x="460.5" y="150" fill="#f8fafc" font-family="Georgia, serif" font-size="88" font-weight="700" text-anchor="middle">LAFAIC</text>
+  <text x="460.5" y="205" fill="#8eeeff" font-family="Arial, sans-serif" font-size="24" font-weight="700" letter-spacing="4" text-anchor="middle">WATER CREATURE</text>
+  <g fill="none" stroke-linecap="round">
+    <path d="M170 480c95-90 190-90 285 0s190 90 296 0" stroke="#38dff8" stroke-width="24"/>
+    <path d="M145 565c105-90 210-90 315 0s210 90 316 0" stroke="#8b5cf6" stroke-width="20" opacity=".9"/>
+    <path d="M190 650c90-72 180-72 270 0s180 72 270 0" stroke="#f6c15d" stroke-width="14" opacity=".8"/>
+  </g>
+  <circle cx="460.5" cy="505" r="190" fill="none" stroke="#d7fbff" stroke-opacity=".2" stroke-width="3"/>
+  <text x="460.5" y="850" fill="#f8fafc" font-family="Georgia, serif" font-size="54" font-weight="700" text-anchor="middle">Training Preview</text>
+  <text x="460.5" y="915" fill="#cbd5e1" font-family="Arial, sans-serif" font-size="30" text-anchor="middle">Official artwork pending</text>
+  <text x="460.5" y="1080" fill="#f6c15d" font-family="Arial, sans-serif" font-size="30" font-weight="700" letter-spacing="2" text-anchor="middle">WISDOM 1 · 2 · 3 · 4</text>
+</svg>
