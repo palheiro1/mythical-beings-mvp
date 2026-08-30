@@ -1,4 +1,4 @@
-import { GameState, PassiveTriggerType, PassiveEventData, Knowledge, Creature } from './types.js';
+import { GameState, PassiveTriggerType, PassiveEventData, Creature } from './types.js';
 import {
   buildCreatureChoices,
   buildKnowledgeChoices,
@@ -29,7 +29,7 @@ export function applyPassiveAbilities(
 
   // --- TURN_START Trigger ---
   if (trigger === 'TURN_START') {
-    newState.players.forEach((player, playerIndex) => {
+    newState.players.forEach(player => {
       if (player.id !== eventData.playerId) return;
 
       player.creatures.forEach(creature => {
@@ -81,7 +81,7 @@ export function applyPassiveAbilities(
     }
 
     newState.players.forEach((player, playerIndex) => {
-      const opponent = newState.players[(playerIndex + 1) % 2]; // Get opponent relative to passive owner
+      const opponent = newState.players[(playerIndex + 1) % 2];
 
       player.creatures.forEach(creature => {
         // Adaro Passive: Triggers on AFTER_PLAYER_SUMMON when owner summons water knowledge onto Adaro.
@@ -227,9 +227,7 @@ export function applyPassiveAbilities(
 
   // --- AFTER_PLAYER_DRAW / AFTER_OPPONENT_DRAW Trigger ---
   else if (trigger === 'AFTER_PLAYER_DRAW' || trigger === 'AFTER_OPPONENT_DRAW') {
-    newState.players.forEach((player, playerIndex) => {
-      const opponent = newState.players[(playerIndex + 1) % 2]; // Get opponent relative to passive owner
-
+    newState.players.forEach(player => {
       player.creatures.forEach(creature => {
         // Inkanyamba Passive: Triggers on AFTER_PLAYER_DRAW or AFTER_OPPONENT_DRAW when owner draws a card.
         // Effect: Discards the top card from the market and refills it if possible.
@@ -259,8 +257,6 @@ export function applyPassiveAbilities(
   else if (trigger === 'KNOWLEDGE_LEAVE') {
     const leavingKnowledge = eventData.knowledgeCard;
     const ownerOfLeavingKnowledgeId = eventData.playerId;
-    const creatureKnowledgeLeftFromId = eventData.creatureId;
-
     if (!leavingKnowledge) {
       console.warn("[Passives] KNOWLEDGE_LEAVE triggered without knowledgeCard data.");
       return newState; // Use return inside forEach loop iteration
@@ -311,41 +307,6 @@ export function applyPassiveAbilities(
   return newState; // Return the modified state
 }
 
-/**
- * Helper to remove a knowledge card from the field, push it to the discard pile,
- * and trigger KNOWLEDGE_LEAVE passives for that knowledge.
- * This ensures chained passives (Lisovik, Tsenehale, etc.) are always triggered.
- */
-function removeKnowledgeFromFieldAndTriggerPassives(
-  state: GameState,
-  playerId: string,
-  creatureId: string,
-  knowledge: Knowledge
-) {
-  // Remove from field (the caller should also set fieldSlot.knowledge = null for clarity)
-  // Push to discard pile
-  state.discardPile.push(knowledge);
-
-  // Trigger KNOWLEDGE_LEAVE passives
-  applyPassiveAbilities(state, 'KNOWLEDGE_LEAVE', {
-    playerId,
-    creatureId,
-    knowledgeCard: knowledge,
-  });
-}
-
-// Helper to get opponent index (avoids direct dependency if utils are complex)
-// Keep these local helpers as the import from utils was causing issues
-function getOpponentPlayerIndex(state: GameState, playerId: string): number {
-  return state.players.findIndex(p => p.id !== playerId);
-}
-
-// Helper to get player index
-// Keep these local helpers
-function getPlayerIndex(state: GameState, playerId: string): number {
-  return state.players.findIndex(p => p.id === playerId);
-}
-
 // Simple deep clone function to avoid lodash dependency issues
 function deepClone<T>(obj: T): T {
   return JSON.parse(JSON.stringify(obj));
@@ -353,7 +314,7 @@ function deepClone<T>(obj: T): T {
 
 // Aerial 5: All opponent creatures rotate 90º clockwise (lose wisdom)
 export const aerial5 = ({ state, playerIndex }: { state: GameState; playerIndex: number }) => {
-  let newState = deepClone(state); // Use our own deep clone function
+  const newState = deepClone(state); // Use our own deep clone function
   const opponentIndex = playerIndex === 0 ? 1 : 0;
   const opponent = newState.players[opponentIndex];
   let rotatedCount = 0;

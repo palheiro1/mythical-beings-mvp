@@ -8,7 +8,6 @@ describe('Inkanyamba Passive', () => {
   describe('AFTER_PLAYER_DRAW - Discard 1 card from market', () => {
     it('should discard 1 card from market when owner draws a card', () => {
       const p1Id = 'player1'; // Inkanyamba's owner
-      const p2Id = 'player2';
       const initialState = createInitialTestState('game15', ['inkanyamba'], ['pele'], { // P1 has Inkanyamba
         currentPlayerIndex: 0, // Player 1's turn
         phase: 'action',
@@ -89,7 +88,6 @@ describe('Inkanyamba Passive', () => {
 
     it('should NOT discard a card if market is empty when owner draws', () => {
       const p1Id = 'player1'; // Inkanyamba's owner
-      const p2Id = 'player2';
       const initialState = createInitialTestState('game17', ['inkanyamba'], ['pele'], { // P1 has Inkanyamba
         currentPlayerIndex: 0, // Player 1's turn
         phase: 'action',
@@ -103,7 +101,6 @@ describe('Inkanyamba Passive', () => {
       initialState.knowledgeDeck = []; // Clear deck after getting the card ref
       initialState.market = [cardToDrawFromDeck]; // Put the card in the market to be drawn
 
-      const initialMarketSize = initialState.market.length; // Should be 1
       const initialDiscardSize = initialState.discardPile.length;
 
       const drawAction = {
@@ -129,7 +126,6 @@ describe('Inkanyamba Passive', () => {
 
     it('should discard but not refill market if deck is empty when owner draws', () => {
       const p1Id = 'player1'; // Inkanyamba's owner
-      const p2Id = 'player2';
       const initialState = createInitialTestState('game18', ['inkanyamba'], ['pele'], { // P1 has Inkanyamba
         currentPlayerIndex: 0, // Player 1's turn
         phase: 'action',

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { checkWinConditions, executeKnowledgePhase } from '../../src/game/rules'; // Removed .js, corrected name
+import { checkWinConditions } from '../../src/game/rules'; // Removed .js, corrected name
 import { createInitialTestState, createTestCreature, createTestKnowledge } from '../utils/testHelpers'; // Removed .js
 import { gameReducer } from '../../src/game/state'; // Removed .js
 import { GameState } from '../../src/game/types'; // Removed .js
@@ -104,7 +104,7 @@ describe('Win Condition Edge Cases', () => {
   it('should result in a draw if both players are at 0 power when win conditions are checked', () => {
     const p1Id = 'player1';
     const p2Id = 'player2';
-    let initialState = createInitialTestState('winEdgeDraw', ['adaro'], ['pele'], {
+    const initialState = createInitialTestState('winEdgeDraw', ['adaro'], ['pele'], {
       players: [
         { id: p1Id, name: 'Player 1', power: 1, hand: [], creatures: [createTestCreature('adaro')], field: [{ creatureId: 'adaro', knowledge: null }], deck: [], discard: [] },
         { id: p2Id, name: 'Player 2', power: 1, hand: [], creatures: [createTestCreature('pele')], field: [{ creatureId: 'pele', knowledge: null }], deck: [], discard: [] },

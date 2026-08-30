@@ -8,7 +8,7 @@ export interface CombatBuffers {
 export interface BaseCard {
   id: string; // Unique identifier (e.g., filename without extension)
   name: string; // Card name (e.g., "Adaro", "Aerial Blast")
-  image: string; // Path to image (e.g., "/images/beings/adaro.jpg")
+  image: string; // Path to optimized card artwork (e.g., "/images/beings/adaro.webp")
 }
 
 // Creature specific types
@@ -131,6 +131,8 @@ export interface GameState {
   extraActionsNextTurn: { 0: number; 1: number }; // Actions granted by aquatic5
   pendingEffect?: PendingEffect | null;
   rulesVersion?: 'rulebook-v1';
+  /** Secret RNG state for authoritative execution. Player/spectator projections must omit it. */
+  privateRandom?: import('./random.js').GameRandomState;
 }
 
 // Type for games listed in the lobby

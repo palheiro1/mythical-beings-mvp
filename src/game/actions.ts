@@ -104,9 +104,9 @@ export function drawKnowledge(state: GameState, payload: { playerId: string; kno
  * @returns The updated game state and info about any knowledge that left.
  */
 export function summonKnowledge(state: GameState, payload: SummonKnowledgePayload): SummonKnowledgeResult {
-  const { playerId, knowledgeId, instanceId, creatureId } = payload;
+  const { playerId, instanceId, creatureId } = payload;
   // Use a mutable copy for intermediate steps within this function
-  let workingState = JSON.parse(JSON.stringify(state)) as GameState;
+  const workingState = JSON.parse(JSON.stringify(state)) as GameState;
   const player = getPlayerState(workingState, playerId);
 
   // Basic validation (should ideally be covered by isValidAction, but good safety net)

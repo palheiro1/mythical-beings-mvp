@@ -1,5 +1,5 @@
 // Removed unused imports: KnowledgeType, CreatureElement
-import { GameState, Knowledge, PlayerState, KnowledgeEffectTrigger } from './types.js';
+import { GameState, Knowledge, KnowledgeEffectTrigger } from './types.js';
 import { applyPassiveAbilities } from './passives.js'; // Import applyPassiveAbilities
 import { buildHandChoices, buildKnowledgeChoices, buildMarketChoices, createPendingEffect, getEffectiveCreatureWisdom, updateCreatureWisdomFromRotation } from './utils.js';
 
@@ -104,13 +104,13 @@ export const knowledgeEffects: Record<string, KnowledgeEffectFn> = {
     rotation: number;
     trigger: KnowledgeEffectTrigger;
   }) => {
-    let newState = structuredClone(state); // Use cloneDeep
+    const newState = structuredClone(state); // Use cloneDeep
     const opponentIndex = playerIndex === 0 ? 1 : 0;
 
     // Calculate damage from valueCycle
     const cycleIndex = rotation / 90;
     const baseValue = knowledge.valueCycle?.[cycleIndex] ?? 0;
-    let baseDamage = baseValue > 0 ? baseValue : 0; // Use positive values from cycle as base damage
+    const baseDamage = baseValue > 0 ? baseValue : 0; // Use positive values from cycle as base damage
 
     // Bonus damage if opponent slot is empty
     let bonusDamage = 0;
@@ -146,9 +146,9 @@ export const knowledgeEffects: Record<string, KnowledgeEffectFn> = {
     rotation: number;
     trigger: KnowledgeEffectTrigger;
   }) => { // Added fieldSlotIndex and rotation
-    let newState = structuredClone(state); // Use cloneDeep
+    const newState = structuredClone(state); // Use cloneDeep
     const opponentIndex = playerIndex === 0 ? 1 : 0;
-    let combinedLog: string[] = [];
+    const combinedLog: string[] = [];
 
     if (trigger === 'onSummon') {
       const choices = buildHandChoices(newState, opponentIndex as 0 | 1);
@@ -203,7 +203,7 @@ export const knowledgeEffects: Record<string, KnowledgeEffectFn> = {
     knowledge: Knowledge;
     trigger: KnowledgeEffectTrigger;
   }) => {
-    let newState = structuredClone(state); // Use cloneDeep
+    const newState = structuredClone(state); // Use cloneDeep
     const opponentIndex = playerIndex === 0 ? 1 : 0;
     const creatureId = newState.players[playerIndex].field[fieldSlotIndex]?.creatureId;
     const wisdom = creatureId ? getEffectiveCreatureWisdom(newState, playerIndex, creatureId) : 0;
@@ -262,7 +262,7 @@ export const knowledgeEffects: Record<string, KnowledgeEffectFn> = {
       return slot;
     });
 
-    let logMsg = `[Terrestrial4] Eliminated: ${eliminatedNames.join(', ') || 'none'}.`;
+    const logMsg = `[Terrestrial4] Eliminated: ${eliminatedNames.join(', ') || 'none'}.`;
 
     const finalPlayers = [...newState.players];
     finalPlayers[opponentIndex] = {
@@ -289,7 +289,7 @@ export const knowledgeEffects: Record<string, KnowledgeEffectFn> = {
   }) => { // Added fieldSlotIndex, rotation, isFinalRotation
     let newState = structuredClone(state); // Use cloneDeep
     const opponentIndex = playerIndex === 0 ? 1 : 0;
-    let combinedLog: string[] = [];
+    const combinedLog: string[] = [];
 
     // --- Damage Calculation (from valueCycle) ---
     const cycleIndex = rotation / 90;
@@ -350,7 +350,7 @@ export const knowledgeEffects: Record<string, KnowledgeEffectFn> = {
     knowledge: Knowledge;
     trigger: KnowledgeEffectTrigger;
   }) => {
-    let newState = structuredClone(state); // Use cloneDeep
+    const newState = structuredClone(state); // Use cloneDeep
     const rotatable = buildKnowledgeChoices(newState, playerIndex as 0 | 1, (candidate, _creatureId, idx) => {
       if (idx === fieldSlotIndex) return false;
       const maxRotationDegrees = (candidate.maxRotations ?? 4) * 90;
@@ -382,7 +382,7 @@ export const knowledgeEffects: Record<string, KnowledgeEffectFn> = {
     rotation: number;
     trigger: KnowledgeEffectTrigger;
   }) => { // Added params
-    let newState = structuredClone(state); // Use cloneDeep
+    const newState = structuredClone(state); // Use cloneDeep
     const opponentIndex = playerIndex === 0 ? 1 : 0;
 
     // --- Damage Calculation (from valueCycle) ---
@@ -407,14 +407,14 @@ export const knowledgeEffects: Record<string, KnowledgeEffectFn> = {
   },
 
   // Aquatic 3: Prevent opponent from summoning knowledge onto the opposing creature (persistent block)
-  aquatic3: ({ state, playerIndex, fieldSlotIndex, isFinalRotation, trigger: _trigger }: {
+  aquatic3: ({ state, fieldSlotIndex, isFinalRotation, trigger: _trigger }: {
     state: GameState;
     playerIndex: number;
     fieldSlotIndex: number;
     isFinalRotation: boolean;
     trigger: KnowledgeEffectTrigger;
   }) => {
-    let newState = structuredClone(state); // Use cloneDeep
+    const newState = structuredClone(state); // Use cloneDeep
     newState.log.push(
       isFinalRotation
         ? `Hurricane leaves play after this rotation; opposing slot ${fieldSlotIndex} will no longer be blocked.`
@@ -432,9 +432,9 @@ export const knowledgeEffects: Record<string, KnowledgeEffectFn> = {
     rotation: number;
     trigger: KnowledgeEffectTrigger;
   }) => { // Added fieldSlotIndex, rotation
-    let newState = structuredClone(state); // Use cloneDeep
+    const newState = structuredClone(state); // Use cloneDeep
     const opponentIndex = playerIndex === 0 ? 1 : 0;
-    let combinedLog: string[] = [];
+    const combinedLog: string[] = [];
 
     if (trigger === 'onSummon') {
       const choices = buildMarketChoices(newState);
@@ -488,9 +488,9 @@ export const knowledgeEffects: Record<string, KnowledgeEffectFn> = {
     isFinalRotation: boolean;
     trigger: KnowledgeEffectTrigger;
   }) => { // Added fieldSlotIndex, knowledge, rotation
-    let newState = structuredClone(state); // Use cloneDeep
+    const newState = structuredClone(state); // Use cloneDeep
     const opponentIndex = playerIndex === 0 ? 1 : 0;
-    let combinedLog: string[] = [];
+    const combinedLog: string[] = [];
 
     // --- Damage/Defense Calculation (from valueCycle) ---
     const cycleIndex = rotation / 90;
@@ -537,9 +537,9 @@ export const knowledgeEffects: Record<string, KnowledgeEffectFn> = {
     rotation: number;
     trigger: KnowledgeEffectTrigger;
   }) => { // Added rotation
-    let newState = structuredClone(state); // Use cloneDeep
+    const newState = structuredClone(state); // Use cloneDeep
     const opponentIndex = playerIndex === 0 ? 1 : 0;
-    let combinedLog: string[] = [];
+    const combinedLog: string[] = [];
 
     if (trigger === 'onSummon') {
       newState.players[playerIndex].power += 1;
@@ -577,7 +577,7 @@ export const knowledgeEffects: Record<string, KnowledgeEffectFn> = {
     rotation: number;
     trigger: KnowledgeEffectTrigger;
   }) => {
-    let newState = structuredClone(state); // Use cloneDeep
+    const newState = structuredClone(state); // Use cloneDeep
     let powerGain = 0;
     // Use the rotation value passed into the function
     if (rotation === 0) powerGain = 1;
@@ -600,9 +600,9 @@ export const knowledgeEffects: Record<string, KnowledgeEffectFn> = {
     isFinalRotation: boolean;
     trigger: KnowledgeEffectTrigger;
   }) => {
-    let newState = structuredClone(state); // Use cloneDeep
+    const newState = structuredClone(state); // Use cloneDeep
     const opponentIndex = playerIndex === 0 ? 1 : 0;
-    let combinedLog: string[] = [];
+    const combinedLog: string[] = [];
 
     // --- Damage Calculation (from valueCycle) ---
     const cycleIndex = rotation / 90;
@@ -641,9 +641,9 @@ export const knowledgeEffects: Record<string, KnowledgeEffectFn> = {
     rotation: number;
     trigger: KnowledgeEffectTrigger;
   }) => {
-    let newState = structuredClone(state); // Use cloneDeep
+    const newState = structuredClone(state); // Use cloneDeep
     const opponentIndex = playerIndex === 0 ? 1 : 0;
-    let combinedLog: string[] = []; // Use combinedLog for clarity
+    const combinedLog: string[] = []; // Use combinedLog for clarity
 
     // --- Damage Calculation (from valueCycle) ---
     const cycleIndex = rotation / 90;
@@ -689,7 +689,7 @@ export const knowledgeEffects: Record<string, KnowledgeEffectFn> = {
     playerIndex: number;
     trigger: KnowledgeEffectTrigger;
   }) => {
-    let newState = structuredClone(state); // Use cloneDeep
+    const newState = structuredClone(state); // Use cloneDeep
     const opponentIndex = playerIndex === 0 ? 1 : 0;
     const opponent = newState.players[opponentIndex];
     let rotatedCount = 0;

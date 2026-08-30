@@ -13,6 +13,12 @@ import {
   refillMarket,
   updateCreatureWisdomFromRotation,
 } from './utils.js';
+import {
+  createGameRandomState,
+  shuffleWithGameRandom,
+  takeGameRandomUuid,
+  type GameRandomState,
+} from './random.js';
 
 
 // Constants
@@ -22,14 +28,6 @@ const ACTIONS_PER_TURN = 2;
 const ALL_CREATURES: Creature[] = creatureData as Creature[];
 
 // Helper functions
-function shuffleArray<T>(array: T[]): T[] {
-  for (let i = array.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [array[i], array[j]] = [array[j], array[i]];
-  }
-  return array;
-}
-
 // Helper function for debugging duplicate IDs
 function checkForDuplicateIds(state: GameState, stepName: string): void {
   const ids = new Set<string>();
@@ -58,10 +56,12 @@ function checkForDuplicateIds(state: GameState, stepName: string): void {
 
 // Export for testing purposes
 export function injectInstanceIds(state: GameState): GameState {
+  const privateRandom = structuredClone(state.privateRandom ?? createGameRandomState());
   // Always assign a new unique instanceId to every knowledge card
-  const assignNewInstanceId = (card: Knowledge) => ({ ...card, instanceId: crypto.randomUUID() });
+  const assignNewInstanceId = (card: Knowledge) => ({ ...card, instanceId: takeGameRandomUuid(privateRandom) });
   return {
     ...state,
+    privateRandom,
     market: state.market.map(assignNewInstanceId),
     knowledgeDeck: state.knowledgeDeck.map(assignNewInstanceId),
     discardPile: state.discardPile.map(assignNewInstanceId),
@@ -139,10 +139,12 @@ export const initialGameState: GameState = {
   extraActionsNextTurn: { 0: 0, 1: 0 }, // Initialize extraActionsNextTurn
   pendingEffect: null,
   rulesVersion: 'rulebook-v1',
+  privateRandom: undefined,
 };
 
-export function initializeGame(payload: InitializeGamePayload): GameState {
+export function initializeGame(payload: InitializeGamePayload, randomState = createGameRandomState()): GameState {
   const { gameId, player1Id, player2Id, player1SelectedIds, player2SelectedIds } = payload;
+  const privateRandom: GameRandomState = structuredClone(randomState);
 
   const selectedCreaturesP1 = lookupCreatures(player1SelectedIds, ALL_CREATURES);
   const selectedCreaturesP2 = lookupCreatures(player2SelectedIds, ALL_CREATURES);
@@ -167,11 +169,11 @@ export function initializeGame(payload: InitializeGamePayload): GameState {
         break;
     }
     for (let i = 0; i < copies; i++) {
-      fullDeck.push({ ...card, instanceId: crypto.randomUUID() });
+      fullDeck.push({ ...card, instanceId: takeGameRandomUuid(privateRandom) });
     }
   });
 
-  const shuffledDeck = shuffleArray(fullDeck);
+  const shuffledDeck = shuffleWithGameRandom(fullDeck, privateRandom);
   const initialMarket = shuffledDeck.slice(0, MARKET_SIZE);
   const remainingDeck = shuffledDeck.slice(MARKET_SIZE);
 
@@ -195,6 +197,7 @@ export function initializeGame(payload: InitializeGamePayload): GameState {
     extraActionsNextTurn: { 0: 0, 1: 0 },
     pendingEffect: null,
     rulesVersion: 'rulebook-v1',
+    privateRandom,
   };
   checkForDuplicateIds(initialState, "After initial deal");
 
@@ -236,6 +239,7 @@ function ensureRuntimeState(state: GameState): GameState {
     extraActionsNextTurn: state.extraActionsNextTurn ?? { 0: 0, 1: 0 },
     pendingEffect: state.pendingEffect ?? null,
     rulesVersion: state.rulesVersion ?? 'rulebook-v1',
+    privateRandom: state.privateRandom ?? createGameRandomState(),
   };
 }
 
@@ -589,7 +593,7 @@ export function gameReducer(state: GameState | null, action: GameAction): GameSt
       return state; // Invalid action
     }
     console.log("[Reducer] Handling END_TURN action.");
-    let stateAfterEndOfTurn = endTurnSequence(intermediateState); // Pass the cloned state
+    const stateAfterEndOfTurn = endTurnSequence(intermediateState); // Pass the cloned state
 
     // No need to check for win conditions here again if endTurnSequence handles it thoroughly
     return stateAfterEndOfTurn;

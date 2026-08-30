@@ -35,8 +35,6 @@ describe('Zhar-Ptitsa Passive', () => {
     });
 
     it('should allow defense to apply for non-aerial knowledge', () => {
-      const p1Id = 'player1';
-      const p2Id = 'player2';
       const initialState: GameState = createInitialTestState('game51', ['zhar-ptitsa'], ['pele'], {
         currentPlayerIndex: 0,
         phase: 'knowledge',

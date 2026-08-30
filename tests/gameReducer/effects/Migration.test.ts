@@ -6,8 +6,6 @@ import knowledges from '../../../src/assets/knowledges.json';
 const migrationKnowledge = knowledges.find(k => k.id === 'aerial5');
 const p1CreatureId = 'adaro';
 const p2CreatureId = 'pele';
-const fieldSlotIndex = 0;
-
 describe('Migration (aerial5) Effect', () => {
   let gameState;
   beforeEach(() => {

@@ -124,7 +124,7 @@ export function useGameActions(
             } 
         };
         handleAction(action);
-    }, [handleAction, currentPlayerId]);
+    }, [handleAction, currentPlayerId, currentGameState]);
 
     const handleHandCardClick = useCallback((knowledgeId: string) => {
         console.log(`[Action] Hand knowledge clicked (handled by GameScreen): ${knowledgeId}`);

@@ -170,7 +170,7 @@ export function useGameInitialization(
         console.log(`[setupGame] Fetched game details. P1: ${player1Id}, P2: ${player2Id}`);
 
         // 2. Fetch existing game state
-        let gameState = await fetchReadableGameState();
+        const gameState = await fetchReadableGameState();
         if (!isMounted || currentInitializedGameId.current !== gameId) {
              console.log(`[setupGame] Aborting fetch state: isMounted=${isMounted}, gameId mismatch.`);
              isInitializing.current = false;

@@ -3,8 +3,6 @@ import { GameState, GameAction, Knowledge, SummonKnowledgePayload } from './type
 import { applyPassiveAbilities } from './passives.js';
 import { getEffectiveCreatureWisdom } from './utils.js';
 
-// Constants
-const MAX_HAND_SIZE = 5;
 export const ACTIONS_PER_TURN = 2;
 
 // Define the return type for validation

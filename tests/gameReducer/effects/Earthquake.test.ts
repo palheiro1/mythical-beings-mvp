@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { knowledgeEffects } from '../../../src/game/effects';
 import { GameState } from '../../../src/game/types';
-import { createInitialTestState, createTestKnowledge } from '../../utils/testHelpers';
+import { createInitialTestState } from '../../utils/testHelpers';
 import knowledges from '../../../src/assets/knowledges.json';
 
 const earthquakeKnowledge = knowledges.find(k => k.id === 'terrestrial3')!;
