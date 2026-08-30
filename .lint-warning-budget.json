@@ -1,5 +1,10 @@
 {
   "version": 1,
-  "total": 0,
-  "rules": {}
+  "total": 116,
+  "rules": {
+    "@typescript-eslint/no-unused-vars": 71,
+    "prefer-const": 31,
+    "react-hooks/exhaustive-deps": 11,
+    "react-refresh/only-export-components": 3
+  }
 }
