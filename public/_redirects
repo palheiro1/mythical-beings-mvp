@@ -1,1 +1,17 @@
-/* /index.html 200
+/ /index.html 200
+/how-to-play /index.html 200
+/bot-selection /index.html 200
+/bot-game /index.html 200
+/auth /index.html 200
+/lobby /index.html 200
+/profile /index.html 200
+/leaderboard /index.html 200
+/game/* /index.html 200
+/game-initializing/* /index.html 200
+/nft-selection/* /index.html 200
+/waiting/* /index.html 200
+
+/assets/* /404.html 404
+/images/* /404.html 404
+/logos/* /404.html 404
+/* /404.html 404

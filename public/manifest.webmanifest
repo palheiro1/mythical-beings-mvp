@@ -1,6 +1,12 @@
 {
   "name": "Wisdom Duel",
   "short_name": "Wisdom Duel",
+  "description": "Learn Wisdom Duel in a solo tactical card match against the training bot.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#03050b",
+  "theme_color": "#060912",
   "icons": [
     {
       "src": "/logos/pwa-192.png",
@@ -11,14 +17,6 @@
       "src": "/logos/pwa-512.png",
       "sizes": "512x512",
       "type": "image/png"
-    },
-    {
-      "src": "/logos/apple-touch-icon.png",
-      "sizes": "180x180",
-      "type": "image/png"
     }
-  ],
-  "theme_color": "#0B1024",
-  "background_color": "#050812",
-  "display": "standalone"
+  ]
 }

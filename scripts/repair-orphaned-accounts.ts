@@ -26,7 +26,7 @@ async function repairOrphanedAccounts() {
     
     console.log(`[Repair] Found ${users.users.length} users to check`);
     for (const user of users.users) {
-      const { data, error: profileError } = await supabase
+      const { error: profileError } = await supabase
         .from('profiles')
         .select('id')
         .eq('id', user.id)

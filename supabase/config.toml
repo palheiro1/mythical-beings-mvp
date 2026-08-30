@@ -1,4 +1,4 @@
 [functions.deal-cards]
 enabled = true
-verify_jwt = false
+verify_jwt = true
 entrypoint = "./functions/deal-cards/index.ts"
