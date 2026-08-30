@@ -19,6 +19,8 @@ describe('static hosting configuration', () => {
     expect(headers).toContain('max-age=31536000, immutable');
     expect(headers).toContain('Strict-Transport-Security: max-age=63072000; includeSubDomains; preload');
     expect(headers).toContain('X-Content-Type-Options: nosniff');
+    expect(headers).toContain('Content-Security-Policy:');
+    expect(headers).not.toContain('Content-Security-Policy-Report-Only:');
     expect(redirects).toContain('/bot-selection /index.html 200');
     expect(redirects.trim().endsWith('/* /404.html 404')).toBe(true);
   });
