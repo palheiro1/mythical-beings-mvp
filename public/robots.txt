@@ -1,0 +1,11 @@
+User-agent: *
+Allow: /
+Disallow: /auth
+Disallow: /bot-game
+Disallow: /bot-selection
+Disallow: /game/
+Disallow: /game-initializing/
+Disallow: /nft-selection/
+Disallow: /waiting/
+
+Sitemap: https://wisdomduel.mythicalbeings.io/sitemap.xml

@@ -1,9 +1,14 @@
 // supabase/functions/deal-cards/index.ts
 // Deals five random creature ids to each human participant in a Play Hub session.
 /// <reference lib="deno.ns" />
-import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { decodeFunctionResult, encodeFunctionData } from "https://esm.sh/viem@2.43.1";
+import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2.108.2";
+import { decodeFunctionResult, encodeFunctionData } from "npm:viem@2.43.1";
+import {
+  isMultiplayerReleaseEnabled,
+  MULTIPLAYER_DISABLED_CODE,
+  MULTIPLAYER_DISABLED_MESSAGE,
+  MULTIPLAYER_RELEASE_FLAG,
+} from "../_shared/releaseGate.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -29,7 +34,7 @@ const allCreatures = [
   "trempulcahue",
 ];
 
-const functionVersion = "2026-06-23-competitive-gem";
+const functionVersion = "2026-08-28-default-off-release-gate";
 const CASUAL_MODE_ID = "casual";
 const COMPETITIVE_MODE_ID = "competitive_gem";
 const DEFAULT_CARDS_CONTRACT = "0xcf55f528492768330c0750a6527c1dfb50e2a7c3";
@@ -58,6 +63,8 @@ type CatalogCard = {
   contract: string;
 };
 
+type ServiceClient = SupabaseClient<any>;
+
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -83,7 +90,7 @@ function normalizeAddress(value: string): string {
   return address;
 }
 
-async function getLinkedPolygonWallet(supabase: ReturnType<typeof createClient>, profileId: string): Promise<string> {
+async function getLinkedPolygonWallet(supabase: ServiceClient, profileId: string): Promise<string> {
   const { data, error } = await supabase
     .from("profile_wallets")
     .select("address")
@@ -99,7 +106,7 @@ async function getLinkedPolygonWallet(supabase: ReturnType<typeof createClient>,
 }
 
 async function getCompetitiveCatalog(
-  supabase: ReturnType<typeof createClient>,
+  supabase: ServiceClient,
   cardsContract: string,
 ): Promise<CatalogCard[]> {
   const { data, error } = await supabase
@@ -178,7 +185,7 @@ async function readOwnedCompetitiveCards(input: {
 }
 
 async function dealCompetitiveHands(input: {
-  supabase: ReturnType<typeof createClient>;
+  supabase: ServiceClient;
   sessionId: string;
   participants: Participant[];
 }): Promise<Record<string, string[]>> {
@@ -226,8 +233,8 @@ async function dealCompetitiveHands(input: {
   return dealtHands;
 }
 
-serve(async (req) => {
-  console.log(`[deal-cards] ${functionVersion} ${req.method} ${req.url}`);
+Deno.serve(async (req) => {
+  console.log(`[deal-cards] ${functionVersion} ${req.method}`);
 
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: corsHeaders });
@@ -235,6 +242,14 @@ serve(async (req) => {
 
   if (req.method !== "POST") {
     return jsonResponse({ error: "Method not allowed" }, 405);
+  }
+
+  if (!isMultiplayerReleaseEnabled(Deno.env.get(MULTIPLAYER_RELEASE_FLAG))) {
+    console.warn(`[deal-cards] blocked by ${MULTIPLAYER_RELEASE_FLAG}`);
+    return jsonResponse({
+      code: MULTIPLAYER_DISABLED_CODE,
+      error: MULTIPLAYER_DISABLED_MESSAGE,
+    }, 503);
   }
 
   try {
