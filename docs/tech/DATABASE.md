@@ -2,6 +2,11 @@
 
 This project uses Supabase Postgres + Realtime for multiplayer state synchronization.
 
+> **Shared-database safety:** the migrations in this repository are not a complete or
+> canonical representation of the current Play Hub schema. Do not apply them to the
+> shared project. See `SUPABASE_READ_ONLY_INVENTORY_2026-08-28.md` and reconcile against
+> the `mythicalSDK` migrations in an isolated Supabase branch first.
+
 ## Tables (High Level)
 
 - `profiles`
@@ -60,4 +65,6 @@ Play Hub SDK functions are maintained in the `mythicalSDK` repo:
 
 ## Type Generation
 
-`src/types/supabase.ts` is a snapshot of the schema and may drift if migrations are applied without regenerating types.
+`src/types/supabase.ts` is currently known to be incomplete for competitive tables,
+card locks and the spectator RPC. Regenerate it only from an isolated branch or an
+approved read-only remote schema after migration history has been reconciled.

@@ -1,5 +1,11 @@
 # Polygon + Play Hub Integration
 
+> **Release status:** Competitive GEM is disabled. Keep `VITE_ENABLE_PVP=false` and the
+> independent Edge Function secret `WISDOM_DUEL_PVP_ENABLED=false`. Do not run the deploy
+> checklist against the shared database until the gates in
+> `AUTHORITATIVE_GAME_PROTOCOL.md` and the reconciliation in
+> `SUPABASE_READ_ONLY_INVENTORY_2026-08-28.md` are complete.
+
 Wisdom Duel uses Mythical Play Hub for identity, profiles, sessions, leaderboards, linked wallets, and competitive GEM flows. Polygon is the active chain for wallet login/linking, GEM stake deposits, ERC-1155 card ownership checks, and escrow settlement.
 
 ## Runtime Contract
@@ -42,6 +48,7 @@ npm run supabase:deploy
 
 Required function secrets:
 
+- `WISDOM_DUEL_PVP_ENABLED=false` (default-off release gate)
 - `POLYGON_RPC_URL`
 - `POLYGON_CHAIN_ID=137`
 - `WISDOM_DUEL_GEM_ADDRESS`
