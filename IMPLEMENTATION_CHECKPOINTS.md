@@ -1929,7 +1929,7 @@ Bestiary Trails e Galeguia não foram reutilizadas, resetadas ou paradas.
 | C34-2 | 🟢 | Cartão Wisdom integrado | PR `card-game-wallet-v2#176` merged em `main`; commit `30acbfe` |
 | C34-3 | 🟡 | Hub canónico aguarda deploy | Produção ainda mostra `Live/GEM`; conta local não tem acesso ao scope Vercel `mythicalbeings` |
 | C34-4 | 🟢 | Smoke local do Hub | Guest → Play Hub; Battlegrounds/Elyxir preservados; Wisdom `Preview`/`Start Training`; zero erros de consola |
-| C34-5 | 🟢 | Contenção C32 formalizada | PR SDK `#26` contém apenas o gate default-off; Deno 2/2 e typecheck das sete funções verdes |
+| C34-5 | 🟢 | Contenção C32 integrada | PR SDK `#26` merged em `main`, commit `feb06ca`; Deno 2/2 e typecheck das sete funções verdes |
 | C34-6 | 🟢 | Ledger isolado da contenção | Branch `chore/shared-db-ledger-recovery-20260831`, commits `415d9cd` e `8ec1bcd` |
 | C34-7 | 🟢 | Rehearsal DB reproduzível | Snapshot fixado por SHA-256 + 24 migrações posteriores + ACL explícito; start e reset limpo aprovados |
 | C34-8 | 🟢 | Paridade de inventário atual | 769 colunas, 349 constraints, 70 funções, 182 índices, 115 policies, 37 triggers, 2 views e grants iguais |
@@ -1976,7 +1976,7 @@ Bestiary Trails e Galeguia não foram reutilizadas, resetadas ou paradas.
 
 1. Obter acesso ao scope Vercel `mythicalbeings` ou corrigir o plano/integration check; publicar o
    commit `30acbfe` e repetir guest + sessão autenticada no Hub canónico.
-2. Rever e integrar o PR SDK `#26`; manter `WISDOM_DUEL_PVP_ENABLED` ausente/false.
+2. Manter `WISDOM_DUEL_PVP_ENABLED` ausente/false e incluir o smoke 503 nas verificações de release.
 3. Autorizar explicitamente o dump schema-only e a comparação de definições; fazer backup do ledger,
    funções, grants e policies sem dados de produção.
 4. Rever localmente a branch do ledger; abrir draft PR só depois de autorização específica para
