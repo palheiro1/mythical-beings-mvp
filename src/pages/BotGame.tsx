@@ -90,6 +90,19 @@ const BotGame: React.FC = () => {
     handleEndTurn();
   };
 
+  const handleTrainingResign = () => {
+    setSelectedKnowledgeId(null);
+    setGameState((state) => {
+      if (!state || state.phase === 'gameOver') return state;
+      return {
+        ...state,
+        winner: BOT_ID,
+        phase: 'gameOver',
+        log: [...state.log, `[Training] ${LOCAL_PLAYER_ID} resigned. ${BOT_NAME} wins.`],
+      };
+    });
+  };
+
   const handleTutorialClose = () => {
     setTutorialOpen(false);
     try {
@@ -252,6 +265,7 @@ const BotGame: React.FC = () => {
           phase={gameState.phase}
           currentPlayerId={player.id}
           gameState={gameState}
+          onResign={handleTrainingResign}
         />
       )}
       actionBar={(

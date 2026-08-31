@@ -18,6 +18,7 @@ interface TopBarProps {
   currentPlayerId?: string;
   gameState?: GameState;
   isSpectator?: boolean;
+  onResign?: () => void | Promise<void>;
 }
 
 const TopBar: React.FC<TopBarProps> = ({
@@ -29,7 +30,8 @@ const TopBar: React.FC<TopBarProps> = ({
   phase,
   currentPlayerId,
   gameState,
-  isSpectator = false
+  isSpectator = false,
+  onResign,
 }) => {
   const registry = useCardRegistry();
   const p1Ref = useRef<HTMLSpanElement | null>(null);
@@ -47,6 +49,10 @@ const TopBar: React.FC<TopBarProps> = ({
   const handleResign = async () => {
     try {
       if (!gameState || !currentPlayerId || isSpectator) return;
+      if (onResign) {
+        await onResign();
+        return;
+      }
       const p1 = gameState.players[0]?.id;
       const p2 = gameState.players[1]?.id;
       if (!p1 || !p2) return;
@@ -95,7 +101,7 @@ const TopBar: React.FC<TopBarProps> = ({
           </div>
         </div>
         <StatusBadge tone={phase === 'action' ? 'violet' : phase === 'knowledge' ? 'blue' : phase === 'gameOver' ? 'red' : 'amber'} className="mt-1">
-          {phase.toUpperCase()} PHASE
+          {phase === 'gameOver' ? 'GAME OVER' : `${phase.toUpperCase()} PHASE`}
         </StatusBadge>
         <div className="mt-1 hidden justify-center sm:flex">
           <img src="/logos/logo-header-dark.webp" alt="Wisdom Duel" width="520" height="388" className="h-5 w-auto opacity-70" />
