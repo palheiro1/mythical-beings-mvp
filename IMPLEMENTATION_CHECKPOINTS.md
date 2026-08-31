@@ -1909,3 +1909,79 @@ base partilhada foi alterada. Bestiary Trails e Swarm Hunt não receberam mudan�
    independente e fechar retest antes de qualquer mainnet.
 7. Concluir parecer jurídico, allowlist, retenção, monitorização financeira e runbooks antes da beta
    mainnet fechada.
+
+## Checkpoint C34 — Hub integrado e baseline ensaiada localmente
+
+**Data:** 2026-08-31
+
+**Estado do ciclo:** PR mínimo do Hub integrado; deploy canónico do Hub bloqueado externamente;
+reconstrução DB local repetível com paridade de inventário; produção preservada
+
+**Limite de segurança:** nenhum `db push`, `migration repair`, branch Supabase, DDL/DML remoto,
+config push, alteração de catálogo ou exposição de dados de jogadores. As stacks locais de
+Bestiary Trails e Galeguia não foram reutilizadas, resetadas ou paradas.
+
+### Entregas
+
+| Código | Estado | Entrega | Evidência/nota |
+|---|---|---|---|
+| C34-1 | 🟢 | Hub validado em instalação limpa | `npm ci`: 914 pacotes; 25 ficheiros/112 testes; build Vite completo |
+| C34-2 | 🟢 | Cartão Wisdom integrado | PR `card-game-wallet-v2#176` merged em `main`; commit `30acbfe` |
+| C34-3 | 🟡 | Hub canónico aguarda deploy | Produção ainda mostra `Live/GEM`; conta local não tem acesso ao scope Vercel `mythicalbeings` |
+| C34-4 | 🟢 | Smoke local do Hub | Guest → Play Hub; Battlegrounds/Elyxir preservados; Wisdom `Preview`/`Start Training`; zero erros de consola |
+| C34-5 | 🟢 | Contenção C32 formalizada | PR SDK `#26` contém apenas o gate default-off; Deno 2/2 e typecheck das sete funções verdes |
+| C34-6 | 🟢 | Ledger isolado da contenção | Branch `chore/shared-db-ledger-recovery-20260831`, commits `415d9cd` e `8ec1bcd` |
+| C34-7 | 🟢 | Rehearsal DB reproduzível | Snapshot fixado por SHA-256 + 24 migrações posteriores + ACL explícito; start e reset limpo aprovados |
+| C34-8 | 🟢 | Paridade de inventário atual | 769 colunas, 349 constraints, 70 funções, 182 índices, 115 policies, 37 triggers, 2 views e grants iguais |
+| C34-9 | 🟡 | Diff integral condicionado | Dump schema-only/definições completas requer autorização específica; não foi contornado |
+| C34-10 | 🟡 | Dívida de dependências do Hub | Instalação reporta 17 vulnerabilidades totais, 9 high; PR não altera lockfile; audit production-only ficou sem resposta de rede |
+
+### Evidência do Hub
+
+1. O diff integrado altera somente `src/components/Pages/PlayHubPage/data.js` e o respetivo teste.
+2. O build local mostra Wisdom como treino solo, sem conta/carteira e com PvP/GEM indisponíveis;
+   o link aponta para `https://wisdomduel.mythicalbeings.io`.
+3. Battlegrounds mantém `Live / Enter Battlegrounds` e Elyxir mantém `Live / Enter Elyxir`.
+4. O Vercel check falha por `github-private-org-to-hobby`, não por teste ou build.
+5. `palheiro1` está autenticado na CLI, mas os scopes acessíveis são pessoais/`ssdfsd`; o scope
+   `mythicalbeings` não está disponível. Nenhum projeto alternativo, link ou DNS foi criado.
+
+### Evidência da baseline isolada
+
+1. O primeiro ensaio aplicou o snapshot e provou a falta de DML: Bestiary Trails V3 rejeitou
+   `game_modes.game_id='mythic_expedition'` porque o catálogo não tinha sido reposto.
+2. O segundo ensaio aplicou o snapshot como `202605050000`, seguido pelas 24 migrações autênticas
+   `202605050001`–`20260829084636`; todas foram aplicadas.
+3. Um ACL idempotente removeu seis privilégios herdados localmente de
+   `card_game_session_state`, deixando apenas o `SELECT` autenticado existente em produção.
+4. `supabase db reset --local` repetiu a reconstrução desde zero e terminou sem erro.
+5. A consulta live foi apenas de catálogo agregado. Não leu perfis, wallets, mãos, partidas,
+   resultados ou qualquer PII.
+6. `npm run migrations:baseline-rehearsal` gera a candidata numa diretoria temporária, valida o
+   snapshot `ac762b262855ab7c36e52973296605fe904afac0c04165524a454b1719db706f` e nunca contacta produção.
+7. A stack temporária Wisdom foi parada no fecho e o seu volume local ficou recuperável. As stacks
+   `mundo-aberto-bestiary` e `Galeguia` continuaram ativas e saudáveis.
+
+### Estado dos gates
+
+1. **Fase 1:** frontend standalone concluído; código do Hub integrado; publicação do Hub pendente
+   de acesso/upgrade Vercel e smoke publicado.
+2. **Fase 2:** o bloqueio baixou de “cadeia desconhecida” para “candidata local com paridade de
+   inventário”. Continua **NO-GO** para produção até dump fresco, diff de definições, pgTAP,
+   testes multi-jogo e janela exclusiva.
+3. **Fase 3:** nenhuma migração autoritativa foi criada/aplicada; PvP continua default-off.
+4. **Fases 4/5:** sem alteração; escrow continua local e beta GEM continua **NO-GO**.
+
+### Tarefas pendentes prioritárias
+
+1. Obter acesso ao scope Vercel `mythicalbeings` ou corrigir o plano/integration check; publicar o
+   commit `30acbfe` e repetir guest + sessão autenticada no Hub canónico.
+2. Rever e integrar o PR SDK `#26`; manter `WISDOM_DUEL_PVP_ENABLED` ausente/false.
+3. Autorizar explicitamente o dump schema-only e a comparação de definições; fazer backup do ledger,
+   funções, grants e policies sem dados de produção.
+4. Rever localmente a branch do ledger; abrir draft PR só depois de autorização específica para
+   publicar os artefactos de schema/inventário.
+5. Executar pgTAP e smokes Bestiary Trails/Swarm Hunt na candidata; adicionar lint, type generation
+   e diff de schema ao CI antes de qualquer `migration repair`.
+6. Classificar e corrigir as vulnerabilidades do Hub num PR de dependências separado do cartão.
+7. Só após o gate DB, materializar a persistência autoritativa e iniciar o canário PvP sem GEM.
