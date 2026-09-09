@@ -1,4 +1,5 @@
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
+import { observeGameOpen } from './utils/trainingObservations.js';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthProvider.js';
 import { CardRegistryProvider } from './context/CardRegistry.js';
@@ -22,6 +23,7 @@ const WaitingScreen = lazy(() => import('./pages/WaitingScreen.js'));
 const NotFound = lazy(() => import('./pages/NotFound.js'));
 
 function AppContent() {
+  useEffect(() => { observeGameOpen(); }, []);
   return (
     <Router>
       <a href="#main-content" className="sr-only fixed left-3 top-3 z-[100] rounded-lg bg-amber-300 px-4 py-3 font-bold text-slate-950 focus:not-sr-only">

@@ -18,6 +18,7 @@ import { clearBotCreatureSelection, isValidBotCreatureSelection, readBotCreature
 import PendingEffectPanel from '../components/game/PendingEffectPanel.js';
 import TrainingTutorial from '../components/game/TrainingTutorial.js';
 import { getEffectiveCreatureWisdom } from '../game/utils.js';
+import { observeTraining } from '../utils/trainingObservations.js';
 import {
   CHAMPIONSHIP_MESSAGE,
   TRAINING_PREVIEW_ENABLED,
@@ -37,6 +38,11 @@ const BotGame: React.FC = () => {
   const location = useLocation();
   const currentPlayerId = LOCAL_PLAYER_ID;
   const [gameState, setGameState] = useState<GameState | null>(null);
+  const previousObserved = useRef<GameState | null>(null);
+  useEffect(() => {
+    if (gameState) observeTraining(previousObserved.current, gameState);
+    previousObserved.current = gameState;
+  }, [gameState]);
   const [selectedKnowledgeId, setSelectedKnowledgeId] = useState<string | null>(null);
   const [tutorialOpen, setTutorialOpen] = useState(() => {
     if (typeof window === 'undefined') return true;
