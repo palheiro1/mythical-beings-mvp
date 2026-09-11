@@ -5,7 +5,7 @@ export const CLOUDFLARE_WEB_ANALYTICS_SCRIPT =
 const beaconId = 'wisdom-duel-cloudflare-web-analytics';
 // A Web Analytics site tag is intentionally public in every instrumented page;
 // it authorizes no Cloudflare API access. Keep the API read token separate.
-const productionSiteTag = 'c22df15381c049ccb03e6aed3cf31adc';
+const productionSiteTag = 'efc5fdf99a0441b983c3173515099c62';
 
 export interface CloudflareWebAnalyticsOptions {
   token: string | undefined;
