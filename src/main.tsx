@@ -1,4 +1,3 @@
-import { startCloudflareWebAnalytics } from './utils/cloudflareWebAnalytics.js';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import './index.css'; // Ensure index.css is imported
@@ -11,7 +10,6 @@ installGlobalErrorHandlers();
 startRumCollection();
 startCloudflareWebAnalytics();
 
-startCloudflareWebAnalytics();
 createRoot(document.getElementById('root')!).render(
   <AppErrorBoundary>
     <StrictMode>
