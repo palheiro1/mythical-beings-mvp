@@ -4,10 +4,12 @@ import { createRoot } from 'react-dom/client';
 import './index.css'; // Ensure index.css is imported
 import App from './App.js'; // Add .js extension
 import { AppErrorBoundary } from './components/AppErrorBoundary.js';
+import { startCloudflareWebAnalytics } from './utils/cloudflareWebAnalytics.js';
 import { installGlobalErrorHandlers, startRumCollection } from './utils/telemetry.js';
 
 installGlobalErrorHandlers();
 startRumCollection();
+startCloudflareWebAnalytics();
 
 startCloudflareWebAnalytics();
 createRoot(document.getElementById('root')!).render(
