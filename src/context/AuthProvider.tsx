@@ -1,3 +1,4 @@
+import { analytics, track } from '../analytics/productAnalytics.js';
 import React, { useState, useEffect } from 'react';
 import type { LinkedWallet } from '@mythicalb/sdk';
 import { hasPolygonProvider } from '../config/playhub.js';
@@ -144,6 +145,7 @@ class AuthStateManager {
   }
 
   private updateState(newState: Partial<AuthState>) {
+    if (newState.user === null && this.currentState.user) analytics().reset();
     this.currentState = { ...this.currentState, ...newState };
     this.listeners.forEach(listener => listener(this.currentState));
   }
@@ -191,6 +193,7 @@ class AuthStateManager {
         return;
       }
 
+      if (this.currentState.user?.id !== user.id && analytics().identify(user.id)) track('auth_completed');
       const profile = user.profile ?? await mythical.profile.getOrCreate();
       let polygonWallet: LinkedWallet | null = null;
 
@@ -222,6 +225,7 @@ class AuthStateManager {
   }
 
   async signInWithPlayHubEmail(email: string): Promise<void> {
+    track('auth_started', {method:'email'});
     const normalizedEmail = email.trim().toLowerCase();
     if (!normalizedEmail) {
       throw new Error('Enter an email address.');
@@ -267,6 +271,7 @@ class AuthStateManager {
   }
 
   async signInWithGoogle(): Promise<void> {
+    track('auth_started', {method:'google'});
     this.updateState({ loading: true, error: null });
 
     try {

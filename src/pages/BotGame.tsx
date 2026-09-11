@@ -1,7 +1,7 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Bot as BotIcon, GraduationCap, Info } from 'lucide-react';
-import { GameState } from '../game/types.js';
+import { GameState, GameAction } from '../game/types.js';
 import { initializeGame } from '../game/state.js';
 import TopBar from '../components/game/TopBar.js';
 import ActionBar from '../components/game/ActionBar.js';
@@ -18,7 +18,7 @@ import { clearBotCreatureSelection, isValidBotCreatureSelection, readBotCreature
 import PendingEffectPanel from '../components/game/PendingEffectPanel.js';
 import TrainingTutorial from '../components/game/TrainingTutorial.js';
 import { getEffectiveCreatureWisdom } from '../game/utils.js';
-import { observeTraining } from '../utils/trainingObservations.js';
+import { track } from '../analytics/productAnalytics.js';
 import {
   CHAMPIONSHIP_MESSAGE,
   TRAINING_PREVIEW_ENABLED,
@@ -38,11 +38,6 @@ const BotGame: React.FC = () => {
   const location = useLocation();
   const currentPlayerId = LOCAL_PLAYER_ID;
   const [gameState, setGameState] = useState<GameState | null>(null);
-  const previousObserved = useRef<GameState | null>(null);
-  useEffect(() => {
-    if (gameState) observeTraining(previousObserved.current, gameState);
-    previousObserved.current = gameState;
-  }, [gameState]);
   const [selectedKnowledgeId, setSelectedKnowledgeId] = useState<string | null>(null);
   const [tutorialOpen, setTutorialOpen] = useState(() => {
     if (typeof window === 'undefined') return true;
@@ -61,12 +56,37 @@ const BotGame: React.FC = () => {
   });
   const registry = useCardRegistry();
 
+  const observedRun = useRef({id: '', first: false, ended: false});
+  const acceptedAction = useCallback((action: GameAction) => {
+    if (action.payload && 'playerId' in action.payload && action.payload.playerId === currentPlayerId && !observedRun.current.first) {
+      observedRun.current.first = track('first_action');
+    }
+  }, [currentPlayerId]);
+  useEffect(() => {
+    if (!gameState) return;
+    if (observedRun.current.id !== gameState.gameId) {
+      observedRun.current = {id: gameState.gameId, first: false, ended: false};
+      track('training_start');
+    }
+    if (gameState.winner && !observedRun.current.ended) {
+      observedRun.current.ended = true;
+      track('training_complete', {outcome: gameState.winner === BOT_ID ? 'lost' : 'won', termination_reason: 'completed'});
+    }
+  }, [gameState]);
+  useEffect(() => () => {
+    if (observedRun.current.id && !observedRun.current.ended) {
+      observedRun.current.ended = true;
+      track('training_complete', {outcome: 'abandoned', termination_reason: 'navigation'});
+    }
+  }, []);
+
   // Local actions via reducer with functional setState to avoid stale updates
   const { handleRotateCreature, handleDrawKnowledge, handleCreatureClickForSummon, handleEndTurn, handleAction } = useLocalGameActions(
     gameState,
     setGameState,
     gameState ? gameState.players[gameState.currentPlayerIndex].id : currentPlayerId,
-    selectedKnowledgeId
+    selectedKnowledgeId,
+    acceptedAction
   );
 
   // Keep a ref of the latest state for the bot to read fresh data between actions
@@ -100,6 +120,7 @@ const BotGame: React.FC = () => {
     setSelectedKnowledgeId(null);
     setGameState((state) => {
       if (!state || state.phase === 'gameOver') return state;
+      if (!observedRun.current.ended) { observedRun.current.ended = true; track('training_complete', {outcome:'abandoned', termination_reason:'resigned'}); }
       return {
         ...state,
         winner: BOT_ID,
@@ -136,6 +157,7 @@ const BotGame: React.FC = () => {
       });
       setGameState(state);
     } catch (error) {
+      track('product_error', {error_code:'invalid_state'});
       console.error('[BotGame] Failed to initialize selected training team:', error);
       clearBotCreatureSelection();
       navigate('/bot-selection', { replace: true });

@@ -1,3 +1,4 @@
+import { startCloudflareWebAnalytics } from './utils/cloudflareWebAnalytics.js';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import './index.css'; // Ensure index.css is imported
@@ -8,6 +9,7 @@ import { installGlobalErrorHandlers, startRumCollection } from './utils/telemetr
 installGlobalErrorHandlers();
 startRumCollection();
 
+startCloudflareWebAnalytics();
 createRoot(document.getElementById('root')!).render(
   <AppErrorBoundary>
     <StrictMode>
