@@ -9,7 +9,7 @@ import {
 } from './bundle-budget-policy.mjs';
 
 const projectRoot = fileURLToPath(new URL('../', import.meta.url));
-const artifactRoot = resolve(projectRoot, 'dist');
+const artifactRoot = resolve(projectRoot, process.env.WISDOM_DIST_DIR || 'dist');
 const indexPath = resolve(artifactRoot, 'index.html');
 
 const formatKiB = (bytes) => `${(bytes / 1024).toFixed(2)} KiB`;

@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { isForbiddenPublicFile, scanPublicText } from './public-artifact-policy.mjs';
 
 const projectRoot = fileURLToPath(new URL('../', import.meta.url));
-const artifactRoot = resolve(projectRoot, 'dist');
+const artifactRoot = resolve(projectRoot, process.env.WISDOM_DIST_DIR || 'dist');
 const textExtensions = new Set([
   '.css',
   '.html',
