@@ -3,9 +3,10 @@ import TrainingCard, { type DisplayCard } from './TrainingCard.js';
 import type { Knowledge } from '../../game/types.js';
 
 export type TrayTab = 'hand' | 'market';
-export default function TrainingTrays({ session, tab, setTab, onAction, onSelect, onInspect }: {
+export default function TrainingTrays({ session, tab, setTab, onAction, onSelect, onInspect, direct = false }: {
   session: TrainingSession; tab: TrayTab; setTab: (tab: TrayTab) => void;
   onAction: (action: TrainingAction) => void; onSelect: (id: string) => void; onInspect: (card: DisplayCard) => void;
+  direct?: boolean;
 }) {
   const { game, selectedId, guide } = session;
   const humanTurn = game.currentPlayerIndex === 0 && game.phase === 'action' && !game.pendingEffect;
@@ -15,10 +16,14 @@ export default function TrainingTrays({ session, tab, setTab, onAction, onSelect
     const action: TrainingAction = { type: 'DRAW_KNOWLEDGE', payload: { playerId: HUMAN_ID, knowledgeId: card.id, instanceId: card.instanceId! } };
     const validation = market ? validateTrainingAction(session, action) : { isValid: humanTurn && (guide === 'free' || guide === 'summon') };
     const highlighted = (market && guide === 'draw' && card.id === 'aerial1') || (!market && guide === 'summon' && card.id === 'aerial1');
+    const activate = () => { if (market) onAction(action); else if (validation.isValid) onSelect(card.instanceId!); };
+    const label = `${market ? 'Draw' : 'Select'} ${card.name}`;
+    const guideTarget = highlighted ? market ? 'market' : 'hand' : undefined;
     return <article key={card.instanceId} className={`wd-tray-card ${selectedId === card.instanceId ? 'is-selected' : ''} ${highlighted ? 'is-highlighted' : ''}`}>
-      <TrainingCard card={card} selected={selectedId === card.instanceId} onInspect={onInspect} />
-      <span className="wd-tray-name">{card.name}</span><span className="wd-card-stat" aria-label={`${card.cost} wisdom · ${card.element}`}>{card.cost}<span> wisdom · {card.element}</span></span>
-      <button className="wd-card-action" type="button" aria-disabled={!validation.isValid} aria-pressed={market ? undefined : selectedId === card.instanceId} aria-label={`${market ? 'Draw' : 'Select'} ${card.name}`} data-guide-target={highlighted ? market ? 'market' : 'hand' : undefined} onClick={() => { if (market) onAction(action); else if (validation.isValid) onSelect(card.instanceId!); }}>{market ? 'Draw' : selectedId === card.instanceId ? 'Selected' : 'Select'}</button>
+      <TrainingCard card={card} selected={selectedId === card.instanceId} onInspect={onInspect}
+        action={direct ? { label, onActivate: activate, valid: validation.isValid, pressed: market ? undefined : selectedId === card.instanceId, guideTarget } : undefined} />
+      {!direct && <><span className="wd-tray-name">{card.name}</span><span className="wd-card-stat" aria-label={`${card.cost} wisdom · ${card.element}`}>{card.cost}<span> wisdom · {card.element}</span></span>
+      <button className="wd-card-action" type="button" aria-disabled={!validation.isValid} aria-pressed={market ? undefined : selectedId === card.instanceId} aria-label={label} data-guide-target={guideTarget} onClick={activate}>{market ? 'Draw' : selectedId === card.instanceId ? 'Selected' : 'Select'}</button></>}
     </article>;
   };
   return <>

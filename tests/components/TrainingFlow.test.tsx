@@ -1,9 +1,11 @@
-import { act, fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
+import userEvent from '@testing-library/user-event';
 import BotGame from '../../src/pages/BotGame.js';
 import TrainingSelection from '../../src/pages/TrainingSelection.js';
 import { TUTORIAL_PROGRESS_KEY } from '../../src/utils/trainingMode.js';
+import { DIRECT_CARDS_QUERY } from '../../src/hooks/useDirectCards.js';
 
 vi.unmock('react-router-dom');
 const emit = vi.hoisted(() => vi.fn(() => true));
@@ -14,10 +16,10 @@ function renderFlow(path = '/bot-game?mode=guided') {
 }
 const click = (name: string) => fireEvent.click(screen.getByRole('button', { name, exact: true }));
 function botTurn() { for (let i = 0; i < 5; i++) act(() => { vi.advanceTimersByTime(550); }); }
-function orientation(initial = false) {
+function orientation(initial = false, direct = false) {
   let portrait = initial;
   const listeners = new Set<() => void>();
-  vi.stubGlobal('matchMedia', () => ({ get matches() { return portrait; },
+  vi.stubGlobal('matchMedia', (query: string) => ({ get matches() { return query === DIRECT_CARDS_QUERY ? direct || portrait : portrait; },
     addEventListener: (_: string, callback: () => void) => listeners.add(callback),
     removeEventListener: (_: string, callback: () => void) => listeners.delete(callback),
   }));
@@ -28,6 +30,65 @@ beforeEach(() => { vi.useFakeTimers(); localStorage.clear(); sessionStorage.clea
 afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); });
 
 describe('public practice journey', () => {
+  it('completes the mobile lesson through card faces, keeping inspection separate', () => {
+    orientation(false, true); const { container } = renderFlow();
+    expect(container.querySelector('.wd-empty-slot')).not.toBeInTheDocument();
+    expect(container.querySelector('.wd-lane-action,.wd-card-action')).not.toBeInTheDocument();
+    click('Start learning');
+    const inspect = screen.getByRole('button', { name:'Inspect Lepidoptera', exact:true });
+    inspect.focus(); fireEvent.click(inspect);
+    expect(screen.getByRole('dialog')).toHaveAccessibleName('Lepidoptera');
+    expect(screen.getByText('2 / 2 actions left')).toBeInTheDocument();
+    act(() => { vi.advanceTimersByTime(16); });
+    fireEvent.keyDown(window, { key:'Escape' });
+    act(() => { vi.advanceTimersByTime(16); });
+    expect(inspect).toHaveFocus();
+    const draw = screen.getByRole('button', { name:'Draw Lepidoptera', exact:true });
+    expect(draw).toHaveClass('wd-card-art');
+    fireEvent.click(within(draw).getByRole('img', { name:'Lepidoptera' }));
+    const rotate = screen.getByRole('button', { name:'Rotate Tarasca', exact:true });
+    expect(rotate).toHaveClass('wd-card-art');
+    fireEvent.click(within(rotate).getByRole('img', { name:'Tarasca' }));
+    botTurn();
+    click('Select Lepidoptera');
+    const play = screen.getByRole('button', { name:'Play Lepidoptera on Tarasca', exact:true });
+    expect(play).toHaveClass('wd-card-art', 'is-highlighted');
+    fireEvent.click(within(play).getByRole('img', { name:'Tarasca' }));
+    expect(screen.getByRole('dialog')).toHaveAccessibleName('Tulpar');
+    click('Skip effect'); click('End Turn'); botTurn(); click('Continue Practice');
+    expect(screen.getByText('30s')).toBeInTheDocument();
+    expect(localStorage.getItem(TUTORIAL_PROGRESS_KEY)).toBe('completed');
+  });
+  it('retains a mobile selection on an invalid target and lets the same hand card cancel it', () => {
+    orientation(false, true); renderFlow(); click('Skip tutorial'); click('Continue Practice');
+    click('Draw Lepidoptera'); click('Select Lepidoptera');
+    click('Play Lepidoptera on Tarasca');
+    expect(screen.getByRole('alert')).not.toBeEmptyDOMElement();
+    expect(screen.getByRole('button', { name:'Select Lepidoptera' })).toHaveAttribute('aria-pressed','true');
+    expect(screen.getByText('1 / 2 actions left')).toBeInTheDocument();
+    click('Select Lepidoptera');
+    expect(screen.getByRole('button', { name:'Select Lepidoptera' })).toHaveAttribute('aria-pressed','false');
+    expect(screen.getByRole('button', { name:'Rotate Tarasca' })).toHaveClass('wd-card-art');
+  });
+  it('supports keyboard activation of direct cards without changing inspection into a move', async () => {
+    vi.useRealTimers();
+    orientation(false, true); renderFlow(); click('Start learning');
+    const user = userEvent.setup();
+    const inspect = screen.getByRole('button', { name:'Inspect Tarasca', exact:true });
+    inspect.focus();
+    await user.keyboard('{Enter}');
+    expect(screen.getByRole('dialog')).toHaveAccessibleName('Tarasca');
+    await waitFor(() => expect(screen.getByRole('button', { name:'Close card details' })).toHaveFocus());
+    await user.keyboard('{Escape}');
+    await waitFor(() => expect(inspect).toHaveFocus());
+    expect(screen.getByText('2 / 2 actions left')).toBeInTheDocument();
+    screen.getByRole('button', { name:'Draw Lepidoptera', exact:true }).focus();
+    await user.keyboard(' ');
+    expect(screen.getByRole('heading', { name:'2. Grow your wisdom' })).toBeInTheDocument();
+    screen.getByRole('button', { name:'Rotate Tarasca', exact:true }).focus();
+    await user.keyboard('{Enter}');
+    expect(screen.getByText('Bot’s turn')).toBeInTheDocument();
+  });
   it('waits for landscape on a phone and keeps the prepared lesson intact', () => {
     const rotate = orientation(true); renderFlow();
     expect(screen.getByRole('heading', { name:'Turn your phone to play.' })).toBeInTheDocument();
