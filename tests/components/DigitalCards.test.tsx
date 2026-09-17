@@ -2,6 +2,8 @@ import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import DigitalCardFace from '../../src/components/DigitalCardFace.js';
 import TrainingCard from '../../src/components/training/TrainingCard.js';
+import PlayCardFace from '../../src/components/training/PlayCardFace.js';
+import TrainingBoard from '../../src/components/training/TrainingBoard.js';
 import CardDetailOverlay from '../../src/components/CardDetailOverlay.js';
 import creatures from '../../src/assets/creatures.json';
 import knowledges from '../../src/assets/knowledges.json';
@@ -15,6 +17,26 @@ const kappa = creatures.find(card => card.id === 'kappa') as Creature;
 const asteroid = knowledges.find(card => card.id === 'aquatic2') as Knowledge;
 
 describe('digital card information', () => {
+  it('shows Wisdom once per mobile Being while keeping Knowledge cost and effect distinct', () => {
+    const { rerender } = render(<PlayCardFace card={{ ...kappa, rotation: 180, currentWisdom: 5 }} />);
+    expect(screen.getAllByLabelText('Wisdom 5')).toHaveLength(1);
+    expect(screen.getAllByText('5')).toHaveLength(1);
+    rerender(<PlayCardFace card={asteroid} rotation={90} />);
+    expect(screen.getByLabelText('Cost 2')).toBeInTheDocument();
+    expect(screen.getByLabelText('Damage 1')).toBeInTheDocument();
+    expect(screen.getByLabelText('Rotation 90 degrees, step 2 of 4')).toBeInTheDocument();
+  });
+
+  it('shows each mobile Being name once and inspecting its caption spends no action', () => {
+    const session = createTrainingSession(GUIDED_TEAM, 'guided', 'mobile-label-review');
+    const onAction = vi.fn(), onInspect = vi.fn();
+    render(<TrainingBoard session={session} onAction={onAction} onInspect={onInspect} direct />);
+    expect(screen.getAllByText('Tarasca', { exact: true })).toHaveLength(1);
+    fireEvent.click(screen.getByRole('button', { name: 'Inspect Tarasca', exact: true }));
+    expect(onInspect).toHaveBeenCalledWith(expect.objectContaining({ id: 'tarasca', currentWisdom: 0 }));
+    expect(onAction).not.toHaveBeenCalled();
+  });
+
   it('keeps cost separate from the changing attack/defense cycle', () => {
     const { rerender } = render(<DigitalCardFace card={asteroid} variant="detail" />);
     expect(screen.getByLabelText('Cost 2')).toBeInTheDocument();

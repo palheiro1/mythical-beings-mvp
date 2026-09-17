@@ -48,3 +48,23 @@ critical coverage, lint, type checks and production artifact checks also apply.
 The release is based on the live `upgrade/wisdom-duel-complete-20260830` branch.
 It changes presentation and artwork only; existing production service settings
 and gameplay rules are preserved.
+
+## Mobile play composition
+
+`PlayCardFace` is the phone and short-landscape face used by direct card controls.
+The original illustration has a square viewport; its value strip and rotation
+track sit below it. A Being shows effective Wisdom once. A Knowledge shows cost
+and its current effect as separate values. Neither statistics nor controls cover
+its art. The card name appears once, below the frame, and is the inspection
+control when tapping the artwork performs a move.
+
+All board cards use the same size, whether a Knowledge is attached or the slot is
+empty. Hand and market cards are approximately 25% wider. The detailed inspection
+and desktop face are preserved. Pending-effect choices use the mobile face too.
+Replacement hints fit in the name row without covering values or adding height.
+
+Visual review uses both the reported sparse board and a full board with six
+attached Knowledges and five hand cards. Checks cover 793×380, 844×390, 667×375,
+568×320, 390×844 and 360×800, including square artwork, unclipped numeric values,
+separate inspection targets of at least 24×24 px and no horizontal page overflow.
+The complete touch tutorial and return to the desktop layout are also checked.
