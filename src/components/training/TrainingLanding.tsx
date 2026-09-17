@@ -1,8 +1,12 @@
 import type { ReactNode } from 'react';
 import { ArrowRight, BookOpen, ExternalLink } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
-import CardArtwork from '../CardArtwork.js';
+import DigitalCardFace from '../DigitalCardFace.js';
+import creatureData from '../../assets/creatures.json';
+import type { Creature } from '../../game/types.js';
 import { BUILD_LABEL } from '../../config/build.js';
+
+const heroCards = ['adaro', 'tarasca', 'tulpar'].map(id => creatureData.find(card => card.id === id) as Creature);
 
 export default function TrainingLanding({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
@@ -19,9 +23,9 @@ export default function TrainingLanding({ children }: { children: ReactNode }) {
         <p className="wd-caption">Solo play against the bot. No account or wallet needed.</p>
       </div>
       <div className="wd-hero-gallery" aria-label="Original Mythical Beings card art">
-        {[['/images/beings/adaro.webp', 'Adaro'], ['/images/beings/tarasca.webp', 'Tarasca'], ['/images/beings/tulpar.webp', 'Tulpar']].map(([image, name], i) => <figure key={name} className={`wd-hero-card wd-hero-card-${i}`}>
-          <CardArtwork src={image} alt={`${name}, illustrated by Ana Santiso`} className="wd-artwork" sizes="(max-width: 767px) 150px, 280px" />
-          <figcaption>{name}</figcaption>
+        {heroCards.map((card, i) => <figure key={card.id} className={`wd-hero-card wd-hero-card-${i}`}>
+          <DigitalCardFace card={card} variant="detail" sizes="(max-width: 767px) 250px, 400px" />
+          <figcaption>{card.name}</figcaption>
         </figure>)}
       </div>
     </section>

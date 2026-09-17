@@ -4,11 +4,9 @@ import { HUMAN_ID, validateTrainingAction, type TrainingAction, type TrainingSes
 import type { Creature, Knowledge } from '../../game/types.js';
 import TrainingCard, { type DisplayCard } from './TrainingCard.js';
 
-function KnowledgeSlot({ card, opponent, inspect }: { card: Knowledge | null; opponent?: boolean; inspect: (card: DisplayCard) => void }) {
-  const step = Math.floor((card?.rotation ?? 0) / 90);
-  const value = card?.valueCycle?.[step];
+function KnowledgeSlot({ card, inspect }: { card: Knowledge | null; inspect: (card: DisplayCard) => void }) {
   return <div className="wd-knowledge-slot">
-    {card ? <><TrainingCard card={card} board rotation={(card.rotation ?? 0) + (opponent ? 180 : 0)} onInspect={inspect} /><span className="wd-card-stat">{typeof value === 'number' ? value >= 0 ? `${value} damage` : `${-value} defence` : 'Card effect'} · {step + 1}/{card.maxRotations ?? 4}</span></> : <div className="wd-empty-slot"><span>Knowledge</span></div>}
+    {card ? <TrainingCard card={card} board onInspect={inspect} /> : <div className="wd-empty-slot"><span>Knowledge</span></div>}
   </div>;
 }
 
@@ -28,10 +26,10 @@ export default function TrainingBoard({ session, onAction, onInspect }: { sessio
       const highlighted = valid.isValid && (Boolean(selected) || (session.guide === 'rotate' && creature.id === 'tarasca'));
       return <div key={creature.id} className={`wd-lane ${highlighted ? 'is-target' : ''}`}>
         <div className="wd-creature-slot wd-enemy-creature">
-          {enemy && <TrainingCard card={creatureView(enemy, 1)} rotation={(enemy.rotation ?? 0) + 180} board onInspect={onInspect} />}
+          {enemy && <TrainingCard card={creatureView(enemy, 1)} rotation={enemy.rotation ?? 0} board onInspect={onInspect} />}
           <div className="wd-creature-label"><span className="wd-creature-name">{enemy?.name}</span><span className="wd-card-stat" aria-label={`Wisdom ${enemy ? getEffectiveCreatureWisdom(game, 1, enemy.id) : 0}`}>W {enemy ? getEffectiveCreatureWisdom(game, 1, enemy.id) : 0}</span></div>
         </div>
-        <KnowledgeSlot card={theirs} opponent inspect={onInspect} />
+        <KnowledgeSlot card={theirs} inspect={onInspect} />
         <KnowledgeSlot card={ours} inspect={onInspect} />
         <div className="wd-creature-slot">
           <TrainingCard card={creatureView(creature, 0)} rotation={creature.rotation ?? 0} board onInspect={onInspect} />

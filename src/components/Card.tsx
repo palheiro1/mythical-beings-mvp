@@ -5,7 +5,7 @@ import { useCardRegistry } from '../hooks/useCardRegistry.js';
 import { Creature, Knowledge } from '../game/types.js';
 import { cn } from './ui/cn.js';
 import CardDetailOverlay from './CardDetailOverlay.js';
-import CardArtwork from './CardArtwork.js';
+import DigitalCardFace from './DigitalCardFace.js';
 
 interface CardProps {
   card: Creature | Knowledge;
@@ -29,6 +29,7 @@ interface CardProps {
 }
 
 const CARD_ASPECT_RATIO = 921 / 1217;
+const DETAIL_ASPECT_RATIO = 320 / 538;
 const HOVER_ZOOM_DELAY_MS = 360;
 
 const normalizeRotation = (rotation: number) => ((rotation % 360) + 360) % 360;
@@ -41,7 +42,7 @@ const Card: React.FC<CardProps> = ({
   interactive,
   ariaLabel,
   onInspect,
-  rotation = 0,
+  rotation = card.rotation ?? 0,
   showBack = false,
   isDisabled = false,
   fit = 'card',
@@ -83,12 +84,12 @@ const Card: React.FC<CardProps> = ({
     const gap = 18;
 
     let zoomHeight = Math.min(isBoardCard ? 440 : 500, Math.max(300, viewportHeight - 130));
-    let zoomWidth = zoomHeight * CARD_ASPECT_RATIO;
+    let zoomWidth = zoomHeight * DETAIL_ASPECT_RATIO;
     const maxWidth = Math.min(360, viewportWidth - margin * 2);
 
     if (zoomWidth > maxWidth) {
       zoomWidth = maxWidth;
-      zoomHeight = zoomWidth / CARD_ASPECT_RATIO;
+      zoomHeight = zoomWidth / DETAIL_ASPECT_RATIO;
     }
 
     let left = rect.right + gap;
@@ -138,7 +139,7 @@ const Card: React.FC<CardProps> = ({
 
   const handleInspect = (): void => {
     handleCloseZoom();
-    onInspect?.(card);
+    onInspect?.({ ...card, rotation: normalizedRotation });
     setIsInspecting(true);
   };
 
@@ -179,10 +180,7 @@ const Card: React.FC<CardProps> = ({
     };
   }, [calculateZoomFrame, isZoomed]);
 
-  const imagePath = card.image;
-  const cardTransform = isBoardCard
-    ? `translate(-50%, -50%) rotate(${normalizedRotation}deg)`
-    : `rotate(${normalizedRotation}deg)`;
+  const cardTransform = isBoardCard ? 'translate(-50%, -50%)' : undefined;
   const boardCardHeight = knowledgeStatus ? 'clamp(70px, 18vw, 96px)' : 'clamp(82px, 22vw, 112px)';
   const boardCardWidth = `calc(${boardCardHeight} * ${CARD_ASPECT_RATIO})`;
   const cardVisual = showBack ? (
@@ -190,11 +188,10 @@ const Card: React.FC<CardProps> = ({
       <img src="/logos/logo-header-dark.webp" alt="" width="520" height="388" className="card-back-crest" draggable={false} />
     </span>
   ) : (
-    <CardArtwork
-      src={imagePath}
-      alt={card.name}
-      className="h-full w-full object-cover"
-      loading={imageLoading}
+    <DigitalCardFace
+      card={card}
+      rotation={normalizedRotation}
+      imageLoading={imageLoading}
       sizes={isBoardCard ? '112px' : '(max-width: 639px) 46vw, (max-width: 1279px) 180px, 240px'}
     />
   );
@@ -259,34 +256,6 @@ const Card: React.FC<CardProps> = ({
             <Info className="h-3.5 w-3.5" aria-hidden />
           </button>
         )}
-
-        {knowledgeStatus && !showBack && (
-          <div className="pointer-events-none absolute inset-x-1 bottom-1 z-20 flex items-end justify-between gap-1">
-            <div className="flex gap-0.5 rounded-md border border-black/50 bg-black/[0.72] px-1.5 py-1 shadow">
-              {Array.from({ length: knowledgeStatus.steps }).map((_, index) => (
-                <span
-                  key={index}
-                  className={cn(
-                    'h-1.5 w-4 rounded-full',
-                    index < knowledgeStatus.currentStep ? 'bg-slate-500/80' : '',
-                    index === knowledgeStatus.currentStep ? 'bg-cyan-300 shadow-[0_0_10px_rgba(34,211,238,0.7)]' : '',
-                    index > knowledgeStatus.currentStep ? 'bg-white/[0.18]' : '',
-                  )}
-                />
-              ))}
-            </div>
-            <div className={cn(
-              'max-w-[58%] truncate rounded-md border px-2 py-0.5 text-[10px] font-black uppercase tracking-normal shadow',
-              knowledgeStatus.isFinalNext
-                ? 'border-red-300/60 bg-red-500/[0.85] text-white'
-                : 'border-cyan-200/50 bg-cyan-500/[0.85] text-slate-950',
-            )}>
-              {knowledgeStatus.isFinalNext
-                ? `Final ${knowledgeStatus.effectLabel || ''}`.trim()
-                : knowledgeStatus.effectLabel || 'Next'}
-            </div>
-          </div>
-        )}
       </div>
 
       {isZoomed && typeof document !== 'undefined' && createPortal((
@@ -305,21 +274,18 @@ const Card: React.FC<CardProps> = ({
               <img src="/logos/logo-header-dark.webp" alt="" width="520" height="388" className="card-back-crest" draggable={false} />
             </div>
           ) : (
-            <CardArtwork
-              src={imagePath}
-              alt=""
-              className="h-full w-full object-cover"
+            <DigitalCardFace
+              card={card}
+              rotation={normalizedRotation}
+              variant="detail"
               sizes={`${Math.ceil(zoomFrame.width)}px`}
             />
           )}
-          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/78 via-black/28 to-transparent px-3 pb-3 pt-10">
-            <div className="truncate font-display text-lg font-bold text-white">{showBack ? 'Hidden card' : card.name}</div>
-          </div>
         </div>
       ), document.body)}
 
       <CardDetailOverlay
-        card={card}
+        card={{ ...card, rotation: normalizedRotation }}
         open={isInspecting}
         onClose={() => setIsInspecting(false)}
         showBack={showBack}
