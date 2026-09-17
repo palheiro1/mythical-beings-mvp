@@ -1,4 +1,5 @@
 import DigitalCardFace from '../DigitalCardFace.js';
+import '../../digital-cards-compact.css';
 import type { Creature, Knowledge } from '../../game/types.js';
 
 export type DisplayCard = Creature | Knowledge;

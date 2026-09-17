@@ -6,6 +6,7 @@ import { Creature, Knowledge } from '../game/types.js';
 import { cn } from './ui/cn.js';
 import CardDetailOverlay from './CardDetailOverlay.js';
 import DigitalCardFace from './DigitalCardFace.js';
+import '../digital-cards-compact.css';
 
 interface CardProps {
   card: Creature | Knowledge;

@@ -5,6 +5,12 @@ Knowledges. `DigitalCardFace` owns the shared frame in selection, the board,
 market, hand, inspection, target choices and card motion. It has a compact face
 for play and a detailed face for reading rules.
 
+The compact-only stylesheet is imported by `TrainingCard`, `Card` and
+`CardFaceByImage`, so those rules load with the play/selection routes. Tailwind
+scans application sources, excluding bundled analytics vendors, rather than
+turning examples in tests and documentation into production utilities. The
+existing initial CSS budget is preserved.
+
 - Original illustrations remain in their existing assets; CSS clips the printed
   frame and puts editable, selectable text above clean digital panels.
 - Water, earth, air and fire use distinct accent colours and element icons.

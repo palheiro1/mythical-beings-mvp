@@ -1,5 +1,6 @@
 import CardArtwork from './CardArtwork.js';
 import DigitalCardFace from './DigitalCardFace.js';
+import '../digital-cards-compact.css';
 import { getDisplayCardForImage } from '../utils/cardCatalog.js';
 import type { DisplayCard } from '../utils/digitalCards.js';
 
