@@ -9,6 +9,7 @@ import { BOT_ID, HUMAN_ID, createTrainingSession, trainingSessionReducer, type T
 import { useTurnTimer } from '../hooks/useTurnTimer.js';
 import { useTrainingBot } from '../hooks/useTrainingBot.js';
 import { usePortraitViewport } from '../hooks/usePortraitViewport.js';
+import { useDirectCards } from '../hooks/useDirectCards.js';
 import CardDetailOverlay from '../components/CardDetailOverlay.js';
 import CardFaceByImage from '../components/CardFaceByImage.js';
 import { getPendingEffectCard } from '../utils/pendingEffectCard.js';
@@ -29,6 +30,7 @@ function PracticeMatch({ team, mode, gameId, onReplay }: { team: string[]; mode:
   const [dialog, setDialog] = useState<'history' | 'resign' | null>(null);
   const [resultDismissed, setResultDismissed] = useState(false);
   const portrait = usePortraitViewport();
+  const directCards = useDirectCards();
   const [allowPortrait, setAllowPortrait] = useState(false);
   const orientationPaused = portrait && !allowPortrait;
   const containerRef = useRef<HTMLDivElement>(null);
@@ -80,7 +82,7 @@ function PracticeMatch({ team, mode, gameId, onReplay }: { team: string[]; mode:
   const selected = player.hand.find(card => card.instanceId === session.selectedId);
   const actionsLeft = Math.max(0, game.actionsPerTurn - game.actionsTakenThisTurn);
   const pending = game.pendingEffect;
-  const message = session.feedback || (paused && !gameOver && !game.pendingEffect && isMyTurn ? guide === 'welcome' ? 'Start the lesson whenever you are ready.' : guide === 'complete' || guide === 'handoff' ? 'Continue Practice starts the turn clock.' : 'Follow the highlighted lesson action. Take your time.' : gameOver ? 'The duel is over.' : pending ? pending.playerId === HUMAN_ID ? 'Choose a target to resolve the card effect.' : 'The bot is resolving a card effect.' : !isMyTurn ? 'The bot is thinking. Your next turn is coming.' : selected ? `Play ${selected.name} on a highlighted creature.` : 'Rotate a creature, draw from the market, or select a card in your hand.');
+  const message = session.feedback || (paused && !gameOver && !game.pendingEffect && isMyTurn ? guide === 'welcome' ? 'Start the lesson whenever you are ready.' : guide === 'complete' || guide === 'handoff' ? 'Continue Practice starts the turn clock.' : 'Follow the highlighted lesson action. Take your time.' : gameOver ? 'The duel is over.' : pending ? pending.playerId === HUMAN_ID ? 'Choose a target to resolve the card effect.' : 'The bot is resolving a card effect.' : !isMyTurn ? 'The bot is thinking. Your next turn is coming.' : selected ? `Play ${selected.name} on a highlighted creature.` : directCards ? 'Tap a creature to rotate, a market card to draw, or a hand card to select.' : 'Rotate a creature, draw from the market, or select a card in your hand.');
   if (orientationPaused) return <div className="wd wd-rotate-notice">
     <Smartphone size={64} strokeWidth={1.2} aria-hidden="true" />
     <p className="wd-eyebrow">Wisdom Duel · Landscape play</p>
@@ -90,17 +92,17 @@ function PracticeMatch({ team, mode, gameId, onReplay }: { team: string[]; mode:
     <Link className="wd-button" to="/">Back to Home</Link>
     <button className="wd-text-button" onClick={() => setAllowPortrait(true)}>Can’t rotate? Continue in portrait</button>
   </div>;
-  return <div ref={containerRef} className={`wd wd-match ${paused && !gameOver ? 'has-guide' : ''}`}>
+  return <div ref={containerRef} className={`wd wd-match ${paused && !gameOver ? 'has-guide' : ''} ${directCards ? 'wd-direct' : ''}`}>
     <h1 className="sr-only">Wisdom Duel — Solo practice</h1>
     <header className="wd-scorebar">
       <div className="wd-score"><span>You</span><strong aria-label={`Your Power: ${Math.max(0, player.power)}`}>{Math.max(0, player.power)}</strong><small>Power</small></div>
       <div className="wd-turn"><span>Turn {game.turn}</span><strong>{gameOver ? 'Duel complete' : isMyTurn ? 'Your turn' : 'Bot’s turn'}</strong></div>
       <div className="wd-score wd-score-bot"><small>Power</small><strong aria-label={`Bot Power: ${Math.max(0, bot.power)}`}>{Math.max(0, bot.power)}</strong><span>Bot <small>{bot.hand.length} in hand</small></span></div>
     </header>
-    {!gameOver && <TrainingCoach resolvingEffect={!!game.pendingEffect} step={guide} onStart={() => dispatch({ type: 'start-guide' })} onSkip={() => dispatch({ type: 'skip-guide' })} onContinue={() => dispatch({ type: 'continue' })} />}
+    {!gameOver && <TrainingCoach direct={directCards} resolvingEffect={!!game.pendingEffect} step={guide} onStart={() => dispatch({ type: 'start-guide' })} onSkip={() => dispatch({ type: 'skip-guide' })} onContinue={() => dispatch({ type: 'continue' })} />}
     <div className="wd-game-layout">
-      <TrainingBoard session={session} onAction={onAction} onInspect={setInspection} />
-      <TrainingTrays session={session} tab={tab} setTab={setTab} onAction={onAction} onSelect={instanceId => dispatch({ type: 'select', instanceId })} onInspect={setInspection} />
+      <TrainingBoard direct={directCards} session={session} onAction={onAction} onInspect={setInspection} />
+      <TrainingTrays direct={directCards} session={session} tab={tab} setTab={setTab} onAction={onAction} onSelect={instanceId => dispatch({ type: 'select', instanceId })} onInspect={setInspection} />
     </div>
     <footer className="wd-actionbar">
       <div className="wd-action-context"><p className={session.rejected ? 'wd-error' : ''} role={session.rejected ? 'alert' : 'status'}>{message}</p><div className="wd-action-meta"><span>{gameOver ? 'Practice match' : isMyTurn ? `${actionsLeft} / ${game.actionsPerTurn} actions left` : 'Waiting for bot'}</span><span className={remainingTime <= 8 && !paused && isMyTurn ? 'wd-clock-low' : ''}><Clock3 size={14} />{paused ? 'Clock paused' : isMyTurn ? `${remainingTime}s` : '30s per turn'}</span></div></div>

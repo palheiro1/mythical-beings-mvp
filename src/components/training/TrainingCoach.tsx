@@ -12,11 +12,14 @@ const steps: Record<Exclude<GuideStep, 'free'>, { title: string; text: string; p
   handoff: { title: 'Ready to practise freely?', text: 'Keep this team and the current board. You will have 30 seconds per turn, starting when you continue and it is your turn.', progress: 6 },
 };
 
-export default function TrainingCoach({ step, onStart, onSkip, onContinue, resolvingEffect }: { resolvingEffect: boolean; step: GuideStep; onStart: () => void; onSkip: () => void; onContinue: () => void }) {
+export default function TrainingCoach({ step, onStart, onSkip, onContinue, resolvingEffect, direct = false }: { resolvingEffect: boolean; step: GuideStep; onStart: () => void; onSkip: () => void; onContinue: () => void; direct?: boolean }) {
   if (step === 'free') return null;
   const content = step === 'end' && resolvingEffect ? { title: '5. A creature’s special ability', text: 'Tulpar grants a free rotation when you play air knowledge. Choose a creature in the effect panel, then end your turn.', progress: 5 } : steps[step];
+  const text = direct && step === 'draw' ? 'Tap Lepidoptera in the market to draw it. This uses one action. Use ⓘ to inspect without playing.'
+    : direct && step === 'rotate' ? 'Tap your Tarasca to rotate it. Its wisdom rises from 0 to 2 — enough for Lepidoptera next turn.'
+    : direct && step === 'summon' ? 'Tap Lepidoptera in your hand, then tap the highlighted Tarasca to play it. It needs 1 wisdom; Tarasca has 2.' : content.text;
   return <aside className="wd-coach" data-step={step} aria-label="Guided lesson">
-    <div className="wd-coach-copy" aria-live="polite" aria-atomic="true"><span className="wd-eyebrow"><BookOpen size={13} />Guided lesson · Clock paused</span><h2>{content.title}</h2><p>{content.text}</p></div>
+    <div className="wd-coach-copy" aria-live="polite" aria-atomic="true"><span className="wd-eyebrow"><BookOpen size={13} />Guided lesson · Clock paused</span><h2>{content.title}</h2><p>{text}</p></div>
     <div className="wd-coach-controls">
       {step === 'welcome' ? <button className="wd-button wd-button-primary" onClick={onStart}>Start learning <ArrowRight size={16} /></button> : content.progress === 6 ? <button className="wd-button wd-button-primary" onClick={onContinue}>Continue Practice <ArrowRight size={16} /></button> : <span className="wd-lesson-progress" aria-label={`Step ${content.progress} of 5`}>{content.progress}/5</span>}
       {content.progress !== 6 && <button className="wd-text-button" onClick={onSkip}>Skip tutorial</button>}
