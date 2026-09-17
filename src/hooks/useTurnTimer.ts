@@ -7,6 +7,7 @@ interface UseTurnTimerProps {
   onTimerEnd: () => void;
   gameTurn: number; // Add gameTurn to reset timer on new turn
   currentPlayerIndex: number | null; // Add currentPlayerIndex to reset timer on player change
+  paused?: boolean;
 }
 
 export function useTurnTimer({
@@ -15,11 +16,13 @@ export function useTurnTimer({
   turnDurationSeconds,
   onTimerEnd,
   gameTurn,
-  currentPlayerIndex
+  currentPlayerIndex,
+  paused = false
 }: UseTurnTimerProps): number {
   const [remainingTime, setRemainingTime] = useState(turnDurationSeconds);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const onTimerEndRef = useRef(onTimerEnd); // Use ref to avoid effect dependency issues
+  const contextRef = useRef('');
 
   // Keep the callback ref up-to-date
   useEffect(() => {
@@ -35,14 +38,18 @@ export function useTurnTimer({
       }
     };
 
+    const context = `${gameTurn}:${currentPlayerIndex}:${isMyTurn}:${phase}:${turnDurationSeconds}`;
+    if (context !== contextRef.current) {
+      contextRef.current = context;
+      setRemainingTime(turnDurationSeconds);
+    }
+    clearTimerInterval();
+    // Orientation pauses keep the remaining time and the current match intact.
+    if (paused) return clearTimerInterval;
+
     // Start timer only if it's my turn and in the action phase
     if (isMyTurn && phase === 'action') {
       console.log(`[useTurnTimer] Starting timer for turn ${gameTurn}, player ${currentPlayerIndex}. Duration: ${turnDurationSeconds}s`);
-      // Reset timer to full duration at the start of the actionable turn
-      setRemainingTime(turnDurationSeconds);
-
-      clearTimerInterval(); // Clear any previous interval just in case
-
       intervalRef.current = setInterval(() => {
         setRemainingTime((prevTime) => {
           if (prevTime <= 1) {
@@ -66,7 +73,7 @@ export function useTurnTimer({
       clearTimerInterval();
       // console.log(`[useTurnTimer] Cleanup effect. Interval cleared.`);
     };
-  }, [isMyTurn, phase, turnDurationSeconds, gameTurn, currentPlayerIndex]); // Rerun effect if turn/phase/player changes
+  }, [isMyTurn, phase, turnDurationSeconds, gameTurn, currentPlayerIndex, paused]);
 
   return remainingTime;
 }

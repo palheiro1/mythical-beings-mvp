@@ -15,6 +15,8 @@ This revision prepares the existing solo card game for product review. It does n
 
 ## Implementation boundaries
 
+Phone matches now ask the player to rotate to landscape. The board pairs each creature with its knowledge in three complete lanes on the left; the hand/market tabs remain visible on the right, with the turn controls below. A portrait fallback remains available for players who cannot rotate. While the rotation prompt is shown, both the bot and the clock pause; rotating back preserves the remaining seconds, selected card, tutorial step and pending effects. This is an in-game prompt, not a browser orientation lock. The compact styles load with the match route, preserving the initial CSS budget.
+
 - Based on published commit `f175e6f6b9c664d8f066a1b69599c3e6528e7026`, isolated in `codex/wisdom-bnb-ui-20260917`.
 - The shared competitive board and game rules are unchanged. The new practice controller validates every move with `isValidAction` and delegates to `gameReducer`.
 - The solo bot retains its rotate → first affordable play or draw → end policy. Its scheduled actions are cancelled on unmount and a new match creates a fresh controller.

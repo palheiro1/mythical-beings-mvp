@@ -37,8 +37,7 @@ export default function TrainingBoard({ session, onAction, onInspect }: { sessio
           <TrainingCard card={creatureView(creature, 0)} rotation={creature.rotation ?? 0} board onInspect={onInspect} />
           <div className="wd-creature-label"><span className="wd-creature-name">{creature.name}</span><span className="wd-card-stat" aria-label={`Wisdom ${getEffectiveCreatureWisdom(game, 0, creature.id)}`}>W {getEffectiveCreatureWisdom(game, 0, creature.id)}</span></div>
         </div>
-        <button type="button" className={`wd-lane-action ${highlighted ? 'is-highlighted' : ''}`} aria-disabled={!valid.isValid} aria-label={selected ? `Play ${selected.name} on ${creature.name}${ours ? `, replacing ${ours.name}` : ''}` : `Rotate ${creature.name}`} title={valid.reason} data-guide-target={creature.id === 'tarasca' ? 'creature' : undefined} onClick={() => onAction(action)}>{selected ? 'Play here' : <><RotateCw size={14} />Rotate</>}</button>
-        {selected && ours && <span className="wd-replacement">Replaces {ours.name}</span>}
+        <button type="button" className={`wd-lane-action ${highlighted ? 'is-highlighted' : ''}`} aria-disabled={!valid.isValid} aria-label={selected ? `Play ${selected.name} on ${creature.name}${ours ? `, replacing ${ours.name}` : ''}` : `Rotate ${creature.name}`} title={valid.reason} data-guide-target={creature.id === 'tarasca' ? 'creature' : undefined} onClick={() => onAction(action)}>{selected ? <>Play here{ours && <span className="wd-replacement">Replaces {ours.name}</span>}</> : <><RotateCw size={14} />Rotate</>}</button>
       </div>;
     })}</div>
     <div className="wd-board-side">Your creatures · W = Wisdom · Tap artwork to inspect</div>
