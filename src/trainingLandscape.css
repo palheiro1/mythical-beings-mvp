@@ -6,30 +6,28 @@
 .wd-card-pair { display:contents; }
 
 /* Direct card controls belong to the lazy match route, not the landing bundle. */
-.wd-direct { --wd-player-card-size:max(92px,var(--wd-card-size)); }
-.wd-direct .wd-lane { grid-template-rows:auto auto; gap:6px; }
-.wd-direct .wd-card-pair { display:flex; justify-content:center; align-items:start; gap:4px; min-width:0; width:100%; container-type:inline-size; height:calc(var(--wd-card-size) + 16px); }
-.wd-direct .wd-creature-slot,.wd-direct .wd-knowledge-slot { flex:1; min-width:0; }
+.wd-direct { --wd-play-size:clamp(44px,calc((100vw - 78px)/6),96px); }
+.wd-direct .wd-lane { grid-template-rows:auto auto; gap:10px; }
+.wd-direct .wd-card-pair { display:flex; justify-content:center; align-items:start; gap:4px; min-width:0; width:100%; }
+.wd-direct .wd-creature-slot,.wd-direct .wd-knowledge-slot { flex:0 0 var(--wd-play-size); width:var(--wd-play-size); min-width:0; max-width:calc((100% - 4px)/2); }
 .wd-direct .wd-player-pair .wd-creature-slot { order:-1; }
 .wd-direct .wd-knowledge-slot { height:auto; align-self:start; }
-.wd-direct .wd-card-board { width:calc(var(--wd-card-size)*720/951); max-width:100%; height:var(--wd-card-size); }
-.wd-direct .wd-card-pair:has(.wd-knowledge-slot) .wd-card-board { width:100%; height:min(var(--wd-card-size),calc((100cqw - 4px)*951/1440)); }
-.wd-direct .wd-player-pair { height:calc(var(--wd-player-card-size) + 16px); }
-.wd-direct .wd-player-pair .wd-card-board,.wd-direct .wd-player-pair:has(.wd-knowledge-slot) .wd-card-board { height:var(--wd-player-card-size); }
-.wd-direct .wd-card-art { position:relative; height:100%; max-width:100%; }
+.wd-direct .wd-card-board { display:block; width:100%; height:auto; max-width:none; }
+.wd-direct .wd-card-art { position:relative; height:auto; max-width:100%; }
 .wd-direct .wd-card-art[aria-disabled=true] { cursor:default; }
 .wd-direct .wd-card-art:active:not([aria-disabled=true]) { filter:brightness(1.16); }
 .wd-card-inspect { position:absolute; z-index:2; top:0; right:0; width:44px; height:44px; display:grid; place-items:start end; background:none; border:0; padding:20px 4px 6px 0; border-radius:6px; }
 .wd-card-inspect svg { color:#fff1ca; background:#09131ee8; border-radius:50%; box-shadow:0 0 0 3px #09131ee8; }
 .wd-card-replacement { position:absolute; z-index:2; left:0; right:0; bottom:0; padding:3px 2px; background:#1a1c22f5; border:1px solid var(--wd-gold); border-radius:3px; color:var(--wd-gold); font-size:10px; line-height:1.2; }
-.wd-direct .wd-tray-card { flex:0 0 121px; height:160px; padding:2px; background:transparent; }
-.wd-direct .wd-tray-card .wd-card { height:100%; max-height:none; }
+.wd-direct .wd-tray-card { flex:0 0 calc(var(--wd-play-size)*1.25); width:calc(var(--wd-play-size)*1.25); height:auto; padding:2px; background:transparent; align-self:start; }
+.wd-direct .wd-tray-card .wd-card { height:auto; max-height:none; }
 .wd-direct .wd-tray-card .wd-card-art { width:100%; }
 
 /* Short landscape screens use two card pairs per lane, leaving room for the market. */
 @media (orientation:landscape) and (max-height:600px) {
  .wd-nav:has(+main .wd-match) { display:none; }
  .wd-match,.wd-match.has-guide { --wd-card-size:clamp(44px,calc((100dvh - 180px)/2),152px); --wd-coach-height:0px; height:100dvh; min-height:0; box-sizing:border-box; padding:4px max(8px,env(safe-area-inset-right)) max(4px,env(safe-area-inset-bottom)) max(8px,env(safe-area-inset-left)); display:grid; grid-template-columns:minmax(300px,1.25fr) minmax(0,1fr); grid-template-rows:34px minmax(0,1fr) 58px; column-gap:10px; }
+ .wd-direct { --wd-play-size:clamp(44px,min(calc((100vw - 76px)*.5556/6),calc((100dvh - 190px)/2)),96px); }
  .wd-match.has-guide { --wd-coach-height:clamp(48px,calc(100dvh - 276px),110px); }
  .wd-scorebar { grid-column:1/-1; grid-row:1; height:auto; margin:0; }
  .wd-score strong { font-size:25px; }
@@ -67,7 +65,7 @@
  .wd-tray.is-active { display:block; }
  .wd-tray header { display:none; }
  .wd-tray-cards,.has-guide .wd-tray-cards { display:flex; height:100%; max-height:none; gap:4px; overflow-x:auto; overflow-y:hidden; padding:4px 3px 6px; scroll-snap-type:x proximity; }
- .wd-direct .wd-tray-card { position:relative; flex:0 0 auto; width:auto; height:100%; min-width:64px; max-width:none; max-height:180px; aspect-ratio:720/951; padding:2px; scroll-snap-align:start; }
+ .wd-direct .wd-tray-card { position:relative; min-width:0; max-width:none; max-height:none; aspect-ratio:auto; scroll-snap-align:start; }
  .wd-direct .wd-tray-card .wd-card { min-height:44px; flex:1; }
  .wd-tray-name { flex-shrink:0; margin-top:3px; font-size:10px; line-height:13px; }
  .wd-tray-card>.wd-card-stat { position:absolute; top:4px; right:4px; padding:1px 3px; border-radius:3px; color:var(--wd-gold); background:var(--wd-panel); font-size:10px; line-height:12px; }
@@ -105,3 +103,5 @@
  .wd-direct .wd-lane { gap:4px; }
  .wd-lesson-progress { display:none; }
 }
+
+.wd-effect-art { display:block; width:88px; margin:0 auto 8px; }
