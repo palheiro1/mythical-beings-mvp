@@ -44,6 +44,18 @@ const NavBar: React.FC = () => {
       : 'text-slate-300 hover:bg-white/[0.06] hover:text-white',
   );
 
+  if (TRAINING_PREVIEW_ENABLED) return (
+    <nav className="wd wd-nav" aria-label="Main navigation">
+      <Link to="/" className="wd-brand" aria-label="Wisdom Duel home"><img src="/logos/logo-header-dark.webp" alt="" width="52" height="39" /><span>Wisdom Duel</span></Link>
+      <div className="wd-nav-links">
+        <NavLink to="/bot-selection?mode=free" aria-label="Training"><Bot size={17} /><span>Practice</span></NavLink>
+        <NavLink to="/how-to-play" aria-label="How to Play"><BookOpen size={17} /><span>Rules</span></NavLink>
+        {user && polygonWallet && <Link to="/profile" aria-label="Profile"><User size={17} /></Link>}
+        {user ? <button onClick={handleSignOut} aria-label="Sign out"><LogOut size={17} /></button> : <Link to="/#account" aria-label="Sign in to Play Hub"><UserCircle size={17} /><span className="wd-account-label">Account</span></Link>}
+      </div>
+    </nav>
+  );
+
   return (
     <nav className="sticky top-0 z-40 flex h-[var(--navbar-height)] items-center justify-between border-b border-white/10 bg-[#060912]/88 px-4 text-white shadow-[0_18px_36px_-24px_rgba(0,0,0,0.9)] backdrop-blur-xl">
       <div className="flex min-w-0 items-center gap-5">
