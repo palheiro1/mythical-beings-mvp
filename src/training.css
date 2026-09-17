@@ -105,6 +105,7 @@
 .wd .is-highlighted { outline:2px solid var(--wd-gold); outline-offset:2px; }
 .wd-lane-action.is-highlighted { background:#e8c38318; color:var(--wd-gold); }
 .wd-replacement { color:var(--wd-gold); font-size:10px; text-align:center; }
+.wd-lane-action:has(.wd-replacement) { flex-direction:column; gap:0; }
 .wd-tray { min-width:0; }
 .wd-hand { grid-column:1; grid-row:1; }
 .wd-market { grid-column:3; grid-row:1; }
@@ -121,7 +122,7 @@
 .wd-tray-card.is-selected { outline:1px solid var(--wd-gold); }
 .wd-empty-hand { border:1px dashed #374353; border-radius:8px; padding:20px 15px; color:var(--wd-muted); font-size:12px; line-height:1.8; }
 .wd-empty-hand>span { color:#e2d6bc; display:block; margin-bottom:7px; font:19px Georgia,serif; }
-.wd-tray-tabs,.wd-mobile-only { display:none; }
+.wd-tray-tabs,.wd-mobile-only,.wd-landscape-only { display:none; }
 .wd-coach { background:#162231; border:1px solid #4b4535; border-radius:7px; margin:0 0 8px; padding:8px 15px; display:flex; align-items:center; justify-content:space-between; gap:18px; }
 .wd-coach .wd-eyebrow { display:flex; align-items:center; gap:6px; font-size:9px; }
 .wd-coach h2 { font-size:18px; line-height:1.2; margin:2px 0; }
@@ -256,15 +257,10 @@
  .wd-dialog h2 { font-size:26px; }
  .wd-effect-choices { grid-template-columns:repeat(2,minmax(0,1fr)); }
 }
-@media (max-height:520px) and (min-width:768px) {
- .wd-match,.wd-match.has-guide { --wd-card-size:68px; }
- .wd-tray-cards,.has-guide .wd-tray-cards { max-height:none; }
- .wd-actionbar { position:relative; }
-}
 @media (prefers-reduced-motion:reduce) { .wd * { scroll-behavior:auto!important; transition:none!important; } }
 
 .wd-creature-label { display:flex; align-items:center; justify-content:center; gap:6px; height:19px; }
-@media (min-width:768px) {
+@media (min-width:768px) and (min-height:601px) {
  .wd-market .wd-tray-cards,.wd-hand:has(.wd-tray-card:nth-child(3)) .wd-tray-cards { display:flex; flex-direction:column; gap:6px; max-height:max(362px,calc(100dvh - 270px)); }
  .has-guide .wd-market .wd-tray-cards,.has-guide .wd-hand:has(.wd-tray-card:nth-child(3)) .wd-tray-cards { max-height:max(362px,calc(100dvh - 370px)); }
  .wd-market .wd-tray-card,.wd-hand:has(.wd-tray-card:nth-child(3)) .wd-tray-card { display:grid; grid-template-columns:44px minmax(0,1fr) 44px; grid-template-rows:1fr 1fr; column-gap:8px; padding:5px; }

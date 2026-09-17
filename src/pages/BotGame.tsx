@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { ArrowRight, Clock3, Flag, History, RotateCcw, X } from 'lucide-react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { ArrowRight, Clock3, Flag, History, Home, RotateCcw, Smartphone, X } from 'lucide-react';
 import creatureData from '../assets/creatures.json';
 import { track } from '../analytics/productAnalytics.js';
 import { isValidBotCreatureSelection, readBotCreatureSelection, clearBotCreatureSelection } from '../utils/botSelection.js';
@@ -8,6 +8,7 @@ import { GUIDED_TEAM, rememberTutorial, trainingModeFromSearch, type TrainingMod
 import { BOT_ID, HUMAN_ID, createTrainingSession, trainingSessionReducer, type TrainingAction } from '../game/trainingSession.js';
 import { useTurnTimer } from '../hooks/useTurnTimer.js';
 import { useTrainingBot } from '../hooks/useTrainingBot.js';
+import { usePortraitViewport } from '../hooks/usePortraitViewport.js';
 import CardDetailOverlay from '../components/CardDetailOverlay.js';
 import CardFaceByImage from '../components/CardFaceByImage.js';
 import { getPendingEffectCard } from '../utils/pendingEffectCard.js';
@@ -16,6 +17,7 @@ import TrainingTrays, { type TrayTab } from '../components/training/TrainingTray
 import TrainingCoach from '../components/training/TrainingCoach.js';
 import TrainingDialog from '../components/training/TrainingDialog.js';
 import type { DisplayCard } from '../components/training/TrainingCard.js';
+import '../trainingLandscape.css';
 
 function PracticeMatch({ team, mode, gameId, onReplay }: { team: string[]; mode: TrainingMode; gameId: string; onReplay: () => void }) {
   const navigate = useNavigate();
@@ -26,15 +28,18 @@ function PracticeMatch({ team, mode, gameId, onReplay }: { team: string[]; mode:
   const closeInspection = useCallback(() => setInspection(null), []);
   const [dialog, setDialog] = useState<'history' | 'resign' | null>(null);
   const [resultDismissed, setResultDismissed] = useState(false);
+  const portrait = usePortraitViewport();
+  const [allowPortrait, setAllowPortrait] = useState(false);
+  const orientationPaused = portrait && !allowPortrait;
   const containerRef = useRef<HTMLDivElement>(null);
   const onAction = useCallback((action: TrainingAction) => dispatch({ type: 'play', action }), []);
-  useTrainingBot(game, onAction);
+  useTrainingBot(game, onAction, orientationPaused);
   const isMyTurn = game.currentPlayerIndex === 0 && game.phase === 'action';
   const gameOver = game.phase === 'gameOver';
   const paused = guide !== 'free';
   const endTurn = useCallback(() => dispatch({ type: 'play', action: { type: 'END_TURN', payload: { playerId: HUMAN_ID } } }), []);
   const remainingTime = useTurnTimer({ isMyTurn: isMyTurn && !game.pendingEffect && !paused, phase: game.phase === 'action' ? 'action' : null,
-    turnDurationSeconds: 30, onTimerEnd: endTurn, gameTurn: game.turn, currentPlayerIndex: game.currentPlayerIndex });
+    turnDurationSeconds: 30, onTimerEnd: endTurn, gameTurn: game.turn, currentPlayerIndex: game.currentPlayerIndex, paused: orientationPaused });
   const observed = useRef({ started: false, first: false, ended: false, abandonTimeout: 0 });
   useEffect(() => {
     window.clearTimeout(observed.current.abandonTimeout);
@@ -70,13 +75,22 @@ function PracticeMatch({ team, mode, gameId, onReplay }: { team: string[]; mode:
       }
     });
     return () => window.cancelAnimationFrame(frame);
-  }, [guide, session.tutorialCompleted]);
+  }, [guide, session.tutorialCompleted, orientationPaused]);
   const [player, bot] = game.players;
   const selected = player.hand.find(card => card.instanceId === session.selectedId);
   const actionsLeft = Math.max(0, game.actionsPerTurn - game.actionsTakenThisTurn);
   const pending = game.pendingEffect;
   const message = session.feedback || (paused && !gameOver && !game.pendingEffect && isMyTurn ? guide === 'welcome' ? 'Start the lesson whenever you are ready.' : guide === 'complete' || guide === 'handoff' ? 'Continue Practice starts the turn clock.' : 'Follow the highlighted lesson action. Take your time.' : gameOver ? 'The duel is over.' : pending ? pending.playerId === HUMAN_ID ? 'Choose a target to resolve the card effect.' : 'The bot is resolving a card effect.' : !isMyTurn ? 'The bot is thinking. Your next turn is coming.' : selected ? `Play ${selected.name} on a highlighted creature.` : 'Rotate a creature, draw from the market, or select a card in your hand.');
-  return <div ref={containerRef} className={`wd wd-match ${paused ? 'has-guide' : ''}`}>
+  if (orientationPaused) return <div className="wd wd-rotate-notice">
+    <Smartphone size={64} strokeWidth={1.2} aria-hidden="true" />
+    <p className="wd-eyebrow">Wisdom Duel · Landscape play</p>
+    <h1>Turn your phone to play.</h1>
+    <p>The board, your hand and the market fit side by side in landscape.</p>
+    <p role="status">Your match and clock are paused. Rotate your phone to continue.</p>
+    <Link className="wd-button" to="/">Back to Home</Link>
+    <button className="wd-text-button" onClick={() => setAllowPortrait(true)}>Can’t rotate? Continue in portrait</button>
+  </div>;
+  return <div ref={containerRef} className={`wd wd-match ${paused && !gameOver ? 'has-guide' : ''}`}>
     <h1 className="sr-only">Wisdom Duel — Solo practice</h1>
     <header className="wd-scorebar">
       <div className="wd-score"><span>You</span><strong aria-label={`Your Power: ${Math.max(0, player.power)}`}>{Math.max(0, player.power)}</strong><small>Power</small></div>
@@ -91,6 +105,7 @@ function PracticeMatch({ team, mode, gameId, onReplay }: { team: string[]; mode:
     <footer className="wd-actionbar">
       <div className="wd-action-context"><p className={session.rejected ? 'wd-error' : ''} role={session.rejected ? 'alert' : 'status'}>{message}</p><div className="wd-action-meta"><span>{gameOver ? 'Practice match' : isMyTurn ? `${actionsLeft} / ${game.actionsPerTurn} actions left` : 'Waiting for bot'}</span><span className={remainingTime <= 8 && !paused && isMyTurn ? 'wd-clock-low' : ''}><Clock3 size={14} />{paused ? 'Clock paused' : isMyTurn ? `${remainingTime}s` : '30s per turn'}</span></div></div>
       <div className="wd-action-buttons">
+        <Link to="/" className="wd-icon-button wd-landscape-only" aria-label="Back to Home"><Home size={18} /></Link>
         {selected && <button className="wd-icon-button" aria-label="Cancel card selection" onClick={() => dispatch({ type: 'select', instanceId: null })}><X size={18} /></button>}
         <button className="wd-icon-button" aria-label="Game history" onClick={() => setDialog('history')}><History size={18} /></button>
         {!gameOver && <button className="wd-icon-button" aria-label="Concede match" onClick={() => setDialog('resign')}><Flag size={17} /></button>}
