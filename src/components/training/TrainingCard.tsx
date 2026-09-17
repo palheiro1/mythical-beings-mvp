@@ -20,7 +20,7 @@ export default function TrainingCard({ card, onInspect, rotation = card.rotation
   action?: CardAction;
   playFace?: boolean;
 }) {
-  const caption = <><span><span>{card.name}</span>{playFace && action?.replacement && <small className="wd-play-replacement">Replace {action.replacement}</small>}</span><Info size={12} aria-hidden="true" /></>;
+  const caption = <><span><span>{card.name}</span>{playFace && action?.replacement && <small className="wd-play-replacement">Replaces {action.replacement}</small>}</span><Info size={12} aria-hidden="true" /></>;
   return <div className={`wd-card ${board ? 'wd-card-board' : ''} ${selected ? 'is-selected' : ''} ${playFace ? 'wd-play-card' : ''}`}>
     <button type="button" className={`wd-card-art ${action?.highlighted ? 'is-highlighted' : ''}`} onClick={action ? action.onActivate : () => onInspect({ ...card, rotation })}
       aria-label={action?.label ?? `Inspect ${card.name}`} aria-disabled={action ? !action.valid : undefined}

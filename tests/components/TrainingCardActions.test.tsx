@@ -27,8 +27,10 @@ describe('direct creature actions', () => {
     render(<Board />);
     const play = screen.getByRole('button', { name:'Play Lepidoptera on Tarasca, replacing Blue Sky', exact:true });
     expect(play).toHaveClass('wd-card-art','is-highlighted');
-    expect(within(play).getByText('Replaces Blue Sky')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name:'Inspect Tarasca', exact:true }));
+    const details = screen.getByRole('button', { name:'Inspect Tarasca', exact:true });
+    expect(within(details).getByText('Replaces Blue Sky')).toBeInTheDocument();
+    expect(within(play).queryByText('Replaces Blue Sky')).not.toBeInTheDocument();
+    fireEvent.click(details);
     expect(inspect).toHaveBeenCalledOnce();
     expect(screen.getByLabelText('Attached knowledge')).toHaveTextContent('Blue Sky');
     expect(screen.getByLabelText('Actions taken')).toHaveTextContent('0');
