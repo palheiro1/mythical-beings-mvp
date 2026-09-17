@@ -104,7 +104,7 @@ const CardDetailOverlay: React.FC<CardDetailOverlayProps> = ({ card, open, onClo
       <div
         ref={dialogRef}
         tabIndex={-1}
-        className="surface-obsidian grid w-full max-w-3xl gap-4 rounded-xl border p-4 text-white shadow-[0_28px_90px_rgba(0,0,0,0.72)] sm:grid-cols-[minmax(180px,260px)_1fr] sm:p-5"
+        className="surface-obsidian grid max-h-[calc(100dvh-2rem)] overflow-y-auto w-full max-w-3xl gap-4 rounded-xl border p-4 text-white shadow-[0_28px_90px_rgba(0,0,0,0.72)] sm:grid-cols-[minmax(180px,260px)_1fr] sm:p-5"
         onMouseDown={(event) => event.stopPropagation()}
       >
         <div className="mx-auto aspect-[921/1217] w-full max-w-[220px] overflow-hidden rounded-xl border border-amber-200/40 bg-slate-950 shadow-[0_18px_44px_rgba(0,0,0,0.48)] sm:max-w-none">
@@ -128,7 +128,7 @@ const CardDetailOverlay: React.FC<CardDetailOverlayProps> = ({ card, open, onClo
             <button
               ref={closeButtonRef}
               type="button"
-              className="grid h-10 w-10 shrink-0 place-items-center rounded-lg border border-white/10 bg-white/[0.04] text-slate-200 transition hover:bg-white/[0.08] focus:outline-none focus:ring-2 focus:ring-amber-300/40"
+              className="grid h-11 w-11 shrink-0 place-items-center rounded-lg border border-white/10 bg-white/[0.04] text-slate-200 transition hover:bg-white/[0.08] focus:outline-none focus:ring-2 focus:ring-amber-300/40"
               onClick={onClose}
               aria-label="Close card details"
             >
@@ -145,7 +145,7 @@ const CardDetailOverlay: React.FC<CardDetailOverlayProps> = ({ card, open, onClo
               {isKnowledge(card) ? (
                 <StatusBadge tone="violet">Cost {card.cost}</StatusBadge>
               ) : (
-                <StatusBadge tone="violet">Wisdom {(card.wisdomCycle ?? [card.baseWisdom ?? 0]).join('/')}</StatusBadge>
+                <><StatusBadge tone="violet">Wisdom {card.currentWisdom ?? card.wisdomCycle?.[Math.floor((card.rotation ?? 0) / 90)] ?? card.baseWisdom ?? 0}</StatusBadge><StatusBadge tone="muted">Cycle {(card.wisdomCycle ?? [card.baseWisdom ?? 0]).join(' → ')}</StatusBadge></>
               )}
             </div>
           )}
