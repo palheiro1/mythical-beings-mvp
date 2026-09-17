@@ -17,7 +17,7 @@ export default function TrainingTrays({ session, tab, setTab, onAction, onSelect
     const highlighted = (market && guide === 'draw' && card.id === 'aerial1') || (!market && guide === 'summon' && card.id === 'aerial1');
     return <article key={card.instanceId} className={`wd-tray-card ${selectedId === card.instanceId ? 'is-selected' : ''} ${highlighted ? 'is-highlighted' : ''}`}>
       <TrainingCard card={card} selected={selectedId === card.instanceId} onInspect={onInspect} />
-      <span className="wd-tray-name">{card.name}</span><span className="wd-card-stat">{card.cost} wisdom · {card.element}</span>
+      <span className="wd-tray-name">{card.name}</span><span className="wd-card-stat" aria-label={`${card.cost} wisdom · ${card.element}`}>{card.cost}<span> wisdom · {card.element}</span></span>
       <button className="wd-card-action" type="button" aria-disabled={!validation.isValid} aria-pressed={market ? undefined : selectedId === card.instanceId} aria-label={`${market ? 'Draw' : 'Select'} ${card.name}`} data-guide-target={highlighted ? market ? 'market' : 'hand' : undefined} onClick={() => { if (market) onAction(action); else if (validation.isValid) onSelect(card.instanceId!); }}>{market ? 'Draw' : selectedId === card.instanceId ? 'Selected' : 'Select'}</button>
     </article>;
   };

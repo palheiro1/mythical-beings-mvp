@@ -8,7 +8,7 @@
 @media (orientation:landscape) and (max-height:600px) {
  .wd-nav:has(+main .wd-match) { display:none; }
  .wd-match,.wd-match.has-guide { --wd-card-size:clamp(44px,min(calc((100vw - 108px)/11),calc((100dvh - 234px)/2)),74px); --wd-coach-height:0px; height:100dvh; min-height:0; box-sizing:border-box; padding:4px max(8px,env(safe-area-inset-right)) max(4px,env(safe-area-inset-bottom)) max(8px,env(safe-area-inset-left)); display:grid; grid-template-columns:minmax(270px,1.2fr) minmax(0,1fr); grid-template-rows:34px minmax(0,1fr) 58px; column-gap:12px; }
- .wd-match.has-guide { --wd-coach-height:clamp(48px,calc(100dvh - 288px),110px); }
+ .wd-match.has-guide { --wd-coach-height:clamp(48px,calc(100dvh - 276px),110px); }
  .wd-scorebar { grid-column:1/-1; grid-row:1; height:auto; margin:0; }
  .wd-score strong { font-size:25px; }
  .wd-score>span { font-size:12px; }
@@ -50,10 +50,13 @@
  .wd-tray.is-active { display:block; }
  .wd-tray header { display:none; }
  .wd-tray-cards,.has-guide .wd-tray-cards { display:flex; height:100%; max-height:none; gap:4px; overflow-x:auto; overflow-y:hidden; padding:4px 3px 6px; scroll-snap-type:x proximity; }
- .wd-tray-card { flex:1 0 52px; min-width:52px; max-width:100px; padding:3px; scroll-snap-align:start; }
+ .wd-tray-card { position:relative; flex:1 0 52px; min-width:52px; max-width:100px; padding:3px; scroll-snap-align:start; }
  .wd-tray-card .wd-card { min-height:44px; height:clamp(44px,calc(100dvh - 316px),84px); flex:1; max-height:110px; }
  .wd-tray-name { flex-shrink:0; margin-top:3px; font-size:10px; line-height:13px; }
- .wd-tray-card>.wd-card-stat { flex-shrink:0; font-size:9px; line-height:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+ .wd-tray-card>.wd-card-stat { position:absolute; top:4px; right:4px; padding:1px 3px; border-radius:3px; color:var(--wd-gold); background:var(--wd-panel); font-size:10px; line-height:12px; }
+ .wd-tray-card>.wd-card-stat>span { display:none; }
+ .wd-tray-card>.wd-card-stat::after { content:" W"; }
+ .wd-coach[data-step=welcome] .wd-coach-controls .wd-text-button { display:none; }
  .wd-card-action { min-height:44px; flex-shrink:0; font-size:11px; margin-top:3px; }
  .wd-empty-hand { padding:10px; min-height:0; height:100%; overflow:auto; line-height:1.5; font-size:11px; }
  .wd-empty-hand>span { font-size:16px; margin-bottom:4px; }
