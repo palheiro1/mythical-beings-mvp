@@ -1,0 +1,85 @@
+.wd-rotate-notice { min-height:calc(100dvh - 56px); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:18px; padding:30px 24px 60px; text-align:center; }
+.wd-rotate-notice>svg { transform:rotate(90deg); color:var(--wd-gold); }
+.wd-rotate-notice h1 { font-size:32px; line-height:1.15; }
+.wd-rotate-notice>p:not(.wd-eyebrow) { max-width:340px; color:var(--wd-muted); }
+.wd-rotate-notice>p[role=status] { font-size:12px; }
+
+/* Short landscape screens use two card pairs per lane, leaving room for the market. */
+@media (orientation:landscape) and (max-height:600px) {
+ .wd-nav:has(+main .wd-match) { display:none; }
+ .wd-match,.wd-match.has-guide { --wd-card-size:clamp(44px,min(calc((100vw - 108px)/11),calc((100dvh - 234px)/2)),74px); --wd-coach-height:0px; height:100dvh; min-height:0; box-sizing:border-box; padding:4px max(8px,env(safe-area-inset-right)) max(4px,env(safe-area-inset-bottom)) max(8px,env(safe-area-inset-left)); display:grid; grid-template-columns:minmax(270px,1.2fr) minmax(0,1fr); grid-template-rows:34px minmax(0,1fr) 58px; column-gap:12px; }
+ .wd-match.has-guide { --wd-coach-height:clamp(48px,calc(100dvh - 288px),110px); }
+ .wd-scorebar { grid-column:1/-1; grid-row:1; height:auto; margin:0; }
+ .wd-score strong { font-size:25px; }
+ .wd-score>span { font-size:12px; }
+ .wd-score>small { display:none; }
+ .wd-score small,.wd-turn>span { font-size:10px; }
+ .wd-turn { display:flex; align-items:center; gap:10px; }
+ .wd-game-layout { display:contents; }
+ .wd-board { grid-column:1; grid-row:2; align-self:center; min-width:0; padding:0; border:0; }
+ .wd-board-side { font-size:8px; line-height:12px; padding:2px 0; letter-spacing:.02em; }
+ .wd-lanes { gap:6px; }
+ .wd-lane { grid-template-columns:repeat(2,minmax(0,1fr)); grid-template-rows:auto auto 44px; gap:4px 2px; padding:3px 2px; }
+ .wd-enemy-creature { grid-column:1; grid-row:1; }
+ .wd-lane>.wd-knowledge-slot:nth-child(2) { grid-column:2; grid-row:1; }
+ .wd-lane>.wd-knowledge-slot:nth-child(3) { grid-column:2; grid-row:2; }
+ .wd-lane>.wd-creature-slot:nth-child(4) { grid-column:1; grid-row:2; }
+ .wd-lane-action { grid-column:1/-1; grid-row:3; font-size:11px; }
+ .wd-creature-label { height:16px; gap:3px; }
+ .wd-creature-name { font-size:10px; line-height:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+ .wd-card-stat { font-size:9px; line-height:12px; }
+ .wd-creature-label .wd-card-stat { flex-shrink:0; }
+ .wd-knowledge-slot { align-self:center; }
+ .wd-empty-slot { width:85%; height:calc(var(--wd-card-size) - 4px); font-size:9px; }
+ .wd-replacement { font-size:9px; line-height:12px; }
+ .wd-coach { grid-column:2; grid-row:2; align-self:start; position:static; min-height:0; height:var(--wd-coach-height); margin:4px 0 0; padding:6px; display:grid; grid-template-columns:minmax(0,1fr) auto; grid-template-rows:minmax(0,1fr); align-items:stretch; gap:6px; box-shadow:none; }
+ .wd-coach-copy,.wd-coach-controls { overflow:auto; min-height:0; scrollbar-width:thin; }
+ .wd-coach .wd-eyebrow { display:none; }
+ .wd-coach h2 { font:600 13px/1.2 system-ui,sans-serif; }
+ .wd-coach p { font-size:11px; line-height:1.4; }
+ .wd-coach-controls { max-width:84px; gap:0; }
+ .wd-coach-controls .wd-button { font-size:11px; padding:5px; }
+ .wd-coach-controls .wd-button svg { display:none; }
+ .wd-coach-controls .wd-text-button { font-size:10px; padding:4px; }
+ .wd-lesson-progress { font-size:12px; }
+ .wd-tray-tabs { grid-column:2; grid-row:2; align-self:start; margin-top:calc(var(--wd-coach-height) + 4px); display:flex; border-bottom:1px solid var(--wd-line); }
+ .wd-tray-tabs button { flex:1; min-height:44px; background:none; border:0; border-bottom:2px solid transparent; color:var(--wd-muted); font-size:12px; }
+ .wd-tray-tabs button[aria-selected=true] { color:var(--wd-gold); border-bottom-color:var(--wd-gold); }
+ .wd-tray-tabs span { margin-left:6px; }
+ .wd-tray { grid-column:2; grid-row:2; display:none; align-self:stretch; min-height:0; margin-top:calc(var(--wd-coach-height) + 50px); overflow:hidden; }
+ .wd-tray.is-active { display:block; }
+ .wd-tray header { display:none; }
+ .wd-tray-cards,.has-guide .wd-tray-cards { display:flex; height:100%; max-height:none; gap:4px; overflow-x:auto; overflow-y:hidden; padding:4px 3px 6px; scroll-snap-type:x proximity; }
+ .wd-tray-card { flex:1 0 52px; min-width:52px; max-width:100px; padding:3px; scroll-snap-align:start; }
+ .wd-tray-card .wd-card { min-height:44px; height:clamp(44px,calc(100dvh - 316px),84px); flex:1; max-height:110px; }
+ .wd-tray-name { flex-shrink:0; margin-top:3px; font-size:10px; line-height:13px; }
+ .wd-tray-card>.wd-card-stat { flex-shrink:0; font-size:9px; line-height:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+ .wd-card-action { min-height:44px; flex-shrink:0; font-size:11px; margin-top:3px; }
+ .wd-empty-hand { padding:10px; min-height:0; height:100%; overflow:auto; line-height:1.5; font-size:11px; }
+ .wd-empty-hand>span { font-size:16px; margin-bottom:4px; }
+ .wd-actionbar { grid-column:1/-1; grid-row:3; position:static; margin:0; padding:4px 0 4px 76px; flex-wrap:nowrap; gap:10px; box-shadow:none; }
+ .wd-action-context { min-width:0; width:auto; padding:0; }
+ .wd-action-context>p { font-size:10px; line-height:12px; max-height:24px; overflow:auto; }
+ .wd-action-meta { gap:8px; margin-top:2px; font-size:10px; }
+ .wd-action-buttons { width:auto; flex-shrink:0; gap:4px; }
+ .wd-action-buttons .wd-button { min-height:44px; padding:7px 10px; font-size:12px; }
+ .wd-action-buttons .wd-button svg { display:none; }
+ .wd-match-links { display:none; }
+ .wd-mobile-only,.wd-landscape-only { display:inline-flex; }
+ .wd-dialog { padding:15px; }
+ .wd-dialog header { margin-bottom:10px; }
+ .wd-effect-choices { grid-template-columns:repeat(3,minmax(0,1fr)); margin:10px 0; }
+ .wd-effect-choice img { max-height:80px; }
+}
+
+@media (orientation:landscape) and (max-height:340px) {
+ .wd-match,.wd-match.has-guide { grid-template-rows:44px minmax(0,1fr) 52px; }
+ .wd-match.has-guide { --wd-coach-height:64px; }
+ .wd-scorebar { grid-column:1; }
+ .wd-score>span { line-height:15px; }
+ .wd-score small { line-height:11px; }
+ .wd-tray-tabs { grid-row:1; margin-top:0; }
+ .wd-tray { margin-top:calc(var(--wd-coach-height) + 6px); }
+ .wd-board-side { line-height:8px; padding:0; font-size:7px; }
+ .wd-lesson-progress { display:none; }
+}

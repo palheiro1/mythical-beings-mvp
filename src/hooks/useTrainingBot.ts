@@ -6,10 +6,10 @@ import { getEffectiveCreatureWisdom } from '../game/utils.js';
 import { isValidAction } from '../game/rules.js';
 
 /** The existing solo policy: rotate once, play the first affordable card or draw, then end. */
-export function useTrainingBot(game: GameState, onAction: (action: TrainingAction) => void) {
+export function useTrainingBot(game: GameState, onAction: (action: TrainingAction) => void, paused = false) {
   const plan = useRef({ turn: -1, stage: 0 });
   useEffect(() => {
-    if (game.phase === 'gameOver') return;
+    if (paused || game.phase === 'gameOver') return;
     if (game.pendingEffect?.playerId === BOT_ID) {
       const pending = game.pendingEffect;
       const timeout = window.setTimeout(() => onAction({ type: 'RESOLVE_PENDING_EFFECT', payload: { playerId: BOT_ID,
@@ -39,5 +39,5 @@ export function useTrainingBot(game: GameState, onAction: (action: TrainingActio
       onAction({ type: 'END_TURN', payload: { playerId: BOT_ID } });
     }, 550);
     return () => window.clearTimeout(timeout);
-  }, [game, onAction]);
+  }, [game, onAction, paused]);
 }

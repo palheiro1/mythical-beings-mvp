@@ -14,11 +14,59 @@ function renderFlow(path = '/bot-game?mode=guided') {
 }
 const click = (name: string) => fireEvent.click(screen.getByRole('button', { name, exact: true }));
 function botTurn() { for (let i = 0; i < 5; i++) act(() => { vi.advanceTimersByTime(550); }); }
+function orientation(initial = false) {
+  let portrait = initial;
+  const listeners = new Set<() => void>();
+  vi.stubGlobal('matchMedia', () => ({ get matches() { return portrait; },
+    addEventListener: (_: string, callback: () => void) => listeners.add(callback),
+    removeEventListener: (_: string, callback: () => void) => listeners.delete(callback),
+  }));
+  return (value: boolean) => act(() => { portrait = value; listeners.forEach(callback => callback()); });
+}
 
 beforeEach(() => { vi.useFakeTimers(); localStorage.clear(); sessionStorage.clear(); emit.mockClear(); });
-afterEach(() => { vi.useRealTimers(); });
+afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); });
 
 describe('public practice journey', () => {
+  it('waits for landscape on a phone and keeps the prepared lesson intact', () => {
+    const rotate = orientation(true); renderFlow();
+    expect(screen.getByRole('heading', { name:'Turn your phone to play.' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name:'Start learning' })).not.toBeInTheDocument();
+    act(() => { vi.advanceTimersByTime(90_000); });
+    rotate(false);
+    expect(screen.getByRole('heading', { name:'Your first duel' })).toBeInTheDocument();
+    expect(screen.getByText('Turn 1')).toBeInTheDocument();
+  });
+  it('pauses an active clock in portrait and resumes its remaining seconds without resetting the match', () => {
+    const rotate = orientation(); renderFlow(); click('Skip tutorial'); click('Continue Practice');
+    click('Draw Lepidoptera');
+    act(() => { vi.advanceTimersByTime(5_000); });
+    expect(screen.getByText('25s')).toBeInTheDocument();
+    rotate(true); act(() => { vi.advanceTimersByTime(60_000); }); rotate(false);
+    expect(screen.getByText('25s')).toBeInTheDocument();
+    expect(screen.getByText('Turn 1')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name:'Select Lepidoptera' })).toBeInTheDocument();
+    act(() => { vi.advanceTimersByTime(25_000); });
+    expect(screen.getByText('Bot’s turn')).toBeInTheDocument();
+  });
+  it('suspends scheduled bot moves while rotating and resumes the same turn', () => {
+    const rotate = orientation(); renderFlow(); click('Start learning'); click('Draw Lepidoptera'); click('Rotate Tarasca');
+    rotate(true); act(() => { vi.advanceTimersByTime(60_000); }); rotate(false);
+    expect(screen.getByText('Bot’s turn')).toBeInTheDocument();
+    expect(screen.getByText('Turn 1')).toBeInTheDocument();
+    botTurn();
+    expect(screen.getByRole('heading', { name:'4. Play your knowledge' })).toBeInTheDocument();
+    click('Select Lepidoptera'); rotate(true); rotate(false);
+    expect(screen.getByRole('button', { name:'Select Lepidoptera' })).toHaveAttribute('aria-pressed', 'true');
+    click('Play Lepidoptera on Tarasca');
+    expect(screen.getByRole('dialog')).toHaveAccessibleName('Tulpar');
+  });
+  it('allows an explicit portrait fallback when the player cannot rotate', () => {
+    orientation(true); renderFlow(); click('Can’t rotate? Continue in portrait');
+    click('Skip tutorial'); click('Continue Practice');
+    act(() => { vi.advanceTimersByTime(1_000); });
+    expect(screen.getByText('29s')).toBeInTheDocument();
+  });
   it('starts the recommended team without a wallet, with a paused tutorial', () => {
     renderFlow('/bot-selection?mode=guided');
     expect(screen.getByText('3/3 selected')).toBeInTheDocument();
