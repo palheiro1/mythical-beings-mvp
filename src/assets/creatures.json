@@ -92,7 +92,7 @@
     "name": "Lafaic",
     "element": "water",
     "passiveAbility": "Each time Lafaic summons an aquatic Knowledge in its slot, other knowledges rotate 90°.",
-    "image": "/images/beings/lafaic.svg",
+    "image": "/images/beings/lafaic.webp",
     "wisdomCycle": [1, 2, 3, 4]
   },
   {

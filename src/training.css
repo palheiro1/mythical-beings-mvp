@@ -260,7 +260,6 @@
 @media (prefers-reduced-motion:reduce) { .wd * { scroll-behavior:auto!important; transition:none!important; } }
 
 .wd-creature-label { display:flex; align-items:center; justify-content:center; gap:6px; height:19px; }
-.wd-knowledge-slot>.wd-card-stat { position:absolute; bottom:0; z-index:1; background:#0e1723ee; border-radius:3px; padding:0 3px; pointer-events:none; }
 @media (min-width:768px) and (min-height:601px) {
  .wd-market .wd-tray-cards,.wd-hand:has(.wd-tray-card:nth-child(3)) .wd-tray-cards { display:flex; flex-direction:column; gap:6px; max-height:max(362px,calc(100dvh - 270px)); }
  .has-guide .wd-market .wd-tray-cards,.has-guide .wd-hand:has(.wd-tray-card:nth-child(3)) .wd-tray-cards { max-height:max(362px,calc(100dvh - 370px)); }

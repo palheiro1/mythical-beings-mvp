@@ -3,6 +3,8 @@ import { Wand2 } from 'lucide-react';
 import { GameState, PendingEffectChoice, PendingEffectResolution } from '../../game/types.js';
 import { ArenaButton, Panel, StatusBadge } from '../ui/index.js';
 import { cn } from '../ui/cn.js';
+import CardFaceByImage from '../CardFaceByImage.js';
+import { getPendingEffectCard } from '../../utils/pendingEffectCard.js';
 
 type PendingEffectPanelProps = {
   gameState: GameState;
@@ -69,7 +71,7 @@ const PendingEffectPanel: React.FC<PendingEffectPanelProps> = ({ gameState, curr
                 >
                   <div className="aspect-[921/1217] overflow-hidden rounded-lg border border-white/10 bg-slate-950/80">
                     {choice.image ? (
-                      <img src={choice.image} alt={choice.label} className="h-full w-full object-cover" />
+                      <CardFaceByImage src={choice.image} alt={choice.label} card={getPendingEffectCard(gameState, choice)} className="h-full w-full" />
                     ) : (
                       <div className="grid h-full place-items-center text-xs uppercase tracking-normal text-slate-500">
                         {choice.kind}

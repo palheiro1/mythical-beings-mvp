@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useCardRegistry } from '../../hooks/useCardRegistry.js';
+import CardFaceByImage from '../CardFaceByImage.js';
 
 export type MoveEvent = {
   id: string;        // instanceId
@@ -60,7 +61,7 @@ const CardMoveLayer: React.FC<CardMoveLayerProps> = ({ event, onDone, durationMs
 
   return (
     <div style={style} className="pointer-events-none select-none">
-      <img src={event.image} alt="moving-card" className="h-full w-full rounded-[8px] border border-amber-200/35 object-cover shadow-[0_18px_42px_rgba(0,0,0,0.58),0_0_22px_rgba(56,223,248,0.16)]" />
+      <CardFaceByImage src={event.image} alt="Moving card" className="h-full w-full" />
     </div>
   );
 };

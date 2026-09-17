@@ -1,0 +1,35 @@
+.dc-compact .dc-name { font-size:clamp(10px,7.7cqw,19px);font-weight:750;line-height:1.13;letter-spacing:-.025em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
+.dc-compact .dc-value { left:3px;top:calc(100% + 3px);min-width:23px;height:27px;padding:2px 4px; }
+.dc-compact .dc-value strong { font-size:clamp(16px,19cqw,32px); }
+.dc-compact .dc-element { position:absolute;right:4px;top:calc(100% + 5px);width:17px;height:21px; }
+.dc-compact .dc-header { min-height:19px;padding:4px 3px;gap:4px; }
+/* Compact play faces are loaded with game/selection routes, after the shared frame. */
+.dc-compact-stat { display:flex;align-items:center;justify-content:center;gap:3px;min-height:13px;font-size:clamp(11px,9cqw,16px);line-height:1.1;font-weight:750;white-space:nowrap;font-variant-numeric:tabular-nums; }
+.dc-compact-stat svg { width:12px;height:12px;flex-shrink:0; }
+.dc-stat-kind { font-size:clamp(9px,7cqw,11px); }
+.dc-ticks { display:flex;gap:3px;margin-top:4px; }
+.dc-ticks>span { flex:1;height:3px;min-width:0;background:color-mix(in srgb,var(--dc-muted) 35%,transparent);border-radius:1px; }
+.dc-ticks>.is-current { background:var(--dc-accent); }
+.dc-being .dc-ticks>.is-current { background:#ffdfa0; }
+.dc-final-mark { color:#ffce94;font-size:11px;padding-left:1px; }
+@container (max-width: 60px) {
+  .dc-compact .dc-header { min-height:5px;height:5px;padding:0; }
+  .dc-compact .dc-name-block { display:none; }
+  .dc-compact .dc-value { min-width:19px;height:21px;font-size:16px;left:1px;top:8px;padding:1px 2px; }
+  .dc-compact .dc-element { display:none; }
+  .dc-compact .dc-footer { padding:2px; }
+  .dc-compact .dc-stat-kind { display:none; }
+  .dc-compact .dc-ticks { gap:2px;margin-top:2px; }
+  .dc-compact .dc-compact-stat { font-size:11px;gap:2px; }
+  .dc-compact .dc-compact-stat svg { width:10px;height:10px; }
+}
+@container (min-width: 150px) {
+  .dc-compact .dc-header { min-height:31px;padding:6px; }
+  .dc-compact .dc-name { font:600 15px/1.2 Georgia,serif;text-transform:uppercase;letter-spacing:.02em; }
+  .dc-compact .dc-value { height:45px;min-width:35px;left:6px;top:calc(100% + 6px); }
+  .dc-compact .dc-value>span { display:block;font-size:8px;font-weight:750; }
+  .dc-compact .dc-element { width:23px;height:28px;right:6px;top:calc(100% + 7px); }
+  .dc-compact .dc-element svg { width:15px;height:15px; }
+  .dc-compact .dc-footer { padding:7px; }
+  .dc-compact .dc-ticks { height:4px;gap:5px; }
+}
