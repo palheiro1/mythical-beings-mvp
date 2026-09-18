@@ -18,7 +18,7 @@ export default function TrainingDialog({ title, children, onClose }: { title: st
     const keydown = (event: KeyboardEvent) => {
       if (event.key === 'Escape' && closeRef.current) { event.preventDefault(); closeRef.current(); }
       if (event.key !== 'Tab' || !ref.current) return;
-      const elements = Array.from(ref.current.querySelectorAll<HTMLElement>('button:not(:disabled), a[href], [tabindex="0"]'));
+      const elements = Array.from(ref.current.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), a[href], [tabindex="0"]'));
       const first = elements[0]; const last = elements.at(-1);
       if (!first) { event.preventDefault(); return; }
       if (event.shiftKey && (document.activeElement === first || document.activeElement === ref.current)) { event.preventDefault(); last?.focus(); }
