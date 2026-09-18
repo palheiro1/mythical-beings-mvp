@@ -38,7 +38,7 @@ export default function TrainingBoard({ session, onAction, onInspect, direct = f
         <SeatMark element={enemy?.element} />
         <div className="wd-creature-slot wd-enemy-creature">
           {enemy && <TrainingCard motionAnchor={cardAnchor(opponent.id, enemy)} card={creatureView(enemy, 1)} rotation={enemy.rotation ?? 0} board playFace={direct} onInspect={onInspect} />}
-          {!direct && <div className="wd-creature-label"><span className="wd-creature-name">{enemy?.name}</span><span className="wd-card-stat" aria-label={`Wisdom ${enemy ? getEffectiveCreatureWisdom(game, 1, enemy.id) : 0}`}>W {enemy ? getEffectiveCreatureWisdom(game, 1, enemy.id) : 0}</span></div>}
+          {!direct && <div className="wd-creature-label"><span className="wd-creature-name">{enemy?.name}</span></div>}
         </div>
         <KnowledgeSlot card={theirs} inspect={onInspect} direct={direct} />
         </div>
@@ -48,12 +48,12 @@ export default function TrainingBoard({ session, onAction, onInspect, direct = f
         <div className="wd-creature-slot">
           <TrainingCard motionAnchor={cardAnchor(player.id, creature)} card={creatureView(creature, 0)} rotation={creature.rotation ?? 0} board playFace={direct} onInspect={onInspect}
             action={direct ? { label: actionLabel, onActivate: () => onAction(action), valid: valid.isValid, reason: valid.reason, highlighted, guideTarget: creature.id === 'tarasca' ? 'creature' : undefined, replacement: selected && ours ? ours.name : undefined } : undefined} />
-          {!direct && <div className="wd-creature-label"><span className="wd-creature-name">{creature.name}</span><span className="wd-card-stat" aria-label={`Wisdom ${getEffectiveCreatureWisdom(game, 0, creature.id)}`}>W {getEffectiveCreatureWisdom(game, 0, creature.id)}</span></div>}
+          {!direct && <div className="wd-creature-label"><span className="wd-creature-name">{creature.name}</span></div>}
         </div>
         </div>
         {!direct && <button type="button" className={`wd-lane-action ${highlighted ? 'is-highlighted' : ''}`} aria-disabled={!valid.isValid} aria-label={actionLabel} title={valid.reason} data-guide-target={creature.id === 'tarasca' ? 'creature' : undefined} onClick={() => onAction(action)}>{selected ? <>Play here{ours && <span className="wd-replacement">Replaces {ours.name}</span>}</> : <><RotateCw size={14} />Rotate</>}</button>}
       </div>;
     })}</div>
-    <div className="wd-board-side">{direct ? selected ? 'Tap a highlighted creature to play' : 'Your creatures · Tap to rotate · ⓘ Details' : 'Your creatures · W = Wisdom · Tap artwork to inspect'}</div>
+    <div className="wd-board-side">{direct ? selected ? 'Tap a highlighted creature to play' : 'Your creatures · Tap to rotate · ⓘ Details' : 'Your creatures · Click artwork for details'}</div>
   </section>;
 }

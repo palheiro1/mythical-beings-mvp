@@ -24,7 +24,7 @@ export default function TrainingTrays({ session, tab, setTab, onAction, onSelect
     return <article key={card.instanceId} className={`wd-tray-card ${selectedId === card.instanceId ? 'is-selected' : ''} ${highlighted ? 'is-highlighted' : ''}`}>
       <TrainingCard motionAnchor={cardAnchor('', card)} card={card} selected={selectedId === card.instanceId} playFace={direct} onInspect={onInspect}
         action={direct ? { label, onActivate: activate, valid: validation.isValid, pressed: market ? undefined : selectedId === card.instanceId, guideTarget } : undefined} />
-      {!direct && <><span className="wd-tray-name">{card.name}</span><span className="wd-card-stat" aria-label={`${card.cost} wisdom · ${card.element}`}>{card.cost}<span> wisdom · {card.element}</span></span>
+      {!direct && <><span className="wd-tray-name">{card.name}</span><span className="wd-card-stat">{card.element}</span>
       <button className="wd-card-action" type="button" aria-disabled={!validation.isValid} aria-pressed={market ? undefined : selectedId === card.instanceId} aria-label={label} data-guide-target={guideTarget} onClick={activate}>{market ? 'Draw' : selectedId === card.instanceId ? 'Selected' : 'Select'}</button></>}
     </article>;
   };

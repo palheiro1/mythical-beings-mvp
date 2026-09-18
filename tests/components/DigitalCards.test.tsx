@@ -17,6 +17,23 @@ const kappa = creatures.find(card => card.id === 'kappa') as Creature;
 const asteroid = knowledges.find(card => card.id === 'aquatic2') as Knowledge;
 
 describe('digital card information', () => {
+  it('shows one desktop Wisdom value and preserves separate Knowledge cost and effect', () => {
+    const { rerender } = render(<DigitalCardFace card={{ ...kappa, rotation: 180, currentWisdom: 5 }} />);
+    expect(screen.getAllByLabelText('Wisdom 5')).toHaveLength(1);
+    expect(screen.getAllByText('5', { exact: true })).toHaveLength(1);
+    rerender(<DigitalCardFace card={asteroid} rotation={90} />);
+    expect(screen.getByLabelText('Cost 2')).toBeInTheDocument();
+    expect(screen.getByLabelText('Damage 1')).toBeInTheDocument();
+    expect(screen.getByLabelText('Rotation 90 degrees, step 2 of 4')).toBeInTheDocument();
+  });
+
+  it('does not repeat a desktop creature’s Wisdom beneath its card', () => {
+    const session = createTrainingSession(GUIDED_TEAM, 'guided', 'desktop-wisdom-review');
+    render(<TrainingBoard session={session} onAction={vi.fn()} onInspect={vi.fn()} />);
+    const tarasca = screen.getByRole('button', { name: 'Inspect Tarasca', exact: true });
+    expect(within(tarasca.parentElement!.parentElement!).getAllByLabelText('Wisdom 0')).toHaveLength(1);
+  });
+
   it('shows Wisdom once per mobile Being while keeping Knowledge cost and effect distinct', () => {
     const { rerender } = render(<PlayCardFace card={{ ...kappa, rotation: 180, currentWisdom: 5 }} />);
     expect(screen.getAllByLabelText('Wisdom 5')).toHaveLength(1);

@@ -14,7 +14,7 @@ existing initial CSS budget is preserved.
 - Original illustrations remain in their existing assets; CSS clips the printed
   frame and puts editable, selectable text above clean digital panels.
 - Water, earth, air and fire use distinct accent colours and element icons.
-- The gold badge shows effective Wisdom for a Being and summoning cost for a
+- The gold value shows effective Wisdom for a Being and summoning cost for a
   Knowledge. The separate Knowledge effect and rotation track never replace cost.
 - Cards stay upright, including the opponent's cards. Rotation is communicated
   by the active cycle step. Knowledge cards identify their final rotation.
@@ -71,7 +71,7 @@ control when tapping the artwork performs a move.
 
 All board cards use the same size, whether a Knowledge is attached or the slot is
 empty. Hand and market cards are approximately 25% wider. The detailed inspection
-and desktop face are preserved. Pending-effect choices use the mobile face too.
+is preserved. Pending-effect choices use the mobile face too.
 Replacement hints fit in the name row without covering values or adding height.
 
 Visual review uses both the reported sparse board and a full board with six
@@ -79,3 +79,23 @@ attached Knowledges and five hand cards. Checks cover 793×380, 844×390, 667×3
 568×320, 390×844 and 360×800, including square artwork, unclipped numeric values,
 separate inspection targets of at least 24×24 px and no horizontal page overflow.
 The complete touch tutorial and return to the desktop layout are also checked.
+
+## Desktop play composition
+
+Compact cards reserve separate rows for the name, illustration and statistics.
+Being Wisdom appears once in the lower frame, beside the element icon. Knowledge
+cost and current effect occupy opposite ends of that row; its element sits in
+the title row. No numeric badge or element symbol covers the illustration.
+Board captions retain the creature name without repeating Wisdom, and market
+metadata retains the element without repeating cost.
+
+Small cards use thinner title and statistic rows to preserve more artwork.
+Market miniatures hide the title already shown beside them and keep cost,
+effect and rotation visible. The final-rotation marker remains on larger faces;
+miniatures use the highlighted final track segment and accessible rotation label.
+The compact grid constrains long titles to the card width.
+
+Browser checks cover every card at 44, 74, 96, 154 and 200 px through all four
+rotation inputs, with no statistics over the artwork or outside the frame.
+Selection and the complete desktop lesson are checked at 884×891, 875×913,
+1399×884 and 1366×768. Mobile play and detailed inspection remain verified.
