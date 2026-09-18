@@ -1,3 +1,4 @@
+import { capturePower, recordPowerChanges } from './presentation.js';
 import { GameState, PassiveTriggerType, PassiveEventData, Creature } from './types.js';
 import {
   buildCreatureChoices,
@@ -33,6 +34,7 @@ export function applyPassiveAbilities(
       if (player.id !== eventData.playerId) return;
 
       player.creatures.forEach(creature => {
+        const powerBefore = capturePower(newState);
         // Caapora Passive: Triggers at TURN_START if opponent has more cards in hand than the owner.
         // Effect: Deals 1 damage to opponent's power.
         // Standardized trigger: 'TURN_START'
@@ -65,6 +67,7 @@ export function applyPassiveAbilities(
         }
 
         // Zhar-Ptitsa is handled during damage calculation: aerial Knowledge bypasses defense.
+        recordPowerChanges(newState, powerBefore, player.id, creature);
       });
     });
   }
@@ -84,6 +87,7 @@ export function applyPassiveAbilities(
       const opponent = newState.players[(playerIndex + 1) % 2];
 
       player.creatures.forEach(creature => {
+        const powerBefore = capturePower(newState);
         // Adaro Passive: Triggers on AFTER_PLAYER_SUMMON when owner summons water knowledge onto Adaro.
         // Effect: Owner draws 1 card from market (free draw).
         // Standardized trigger: 'AFTER_PLAYER_SUMMON'
@@ -221,6 +225,7 @@ export function applyPassiveAbilities(
             `[Passive Effect] Tarasca (Owner: ${player.id}) deals 1 damage to ${opponent.id}. Power: ${initialPower} -> ${opponent.power}`
           );
         }
+        recordPowerChanges(newState, powerBefore, player.id, creature);
       });
     });
   }
@@ -229,6 +234,7 @@ export function applyPassiveAbilities(
   else if (trigger === 'AFTER_PLAYER_DRAW' || trigger === 'AFTER_OPPONENT_DRAW') {
     newState.players.forEach(player => {
       player.creatures.forEach(creature => {
+        const powerBefore = capturePower(newState);
         // Inkanyamba Passive: Triggers on AFTER_PLAYER_DRAW or AFTER_OPPONENT_DRAW when owner draws a card.
         // Effect: Discards the top card from the market and refills it if possible.
         // Standardized triggers: 'AFTER_PLAYER_DRAW', 'AFTER_OPPONENT_DRAW'
@@ -249,6 +255,7 @@ export function applyPassiveAbilities(
             optional: true,
           });
         }
+        recordPowerChanges(newState, powerBefore, player.id, creature);
       });
     });
   }
@@ -266,6 +273,7 @@ export function applyPassiveAbilities(
       const opponent = newState.players[(playerIndex + 1) % 2]; // Get opponent relative to passive owner
 
       player.creatures.forEach(creature => {
+        const powerBefore = capturePower(newState);
         // Lisovik Passive: Triggers on KNOWLEDGE_LEAVE when earth knowledge owned by Lisovik's owner leaves play.
         // Effect: Deals 1 damage to opponent's power.
         // Standardized trigger: 'KNOWLEDGE_LEAVE'
@@ -300,6 +308,7 @@ export function applyPassiveAbilities(
           newState.log.push(`[Passive Effect] Tsenehale (Owner: ${playerInNewState.id}) grants +1 Power to owner as ${leavingKnowledge.name} leaves play from tsenehale.`);
           newState.log.push(`Power: ${initialOwnerPower} -> ${playerInNewState.power}`);
         }
+        recordPowerChanges(newState, powerBefore, player.id, creature);
       });
     });
   } // --- End KNOWLEDGE_LEAVE ---

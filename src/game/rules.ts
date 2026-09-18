@@ -1,3 +1,4 @@
+import { capturePower, cardAnchor, recordCue, recordPowerChanges } from './presentation.js';
 import { knowledgeEffects } from './effects.js';
 import { GameState, GameAction, Knowledge, SummonKnowledgePayload } from './types'; // Import SummonKnowledgePayload
 import { applyPassiveAbilities } from './passives.js';
@@ -200,6 +201,17 @@ export function executeKnowledgePhase(state: GameState, activePlayerIndex: 0 | 1
 
           // Apply effect to the *currentState*
           // The effect function itself uses cloneDeep internally.
+          const powerBefore = capturePower(currentState);
+          const opponent = currentState.players[playerIndex === 0 ? 1 : 0];
+          const signature = knowledgeForEffect.id === 'terrestrial4' && opponent.field.some(slot => slot.knowledge && slot.knowledge.cost <= 2) ? 'Roots · Clear knowledge'
+            : knowledgeForEffect.id === 'aquatic3' ? (willBeDiscarded ? 'Seal released' : 'Seal · Summons blocked')
+            : knowledgeForEffect.id === 'aerial5' && opponent.creatures.some(card => (card.rotation ?? 0) > 0) ? 'Gust · Rotate creatures'
+            : null;
+          if (signature) recordCue(currentState, {
+            kind: 'effect', source: cardAnchor(currentState.players[playerIndex].id, knowledgeForEffect),
+            target: knowledgeForEffect.id === 'aquatic3' ? `slot:${opponent.id}:${opponent.field[slotIndex].creatureId}` : cardAnchor(currentState.players[playerIndex].id, knowledgeForEffect),
+            element: knowledgeForEffect.element, label: signature,
+          });
           currentState = effectFn({
             state: currentState,
             playerIndex: playerIndex,
@@ -209,6 +221,7 @@ export function executeKnowledgePhase(state: GameState, activePlayerIndex: 0 | 1
             isFinalRotation: willBeDiscarded,
             trigger: 'onPhase',
           });
+          recordPowerChanges(currentState, powerBefore, currentState.players[playerIndex].id, knowledgeForEffect);
       }
   }
   phaseState = currentState; // Update phaseState with the result of all effects
