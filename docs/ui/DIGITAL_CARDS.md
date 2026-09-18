@@ -47,6 +47,14 @@ Artwork uses normal compositing and no saturation or contrast filters. Element
 colours belong to the frame and panels. `cardAssets.ts` versions both image
 candidates so returning players receive corrected colours despite cached images.
 
+Air, earth and water use Ana Santiso's original SVG element symbols, supplied
+from `logos&icons/Other icons`. The files in `src/assets/elements/` are unchanged
+copies, including their original colour gradients. `ElementIcon` shares these
+assets across compact cards, detailed inspection, mobile faces and board seats.
+Earth receives a small light backing so its dark brown gradient remains legible
+on the game's dark panels. These symbols stay outside the artwork. Fire and
+neutral retain their existing symbols.
+
 ## Verification
 
 The series was visually checked as two contact sheets. Browser verification

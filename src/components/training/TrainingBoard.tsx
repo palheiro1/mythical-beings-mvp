@@ -1,14 +1,13 @@
 import { cardAnchor } from '../../game/presentation.js';
-import { BookOpen, Droplet, Flame, Leaf, RotateCw, Sparkles, Wind } from 'lucide-react';
+import { BookOpen, RotateCw } from 'lucide-react';
+import ElementIcon from '../ElementIcon.js';
 import { getEffectiveCreatureWisdom } from '../../game/utils.js';
 import { HUMAN_ID, validateTrainingAction, type TrainingAction, type TrainingSession } from '../../game/trainingSession.js';
 import type { Creature, Knowledge } from '../../game/types.js';
 import TrainingCard, { type DisplayCard } from './TrainingCard.js';
 
-const elementMarks = { water: Droplet, earth: Leaf, air: Wind, fire: Flame, neutral: Sparkles };
 function SeatMark({ element }: { element?: Creature['element'] }) {
-  const Mark = elementMarks[element ?? 'neutral'];
-  return <span className="wd-seat-mark" aria-hidden="true"><Mark size={12} /></span>;
+  return <span className="wd-seat-mark" aria-hidden="true"><ElementIcon element={element} size={12} aria-hidden="true" /></span>;
 }
 
 function KnowledgeSlot({ card, inspect, direct }: { card: Knowledge | null; inspect: (card: DisplayCard) => void; direct: boolean }) {
