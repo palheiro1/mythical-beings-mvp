@@ -35,6 +35,16 @@
 .wd-motion-effect.wd-motion-air::before { content:'≋'; }
 .wd-motion-effect.wd-motion-fire::before { content:'✦'; }
 .wd-motion-trail { position:absolute; height:2px; transform-origin:left center; background:linear-gradient(90deg,transparent,var(--motion-color)); box-shadow:0 0 8px var(--motion-color); }
+.wd-motion-strike { position:absolute; z-index:1; height:7px; margin-top:-3px; transform-origin:left center; border-radius:99px; background:linear-gradient(90deg,#ff865c44,#ff986a 35%,#fff4d6); box-shadow:0 0 5px #fff0c8,0 0 15px #ff8859b0,0 0 26px #ff785066; }
+.wd-motion-strike::before { content:''; position:absolute; inset:2px 0 2px 25%; border-radius:inherit; background:#fff9e8; }
+.wd-motion-strike::after { content:''; position:absolute; right:-5px; top:-4px; width:15px; height:15px; border-radius:50%; background:#fff5db; box-shadow:0 0 10px #ffdf9c,0 0 22px #ff916b; }
+.wd-motion-guard { display:grid; place-items:center; padding:0; border:3px solid #a4fff2; border-radius:12px; background:#61d7cf30; box-shadow:inset 0 0 22px #81eee750,0 0 20px #80eee770; }
+.wd-motion-shield { display:grid; place-items:center; width:42px; height:48px; padding-bottom:5px; clip-path:polygon(50% 0,96% 17%,91% 64%,76% 84%,50% 100%,24% 84%,9% 64%,4% 17%); background:linear-gradient(145deg,#d6fff7,#6cddd4); color:#123f49; font:bold 25px/1 system-ui,sans-serif; filter:drop-shadow(0 3px 6px #061722); }
+.wd-motion-result { z-index:2; display:grid; justify-items:center; gap:2px; min-height:92px; padding:8px 10px; border:2px solid var(--motion-color); border-radius:10px; background:#20161bf7; box-shadow:0 5px 20px #000a,0 0 20px #ff876533; font-variant-numeric:tabular-nums; }
+.wd-motion-result.is-blocked { background:#0e262ff7; box-shadow:0 5px 20px #000a,0 0 20px #80eee744; }
+.wd-motion-result strong { font:800 34px/1 system-ui,sans-serif; letter-spacing:-1px; }
+.wd-motion-result>span { font-size:12px; line-height:1.2; letter-spacing:1.3px; text-transform:uppercase; }
+.wd-motion-result small { max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#f4e9dc; font-size:11px; line-height:1.4; }
 
 @media (max-width:767px) {
  .wd-match .wd-tray { padding:6px; }

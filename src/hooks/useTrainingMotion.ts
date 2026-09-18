@@ -86,6 +86,8 @@ export function useTrainingMotion(game: GameState, root: RefObject<HTMLDivElemen
     const find = (id: string) => next.get(id) ?? old.get(id);
     const duration = steps.length > 6 ? 220 : 320;
     const impactDuration = Math.max(180, Math.min(360, 1200 / Math.max(1, steps.filter(step => step.kind !== 'move' && step.kind !== 'rotate').length)));
+    // Combat needs enough time to read even when several cards activate together.
+    const combatDuration = steps.filter(step => step.kind === 'combat' || (step.kind === 'power' && (step.amount ?? 0) < 0)).length > 3 ? 950 : 1150;
     const held = new Map<string, HTMLElement>();
 
     function copyFace(anchor: Anchor) {
@@ -101,9 +103,9 @@ export function useTrainingMotion(game: GameState, root: RefObject<HTMLDivElemen
       return node;
     }
 
-    async function animate(element: HTMLElement, frames: Keyframe[], time = duration) {
+    async function animate(element: HTMLElement, frames: Keyframe[], time = duration, easing = 'cubic-bezier(.2,.75,.25,1)') {
       if (!valid()) return;
-      const animation = element.animate(frames, { duration: time, easing: 'cubic-bezier(.2,.75,.25,1)', fill: 'both' });
+      const animation = element.animate(frames, { duration: time, easing, fill: 'both' });
       animations.current.add(animation);
       try { await animation.finished; } catch { /* Cancellation on layout change/unmount is normal. */ }
       finally { animation.cancel(); animations.current.delete(animation); }
@@ -122,6 +124,69 @@ export function useTrainingMotion(game: GameState, root: RefObject<HTMLDivElemen
       Object.assign(node.style, { left: `${anchor.rect.x - 3}px`, top: `${anchor.rect.y - 3}px`, width: `${anchor.rect.width + 6}px`, height: `${anchor.rect.height + 6}px` });
       await animate(node, reduced ? [{ opacity: .9 }, { opacity: 0 }] : [{ opacity: 0, transform: 'scale(.97)' }, { opacity: 1, transform: 'scale(1.02)', offset: .35 }, { opacity: 0, transform: 'scale(1.05)' }], reduced ? Math.min(time, 180) : time);
       node.remove();
+    }
+    async function strike(from: Anchor | undefined, to: Anchor, time = 460) {
+      if (reduced || !from || from === to || !valid()) return;
+      const node = document.createElement('div');
+      node.className = 'wd-motion-strike';
+      const x = from.rect.x + from.rect.width / 2, y = from.rect.y + from.rect.height / 2;
+      const dx = to.rect.x + to.rect.width / 2 - x, dy = to.rect.y + to.rect.height / 2 - y;
+      node.style.cssText = `left:${x}px;top:${y}px;width:${Math.hypot(dx, dy)}px;rotate:${Math.atan2(dy, dx)}rad`;
+      overlay!.append(node);
+      await animate(node, [
+        { transform: 'scaleX(0)', opacity: 0 },
+        { transform: 'scaleX(.15)', opacity: 1, offset: .16 },
+        { transform: 'scaleX(1)', opacity: 1, offset: .8 },
+        { transform: 'scaleX(1)', opacity: 0 },
+      ], time, 'linear');
+      node.remove();
+    }
+    async function combat(step: Extract<MotionStep, { kind: 'combat' | 'power' | 'effect' }>, source: Anchor | undefined, target: Anchor) {
+      const damage = step.kind === 'combat' ? step.amount ?? 0 : Math.abs(step.amount ?? 0);
+      const blocked = step.kind === 'combat' ? step.blocked ?? 0 : 0;
+      const defenders = blocked ? (step.defenders ?? []).map(find).filter((anchor): anchor is Anchor => !!anchor) : [];
+      const guard = defenders[0] ?? target;
+      await pulse(source, '#ffc38c', 200);
+      await strike(source, blocked ? guard : target);
+      if (!valid()) return;
+
+      const linger: Keyframe[] = reduced ? [{ opacity: 0 }, { opacity: 1, offset: .12 }, { opacity: 1, offset: .84 }, { opacity: 0 }]
+        : [{ opacity: 0, transform: 'scale(.88)' }, { opacity: 1, transform: 'scale(1.06)', offset: .12 },
+          { opacity: 1, transform: 'scale(1)', offset: .24 }, { opacity: 1, transform: 'scale(1)', offset: .84 }, { opacity: 0, transform: 'scale(1)' }];
+      const work: Promise<void>[] = [];
+      if (blocked) {
+        for (const defender of defenders.length ? defenders : [target]) {
+          const shield = marker(defender.rect, 'wd-motion-guard', '', colors.water);
+          const icon = document.createElement('span');
+          icon.className = 'wd-motion-shield';
+          icon.textContent = '✓';
+          shield.append(icon);
+          Object.assign(shield.style, { left: `${defender.rect.x - 5}px`, top: `${defender.rect.y - 5}px`, width: `${defender.rect.width + 10}px`, height: `${defender.rect.height + 10}px` });
+          work.push(animate(shield, linger, combatDuration).then(() => shield.remove()));
+        }
+        // Only damage that gets through continues from the defending card to Power.
+        if (damage) await strike(guard, target, 300);
+      }
+      if (!valid()) return;
+      const color = damage ? '#ffb3a5' : colors.water;
+      const result = marker(target.rect, `wd-motion-result ${damage ? 'is-damage' : 'is-blocked'}`, '', color);
+      const value = document.createElement('strong');
+      value.textContent = damage ? `−${damage}` : String(blocked);
+      const label = document.createElement('span');
+      label.textContent = damage ? 'Damage' : 'Blocked';
+      const detail = document.createElement('small');
+      detail.textContent = !damage ? 'No Power lost' : step.bypass ? 'Defense bypassed'
+        : blocked ? `${damage + blocked} attack · ${blocked} blocked` : step.label;
+      result.append(value, label, detail);
+      const width = Math.min(176, window.innerWidth - 16);
+      Object.assign(result.style, {
+        width: `${width}px`,
+        left: `${Math.max(8, Math.min(window.innerWidth - width - 8, target.rect.x + target.rect.width / 2 - width / 2))}px`,
+        top: `${Math.max(8, Math.min(window.innerHeight - 108, target.rect.y < window.innerHeight / 2 ? target.rect.bottom + 8 : target.rect.top - 100))}px`,
+      });
+      work.push(animate(result, linger, combatDuration).then(() => result.remove()));
+      work.push(pulse(target, color, combatDuration));
+      await Promise.all(work);
     }
     async function play(step: MotionStep) {
       if (!valid()) return;
@@ -171,14 +236,16 @@ export function useTrainingMotion(game: GameState, root: RefObject<HTMLDivElemen
       }
       const source = find(step.source);
       const target = find(step.target) ?? source;
-      const color = step.kind === 'combat' || (step.kind === 'power' && (step.amount ?? 0) < 0) ? '#ffb3a5'
-        : step.kind === 'power' ? '#a9e7bd' : colors[step.element];
+      if (!target) return;
+      if (step.kind === 'combat' || (step.kind === 'power' && (step.amount ?? 0) < 0)) {
+        await combat(step, source, target);
+        return;
+      }
+      const color = step.kind === 'power' ? '#a9e7bd' : colors[step.element];
       await pulse(source, colors[step.element], 100);
-      if (!valid() || !target) return;
+      if (!valid()) return;
       const work: Promise<void>[] = [];
-      if (step.kind === 'combat' && step.blocked) step.defenders?.forEach(id => work.push(pulse(find(id), colors.water)));
-      const text = step.kind === 'combat' ? `${step.blocked ? `⛨ ${step.blocked} blocked${step.amount ? '  ' : ''}` : ''}${step.amount ? `−${step.amount}` : ''}${step.bypass ? ' · Pierce' : ''}`
-        : step.kind === 'power' ? `${(step.amount ?? 0) > 0 ? '+' : '−'}${Math.abs(step.amount ?? 0)} Power` : step.label;
+      const text = step.kind === 'power' ? `+${step.amount ?? 0} Power` : step.label;
       const node = marker(target.rect, `wd-motion-${step.kind} wd-motion-${step.element}`, text, color);
       if (!reduced && source && source !== target) {
         const trail = document.createElement('div');
