@@ -75,7 +75,7 @@ export function trainingSessionReducer(session: TrainingSession, event: Training
   if (event.type !== 'play') return session;
   const validation = validateTrainingAction(session, event.action);
   if (!validation.isValid) return { ...session, feedback: validation.reason || 'That action is not available.', rejected: true };
-  const game = gameReducer(session.game, event.action);
+  const game = gameReducer({ ...session.game, presentationCues: [] }, event.action);
   if (!game || game === session.game) return session;
   const human = event.action.payload.playerId === HUMAN_ID;
   let guide = session.guide;

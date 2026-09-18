@@ -1,3 +1,4 @@
+import { cardAnchor } from '../../game/presentation.js';
 import { RotateCw } from 'lucide-react';
 import { getEffectiveCreatureWisdom } from '../../game/utils.js';
 import { HUMAN_ID, validateTrainingAction, type TrainingAction, type TrainingSession } from '../../game/trainingSession.js';
@@ -7,7 +8,7 @@ import TrainingCard, { type DisplayCard } from './TrainingCard.js';
 function KnowledgeSlot({ card, inspect, direct }: { card: Knowledge | null; inspect: (card: DisplayCard) => void; direct: boolean }) {
   if (direct && !card) return null;
   return <div className="wd-knowledge-slot">
-    {card ? <TrainingCard card={card} board playFace={direct} onInspect={inspect} /> : <div className="wd-empty-slot"><span>Knowledge</span></div>}
+    {card ? <TrainingCard motionAnchor={cardAnchor('', card)} card={card} board playFace={direct} onInspect={inspect} /> : <div className="wd-empty-slot"><span>Knowledge</span></div>}
   </div>;
 }
 
@@ -27,17 +28,17 @@ export default function TrainingBoard({ session, onAction, onInspect, direct = f
       const highlighted = valid.isValid && (Boolean(selected) || (session.guide === 'rotate' && creature.id === 'tarasca'));
       const actionLabel = selected ? `Play ${selected.name} on ${creature.name}${ours ? `, replacing ${ours.name}` : ''}` : `Rotate ${creature.name}`;
       return <div key={creature.id} className={`wd-lane ${highlighted ? 'is-target' : ''}`}>
-        <div className="wd-card-pair wd-enemy-pair">
+        <div className="wd-card-pair wd-enemy-pair" data-motion-anchor={`slot:${opponent.id}:${enemy?.id}`}>
         <div className="wd-creature-slot wd-enemy-creature">
-          {enemy && <TrainingCard card={creatureView(enemy, 1)} rotation={enemy.rotation ?? 0} board playFace={direct} onInspect={onInspect} />}
+          {enemy && <TrainingCard motionAnchor={cardAnchor(opponent.id, enemy)} card={creatureView(enemy, 1)} rotation={enemy.rotation ?? 0} board playFace={direct} onInspect={onInspect} />}
           {!direct && <div className="wd-creature-label"><span className="wd-creature-name">{enemy?.name}</span><span className="wd-card-stat" aria-label={`Wisdom ${enemy ? getEffectiveCreatureWisdom(game, 1, enemy.id) : 0}`}>W {enemy ? getEffectiveCreatureWisdom(game, 1, enemy.id) : 0}</span></div>}
         </div>
         <KnowledgeSlot card={theirs} inspect={onInspect} direct={direct} />
         </div>
-        <div className="wd-card-pair wd-player-pair">
+        <div className={`wd-card-pair wd-player-pair ${highlighted ? 'is-target' : ''}`} data-motion-anchor={`slot:${player.id}:${creature.id}`}>
         <KnowledgeSlot card={ours} inspect={onInspect} direct={direct} />
         <div className="wd-creature-slot">
-          <TrainingCard card={creatureView(creature, 0)} rotation={creature.rotation ?? 0} board playFace={direct} onInspect={onInspect}
+          <TrainingCard motionAnchor={cardAnchor(player.id, creature)} card={creatureView(creature, 0)} rotation={creature.rotation ?? 0} board playFace={direct} onInspect={onInspect}
             action={direct ? { label: actionLabel, onActivate: () => onAction(action), valid: valid.isValid, reason: valid.reason, highlighted, guideTarget: creature.id === 'tarasca' ? 'creature' : undefined, replacement: selected && ours ? ours.name : undefined } : undefined} />
           {!direct && <div className="wd-creature-label"><span className="wd-creature-name">{creature.name}</span><span className="wd-card-stat" aria-label={`Wisdom ${getEffectiveCreatureWisdom(game, 0, creature.id)}`}>W {getEffectiveCreatureWisdom(game, 0, creature.id)}</span></div>}
         </div>

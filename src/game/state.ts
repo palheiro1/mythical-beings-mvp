@@ -1,3 +1,4 @@
+import { capturePower, recordPowerChanges } from './presentation.js';
 import { GameState, GameAction, PlayerState, Knowledge, Creature, SummonKnowledgePayload, PendingEffectChoice } from './types.js';
 import { isValidAction, executeKnowledgePhase, checkWinConditions } from './rules.js';
 import { rotateCreature, drawKnowledge, summonKnowledge } from './actions.js';
@@ -399,6 +400,7 @@ function applySummonEffect(state: GameState, playerId: string, knowledge: Knowle
   if (playerIndex !== 0 && playerIndex !== 1) return state;
   const opponentIndex = playerIndex === 0 ? 1 : 0;
   let newState = state;
+  const powerBefore = capturePower(state);
 
   if (knowledge.id === 'aerial1') {
     const player = newState.players[playerIndex];
@@ -440,6 +442,7 @@ function applySummonEffect(state: GameState, playerId: string, knowledge: Knowle
     }
   }
 
+  recordPowerChanges(newState, powerBefore, playerId, knowledge);
   return newState;
 }
 

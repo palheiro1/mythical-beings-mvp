@@ -115,6 +115,8 @@ export interface PendingEffectResolution {
 
 // Overall Game State
 export interface GameState {
+  /** Opt-in, per-action cues for local practice; absent from authoritative games. */
+  presentationCues?: import('./presentation.js').PresentationCue[];
   gameId: string; // Unique ID for the game session
   players: [PlayerState, PlayerState];
   market: Knowledge[]; // 5 face-up knowledge cards

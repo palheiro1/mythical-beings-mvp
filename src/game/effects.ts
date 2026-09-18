@@ -1,3 +1,4 @@
+import { cardAnchor, recordCue, type PresentationCue } from './presentation.js';
 // Removed unused imports: KnowledgeType, CreatureElement
 import { GameState, Knowledge, KnowledgeEffectTrigger } from './types.js';
 import { applyPassiveAbilities } from './passives.js'; // Import applyPassiveAbilities
@@ -13,7 +14,7 @@ export function calculateDamage(
   sourcePlayerIndex: number,
   sourceKnowledge: Knowledge,
   sourceFieldSlotIndex: number
-): { finalDamage: number; logs: string[] } {
+): { finalDamage: number; logs: string[]; cue?: PresentationCue } {
   const logs: string[] = [];
   if (damageAmount <= 0) {
     return { finalDamage: 0, logs };
@@ -78,7 +79,18 @@ export function calculateDamage(
     logs.push(`[Effect] ${sourceKnowledge.name} deals 0 damage to ${targetPlayer.id} (Base: ${damageAmount}, Defense: ${defense}).`);
   }
 
-  return { finalDamage, logs };
+  return { finalDamage, logs, cue: {
+    kind: 'combat', source: cardAnchor(sourcePlayer.id, sourceKnowledge), target: `power:${targetPlayer.id}`,
+    label: sourceKnowledge.name, element: sourceKnowledge.element, amount: finalDamage,
+    blocked: bypassDefense ? 0 : Math.min(damageAmount, defense), bypass: bypassDefense,
+    defenders: targetPlayer.field.flatMap((slot, index) => {
+      const card = slot.knowledge;
+      if (!card) return [];
+      const step = Math.floor(((card.rotation ?? 0) % 360) / 90);
+      return (card.valueCycle?.[step] ?? 0) < 0 || (card.id === 'aquatic2' && !sourcePlayer.field[index]?.knowledge)
+        ? [cardAnchor(targetPlayer.id, card)] : [];
+    }),
+  } };
 }
 
 // Effect function signature
@@ -123,7 +135,8 @@ export const knowledgeEffects: Record<string, KnowledgeEffectFn> = {
 
     if (totalDamage > 0) {
       // Pass the cloned state (newState) to calculateDamage (it's read-only)
-      const { finalDamage, logs } = calculateDamage(newState, opponentIndex, totalDamage, playerIndex, knowledge, fieldSlotIndex);
+      const { finalDamage, logs, cue } = calculateDamage(newState, opponentIndex, totalDamage, playerIndex, knowledge, fieldSlotIndex);
+      recordCue(newState, cue);
       newState.log.push(...logs);
       // Apply damage to the cloned state
       if (finalDamage > 0 && newState.players[opponentIndex]) {
@@ -174,7 +187,8 @@ export const knowledgeEffects: Record<string, KnowledgeEffectFn> = {
     const baseDamage = baseValue > 0 ? baseValue : 0;
 
     if (baseDamage > 0) {
-      const { finalDamage, logs } = calculateDamage(newState, opponentIndex, baseDamage, playerIndex, knowledge, fieldSlotIndex);
+      const { finalDamage, logs, cue } = calculateDamage(newState, opponentIndex, baseDamage, playerIndex, knowledge, fieldSlotIndex);
+      recordCue(newState, cue);
       newState.log.push(...logs); // Add damage calculation logs immediately
       if (finalDamage > 0 && newState.players[opponentIndex]) {
         newState.players[opponentIndex].power -= finalDamage;
@@ -209,7 +223,8 @@ export const knowledgeEffects: Record<string, KnowledgeEffectFn> = {
     const wisdom = creatureId ? getEffectiveCreatureWisdom(newState, playerIndex, creatureId) : 0;
 
     if (wisdom > 0) {
-      const { finalDamage, logs } = calculateDamage(newState, opponentIndex, wisdom, playerIndex, knowledge, fieldSlotIndex);
+      const { finalDamage, logs, cue } = calculateDamage(newState, opponentIndex, wisdom, playerIndex, knowledge, fieldSlotIndex);
+      recordCue(newState, cue);
       newState.log.push(...logs);
       if (finalDamage > 0 && newState.players[opponentIndex]) {
         newState.players[opponentIndex].power -= finalDamage;
@@ -297,7 +312,8 @@ export const knowledgeEffects: Record<string, KnowledgeEffectFn> = {
     const baseDamage = baseValue > 0 ? baseValue : 0;
 
     if (baseDamage > 0) {
-      const { finalDamage, logs } = calculateDamage(newState, opponentIndex, baseDamage, playerIndex, knowledge, fieldSlotIndex);
+      const { finalDamage, logs, cue } = calculateDamage(newState, opponentIndex, baseDamage, playerIndex, knowledge, fieldSlotIndex);
+      recordCue(newState, cue);
       newState.log.push(...logs); // Add damage calculation logs immediately
       if (finalDamage > 0 && newState.players[opponentIndex]) {
         newState.players[opponentIndex].power -= finalDamage;
@@ -391,7 +407,8 @@ export const knowledgeEffects: Record<string, KnowledgeEffectFn> = {
     const baseDamage = baseValue > 0 ? baseValue : 0; // Only apply damage if value is positive
 
     if (baseDamage > 0) {
-      const { finalDamage, logs } = calculateDamage(newState, opponentIndex, baseDamage, playerIndex, knowledge, fieldSlotIndex);
+      const { finalDamage, logs, cue } = calculateDamage(newState, opponentIndex, baseDamage, playerIndex, knowledge, fieldSlotIndex);
+      recordCue(newState, cue);
       newState.log.push(...logs); // Add damage calculation logs immediately
       if (finalDamage > 0 && newState.players[opponentIndex]) {
         newState.players[opponentIndex].power -= finalDamage;
@@ -459,7 +476,8 @@ export const knowledgeEffects: Record<string, KnowledgeEffectFn> = {
 
     if (baseValue > 0) { // Positive value = Damage
       const baseDamage = baseValue;
-      const { finalDamage, logs } = calculateDamage(newState, opponentIndex, baseDamage, playerIndex, knowledge, fieldSlotIndex);
+      const { finalDamage, logs, cue } = calculateDamage(newState, opponentIndex, baseDamage, playerIndex, knowledge, fieldSlotIndex);
+      recordCue(newState, cue);
       newState.log.push(...logs); // Add damage calculation logs immediately
       if (finalDamage > 0 && newState.players[opponentIndex]) {
         newState.players[opponentIndex].power -= finalDamage;
@@ -498,7 +516,8 @@ export const knowledgeEffects: Record<string, KnowledgeEffectFn> = {
 
     if (baseValue > 0) { // Positive value = Damage
       const baseDamage = baseValue;
-      const { finalDamage, logs } = calculateDamage(newState, opponentIndex, baseDamage, playerIndex, knowledge, fieldSlotIndex);
+      const { finalDamage, logs, cue } = calculateDamage(newState, opponentIndex, baseDamage, playerIndex, knowledge, fieldSlotIndex);
+      recordCue(newState, cue);
       newState.log.push(...logs); // Add damage calculation logs immediately
       if (finalDamage > 0 && newState.players[opponentIndex]) {
         newState.players[opponentIndex].power -= finalDamage;
@@ -553,7 +572,8 @@ export const knowledgeEffects: Record<string, KnowledgeEffectFn> = {
     const baseDamage = baseValue > 0 ? baseValue : 0;
 
     if (baseDamage > 0) {
-      const { finalDamage, logs } = calculateDamage(newState, opponentIndex, baseDamage, playerIndex, knowledge, fieldSlotIndex);
+      const { finalDamage, logs, cue } = calculateDamage(newState, opponentIndex, baseDamage, playerIndex, knowledge, fieldSlotIndex);
+      recordCue(newState, cue);
       newState.log.push(...logs); // Add damage calculation logs immediately
       if (finalDamage > 0 && newState.players[opponentIndex]) {
         newState.players[opponentIndex].power -= finalDamage;
@@ -610,7 +630,8 @@ export const knowledgeEffects: Record<string, KnowledgeEffectFn> = {
     const baseDamage = baseValue > 0 ? baseValue : 0;
 
     if (baseDamage > 0) {
-      const { finalDamage, logs } = calculateDamage(newState, opponentIndex, baseDamage, playerIndex, knowledge, fieldSlotIndex);
+      const { finalDamage, logs, cue } = calculateDamage(newState, opponentIndex, baseDamage, playerIndex, knowledge, fieldSlotIndex);
+      recordCue(newState, cue);
       newState.log.push(...logs); // Add damage calculation logs immediately
       if (finalDamage > 0 && newState.players[opponentIndex]) {
         newState.players[opponentIndex].power -= finalDamage;
@@ -653,7 +674,8 @@ export const knowledgeEffects: Record<string, KnowledgeEffectFn> = {
     // Apply damage to opponent first
     let finalDamageDealt = 0;
     if (baseDamage > 0) {
-      const { finalDamage, logs } = calculateDamage(newState, opponentIndex, baseDamage, playerIndex, knowledge, fieldSlotIndex);
+      const { finalDamage, logs, cue } = calculateDamage(newState, opponentIndex, baseDamage, playerIndex, knowledge, fieldSlotIndex);
+      recordCue(newState, cue);
       newState.log.push(...logs); // Add damage calculation logs immediately
       if (finalDamage > 0 && newState.players[opponentIndex]) {
         newState.players[opponentIndex].power -= finalDamage;
