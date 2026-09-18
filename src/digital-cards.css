@@ -22,7 +22,7 @@
 .dc-value strong { font-weight:800;line-height:1;font-variant-numeric:tabular-nums;letter-spacing:-.035em; }
 .dc-value>span { display:none; }
 .dc-element { display:grid;place-items:center;color:#12353b;background:var(--dc-accent);clip-path:polygon(50% 0,100% 27%,100% 73%,50% 100%,0 73%,0 27%);z-index:3; }
-.dc-element svg { width:11px;height:11px;stroke-width:2.2; }
+.dc-element :is(svg,img) { width:11px;height:11px;stroke-width:2.2; }
 .dc-art-window { position:relative;display:block;overflow:hidden;background:var(--dc-art);min-height:0;border-top:1px solid var(--dc-accent);border-bottom:1px solid var(--dc-header); }
 /* Give each original illustration a square viewport, independent of card size. */
 .dc-art-window .dc-art-source { position:absolute;max-width:none;max-height:none;width:139.1239%;height:auto;left:-19.9396%;top:50%;transform:translateY(-51.4%);mix-blend-mode:normal;filter:none; }
@@ -43,7 +43,8 @@
 .dc-detail.dc-long-name .dc-name { font-size:clamp(15px,6.3cqw,23px);letter-spacing:.015em; }
 .dc-detail .dc-type { display:block;margin-top:5px;font-size:clamp(8px,3cqw,11px);line-height:1.2;font-weight:650;letter-spacing:.07em; }
 .dc-detail .dc-element { position:static;width:8.5cqw;height:10.5cqw;flex-shrink:0; }
-.dc-detail .dc-element svg { width:5cqw;height:5cqw; }
+.dc-detail .dc-element:has(img) { background:var(--dc-bottom); }
+.dc-detail .dc-element :is(svg,img) { width:5cqw;height:5cqw; }
 .dc-detail .dc-value { left:2.5cqw;top:1.5cqw;width:15cqw;min-width:0;height:19cqw;padding:1cqw 0;border:0;border-radius:0;clip-path:polygon(50% 0,100% 14%,100% 80%,50% 100%,0 80%,0 14%); }
 .dc-detail .dc-value strong { font-size:10cqw; }
 .dc-detail .dc-value>span { display:block;font-size:clamp(7px,2.75cqw,10px);font-weight:750;letter-spacing:.03em;line-height:1.6; }
