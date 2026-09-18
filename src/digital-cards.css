@@ -25,7 +25,7 @@
 .dc-element svg { width:11px;height:11px;stroke-width:2.2; }
 .dc-art-window { position:relative;display:block;overflow:hidden;background:var(--dc-art);min-height:0;border-top:1px solid var(--dc-accent);border-bottom:1px solid var(--dc-header); }
 /* Give each original illustration a square viewport, independent of card size. */
-.dc-art-window .dc-art-source { position:absolute;max-width:none;max-height:none;width:139.1239%;height:auto;left:-19.9396%;top:50%;transform:translateY(-51.4%);mix-blend-mode:multiply;filter:saturate(1.14) contrast(1.025); }
+.dc-art-window .dc-art-source { position:absolute;max-width:none;max-height:none;width:139.1239%;height:auto;left:-19.9396%;top:50%;transform:translateY(-51.4%);mix-blend-mode:normal;filter:none; }
 .dc-art-knowledge .dc-art-source { width:140%;left:-20.2%;transform:translateY(-47.6%);clip-path:polygon(21% 26%,80% 26%,80% 67.6%,57% 67.6%,57% 64.4%,43.7% 64.4%,43.7% 67.6%,21% 67.6%); }
 .dc-art-scene .dc-art-source { clip-path:polygon(21% 26%,80% 26%,80% 64.3%,21% 64.3%); }
 .dc-art-lafaic .dc-art-source { width:110%;left:-5%;transform:translateY(-35%); }

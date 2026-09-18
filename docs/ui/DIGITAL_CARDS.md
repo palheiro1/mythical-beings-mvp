@@ -32,9 +32,20 @@ placeholder. Its original artwork was recovered from the official Mythical Being
 collection, confirmed against `monsters.json` in the wallet repository:
 <https://media.mythicalbeings.io/sm/mythical15.jpg>.
 
-The source was only resized and encoded as WebP (720 px and 360 px). The UI clips
-its printed title/lore; the illustration was not regenerated. All other source
-image files remain unchanged.
+The Lafaic source was only resized and encoded as WebP (720 px and 360 px). The UI
+clips its printed title/lore; the illustration was not regenerated.
+
+The other 29 illustrations originate in CMYK JPEGs with a Coated FOGRA39 print
+profile. Their WebP derivatives are converted through that profile to sRGB,
+then resized and encoded with an embedded sRGB profile. The originals are
+preserved in Git at `d143d3b6e08128ba89e1b01c9f0402bbf3956edb`.
+`python3 scripts/prepare-card-colours.py` rebuilds both responsive sizes using
+Pillow with ImageCms/LittleCMS and records conversion checks under `artifacts/`.
+No print JPEGs or print profiles are added to the public build.
+
+Artwork uses normal compositing and no saturation or contrast filters. Element
+colours belong to the frame and panels. `cardAssets.ts` versions both image
+candidates so returning players receive corrected colours despite cached images.
 
 ## Verification
 
