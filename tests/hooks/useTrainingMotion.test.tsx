@@ -7,10 +7,11 @@ import type { GameState } from '../../src/game/types.js';
 
 const calls: { node: HTMLElement; frames: Keyframe[]; cancel: ReturnType<typeof vi.fn> }[] = [];
 let reduced = false;
+const sound = { play: vi.fn(), stopEffects: vi.fn() };
 function Board({ game, handHidden = false }: { game: GameState; handHidden?: boolean }) {
   const root = useRef<HTMLDivElement>(null);
   const layer = useRef<HTMLDivElement>(null);
-  const { announcement, presenting } = useTrainingMotion(game, root, layer, 'stable', false);
+  const { announcement, presenting } = useTrainingMotion(game, root, layer, 'stable', false, sound);
   return <div ref={root} data-testid="board" data-presenting={presenting}>
     <div ref={layer} data-testid="layer" aria-hidden="true" inert />
     <p role="status">{announcement}</p>
@@ -45,6 +46,7 @@ function hit(damage: number, blocked = 0) {
 }
 beforeEach(() => {
   calls.length = 0; reduced = false;
+  sound.play.mockClear(); sound.stopEffects.mockClear();
   vi.useFakeTimers();
   vi.stubGlobal('matchMedia', () => ({ get matches() { return reduced; }, addEventListener: vi.fn(), removeEventListener: vi.fn() }));
   vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function(this: HTMLElement) {
@@ -64,6 +66,53 @@ beforeEach(() => {
 afterEach(() => { delete (HTMLElement.prototype as Partial<HTMLElement>).animate; vi.restoreAllMocks(); vi.unstubAllGlobals(); vi.useRealTimers(); });
 
 describe('training animation lifecycle', () => {
+  it('plays a partial block before damage, at the matching visible impacts', async () => {
+    const { before, after } = hit(2, 3);
+    const view = render(<StrictMode><Board game={before} /></StrictMode>);
+    expect(sound.play).not.toHaveBeenCalled();
+    await act(async () => view.rerender(<StrictMode><Board game={after} /></StrictMode>));
+    expect(sound.play.mock.calls.map(([cue]) => cue.kind)).toEqual(['attack']);
+    await act(async () => vi.advanceTimersByTimeAsync(660));
+    expect(sound.play.mock.calls.map(([cue]) => cue.kind)).toEqual(['attack', 'block']);
+    await act(async () => vi.advanceTimersByTimeAsync(300));
+    expect(sound.play.mock.calls.map(([cue]) => cue.kind)).toEqual(['attack', 'block', 'damage']);
+    await act(async () => vi.runAllTimersAsync());
+    view.rerender(<StrictMode><Board game={after} /></StrictMode>);
+    expect(sound.play).toHaveBeenCalledTimes(3);
+  });
+
+  it('never sounds damage for a full defense and cancels sound with the presentation', async () => {
+    const { before, after } = hit(0, 4);
+    const view = render(<Board game={before} />);
+    await act(async () => view.rerender(<Board game={after} />));
+    await act(async () => vi.runAllTimersAsync());
+    expect(sound.play.mock.calls.map(([cue]) => cue.kind)).toEqual(['attack', 'block']);
+    sound.stopEffects.mockClear();
+    act(() => window.dispatchEvent(new Event('resize')));
+    expect(sound.stopEffects).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps audio in reduced motion and cancels a future damage sound on navigation', async () => {
+    reduced = true;
+    const { before, after } = hit(2, 1);
+    const view = render(<Board game={before} />);
+    await act(async () => view.rerender(<Board game={after} />));
+    await act(async () => vi.runAllTimersAsync());
+    expect(sound.play.mock.calls.map(([cue]) => cue.kind)).toEqual(['attack', 'block', 'damage']);
+    expect(sound.play.mock.calls.at(-1)?.[0].delay).toBe(0.15);
+    sound.stopEffects.mockClear();
+    view.unmount();
+    expect(sound.stopEffects).toHaveBeenCalled();
+  });
+
+  it('retains semantic sound when browser animations are unavailable', async () => {
+    delete (HTMLElement.prototype as Partial<HTMLElement>).animate;
+    const { before, after } = hit(1, 2);
+    const view = render(<Board game={before} />);
+    await act(async () => view.rerender(<Board game={after} />));
+    expect(sound.play.mock.calls.map(([cue]) => cue.kind)).toEqual(['block', 'damage']);
+  });
+
   it('captures a removed source and flies to a hidden hand tab, then removes all copies', async () => {
     const { before, after } = deal();
     const view = render(<StrictMode><Board game={before} handHidden /></StrictMode>);

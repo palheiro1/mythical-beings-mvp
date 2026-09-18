@@ -1,6 +1,8 @@
 import { useCallback, useLayoutEffect, useRef, useState, type RefObject } from 'react';
 import type { GameState } from '../game/types.js';
 import { describeMotion, trainingMotion, type MotionStep } from '../utils/trainingMotion.js';
+import { motionSounds } from '../audio/motionSound.js';
+import type { SoundPresentation } from '../audio/trainingAudio.js';
 
 type Anchor = { rect: DOMRect; face?: HTMLElement; element: HTMLElement };
 type Snapshot = Map<string, Anchor>;
@@ -28,7 +30,9 @@ function snapshot(root: HTMLElement | null): Snapshot {
 }
 
 /** Presentation only: the authoritative local state and turn clock never wait for animation. */
-export function useTrainingMotion(game: GameState, root: RefObject<HTMLDivElement | null>, layer: RefObject<HTMLDivElement | null>, layoutKey: string, paused: boolean) {
+export function useTrainingMotion(game: GameState, root: RefObject<HTMLDivElement | null>, layer: RefObject<HTMLDivElement | null>, layoutKey: string, paused: boolean, sound?: SoundPresentation) {
+  const audio = useRef(sound);
+  audio.current = sound;
   const previous = useRef(game);
   const before = useRef<Snapshot>(new Map());
   const generation = useRef(0);
@@ -40,6 +44,7 @@ export function useTrainingMotion(game: GameState, root: RefObject<HTMLDivElemen
   const capture = useCallback(() => { before.current = snapshot(root.current); }, [root]);
   const cancel = useCallback(() => {
     generation.current++;
+    audio.current?.stopEffects();
     animations.current.forEach(animation => animation.cancel());
     animations.current.clear();
     layer.current?.replaceChildren();
@@ -77,7 +82,10 @@ export function useTrainingMotion(game: GameState, root: RefObject<HTMLDivElemen
     if (!steps.length || paused || document.hidden) return;
     setAnnouncement(steps.map(describeMotion).join('. '));
     const overlay = layer.current;
-    if (!overlay || typeof overlay.animate !== 'function') return;
+    if (!overlay || typeof overlay.animate !== 'function') {
+      steps.flatMap(motionSounds).forEach(cue => audio.current?.play(cue));
+      return;
+    }
     const token = generation.current;
     const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true;
     setPresenting(true);
@@ -146,6 +154,7 @@ export function useTrainingMotion(game: GameState, root: RefObject<HTMLDivElemen
       const blocked = step.kind === 'combat' ? step.blocked ?? 0 : 0;
       const defenders = blocked ? (step.defenders ?? []).map(find).filter((anchor): anchor is Anchor => !!anchor) : [];
       const guard = defenders[0] ?? target;
+      audio.current?.play({ kind: 'attack', element: step.element });
       await pulse(source, '#ffc38c', 200);
       await strike(source, blocked ? guard : target);
       if (!valid()) return;
@@ -155,6 +164,7 @@ export function useTrainingMotion(game: GameState, root: RefObject<HTMLDivElemen
           { opacity: 1, transform: 'scale(1)', offset: .24 }, { opacity: 1, transform: 'scale(1)', offset: .84 }, { opacity: 0, transform: 'scale(1)' }];
       const work: Promise<void>[] = [];
       if (blocked) {
+        audio.current?.play({ kind: 'block', amount: blocked });
         for (const defender of defenders.length ? defenders : [target]) {
           const shield = marker(defender.rect, 'wd-motion-guard', '', colors.water);
           const icon = document.createElement('span');
@@ -168,6 +178,7 @@ export function useTrainingMotion(game: GameState, root: RefObject<HTMLDivElemen
         if (damage) await strike(guard, target, 300);
       }
       if (!valid()) return;
+      if (damage) audio.current?.play({ kind: 'damage', amount: damage, delay: reduced && blocked ? 0.15 : 0 });
       const color = damage ? '#ffb3a5' : colors.water;
       const result = marker(target.rect, `wd-motion-result ${damage ? 'is-damage' : 'is-blocked'}`, '', color);
       const value = document.createElement('strong');
@@ -195,8 +206,10 @@ export function useTrainingMotion(game: GameState, root: RefObject<HTMLDivElemen
         held.delete(step.from.anchor);
         const from = old.get(step.from.anchor) ?? old.get(step.from.zone) ?? find(step.from.zone);
         const to = next.get(step.to.anchor) ?? next.get(step.to.zone);
-        if (!to) return;
-        if (reduced || !from) { await pulse(to, colors.neutral); return; }
+        const cue = motionSounds(step)[0];
+        if (!to) { audio.current?.play(cue); return; }
+        if (reduced || !from) { audio.current?.play(cue); await pulse(to, colors.neutral); return; }
+        if (cue.kind !== 'place') audio.current?.play(cue);
         const visual = from.face ?? to.face;
         const flight = copyFace({ ...from, face: visual });
         flight.className = `wd-motion-flight ${visual ? '' : 'wd-motion-card-back'}`;
@@ -216,10 +229,12 @@ export function useTrainingMotion(game: GameState, root: RefObject<HTMLDivElemen
           { transform: `translate(${dx}px,${dy}px) scale(${scale})`, opacity: to.face ? 1 : .15 },
         ])]);
         flight.remove();
+        if (valid() && cue.kind === 'place') audio.current?.play(cue);
         if (valid()) void pulse(to, colors[step.to.card.element]);
         return;
       }
       if (step.kind === 'rotate') {
+        audio.current?.play({ kind: 'rotate', element: step.to.card.element });
         const target = find(step.to.anchor);
         if (!target) return;
         const delta = (step.to.card.rotation ?? 0) - (step.from.card.rotation ?? 0);
@@ -236,7 +251,7 @@ export function useTrainingMotion(game: GameState, root: RefObject<HTMLDivElemen
       }
       const source = find(step.source);
       const target = find(step.target) ?? source;
-      if (!target) return;
+      if (!target) { motionSounds(step).forEach(cue => audio.current?.play(cue)); return; }
       if (step.kind === 'combat' || (step.kind === 'power' && (step.amount ?? 0) < 0)) {
         await combat(step, source, target);
         return;
@@ -244,6 +259,7 @@ export function useTrainingMotion(game: GameState, root: RefObject<HTMLDivElemen
       const color = step.kind === 'power' ? '#a9e7bd' : colors[step.element];
       await pulse(source, colors[step.element], 100);
       if (!valid()) return;
+      motionSounds(step).forEach(cue => audio.current?.play(cue));
       const work: Promise<void>[] = [];
       const text = step.kind === 'power' ? `+${step.amount ?? 0} Power` : step.label;
       const node = marker(target.rect, `wd-motion-${step.kind} wd-motion-${step.element}`, text, color);

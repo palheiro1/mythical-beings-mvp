@@ -10,6 +10,8 @@ import { useTurnTimer } from '../hooks/useTurnTimer.js';
 import { useTrainingBot } from '../hooks/useTrainingBot.js';
 import { usePortraitViewport } from '../hooks/usePortraitViewport.js';
 import { useTrainingMotion } from '../hooks/useTrainingMotion.js';
+import { useTrainingAudio } from '../hooks/useTrainingAudio.js';
+import TrainingSoundControls from '../components/training/TrainingSoundControls.js';
 import { useDirectCards } from '../hooks/useDirectCards.js';
 import CardDetailOverlay from '../components/CardDetailOverlay.js';
 import CardFaceByImage from '../components/CardFaceByImage.js';
@@ -23,6 +25,7 @@ import type { DisplayCard } from '../components/training/TrainingCard.js';
 import '../trainingLandscape.css';
 import '../trainingMotion.css';
 import '../trainingArena.css';
+import '../trainingAudio.css';
 
 function PracticeMatch({ team, mode, gameId, onReplay }: { team: string[]; mode: TrainingMode; gameId: string; onReplay: () => void }) {
   const navigate = useNavigate();
@@ -31,7 +34,7 @@ function PracticeMatch({ team, mode, gameId, onReplay }: { team: string[]; mode:
   const [tab, setTab] = useState<TrayTab>('market');
   const [inspection, setInspection] = useState<DisplayCard | null>(null);
   const closeInspection = useCallback(() => setInspection(null), []);
-  const [dialog, setDialog] = useState<'history' | 'resign' | 'discard' | null>(null);
+  const [dialog, setDialog] = useState<'history' | 'resign' | 'discard' | 'sound' | null>(null);
   const [resultDismissed, setResultDismissed] = useState(false);
   const portrait = usePortraitViewport();
   const directCards = useDirectCards();
@@ -39,11 +42,28 @@ function PracticeMatch({ team, mode, gameId, onReplay }: { team: string[]; mode:
   const orientationPaused = portrait && !allowPortrait;
   const containerRef = useRef<HTMLDivElement>(null);
   const motionLayerRef = useRef<HTMLDivElement>(null);
-  const { capture, announcement, presenting } = useTrainingMotion(game, containerRef, motionLayerRef, `${directCards}-${tab}`, orientationPaused);
+  const audio = useTrainingAudio(orientationPaused);
+  const { capture, announcement, presenting } = useTrainingMotion(game, containerRef, motionLayerRef, `${directCards}-${tab}`, orientationPaused, audio.presentation);
   const onAction = useCallback((action: TrainingAction) => { capture(); dispatch({ type: 'play', action }); }, [capture]);
   useTrainingBot(game, onAction, orientationPaused);
   const isMyTurn = game.currentPlayerIndex === 0 && game.phase === 'action';
   const gameOver = game.phase === 'gameOver';
+  const lastSoundTurn = useRef(game.turn);
+  const resultSoundPlayed = useRef(false);
+  useEffect(() => {
+    if (orientationPaused || presenting) return;
+    // Let presentation state settle before announcing a new turn/result.
+    const timer = window.setTimeout(() => {
+      if (gameOver && !resultSoundPlayed.current) {
+        resultSoundPlayed.current = true;
+        audio.presentation.play({ kind: game.winner === HUMAN_ID ? 'victory' : game.winner === BOT_ID ? 'defeat' : 'turn' });
+      } else if (isMyTurn && game.turn !== lastSoundTurn.current) {
+        lastSoundTurn.current = game.turn;
+        audio.presentation.play({ kind: 'turn' });
+      }
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [gameOver, game.winner, game.turn, isMyTurn, presenting, orientationPaused, audio.presentation]);
   const paused = guide !== 'free';
   const endTurn = useCallback(() => onAction({ type: 'END_TURN', payload: { playerId: HUMAN_ID } }), [onAction]);
   const remainingTime = useTurnTimer({ isMyTurn: isMyTurn && !game.pendingEffect && !paused, phase: game.phase === 'action' ? 'action' : null,
@@ -98,13 +118,13 @@ function PracticeMatch({ team, mode, gameId, onReplay }: { team: string[]; mode:
     <Link className="wd-button" to="/">Back to Home</Link>
     <button className="wd-text-button" onClick={() => setAllowPortrait(true)}>Can’t rotate? Continue in portrait</button>
   </div>;
-  return <div ref={containerRef} className={`wd wd-match wd-confluence ${paused && !gameOver ? 'has-guide' : ''} ${directCards ? 'wd-direct' : ''}`} data-active-side={gameOver ? undefined : isMyTurn ? 'player' : 'opponent'}>
+  return <div ref={containerRef} onPointerDownCapture={audio.unlock} onKeyDownCapture={audio.unlock} className={`wd wd-match wd-confluence ${paused && !gameOver ? 'has-guide' : ''} ${directCards ? 'wd-direct' : ''}`} data-active-side={gameOver ? undefined : isMyTurn ? 'player' : 'opponent'}>
     <h1 className="sr-only">Wisdom Duel — Solo practice</h1>
     <div ref={motionLayerRef} className="wd-motion-layer" aria-hidden="true" inert />
     <p className="sr-only" role="status" aria-live="polite" aria-atomic="true">{announcement}</p>
     <header className="wd-scorebar">
       <div className="wd-score"><span>You</span><strong data-motion-anchor={`power:${HUMAN_ID}`} aria-label={`Your Power: ${Math.max(0, player.power)}`}>{Math.max(0, player.power)}</strong><small>Power</small></div>
-      <div className="wd-turn"><span>Turn {game.turn}</span><strong>{gameOver ? 'Duel complete' : isMyTurn ? 'Your turn' : 'Bot’s turn'}</strong></div>
+      <div className="wd-turn-cluster"><div className="wd-turn"><span>Turn {game.turn}</span><strong>{gameOver ? 'Duel complete' : isMyTurn ? 'Your turn' : 'Bot’s turn'}</strong></div><TrainingSoundControls preferences={audio.preferences} update={audio.update} error={audio.error} play={audio.presentation.play} open={dialog === 'sound' && !pending && !inspection && (!gameOver || resultDismissed)} onOpen={() => setDialog('sound')} onClose={() => setDialog(null)} /></div>
       <div className="wd-score wd-score-bot"><small>Power</small><strong data-motion-anchor={`power:${BOT_ID}`} aria-label={`Bot Power: ${Math.max(0, bot.power)}`}>{Math.max(0, bot.power)}</strong><span data-motion-anchor={`hand:${BOT_ID}`}>Bot <small>{bot.hand.length} in hand</small></span></div>
     </header>
     {!gameOver && <TrainingCoach direct={directCards} resolvingEffect={!!game.pendingEffect} step={guide} onStart={() => dispatch({ type: 'start-guide' })} onSkip={() => dispatch({ type: 'skip-guide' })} onContinue={() => dispatch({ type: 'continue' })} />}
