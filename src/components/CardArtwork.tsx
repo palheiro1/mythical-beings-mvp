@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { cn } from './ui/cn.js';
-import { getResponsiveCardSrcSet } from '../utils/cardAssets.js';
+import { getCardArtworkSrc, getResponsiveCardSrcSet } from '../utils/cardAssets.js';
 
 interface CardArtworkProps {
   src: string;
@@ -44,7 +44,7 @@ const CardArtwork: React.FC<CardArtworkProps> = ({
 
   return (
     <img
-      src={src}
+      src={getCardArtworkSrc(src)}
       srcSet={responsiveSrcSet}
       sizes={responsiveSrcSet ? sizes : undefined}
       alt={alt}
