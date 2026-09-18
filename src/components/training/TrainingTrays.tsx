@@ -1,4 +1,5 @@
 import { cardAnchor } from '../../game/presentation.js';
+import { BookOpen, Library } from 'lucide-react';
 import { HUMAN_ID, validateTrainingAction, type TrainingAction, type TrainingSession } from '../../game/trainingSession.js';
 import TrainingCard, { type DisplayCard } from './TrainingCard.js';
 import type { Knowledge } from '../../game/types.js';
@@ -33,13 +34,13 @@ export default function TrainingTrays({ session, tab, setTab, onAction, onSelect
         event.preventDefault(); const next = event.key === 'Home' ? 'hand' : event.key === 'End' ? 'market' : value === 'hand' ? 'market' : 'hand';
         setTab(next); document.getElementById(`tab-${next}`)?.focus();
       }
-    }}>{value === 'hand' ? 'Hand' : 'Market'} <span>{value === 'hand' ? hand.length : game.market.length}</span></button>)}</div>
+    }}>{value === 'hand' ? <BookOpen size={15} aria-hidden="true" /> : <Library size={15} aria-hidden="true" />}{value === 'hand' ? 'Hand' : 'Market'} <span>{value === 'hand' ? hand.length : game.market.length}</span></button>)}</div>
     <section id="panel-hand" className={`wd-tray wd-hand ${tab === 'hand' ? 'is-active' : ''}`} aria-label="Your hand">
-      <header data-motion-anchor={`hand:${HUMAN_ID}`}><h2>Your hand <span>{hand.length}/5</span></h2><p>Choose a card, then a creature.</p></header>
+      <header data-motion-anchor={`hand:${HUMAN_ID}`}><h2><span className="wd-tray-title"><BookOpen size={17} aria-hidden="true" />Your hand</span><span>{hand.length}/5</span></h2><p>Choose a card, then a creature.</p></header>
       {hand.length ? <div className="wd-tray-cards">{hand.map(card => renderCard(card, false))}</div> : <div className="wd-empty-hand"><span>Knowledge starts here.</span><p>Draw a card from the market, then play it on a creature with enough wisdom.</p><button className="wd-text-button wd-mobile-only" onClick={() => setTab('market')}>Open market →</button></div>}
     </section>
     <section id="panel-market" className={`wd-tray wd-market ${tab === 'market' ? 'is-active' : ''}`} aria-label="Market">
-      <header data-motion-anchor="market"><h2>Market <span>{game.market.length}</span></h2><p data-motion-anchor="deck">{game.knowledgeDeck.length} in deck · Drawing uses one action</p></header>
+      <header data-motion-anchor="market"><h2><span className="wd-tray-title"><Library size={17} aria-hidden="true" />Market</span><span>{game.market.length}</span></h2><p data-motion-anchor="deck">{game.knowledgeDeck.length} in deck · Drawing uses one action</p></header>
       <div className="wd-tray-cards">{game.market.map(card => renderCard(card, true))}</div>
       {!game.market.length && <p className="wd-empty-hand">The market is empty. Play the cards in your hand.</p>}
     </section>

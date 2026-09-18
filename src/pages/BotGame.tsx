@@ -22,6 +22,7 @@ import TrainingDialog from '../components/training/TrainingDialog.js';
 import type { DisplayCard } from '../components/training/TrainingCard.js';
 import '../trainingLandscape.css';
 import '../trainingMotion.css';
+import '../trainingArena.css';
 
 function PracticeMatch({ team, mode, gameId, onReplay }: { team: string[]; mode: TrainingMode; gameId: string; onReplay: () => void }) {
   const navigate = useNavigate();
@@ -97,7 +98,7 @@ function PracticeMatch({ team, mode, gameId, onReplay }: { team: string[]; mode:
     <Link className="wd-button" to="/">Back to Home</Link>
     <button className="wd-text-button" onClick={() => setAllowPortrait(true)}>Can’t rotate? Continue in portrait</button>
   </div>;
-  return <div ref={containerRef} className={`wd wd-match ${paused && !gameOver ? 'has-guide' : ''} ${directCards ? 'wd-direct' : ''}`}>
+  return <div ref={containerRef} className={`wd wd-match wd-confluence ${paused && !gameOver ? 'has-guide' : ''} ${directCards ? 'wd-direct' : ''}`} data-active-side={gameOver ? undefined : isMyTurn ? 'player' : 'opponent'}>
     <h1 className="sr-only">Wisdom Duel — Solo practice</h1>
     <div ref={motionLayerRef} className="wd-motion-layer" aria-hidden="true" inert />
     <p className="sr-only" role="status" aria-live="polite" aria-atomic="true">{announcement}</p>
