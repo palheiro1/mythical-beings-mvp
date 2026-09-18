@@ -28,11 +28,11 @@ export default function DigitalCardFace({ card, rotation = card.rotation ?? 0, v
     data-element={card.element} data-card-id={card.id} data-rotation-step={view.step} data-final={view.final || undefined}>
     <span className="dc-face">
       <span className="dc-header">
-        <span className="dc-value" aria-label={`${view.knowledge ? 'Cost' : 'Wisdom'} ${view.value}`}>
+        {detail && <span className="dc-value" aria-label={`${view.knowledge ? 'Cost' : 'Wisdom'} ${view.value}`}>
           <strong>{view.value}</strong><span>{view.knowledge ? 'COST' : 'WISDOM'}</span>
-        </span>
+        </span>}
         <span className="dc-name-block"><span className="dc-name">{card.name}</span><span className="dc-type">{view.knowledge ? 'Knowledge' : 'Being'} · {card.element}</span></span>
-        <span className="dc-element" aria-label={card.element}><ElementIcon aria-hidden="true" /></span>
+        {(detail || view.knowledge) && <span className="dc-element" aria-label={card.element}><ElementIcon aria-hidden="true" /></span>}
       </span>
       <span className={`dc-art-window ${getCardArtClass(card)}`}>
         <CardArtwork src={card.image} alt={card.name} className="dc-art-source" loading={imageLoading} sizes={sizes ?? (detail ? '500px' : '(max-width: 767px) 180px, 300px')} />
@@ -54,11 +54,16 @@ export default function DigitalCardFace({ card, rotation = card.rotation ?? 0, v
             })}
           </span>
         </> : <>
-          <span className="dc-compact-stat" aria-label={view.knowledge ? view.current.label : `Wisdom ${view.value}`}>
-            {view.knowledge ? <><CurrentIcon aria-hidden="true" /><span>{view.current.kind === 'limit' ? '≤' : ''}{view.current.value}</span><span className="dc-stat-kind">{shortKinds[view.current.kind]}</span></> : <>W<span>{view.value}</span></>}
-            {view.final && <span className="dc-final-mark" aria-label="Final rotation">!</span>}
+          <span className="dc-summary">
+            <span className="dc-primary" aria-label={`${view.knowledge ? 'Cost' : 'Wisdom'} ${view.value}`}>
+              <strong>{view.value}</strong><span>{view.knowledge ? 'Cost' : 'Wisdom'}</span>
+            </span>
+            {view.knowledge ? <span className="dc-compact-stat" aria-label={view.current.label}>
+              <CurrentIcon aria-hidden="true" /><span>{view.current.kind === 'limit' ? '≤' : ''}{view.current.value}</span><span className="dc-stat-kind">{shortKinds[view.current.kind]}</span>
+              {view.final && <span className="dc-final-mark" aria-label="Final rotation">!</span>}
+            </span> : <span className="dc-element" aria-label={card.element}><ElementIcon aria-hidden="true" /></span>}
           </span>
-          <span className="dc-ticks" aria-label={`Rotation ${view.step * 90} degrees, step ${view.step + 1} of ${view.cycle.length}`}>
+          <span className="dc-ticks" aria-label={`Rotation ${view.step * 90} degrees, step ${view.step + 1} of ${view.cycle.length}${view.final ? ', final rotation' : ''}`}>
             {view.cycle.map((_, index) => <span key={index} className={index === view.step ? 'is-current' : ''} />)}
           </span>
         </>}
