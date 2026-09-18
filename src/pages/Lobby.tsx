@@ -1,3 +1,4 @@
+import CardFaceByImage from '../components/CardFaceByImage.js';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -96,7 +97,7 @@ const TrainingPreviewLobby: React.FC = () => {
           </div>
         </div>
         <div className="pointer-events-none absolute -bottom-24 right-[18%] hidden aspect-[921/1217] w-40 -rotate-[8deg] overflow-hidden rounded-xl border border-amber-200/15 opacity-45 shadow-2xl lg:block">
-          <img src="/images/beings/zhar-ptitsa.webp" srcSet="/images/beings/zhar-ptitsa-360.webp 360w, /images/beings/zhar-ptitsa.webp 720w" sizes="160px" alt="" width="720" height="951" loading="lazy" decoding="async" className="h-full w-full object-cover" />
+          <CardFaceByImage src="/images/beings/zhar-ptitsa.webp" alt="Zhar Ptitsa" className="h-full w-full" />
         </div>
 
         <div className="relative max-w-3xl">

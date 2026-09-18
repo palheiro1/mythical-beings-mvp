@@ -12,6 +12,7 @@ const forbiddenInitialJavaScriptMarkers = [
   'vendor-mythical-',
   'vendor-supabase-',
   'vendor-web3-',
+  'vendor-analytics-',
 ];
 
 export const findForbiddenInitialJavaScript = (paths) => paths.filter((path) => (

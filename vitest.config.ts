@@ -5,6 +5,13 @@ import { resolve } from 'path';
 
 export default defineConfig({
   plugins: [react()],
+  // Tests must never depend on developer or CI secrets. These non-routable
+  // placeholders only satisfy modules that validate the public SDK config at
+  // import time; network clients are mocked by the test setup.
+  define: {
+    'import.meta.env.VITE_SUPABASE_URL': JSON.stringify('https://test.invalid'),
+    'import.meta.env.VITE_SUPABASE_ANON_KEY': JSON.stringify('test-anon-key'),
+  },
   test: {
     globals: true,
     environment: 'jsdom',

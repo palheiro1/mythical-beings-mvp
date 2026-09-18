@@ -1,0 +1,10 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "22.22.2"
+
+# Route policy and response headers live in public/_redirects and
+# public/_headers so the exact same artifacts are exercised in preview and
+# production deploys.

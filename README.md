@@ -116,13 +116,15 @@ These examples illustrate how passives shape your plan: time rotations, line up 
 ## Play Locally
 
 Prerequisites
-- Node.js 20+
-- npm (or yarn)
+- Node.js 22.13+ or 24.x (the repository pins 22.22.2 in `.nvmrc`)
+- npm 10+
 
 Install & Run
 ```bash
-git clone https://github.com/YourUsername/CardGame.git
-cd CardGame/mythical-beings-mvp
+git clone https://github.com/palheiro1/mythical-beings-mvp.git
+cd mythical-beings-mvp
+nvm install
+nvm use
 npm install
 npm run dev
 ```
@@ -140,11 +142,26 @@ VITE_WISDOM_DUEL_ESCROW_ADDRESS=0x4DF3B86B9b1332779d8EAE7c276BcC1bDe2e19e9
 VITE_ENABLE_PVP=false
 ```
 
-Public builds default to the training-only preview. Keep `VITE_ENABLE_PVP=false`
-until multiplayer sessions, GEM stakes, rankings, and competitive rewards are
-ready to launch. Set it to `true` only for an intentional PvP release.
+Public builds default to the training-only preview. Keep both independent release
+gates disabled until multiplayer sessions, GEM stakes, rankings, and competitive
+rewards pass their launch gate:
+
+- frontend: `VITE_ENABLE_PVP=false`
+- Supabase Edge Functions: `WISDOM_DUEL_PVP_ENABLED=false`
+
+Enabling the frontend flag alone must never enable multiplayer. A deliberate PvP
+release requires both gates plus the server-authority and data-security gates in
+`docs/tech/AUTHORITATIVE_GAME_PROTOCOL.md`.
+The executable in-memory boundary and its remaining production limits are documented in
+`docs/tech/AUTHORITATIVE_EXECUTOR.md`.
 
 For competitive GEM matches, configure the matching Supabase Edge Function secrets listed in `.env.example`.
+
+Observability is disabled by default. Error telemetry and Core Web Vitals are only
+sent when both `VITE_OBSERVABILITY_ENABLED=true` and an HTTPS
+`VITE_OBSERVABILITY_ENDPOINT` are configured. Payloads are sanitized and never
+include game state, hands, deck, wallet, email, tokens, query strings, or session
+identifiers. See `docs/tech/OBSERVABILITY_AND_PRIVACY.md` before enabling it.
 
 Useful Commands
 ```bash
@@ -157,11 +174,14 @@ npm run build
 # Run tests
 npm test
 
-# Reset a test game (for development)
-node reset-game.js
+# Check TypeScript without creating build files
+npm run typecheck
 
-# Verify authentication implementation
-./apply-auth-profile-sync.sh
+# Check Supabase Edge Functions with the pinned Deno runtime
+npm run typecheck:edge
+
+# Run lint checks
+npm run lint
 ```
 
 ## Project Structure (Short)
@@ -183,7 +203,7 @@ Contributions are welcome! Open an issue or PR with a clear description, and inc
 
 ## License
 
-MIT — see LICENSE.
+No license has been declared in this repository yet. Confirm the intended license with the project owner before redistributing the code or assets.
 
 ## Acknowledgements
 

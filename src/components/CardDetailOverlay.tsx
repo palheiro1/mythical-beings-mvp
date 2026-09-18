@@ -2,9 +2,8 @@ import React, { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { Creature, Knowledge } from '../game/types.js';
-import { StatusBadge } from './ui/index.js';
-import { cn } from './ui/cn.js';
-import CardArtwork from './CardArtwork.js';
+import DigitalCardFace from './DigitalCardFace.js';
+import { getCardPresentation } from '../utils/digitalCards.js';
 
 interface CardDetailOverlayProps {
   card: Creature | Knowledge | null;
@@ -12,10 +11,6 @@ interface CardDetailOverlayProps {
   onClose: () => void;
   contextLabel?: string;
   showBack?: boolean;
-}
-
-function isKnowledge(card: Creature | Knowledge): card is Knowledge {
-  return 'cost' in card && 'effect' in card;
 }
 
 const CardDetailOverlay: React.FC<CardDetailOverlayProps> = ({ card, open, onClose, contextLabel, showBack = false }) => {
@@ -83,77 +78,34 @@ const CardDetailOverlay: React.FC<CardDetailOverlayProps> = ({ card, open, onClo
 
   if (!open || !card || typeof document === 'undefined') return null;
 
-  const imagePath = card.image;
-  const description = showBack
-    ? 'This card is hidden.'
-    : isKnowledge(card)
-      ? card.effect
-      : card.passiveAbility;
+  const presentation = getCardPresentation(card);
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[70] flex items-end justify-center bg-black/76 px-3 py-4 backdrop-blur-sm sm:items-center"
+      className="fixed inset-0 z-[70] flex items-center justify-center bg-black/80 px-3 py-4 backdrop-blur-sm"
       role="dialog"
       aria-modal="true"
       aria-labelledby="card-detail-title"
       aria-describedby="card-detail-description"
-      onMouseDown={(event) => {
-        if (event.target === event.currentTarget) onClose();
-      }}
+      onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}
     >
-      <div
-        ref={dialogRef}
-        tabIndex={-1}
-        className="surface-obsidian grid w-full max-w-3xl gap-4 rounded-xl border p-4 text-white shadow-[0_28px_90px_rgba(0,0,0,0.72)] sm:grid-cols-[minmax(180px,260px)_1fr] sm:p-5"
-        onMouseDown={(event) => event.stopPropagation()}
-      >
-        <div className="mx-auto aspect-[921/1217] w-full max-w-[220px] overflow-hidden rounded-xl border border-amber-200/40 bg-slate-950 shadow-[0_18px_44px_rgba(0,0,0,0.48)] sm:max-w-none">
-          {showBack ? (
-            <div className="card-back-face h-full w-full" aria-label="Hidden card">
-              <img src="/logos/logo-header-dark.webp" alt="" width="520" height="388" className="card-back-crest" draggable={false} />
-            </div>
-          ) : (
-            <CardArtwork src={imagePath} alt={card.name} className="h-full w-full object-cover" sizes="260px" />
-          )}
-        </div>
-
-        <div className="flex min-w-0 flex-col">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              {contextLabel && <p className="text-xs font-bold uppercase tracking-normal text-cyan-200">{contextLabel}</p>}
-              <h2 id="card-detail-title" className="mt-1 font-display text-3xl font-black text-slate-50">
-                {showBack ? 'Hidden card' : card.name}
-              </h2>
-            </div>
-            <button
-              ref={closeButtonRef}
-              type="button"
-              className="grid h-10 w-10 shrink-0 place-items-center rounded-lg border border-white/10 bg-white/[0.04] text-slate-200 transition hover:bg-white/[0.08] focus:outline-none focus:ring-2 focus:ring-amber-300/40"
-              onClick={onClose}
-              aria-label="Close card details"
-            >
-              <X className="h-5 w-5" aria-hidden />
-            </button>
+      <div ref={dialogRef} tabIndex={-1} className="surface-obsidian max-h-[calc(100dvh-2rem)] w-full max-w-[390px] overflow-y-auto rounded-xl border border-white/15 p-4 text-white shadow-2xl">
+        <div className="sticky top-0 z-10 mb-3 flex items-center justify-between gap-3 rounded-lg bg-[#09151e] p-1">
+          <div>
+            {contextLabel && <p className="text-xs text-cyan-200">{contextLabel}</p>}
+            <h2 id="card-detail-title" className="font-display text-xl font-bold">{showBack ? 'Hidden card' : card.name}</h2>
+            {!showBack && <span className="text-xs text-slate-300">{presentation.knowledge ? 'Cost' : 'Wisdom'} {presentation.value}</span>}
           </div>
-
-          {!showBack && (
-            <div className="mt-4 flex flex-wrap gap-2">
-              <StatusBadge tone={isKnowledge(card) ? 'blue' : 'amber'}>
-                {isKnowledge(card) ? card.type : 'Creature'}
-              </StatusBadge>
-              <StatusBadge tone="muted">{card.element}</StatusBadge>
-              {isKnowledge(card) ? (
-                <StatusBadge tone="violet">Cost {card.cost}</StatusBadge>
-              ) : (
-                <StatusBadge tone="violet">Wisdom {(card.wisdomCycle ?? [card.baseWisdom ?? 0]).join('/')}</StatusBadge>
-              )}
-            </div>
-          )}
-
-          <div id="card-detail-description" className={cn('mt-5 rounded-xl border border-white/10 bg-white/[0.04] p-4', showBack ? 'text-slate-400' : 'text-slate-200')}>
-            <p className="text-sm leading-6">{description}</p>
-          </div>
+          <button ref={closeButtonRef} type="button" className="grid h-11 w-11 shrink-0 place-items-center rounded-lg border border-white/15 text-slate-100 hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-cyan-200" onClick={onClose} aria-label="Close card details">
+            <X className="h-5 w-5" aria-hidden />
+          </button>
         </div>
+        {showBack ? <>
+          <div className="card-back-face aspect-[921/1217] w-full" aria-label="Hidden card">
+            <img src="/logos/logo-header-dark.webp" alt="" width="520" height="388" className="card-back-crest" draggable={false} />
+          </div>
+          <p id="card-detail-description" className="mt-3 text-sm text-slate-300">This card is hidden.</p>
+        </> : <DigitalCardFace card={card} variant="detail" descriptionId="card-detail-description" sizes="500px" />}
       </div>
     </div>,
     document.body,

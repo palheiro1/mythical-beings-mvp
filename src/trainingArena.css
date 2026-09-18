@@ -1,0 +1,149 @@
+/* The Confluence: a shared slate table, brass instruments and elemental seats.
+   Decorative layers are inert; the existing card faces remain the play controls. */
+.wd-confluence {
+  --wd-bg:#0c1b21;
+  --wd-panel:#14262a;
+  --wd-line:#86745370;
+  --wd-muted:#c0c4bd;
+  --wd-frame:#a68d5e;
+  padding:14px max(24px,calc((100vw - 1360px)/2)) 0;
+  background:#0b1920 url('/images/arena/confluence-table-v1.webp') center/100% 100% no-repeat;
+}
+.wd-confluence .wd-scorebar { height:64px; margin-bottom:12px; border:0; }
+.wd-confluence .wd-score { gap:9px; min-width:156px; padding:4px 12px; border:1px solid #a18e6266; border-radius:9px; background:linear-gradient(135deg,#263437ee,#0c1821ee); box-shadow:inset 0 0 0 2px #101c21,0 4px 12px #0005; }
+.wd-confluence .wd-score strong { display:grid; place-items:center; min-width:46px; height:46px; border:1px solid #c7a971; border-radius:50%; background:radial-gradient(circle at 40% 25%,#345258,#101c28 72%); box-shadow:inset 0 0 0 3px #12222a,inset 0 0 0 4px #ba9a624a; font-size:31px; }
+.wd-confluence .wd-score-bot { justify-content:flex-end; background:linear-gradient(225deg,#362e30ee,#161b22ee); }
+.wd-confluence .wd-score-bot strong { background:radial-gradient(circle at 40% 25%,#573b38,#211b26 72%); }
+.wd-confluence[data-active-side=player] .wd-score:not(.wd-score-bot),.wd-confluence[data-active-side=opponent] .wd-score-bot { border-color:#debd7c; box-shadow:inset 0 0 0 2px #101c21,0 0 15px #e9bb5d22; }
+.wd-confluence .wd-turn { position:relative; min-width:130px; padding:7px 20px; background:radial-gradient(ellipse,#0b1c26ed 40%,#0b1c2600 75%); }
+.wd-confluence .wd-turn::before,.wd-confluence .wd-turn::after { content:''; position:absolute; top:calc(50% - 4px); width:8px; height:8px; border:1px solid #c6a366; background:#243737; transform:rotate(45deg); }
+.wd-confluence .wd-turn::before { left:0; }.wd-confluence .wd-turn::after { right:0; }
+.wd-confluence .wd-turn>span { color:#dbc399; }.wd-confluence .wd-turn strong { color:#faf1d9; }
+.wd-confluence .wd-game-layout { align-items:stretch; }
+
+/* Three paired stations remain visually grouped across the two sides. */
+.wd-confluence .wd-board { border:1px solid #b49b6270; border-radius:14px; padding:7px 12px; background:radial-gradient(ellipse,#102d3430,#091b2470); box-shadow:inset 0 0 0 3px #10202980,inset 0 0 0 4px #a28b4433,0 7px 22px #040d1340; }
+.wd-confluence .wd-board-side { color:#e0ceb0; font-size:9px; letter-spacing:.11em; padding:3px 0; text-shadow:0 1px 3px #000; }
+.wd-confluence .wd-board-side::before,.wd-confluence .wd-board-side::after { content:''; display:inline-block; width:12%; height:1px; margin:0 8px 3px; background:linear-gradient(90deg,transparent,#b69b6c); }
+.wd-confluence .wd-board-side::after { transform:rotate(180deg); }
+.wd-confluence .wd-lanes { gap:12px; }
+.wd-confluence .wd-lane { grid-template-rows:auto auto 44px; gap:13px; padding:9px 2px 4px; }
+.wd-confluence .wd-lane.is-target { outline:0; background:none; }
+.wd-confluence .wd-card-pair { --seat-color:#c7b78a; position:relative; display:flex; flex-direction:column; align-items:center; gap:5px; padding:8px 3px; border:1px solid #9b865b; border-radius:9px; background:linear-gradient(145deg,#8294871c,transparent 60%),#0c2029b8; box-shadow:inset 0 0 0 2px #0b1b23,inset 0 0 0 3px #bca16d3b,0 4px 6px #04101866; }
+.wd-confluence .wd-card-pair[data-element=water] { --seat-color:#8ecfc9; }
+.wd-confluence .wd-card-pair[data-element=earth] { --seat-color:#b6c998; }
+.wd-confluence .wd-card-pair[data-element=air] { --seat-color:#bfb4dc; }
+.wd-confluence .wd-card-pair[data-element=fire] { --seat-color:#e2aa83; }
+.wd-confluence .wd-card-pair::before { content:''; position:absolute; pointer-events:none; inset:3px; border-radius:6px; background:linear-gradient(#cdb078b0,#cdb078b0) left top/12px 1px no-repeat,linear-gradient(#cdb078b0,#cdb078b0) left top/1px 12px no-repeat,linear-gradient(#cdb078b0,#cdb078b0) right bottom/12px 1px no-repeat,linear-gradient(#cdb078b0,#cdb078b0) right bottom/1px 12px no-repeat; }
+.wd-confluence .wd-card-pair::after { content:''; position:absolute; pointer-events:none; inset:15% 6%; border:1px solid #bcac712b; border-radius:50%; box-shadow:0 0 0 5px #baab7008; }
+.wd-confluence .wd-card-pair>.wd-creature-slot,.wd-confluence .wd-card-pair>.wd-knowledge-slot { position:relative; z-index:1; }
+.wd-seat-mark { position:absolute; z-index:2; top:-9px; left:calc(50% - 9px); display:grid; place-items:center; width:18px; height:18px; border:1px solid #bca16d; border-radius:3px; background:linear-gradient(135deg,#344447,#11242c); box-shadow:0 2px 4px #0007; color:var(--seat-color); transform:rotate(45deg); pointer-events:none; }
+.wd-seat-mark :is(svg,img) { transform:rotate(-45deg); width:12px; height:12px; }
+.wd-confluence .wd-enemy-pair { border-color:#9a8272; background:linear-gradient(155deg,#8e73651c,transparent 65%),#151e28b8; }
+.wd-confluence .wd-player-pair.is-target { border-color:#f6d38c; background:linear-gradient(145deg,#b39b522b,#153333c9); box-shadow:inset 0 0 0 2px #0c2028,inset 0 0 0 3px #e8c38388,0 0 14px #f4d18030; }
+.wd-confluence .wd-player-pair.is-target .wd-seat-mark { border-color:#ffe2a0; color:#fff0c9; background:#665534; }
+.wd-confluence .wd-empty-slot { display:flex; flex-direction:column; justify-content:center; gap:7px; border:1px solid #bcab7933; background:radial-gradient(ellipse,#93a3830b,transparent 75%); color:#b7bcab; box-shadow:inset 0 2px 8px #05121b66; }
+.wd-confluence .wd-empty-slot svg { color:#b7a67688; }
+.wd-confluence .wd-lane-action,.wd-confluence .wd-card-action { border-color:#97865d88; background:linear-gradient(#34413e,#192d33); box-shadow:inset 0 1px #d9c58e29,0 2px 3px #0004; }
+.wd-confluence .wd-lane-action[aria-disabled=true],.wd-confluence .wd-card-action[aria-disabled=true] { color:#a0aba9; background:#13272d; border-color:#75807840; }
+.wd-confluence .wd-lane-action.is-highlighted { background:linear-gradient(#66593a,#3b382c); color:#ffe8b9; }
+
+/* Hand and market are recessed folios on the same table. */
+.wd-confluence .wd-tray { position:relative; padding:11px 9px 9px; border:1px solid #a38b60; border-radius:10px; background:linear-gradient(160deg,#34413c35,transparent 45%),#0b1c24e8; box-shadow:inset 0 0 0 3px #0a1921,inset 0 0 0 4px #bca16d35,0 6px 14px #0004; }
+.wd-confluence .wd-hand { background:linear-gradient(155deg,#89724518,transparent 45%),#111f24ed; }
+.wd-confluence .wd-tray::before { content:''; position:absolute; inset:4px; border:1px solid #b8a16b35; border-radius:6px; pointer-events:none; }
+.wd-confluence .wd-tray header { min-height:53px; margin-bottom:8px; padding:0 3px 10px; border-bottom:1px solid #a68f5544; }
+.wd-confluence .wd-tray-title { display:flex; align-items:center; gap:8px; font:20px Georgia,serif; color:#eee1c5; }
+.wd-confluence .wd-tray-title svg { color:#c8ae74; flex-shrink:0; }
+.wd-confluence .wd-tray h2>span:last-child { border:1px solid #a38b6066; border-radius:4px; padding:2px 5px; background:#0b171ccc; color:#ddc89e; font-size:11px; }
+.wd-confluence .wd-tray-card { background:transparent; }
+.wd-confluence .wd-tray header p { color:#bdc8c5; }
+.wd-confluence .wd-empty-hand { border:1px solid #a18a5144; border-radius:6px; background:radial-gradient(ellipse at top,#655d3f13,transparent 75%); padding:18px 12px; color:#bbc6c1; }
+.wd-confluence .wd-empty-hand>span { color:#ddc69b; }
+.wd-confluence .wd-tray-tabs { border-color:#ad956b80; }
+.wd-confluence .wd-tray-tabs button { display:flex; align-items:center; justify-content:center; gap:7px; border:1px solid #ad956b55; border-bottom:2px solid transparent; border-radius:8px 8px 0 0; background:linear-gradient(#213637,#101f28); color:#c1c6ba; }
+.wd-confluence .wd-tray-tabs button[aria-selected=true] { color:#ffe4ac; border-bottom-color:#ebc783; background:linear-gradient(#4b4835,#1c2d2d); }
+.wd-confluence .wd-tray-tabs span { margin-left:2px; }
+
+.wd-confluence .wd-coach { border-color:#bca16d80; background:linear-gradient(110deg,#303c37f2,#122731f5); box-shadow:inset 0 0 0 2px #12242a88,0 3px 10px #0004; }
+.wd-confluence .wd-coach h2 { color:#f6e5be; }
+.wd-confluence .wd-actionbar { padding-inline:12px; border:1px solid #b49a6366; border-radius:9px; background:linear-gradient(#223332f2,#0c1b25f7); box-shadow:inset 0 1px #e2c58b33,0 -3px 12px #04131b44; }
+.wd-confluence .wd-action-buttons>.wd-button-primary,.wd-confluence .wd-coach .wd-button-primary { color:#251f17!important; border-color:#f3d59b; background:linear-gradient(#ecd49b,#caa66a); box-shadow:inset 0 0 0 2px #50391344,inset 0 2px #fff1ce,0 3px 7px #0005; text-shadow:0 1px #fff3cd55; }
+.wd-confluence .wd-icon-button,.wd-confluence .wd-discard-button { border-color:#a78e5f80; background:linear-gradient(#34423d,#142630); box-shadow:inset 0 1px #e0c88b22; }
+.wd-confluence .wd-action-context>p { color:#e4e9e1; }
+.wd-confluence .wd-match-links { color:#d0c9b7; text-shadow:0 1px 3px #061019; }
+
+.wd-confluence.wd-direct .wd-lane { grid-template-rows:auto auto; }
+.wd-confluence.wd-direct .wd-card-pair { flex-direction:row; padding:5px 1px; }
+@media (min-width:1051px) {
+  .wd-confluence:not(.wd-direct) .wd-card-pair { flex-direction:row; justify-content:center; align-items:start; gap:8px; padding:12px 7px 8px; }
+  .wd-confluence:not(.wd-direct) .wd-card-pair>.wd-creature-slot,.wd-confluence:not(.wd-direct) .wd-card-pair>.wd-knowledge-slot { flex:1 1 0; width:0; min-width:0; }
+  .wd-confluence:not(.wd-direct) .wd-creature-slot { order:-1; }
+  .wd-confluence:not(.wd-direct) .wd-card-board { width:100%; height:auto; max-width:112px; aspect-ratio:720/951; }
+  .wd-confluence:not(.wd-direct) .wd-card-board .wd-card-art { width:100%; height:100%; min-width:0; }
+  .wd-confluence:not(.wd-direct) .wd-knowledge-slot { height:auto; aspect-ratio:720/951; align-self:start; }
+  .wd-confluence:not(.wd-direct) .wd-empty-slot { width:100%; height:100%; }
+  .wd-confluence .wd-match-links { padding-bottom:18px; }
+}
+@media (min-width:1051px) and (min-height:601px) {
+  .wd-confluence { display:flex; flex-direction:column; height:calc(100dvh - 60px); min-height:0; padding-bottom:14px; }
+  .wd-confluence .wd-scorebar { flex:0 0 64px; }
+  .wd-confluence .wd-coach,.wd-confluence .wd-actionbar,.wd-confluence .wd-match-links { flex-shrink:0; }
+  .wd-confluence .wd-match-links { min-height:34px; padding-bottom:0; }
+  .wd-confluence .wd-game-layout { flex:1; min-height:0; }
+  .wd-confluence .wd-board { container-type:size; min-height:0; }
+  .wd-confluence .wd-lanes { height:calc(100% - 36px); }
+  .wd-confluence:not(.wd-direct) .wd-card-board,.wd-confluence:not(.wd-direct) .wd-empty-slot { width:min(100%,112px,max(44px,calc((100cqh - 194px)*.3785))); height:auto; aspect-ratio:720/951; }
+  .wd-confluence:not(.wd-direct) .wd-knowledge-slot { aspect-ratio:auto; }
+  .wd-confluence .wd-tray { display:flex; flex-direction:column; min-height:0; }
+  .wd-confluence .wd-tray header { flex-shrink:0; }
+  .wd-confluence .wd-tray-cards,.wd-confluence.has-guide .wd-tray-cards { flex:1; min-height:0; max-height:none; align-content:start; }
+  .wd-confluence .wd-empty-hand { overflow:auto; }
+}
+@media (min-width:1051px) and (min-height:601px) and (max-height:780px) {
+  .wd-confluence { padding-block:8px; }
+  .wd-confluence .wd-scorebar { flex-basis:48px; height:48px; margin-bottom:8px; }
+  .wd-confluence .wd-score { padding-block:1px; }
+  .wd-confluence .wd-score strong { height:38px; min-width:38px; font-size:28px; }
+  .wd-confluence .wd-match-links { min-height:28px; }
+}
+@media (max-width:1050px) {
+  .wd-confluence { padding-inline:16px; }
+  .wd-confluence .wd-tray-title { gap:5px; font-size:18px; }
+  .wd-confluence .wd-board { padding-inline:7px; }
+  .wd-confluence .wd-lanes { gap:8px; }
+}
+@media (max-width:767px) and (orientation:portrait) {
+  .wd-confluence { padding:0 10px; background-size:auto 100%; }
+  .wd-confluence .wd-score { min-width:0; padding:3px 5px; gap:5px; }
+  .wd-confluence .wd-score strong { min-width:36px; height:36px; font-size:27px; }
+  .wd-confluence .wd-turn { min-width:105px; padding-inline:12px; }
+  .wd-confluence .wd-tray { padding:7px; }
+  .wd-confluence .wd-board-side { font-size:8px; letter-spacing:.02em; }
+}
+@media (orientation:landscape) and (max-height:600px) {
+  .wd-confluence { padding:4px max(8px,env(safe-area-inset-right)) max(4px,env(safe-area-inset-bottom)) max(8px,env(safe-area-inset-left)); background-image:url('/images/arena/confluence-table-mobile-v1.webp'); }
+  .wd-confluence .wd-scorebar { height:auto; margin:0; }
+  .wd-confluence .wd-score { min-width:0; padding:0 6px; gap:5px; border-radius:5px; }
+  .wd-confluence .wd-score strong { height:29px; min-width:31px; font-size:24px; box-shadow:inset 0 0 0 2px #112129; }
+  .wd-confluence .wd-turn { min-width:0; padding:0 12px; gap:8px; }
+  .wd-confluence .wd-turn::before,.wd-confluence .wd-turn::after { width:5px; height:5px; top:calc(50% - 2px); }
+  .wd-confluence .wd-board { padding:0; border:0; border-radius:8px; background:#07192333; box-shadow:none; }
+  .wd-confluence .wd-board-side { padding:2px 0; font-size:8px; line-height:12px; letter-spacing:.02em; }
+  .wd-confluence .wd-board-side::before,.wd-confluence .wd-board-side::after { width:8%; margin-inline:5px; }
+  .wd-confluence .wd-lanes { gap:6px; }
+  .wd-confluence .wd-lane { padding:2px 1px; gap:7px; }
+  .wd-confluence.wd-direct .wd-card-pair { padding:2px 0; border-radius:6px; }
+  .wd-confluence .wd-card-pair::before { inset:2px; border-radius:4px; }
+  .wd-seat-mark { width:12px; height:12px; top:-5px; left:calc(50% - 6px); }
+  .wd-seat-mark svg { width:8px; height:8px; }
+  .wd-confluence .wd-tray { padding:2px; border-radius:0 0 6px 6px; }
+  .wd-confluence .wd-tray::before { inset:2px; }
+  .wd-confluence .wd-coach { box-shadow:inset 0 0 0 2px #10202955; }
+  .wd-confluence .wd-actionbar { padding:4px 4px 4px 76px; border-radius:6px; }
+}
+@media (orientation:landscape) and (max-height:340px) {
+  .wd-confluence .wd-turn { gap:4px; padding-inline:8px; }
+  .wd-confluence .wd-board-side { line-height:8px; padding:0; font-size:7px; }
+  .wd-confluence .wd-lane { gap:4px; }
+}

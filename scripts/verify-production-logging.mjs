@@ -1,10 +1,12 @@
 import { readFileSync, readdirSync } from 'node:fs';
-import { basename, join } from 'node:path';
+import { basename, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const assetsDirectory = new URL('../dist/assets/', import.meta.url);
+const artifactRoot = resolve(fileURLToPath(new URL('../', import.meta.url)), process.env.WISDOM_DIST_DIR || 'dist');
+const assetsDirectory = resolve(artifactRoot, 'assets');
 const files = readdirSync(assetsDirectory)
   .filter((file) => file.endsWith('.js'))
-  .map((file) => ({ file, source: readFileSync(new URL(file, assetsDirectory), 'utf8') }));
+  .map((file) => ({ file, source: readFileSync(resolve(assetsDirectory, file), 'utf8') }));
 
 const firstPartyFiles = files.filter(({ file }) => !basename(file).startsWith('vendor-'));
 const forbiddenSyntax = [

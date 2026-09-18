@@ -1,5 +1,11 @@
 # Polygon + Play Hub Integration
 
+> **Release status:** Competitive GEM is disabled. Keep `VITE_ENABLE_PVP=false` and the
+> independent Edge Function secret `WISDOM_DUEL_PVP_ENABLED=false`. Do not run the deploy
+> checklist against the shared database until the gates in
+> `AUTHORITATIVE_GAME_PROTOCOL.md` and the reconciliation in
+> `SUPABASE_READ_ONLY_INVENTORY_2026-08-28.md` are complete.
+
 Wisdom Duel uses Mythical Play Hub for identity, profiles, sessions, leaderboards, linked wallets, and competitive GEM flows. Polygon is the active chain for wallet login/linking, GEM stake deposits, ERC-1155 card ownership checks, and escrow settlement.
 
 ## Runtime Contract
@@ -15,7 +21,10 @@ The frontend uses `@mythicalb/sdk` through `src/services/mythicalClient.ts`.
 
 ## SDK Dependency
 
-`@mythicalb/sdk@0.1.1` is required for Polygon auth, tokens, assets, and competition modules. If `0.1.1` is not published to npm yet, keep the generated in-repo tarball under `vendor/` as the reproducible dependency for builds. Replace it with `@mythicalb/sdk:^0.1.1` after publishing.
+The frontend pins `@mythicalb/sdk@0.2.0`, `@mythicalb/ardor-core@0.2.0`, and
+`@mythicalb/ardor-provider@0.2.0` so standalone builds use the same protocol
+generation as Play Hub. Upgrade these three packages together and commit the
+resulting lockfile; do not mix SDK 0.1.x and 0.2.x packages.
 
 ## Supabase Deploy Checklist
 
@@ -42,6 +51,7 @@ npm run supabase:deploy
 
 Required function secrets:
 
+- `WISDOM_DUEL_PVP_ENABLED=false` (default-off release gate)
 - `POLYGON_RPC_URL`
 - `POLYGON_CHAIN_ID=137`
 - `WISDOM_DUEL_GEM_ADDRESS`

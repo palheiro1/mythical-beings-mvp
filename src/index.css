@@ -1,5 +1,7 @@
+@import "./training.css";
 @import "tailwindcss/theme" layer(theme);
-@import "tailwindcss/utilities" layer(utilities);
+@import "tailwindcss/utilities" layer(utilities) source("./");
+@source not "./analytics/vendor";
 
 :root {
   --arena-bg-950: #03050b;
