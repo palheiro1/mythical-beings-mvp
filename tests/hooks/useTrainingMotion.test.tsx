@@ -17,6 +17,10 @@ function Board({ game, handHidden = false }: { game: GameState; handHidden?: boo
     <button data-motion-anchor={`hand:${HUMAN_ID}`}>Hand</button>
     <button data-motion-anchor="discard">Discards</button>
     <div data-motion-anchor="market">Market</div>
+    {game.players.map(player => <div key={player.id}>
+      <strong data-motion-anchor={`power:${player.id}`}>{player.power}</strong>
+      {player.field.map(slot => slot.knowledge && <div key={slot.creatureId} className="wd-card-art" data-motion-anchor={`card:${slot.knowledge.instanceId}`}>{slot.knowledge.name}</div>)}
+    </div>)}
     {[...game.market, ...handHidden ? [] : game.players[0].hand].map(card =>
       <button key={card.instanceId} data-motion-anchor={`card:${card.instanceId}`} className="wd-card-art">{card.name}</button>)}
   </div>;
@@ -25,6 +29,18 @@ function deal() {
   const before = createTrainingSession(['tarasca', 'adaro', 'tulpar'], 'guided', 'animation').game;
   const after = structuredClone(before);
   after.players[0].hand.push(after.market.shift()!);
+  return { before, after };
+}
+function hit(damage: number, blocked = 0) {
+  const { before } = deal();
+  const attack = before.market.shift()!;
+  const defense = before.market.shift()!;
+  before.players[0].field[0].knowledge = attack;
+  before.players[1].field[0].knowledge = defense;
+  const after = structuredClone(before);
+  after.players[1].power -= damage;
+  after.presentationCues = [{ kind: 'combat', source: `card:${attack.instanceId}`, target: `power:${after.players[1].id}`,
+    label: attack.name, element: attack.element, amount: damage, blocked, defenders: [`card:${defense.instanceId}`] }];
   return { before, after };
 }
 beforeEach(() => {
@@ -112,5 +128,55 @@ describe('training animation lifecycle', () => {
     await act(async () => vi.runAllTimersAsync());
     expect(calls.every(call => call.cancel.mock.calls.length > 0)).toBe(true);
     expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('shows a fully blocked attack as a shield and readable result without damage feedback', async () => {
+    const { before, after } = hit(0, 3);
+    const view = render(<Board game={before} />);
+    await act(async () => view.rerender(<Board game={after} />));
+    const layer = view.getByTestId('layer');
+    expect(layer.querySelector('.wd-motion-result')).toBeNull();
+    await act(async () => vi.advanceTimersByTimeAsync(660));
+    expect(layer.querySelector('.wd-motion-guard')).not.toBeNull();
+    expect(layer.querySelector('.is-blocked')).toHaveTextContent('3BlockedNo Power lost');
+    expect(layer.querySelector('.is-damage')).toBeNull();
+    await act(async () => vi.advanceTimersByTimeAsync(850));
+    expect(layer.querySelector('.is-blocked')).not.toBeNull();
+    expect(view.getByTestId('board')).toHaveAttribute('data-presenting', 'true');
+    await act(async () => vi.runAllTimersAsync());
+    expect(layer).toBeEmptyDOMElement();
+    expect(view.getByTestId('board')).toHaveAttribute('data-presenting', 'false');
+  });
+
+  it('intercepts partial damage at the defending card before showing Power lost', async () => {
+    const { before, after } = hit(2, 3);
+    const view = render(<Board game={before} />);
+    await act(async () => view.rerender(<Board game={after} />));
+    await act(async () => vi.advanceTimersByTimeAsync(660));
+    const layer = view.getByTestId('layer');
+    expect(layer.querySelector('.wd-motion-guard')).not.toBeNull();
+    expect(layer.querySelector('.wd-motion-strike')).not.toBeNull();
+    expect(layer.querySelector('.wd-motion-result')).toBeNull();
+    await act(async () => vi.advanceTimersByTimeAsync(300));
+    expect(layer.querySelector('.is-damage')).toHaveTextContent('−2Damage5 attack · 3 blocked');
+    expect(view.getByRole('status')).toHaveTextContent('3 blocked · 2 damage');
+    act(() => window.dispatchEvent(new Event('resize')));
+    await act(async () => vi.runAllTimersAsync());
+    expect(layer).toBeEmptyDOMElement();
+  });
+
+  it('retains combat reading time and shields with reduced motion without a travelling strike', async () => {
+    reduced = true;
+    const { before, after } = hit(1, 2);
+    const view = render(<Board game={before} />);
+    await act(async () => view.rerender(<Board game={after} />));
+    await act(async () => vi.advanceTimersByTimeAsync(1000));
+    const layer = view.getByTestId('layer');
+    expect(layer.querySelector('.is-damage')).toHaveTextContent('−1Damage3 attack · 2 blocked');
+    expect(layer.querySelector('.wd-motion-guard')).not.toBeNull();
+    expect(layer.querySelector('.wd-motion-strike')).toBeNull();
+    expect(calls.every(call => call.frames.every(frame => !frame.transform))).toBe(true);
+    await act(async () => vi.runAllTimersAsync());
+    expect(layer).toBeEmptyDOMElement();
   });
 });
