@@ -17,6 +17,26 @@ function createValidState() {
 }
 
 describe('authoritative game-state invariants', () => {
+  it('checks field and creature decisions against current ownership and exact references', () => {
+    const state = createValidState();
+    const knowledge = state.knowledgeDeck.shift()!;
+    state.players[1].field[0].knowledge = knowledge;
+    state.pendingEffect = {
+      id: 'field-choice', type: 'chooseOpponentKnowledgeDiscard', playerId: 'player-1', sourcePlayerId: 'player-1',
+      prompt: 'Select a field card', choices: [{ kind: 'knowledge', playerIndex: 1,
+        creatureId: state.players[1].field[0].creatureId, instanceId: knowledge.instanceId!, label: knowledge.name }],
+    };
+    expect(collectGameStateInvariantViolations(state)).toEqual([]);
+    state.pendingEffect.choices = [{ kind: 'knowledge', playerIndex: 0,
+      creatureId: state.players[1].field[0].creatureId, instanceId: knowledge.instanceId!, label: knowledge.name }];
+    expect(collectGameStateInvariantViolations(state).map((v) => v.code)).toContain('pending_effect_invalid');
+    state.pendingEffect.type = 'chooseCreatureToRotate';
+    state.pendingEffect.choices = [{ kind: 'creature', playerIndex: 1,
+      creatureId: state.players[1].creatures[0].id, label: 'Opponent creature' }];
+    expect(collectGameStateInvariantViolations(state)).toEqual([]);
+    state.pendingEffect.choices.push({ ...state.pendingEffect.choices[0] });
+    expect(collectGameStateInvariantViolations(state).map((v) => v.code)).toContain('pending_effect_invalid');
+  });
   it('accepts a state produced by the current initializer', () => {
     expect(collectGameStateInvariantViolations(createValidState())).toEqual([]);
   });

@@ -46,8 +46,8 @@ const Home: React.FC = () => {
   const magicLinkCoolingDown = magicLinkCooldownSeconds > 0;
 
   useEffect(() => {
-    if (!TRAINING_PREVIEW_ENABLED && !loading && user && polygonWallet) {
-      navigate('/lobby');
+    if (!TRAINING_PREVIEW_ENABLED && !loading && user && !user.isGuest) {
+      navigate('/competition');
     }
     if (error) {
       setAuthError(error);
@@ -299,7 +299,9 @@ const Home: React.FC = () => {
                 <span>Play Hub identity is required.</span>
                 <span className="hidden text-slate-600 sm:inline">|</span>
                 <span className="text-cyan-200">
-                  Polygon wallet linking unlocks {TRAINING_PREVIEW_ENABLED ? 'training' : 'the arena'}.
+                  {TRAINING_PREVIEW_ENABLED
+                    ? 'No wallet is needed for training.'
+                    : 'A carteira Polygon só é necessária para receber prémios e participar em duelos com aposta.'}
                 </span>
               </div>
 

@@ -55,7 +55,7 @@ Creatures and Wisdom
 Summoning Knowledge
 - A creature may hold at most one knowledge card on its slot.
 - To summon: the creature’s current wisdom must be ≥ the knowledge cost.
-- Knowledge replacement is not allowed: you can’t summon onto an occupied slot.
+- Knowledge replacement is allowed: summoning onto an occupied slot discards the previous Knowledge.
 - Some slots may be blocked by effects (you can’t summon there while blocked).
 
 Rotation & Value Cycles
@@ -211,3 +211,30 @@ No license has been declared in this repository yet. Confirm the intended licens
 - Thanks to contributors, playtesters, and artists
 
 <p align="center"><em>May the wisest being win! 🏆</em></p>
+
+## Wisdom Duel competitive v2
+
+The competitive client has four entries: training, the free skill league, optional
+GEM/card wagers, and standings/prizes. `/competition` opens the hub; `/league-admin`
+requires a server-assigned organization role. League login needs a persistent
+account; a verified Polygon wallet is required only for prizes and wagers.
+
+The app and authoritative SDK use the exact vendored
+`@mythicalb/wisdom-duel-engine@1.0.0` and `@mythicalb/sdk@0.3.0` packages. Tactical
+modules re-export the shared engine. Browsers submit intentions with command IDs
+and expected versions; private state, clocks, results, ratings and payments are
+committed by the server. The client recovers pending commands across reconnects.
+
+Set `VITE_WISDOM_DUEL_ESCROW_V2_ADDRESS` to the audited V2 deployment; the historical
+escrow address is not interchangeable. Leave `VITE_ENABLE_PVP=false` until the full
+integration and contract review gates pass. Existing match/replay/prize recovery
+routes remain reachable when new entry is closed. Server admission, command and
+recovery controls are independent. Season dates and GEM budget have no implicit
+production defaults.
+
+Canonical migrations, eight Edge APIs, pool funding instructions, Cron/Vault setup,
+release manifests and recovery procedures are in the SDK's
+`docs/wisdom-duel/OPERATIONS.md`. Its `scripts/verify-wisdom-release.mjs --pack`
+builds and verifies the two app packages without publishing them. Keep this app's
+coverage, lint, types, build, bundle, public-artifact and logging checks enabled;
+the original critical coverage thresholds also measure the installed engine.
