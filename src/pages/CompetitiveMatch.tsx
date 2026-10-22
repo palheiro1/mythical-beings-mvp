@@ -86,7 +86,11 @@ function Board({
   const chosen = selected && hand.some((k) => k.instanceId === selected.instanceId) ? selected : null;
   async function summon(creatureId: string) {
     if (!chosen?.instanceId) return;
-    const result = await send({ type: 'summon_knowledge', creatureId, handInstanceId: chosen.instanceId });
+    const result = await send({
+      type: 'summon_knowledge',
+      creatureId,
+      handInstanceId: chosen.instanceId,
+    });
     if (result === 'accepted' || result === 'duplicate') setSelected(null);
   }
   return (
@@ -115,7 +119,12 @@ function Board({
                 size="sm"
                 fullWidth
                 disabled={!canSpend}
-                onClick={() => void send({ type: 'draw_knowledge', marketInstanceId: k.instanceId! })}
+                onClick={() =>
+                  void send({
+                    type: 'draw_knowledge',
+                    marketInstanceId: k.instanceId!,
+                  })
+                }
               >
                 Comprar
               </ArenaButton>
@@ -144,7 +153,12 @@ function Board({
                     fullWidth
                     disabled={!canSpend}
                     onClick={() =>
-                      chosen ? void summon(c.id) : void send({ type: 'rotate_creature', creatureId: c.id })
+                      chosen
+                        ? void summon(c.id)
+                        : void send({
+                            type: 'rotate_creature',
+                            creatureId: c.id,
+                          })
                     }
                   >
                     {chosen ? 'Invocar aqui' : 'Rodar criatura'}
@@ -278,7 +292,10 @@ function Preparation({
     [busy, setBusy] = useState(false),
     [error, setError] = useState(''),
     [acknowledged, setAcknowledged] = useState(false),
-    [txHash, setTxHash] = useState('');
+    [txHash, setTxHash] = useState(''),
+    [deferredCards, setDeferredCards] = useState<{ cardId: string; amount: string }[] | null>(null),
+    [cardRecipient, setCardRecipient] = useState(''),
+    [cardClaimHash, setCardClaimHash] = useState('');
   const { polygonWallet, connectPolygonWallet, user } = useAuth();
   const storageKey = `wisdom-economy:${user?.id}:${match.matchId}`;
   useEffect(() => {
@@ -437,9 +454,64 @@ function Preparation({
             </div>
           ) : null}
           {['finalized', 'refunded'].includes(match.settlementStatus) ? (
-            <p role="status">
-              {match.settlementStatus === 'refunded' ? 'Reembolso confirmado.' : 'Liquidação confirmada.'}
-            </p>
+            <div className="space-y-3">
+              <p role="status">
+                {match.settlementStatus === 'refunded' ? 'Reembolso confirmado.' : 'Liquidação confirmada.'}
+              </p>
+              <p>Se a tua carteira não conseguiu receber alguma carta, podes levantá-la separadamente.</p>
+              <ArenaButton
+                variant="ghost"
+                loading={busy}
+                onClick={() =>
+                  void run(async () => {
+                    const { getWisdomDeferredCards } = await import('@mythicalb/sdk/wisdom-duel-wallet');
+                    setDeferredCards(await getWisdomDeferredCards(competitiveWalletConfig(), match.matchId));
+                  })
+                }
+              >
+                Verificar cartas por receber
+              </ArenaButton>
+              {deferredCards?.length === 0 ? (
+                <p role="status">Não tens cartas pendentes neste duelo.</p>
+              ) : null}
+              {deferredCards && deferredCards.length > 0 ? (
+                <>
+                  <label className="block">
+                    Carteira para receber as cartas (vazio para usar a carteira ligada)
+                    <input
+                      className="mt-2 w-full rounded border border-white/20 bg-slate-950 p-3"
+                      value={cardRecipient}
+                      onChange={(event) => setCardRecipient(event.target.value)}
+                      placeholder="0x…"
+                    />
+                  </label>
+                  <p>Usa uma carteira tua que aceite estas cartas. Confirma o endereço antes de autorizar.</p>
+                  {deferredCards.map(({ cardId, amount }) => (
+                    <ArenaButton
+                      key={cardId}
+                      loading={busy}
+                      onClick={() =>
+                        void run(async () => {
+                          const { claimWisdomDeferredCard } =
+                            await import('@mythicalb/sdk/wisdom-duel-wallet');
+                          setCardClaimHash(
+                            await claimWisdomDeferredCard(competitiveWalletConfig(), cardId, cardRecipient),
+                          );
+                        })
+                      }
+                    >
+                      Levantar uma cópia da carta {cardId} ({amount} por receber)
+                    </ArenaButton>
+                  ))}
+                </>
+              ) : null}
+              {cardClaimHash ? (
+                <p role="status" className="break-all">
+                  Levantamento enviado: {cardClaimHash}. Volta a verificar as cartas após a confirmação da
+                  rede.
+                </p>
+              ) : null}
+            </div>
           ) : null}
           {txHash ? (
             <div className="space-y-2">
