@@ -1,4 +1,5 @@
 import { createWisdomDuelClient } from '@mythicalb/sdk/wisdom-duel';
+import { FunctionRegion } from '@supabase/supabase-js';
 import type { WisdomWalletConfig } from '@mythicalb/sdk/wisdom-duel-wallet';
 import { mythical } from './mythicalClient.js';
 import {
@@ -9,7 +10,7 @@ import {
   getPolygonProvider,
 } from '../config/playhub.js';
 
-export const competitive = createWisdomDuelClient(mythical.supabase);
+export const competitive = createWisdomDuelClient(mythical.supabase, { region: FunctionRegion.EuWest1 });
 export type {
   WisdomMatchView,
   WisdomMatchResponse,
