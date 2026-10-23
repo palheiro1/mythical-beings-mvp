@@ -17,7 +17,12 @@ This is a practical raster asset kit generated from the selected Wisdom Duel log
 - `pwa-512.png`
 
 ### Social
-- `social-preview-1600x900.png`
+- `wisdom-duel-social-20261023.png` — current Open Graph and X card image (1600 × 900).
+- `social-preview-1600x900.png` — original retained for previously cached cards.
+
+Keep the image URL versioned when refreshing social cards: platforms cache image
+URLs separately from page metadata. Update both `og:image` and `twitter:image` in
+`index.html`, including dimensions and alternative text, when changing the image.
 
 ### Developer helpers
 - `brand-tokens.css`
