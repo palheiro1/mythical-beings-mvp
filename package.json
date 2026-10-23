@@ -30,7 +30,7 @@
   "dependencies": {
     "@mythicalb/ardor-core": "0.2.0",
     "@mythicalb/ardor-provider": "0.2.0",
-    "@mythicalb/sdk": "file:vendor/mythicalb-sdk-0.3.0.tgz",
+    "@mythicalb/sdk": "file:vendor/mythicalb-sdk-0.4.0.tgz",
     "@mythicalb/wisdom-duel-engine": "file:vendor/mythicalb-wisdom-duel-engine-1.0.0.tgz",
     "@supabase/supabase-js": "^2.49.4",
     "lucide-react": "^1.14.0",
