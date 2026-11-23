@@ -7,7 +7,7 @@ import { GUIDED_TEAM, type TrainingMode } from '../utils/trainingMode.js';
 export const HUMAN_ID = 'local-player';
 export const BOT_ID = 'bot';
 export const BOT_TEAM = ['adaro', 'lisovik', 'kappa'];
-export type GuideStep = 'welcome' | 'draw' | 'rotate' | 'watch' | 'summon' | 'end' | 'complete' | 'handoff' | 'free';
+export type GuideStep = 'welcome' | 'draw' | 'rotate' | 'watch' | 'summon' | 'end' | 'wait-for-strike' | 'strike' | 'complete' | 'handoff' | 'free';
 export type TrainingAction = Exclude<GameAction, { type: 'SET_GAME_STATE' | 'INITIALIZE_GAME' }>;
 export interface TrainingSession {
   game: GameState;
@@ -18,11 +18,12 @@ export interface TrainingSession {
   humanActions: number;
   resigned: boolean;
   tutorialCompleted: boolean;
+  firstStrike?: { damage: number; before: number; after: number };
 }
 export type TrainingEvent =
   | { type: 'play'; action: TrainingAction }
   | { type: 'select'; instanceId: string | null }
-  | { type: 'start-guide' | 'skip-guide' | 'continue' | 'resign' };
+  | { type: 'start-guide' | 'show-bonus' | 'skip-guide' | 'continue' | 'resign' };
 
 /** A prepared, reproducible practice deal; every subsequent move uses the real rules. */
 export function createTrainingSession(team: string[], mode: TrainingMode, gameId: string): TrainingSession {
@@ -59,6 +60,7 @@ export function validateTrainingAction(session: TrainingSession, action: Trainin
 
 export function trainingSessionReducer(session: TrainingSession, event: TrainingEvent): TrainingSession {
   if (event.type === 'start-guide') return session.guide === 'welcome' ? { ...session, guide: 'draw' } : session;
+  if (event.type === 'show-bonus') return session.guide === 'strike' ? { ...session, guide: 'complete', tutorialCompleted: true } : session;
   if (event.type === 'skip-guide') return { ...session, guide: 'handoff', selectedId: null, feedback: '', rejected: false };
   if (event.type === 'continue') return { ...session, guide: 'free', feedback: '', rejected: false };
   if (event.type === 'select') {
@@ -83,13 +85,21 @@ export function trainingSessionReducer(session: TrainingSession, event: Training
     if (guide === 'draw' && event.action.type === 'DRAW_KNOWLEDGE') guide = 'rotate';
     else if (guide === 'rotate' && event.action.type === 'ROTATE_CREATURE') guide = 'watch';
     else if (guide === 'summon' && event.action.type === 'SUMMON_KNOWLEDGE') guide = 'end';
-    else if (guide === 'end' && event.action.type === 'END_TURN') guide = 'complete';
+    else if (guide === 'end' && event.action.type === 'END_TURN') guide = 'wait-for-strike';
   }
-  if (guide === 'watch' && game.currentPlayerIndex === 0 && game.phase === 'action') guide = 'summon';
+  let firstStrike = session.firstStrike;
+  if (game.currentPlayerIndex === 0 && game.phase === 'action') {
+    if (guide === 'watch') guide = 'summon';
+    else if (guide === 'wait-for-strike') {
+      const spellId = game.players[0].field.find(slot => slot.knowledge?.id === 'aerial1')?.knowledge?.instanceId;
+      const hit = game.presentationCues?.find(cue => cue.kind === 'combat' && cue.source === `card:${spellId}` && cue.target === `power:${BOT_ID}`);
+      if (hit) firstStrike = { damage: hit.amount ?? 0, before: session.game.players[1].power, after: game.players[1].power };
+      guide = 'strike';
+    }
+  }
   const clearSelection = human && ['SUMMON_KNOWLEDGE', 'DRAW_KNOWLEDGE', 'END_TURN'].includes(event.action.type);
-  return { ...session, game, guide, rejected: false, feedback: '',
+  return { ...session, game, guide, firstStrike, rejected: false, feedback: '',
     selectedId: clearSelection ? null : session.selectedId,
     humanActions: session.humanActions + (human && event.action.type !== 'END_TURN' ? 1 : 0),
-    tutorialCompleted: session.tutorialCompleted || (session.guide === 'end' && guide === 'complete'),
   };
 }

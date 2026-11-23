@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { createMemoryRouter, MemoryRouter, Route, RouterProvider, Routes } from 'react-router-dom';
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 import userEvent from '@testing-library/user-event';
 import BotGame from '../../src/pages/BotGame.js';
@@ -54,8 +54,12 @@ describe('public practice journey', () => {
     const play = screen.getByRole('button', { name:'Play Lepidoptera on Tarasca', exact:true });
     expect(play).toHaveClass('wd-card-art', 'is-highlighted');
     fireEvent.click(within(play).getByRole('img', { name:'Tarasca' }));
-    expect(screen.getByRole('dialog')).toHaveAccessibleName('Tulpar');
-    click('Skip effect'); click('End Turn'); botTurn(); click('Continue Practice');
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.queryByText(/Tulpar · Choose a target/)).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Your Power: 21')).toBeInTheDocument();
+    click('End Turn'); botTurn();
+    expect(screen.getByText(/Lepidoptera dealt 1 damage.*from 20 to 19/)).toBeInTheDocument();
+    click('See Tulpar’s bonus'); click('Continue Practice');
     expect(screen.getByText('0:30')).toBeInTheDocument();
     expect(localStorage.getItem(TUTORIAL_PROGRESS_KEY)).toBe('completed');
   });
@@ -113,7 +117,7 @@ describe('public practice journey', () => {
   it('opens Rules in the match and resumes with the same turn, cards and clock', () => {
     renderFlow(); click('Skip tutorial'); click('Continue Practice');
     click('Draw Lepidoptera');
-    act(() => { vi.advanceTimersByTime(5_000); });
+    act(() => { vi.advanceTimersByTime(5_750); });
     expect(screen.getByText('0:25')).toBeInTheDocument();
     click('Rules');
     expect(screen.getByRole('dialog')).toHaveAccessibleName('Duel rules');
@@ -123,6 +127,35 @@ describe('public practice journey', () => {
     expect(screen.getByText('0:25')).toBeInTheDocument();
     expect(screen.getByText('Turn 1')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Select Lepidoptera' })).toBeInTheDocument();
+    act(() => { vi.advanceTimersByTime(250); });
+    expect(screen.getByText('0:24')).toBeInTheDocument();
+  });
+  it('keeps a third-turn selection and stops the bot when using browser Back and Forward around Rules', async () => {
+    const router = createMemoryRouter([{ path: '/bot-game', element: <BotGame /> }], { initialEntries: ['/bot-game?mode=guided'] });
+    render(<RouterProvider router={router} />);
+    click('Skip tutorial'); click('Continue Practice'); click('Draw Lepidoptera'); click('End Turn');
+    act(() => { vi.advanceTimersByTime(550); });
+    click('Rules'); botTurn();
+    expect(screen.getByText('Turn 1 · Duel paused')).toBeInTheDocument();
+    await act(() => router.navigate(-1));
+    expect(screen.getByText('Bot’s turn')).toBeInTheDocument();
+    botTurn(); click('End Turn'); botTurn(); click('Select Lepidoptera');
+    expect(screen.getByText('Turn 3')).toBeInTheDocument();
+    const clock = screen.getByRole('timer').textContent;
+    const power = screen.getByLabelText(/^Bot Power:/);
+    click('Rules');
+    act(() => { vi.advanceTimersByTime(60_000); });
+    await act(() => router.navigate(-1));
+    expect(screen.getByText('Turn 3')).toBeInTheDocument();
+    expect(screen.getByRole('timer')).toHaveTextContent(clock!);
+    expect(screen.getByRole('button', { name: 'Select Lepidoptera' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByLabelText(/^Bot Power:/)).toBe(power);
+    expect(screen.getByText('2 / 2 actions left')).toBeInTheDocument();
+    await act(() => router.navigate(1));
+    expect(screen.getByRole('dialog')).toHaveAccessibleName('Duel rules');
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(screen.getByText('Turn 3')).toBeInTheDocument();
+    expect(emit.mock.calls.filter(call => call[0] === 'training_start')).toHaveLength(1);
   });
   it('suspends scheduled bot moves while rotating and resumes the same turn', () => {
     const rotate = orientation(); renderFlow(); click('Start learning'); click('Draw Lepidoptera'); click('Rotate Tarasca');
@@ -134,7 +167,7 @@ describe('public practice journey', () => {
     click('Select Lepidoptera'); rotate(true); rotate(false);
     expect(screen.getByRole('button', { name:'Select Lepidoptera' })).toHaveAttribute('aria-pressed', 'true');
     click('Play Lepidoptera on Tarasca');
-    expect(screen.getByRole('dialog')).toHaveAccessibleName('Tulpar');
+    expect(screen.getByRole('heading', { name:'5. Lepidoptera enters play' })).toBeInTheDocument();
   });
   it('allows an explicit portrait fallback when the player cannot rotate', () => {
     orientation(true); renderFlow(); click('Can’t rotate? Continue in portrait');
@@ -161,12 +194,18 @@ describe('public practice journey', () => {
     expect(screen.getByRole('heading', { name:'4. Play your knowledge' })).toBeInTheDocument();
     click('Select Lepidoptera');
     click('Play Lepidoptera on Tarasca');
-    const effect = screen.getByRole('dialog');
-    fireEvent.click(within(effect).getAllByRole('button')[0]);
-    expect(screen.getByRole('heading', { name:'5. Pass the turn' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Bot Power: 20')).toBeInTheDocument();
+    expect(screen.getByLabelText('Your Power: 21')).toBeInTheDocument();
+    expect(screen.getByText(/End Turn to pass on this summon’s optional bonus/)).toBeInTheDocument();
     click('End Turn');
     botTurn();
-    expect(screen.getByRole('heading', { name:'You know the essentials.' })).toBeInTheDocument();
+    expect(screen.getByText(/Lepidoptera dealt 1 damage.*from 20 to 19/)).toBeInTheDocument();
+    expect(screen.getByLabelText('Bot Power: 19')).toBeInTheDocument();
+    act(() => { vi.advanceTimersByTime(60_000); });
+    expect(screen.getByText('Turn 3')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name:'End Turn' })).toBeDisabled();
+    click('See Tulpar’s bonus');
+    expect(screen.getByRole('heading', { name:'Tulpar’s bonus' })).toBeInTheDocument();
     expect(localStorage.getItem(TUTORIAL_PROGRESS_KEY)).toBe('completed');
     const turn = screen.getByText(/^Turn \d+$/).textContent;
     act(() => { vi.advanceTimersByTime(60_000); });
@@ -213,6 +252,12 @@ describe('public practice journey', () => {
     expect(flare).toBeInTheDocument();
     click('Play Lepidoptera on Tarasca');
     expect(screen.getByRole('dialog')).toHaveAccessibleName('Tulpar');
+    const choices = within(screen.getByRole('dialog')).getAllByRole('button').map(choice => choice.textContent);
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Rules' }));
+    expect(screen.getByRole('dialog')).toHaveAccessibleName('Duel rules');
+    act(() => { vi.advanceTimersByTime(30_000); }); click('Resume duel');
+    expect(screen.getByRole('dialog')).toHaveAccessibleName('Tulpar');
+    expect(within(screen.getByRole('dialog')).getAllByRole('button').map(choice => choice.textContent)).toEqual(choices);
     expect(screen.getByText('Clock paused')).toBeInTheDocument();
     act(() => { vi.advanceTimersByTime(30_000); });
     click('Skip effect');

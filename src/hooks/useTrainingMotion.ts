@@ -30,7 +30,7 @@ function snapshot(root: HTMLElement | null): Snapshot {
 }
 
 /** Presentation only: the authoritative local state and turn clock never wait for animation. */
-export function useTrainingMotion(game: GameState, root: RefObject<HTMLDivElement | null>, layer: RefObject<HTMLDivElement | null>, layoutKey: string, paused: boolean, sound?: SoundPresentation) {
+export function useTrainingMotion(game: GameState, root: RefObject<HTMLDivElement | null>, layer: RefObject<HTMLDivElement | null>, layoutKey: string, paused: boolean, sound?: SoundPresentation, showPendingChoice = true) {
   const audio = useRef(sound);
   audio.current = sound;
   const previous = useRef(game);
@@ -74,7 +74,7 @@ export function useTrainingMotion(game: GameState, root: RefObject<HTMLDivElemen
 
   useLayoutEffect(() => {
     if (previous.current.gameId !== game.gameId) cancel();
-    const steps = trainingMotion(previous.current, game);
+    const steps = trainingMotion(previous.current, game, showPendingChoice);
     previous.current = game;
     const old = before.current;
     const next = snapshot(root.current);
@@ -260,7 +260,7 @@ export function useTrainingMotion(game: GameState, root: RefObject<HTMLDivElemen
     }).catch(() => { if (valid()) cancel(); }).finally(() => {
       if (valid() && --pendingBatches.current === 0) setPresenting(false);
     });
-  }, [game, root, layer, paused, cancel]);
+  }, [game, root, layer, paused, cancel, showPendingChoice]);
 
   return { capture, announcement, presenting };
 }
