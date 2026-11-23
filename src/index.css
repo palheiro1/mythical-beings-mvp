@@ -2,6 +2,12 @@
 @import "tailwindcss/theme" layer(theme);
 @import "tailwindcss/utilities" layer(utilities) source("./");
 @source not "./analytics/vendor";
+/* Retired client-authoritative screens are retained for legacy reference only. */
+@source not "./pages/Lobby.tsx";
+@source not "./pages/GameScreen.tsx";
+@source not "./pages/GameInitializing.tsx";
+@source not "./pages/NFTSelectionSimplified.tsx";
+@source not "./pages/WaitingScreen.tsx";
 
 :root {
   --arena-bg-950: #03050b;

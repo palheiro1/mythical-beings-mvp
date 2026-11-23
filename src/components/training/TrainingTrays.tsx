@@ -21,9 +21,11 @@ export default function TrainingTrays({ session, tab, setTab, onAction, onSelect
     const activate = () => { if (market) onAction(action); else if (validation.isValid) onSelect(card.instanceId!); };
     const label = `${market ? 'Draw' : 'Select'} ${card.name}`;
     const guideTarget = highlighted ? market ? 'market' : 'hand' : undefined;
-    return <article key={card.instanceId} className={`wd-tray-card ${selectedId === card.instanceId ? 'is-selected' : ''} ${highlighted ? 'is-highlighted' : ''}`}>
+    const marketRow = market && direct;
+    return <article key={card.instanceId} className={`wd-tray-card ${marketRow ? 'wd-market-row' : ''} ${selectedId === card.instanceId ? 'is-selected' : ''} ${highlighted ? 'is-highlighted' : ''}`}>
       <TrainingCard motionAnchor={cardAnchor('', card)} card={card} selected={selectedId === card.instanceId} playFace={direct} onInspect={onInspect}
-        action={direct ? { label, onActivate: activate, valid: validation.isValid, pressed: market ? undefined : selectedId === card.instanceId, guideTarget } : undefined} />
+        action={direct ? { label, onActivate: activate, valid: validation.isValid, highlighted, pressed: market ? undefined : selectedId === card.instanceId, guideTarget } : undefined}
+        marketRow={marketRow} />
       {!direct && <><span className="wd-tray-name">{card.name}</span><span className="wd-card-stat">{card.element}</span>
       <button className="wd-card-action" type="button" aria-disabled={!validation.isValid} aria-pressed={market ? undefined : selectedId === card.instanceId} aria-label={label} data-guide-target={guideTarget} onClick={activate}>{market ? 'Draw' : selectedId === card.instanceId ? 'Selected' : 'Select'}</button></>}
     </article>;

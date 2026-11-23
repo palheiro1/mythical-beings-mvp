@@ -35,6 +35,19 @@ describe('static hosting configuration', () => {
     expect(netlify).toContain('NODE_VERSION = "22.22.2"');
   });
 
+  it('serves every declared application route on direct navigation and refresh', () => {
+    const redirects = readPublicFile('_redirects').trim().split('\n');
+    const routes = [...readProjectFile('src/App.tsx').matchAll(/<Route\s+path="([^"]+)"/g)]
+      .map((match) => match[1])
+      .filter((route) => route !== '*');
+
+    expect(routes.length).toBeGreaterThan(0);
+    for (const route of new Set(routes)) {
+      const hostedPath = route.replace(/:[^/]+/g, '*');
+      expect(redirects, `Missing hosting rule for ${route}`).toContain(`${hostedPath} /index.html 200`);
+    }
+  });
+
   it('ships real discovery files instead of the SPA shell', () => {
     expect(JSON.parse(readPublicFile('manifest.webmanifest')).name).toBe('Wisdom Duel');
     expect(readPublicFile('robots.txt')).toContain('Sitemap: https://wisdomduel.mythicalbeings.io/sitemap.xml');

@@ -1,4 +1,4 @@
-import { SlidersHorizontal, Volume2, VolumeX } from 'lucide-react';
+import { Settings, SlidersHorizontal, Volume2, VolumeX } from 'lucide-react';
 import type { AudioPreferences, TrainingSound } from '../../audio/trainingAudio.js';
 import TrainingDialog from './TrainingDialog.js';
 
@@ -18,10 +18,31 @@ export default function TrainingSoundControls({ preferences, update, error, play
   open: boolean; onOpen: () => void; onClose: () => void;
 }) {
   return <div className="wd-sound-controls">
-    <button className="wd-icon-button" aria-label={preferences.enabled ? 'Mute sound' : 'Enable sound'} aria-pressed={preferences.enabled} title={preferences.enabled ? 'Mute sound' : 'Enable sound'} onClick={() => update({ enabled: !preferences.enabled })}>
-      {preferences.enabled ? <Volume2 size={17} /> : <VolumeX size={17} />}
-    </button>
-    <button className="wd-icon-button wd-sound-settings" aria-label="Sound settings" title="Sound settings" onClick={onOpen}><SlidersHorizontal size={15} /></button>
+    <details className="wd-sound-menu" onBlur={event => {
+      if (!event.currentTarget.contains(event.relatedTarget)) event.currentTarget.open = false;
+    }} onKeyDown={event => {
+      const menu = event.currentTarget;
+      if (event.key !== 'Escape' || !menu.open) return;
+      event.preventDefault();
+      menu.open = false;
+      menu.querySelector('summary')?.focus();
+    }}>
+      <summary className="wd-icon-button" aria-label="Sound settings" title="Sound settings"><Settings size={19} aria-hidden="true" /></summary>
+      <div className="wd-sound-menu-items">
+        <button type="button" className="wd-button" aria-label={preferences.enabled ? 'Mute sound' : 'Enable sound'} aria-pressed={preferences.enabled} onClick={() => update({ enabled: !preferences.enabled })}>
+          {preferences.enabled ? <Volume2 size={17} aria-hidden="true" /> : <VolumeX size={17} aria-hidden="true" />}
+          {preferences.enabled ? 'Sound on' : 'Sound off'}
+        </button>
+        <button type="button" className="wd-button" onClick={event => {
+          const menu = event.currentTarget.closest('details');
+          if (menu) {
+            menu.querySelector('summary')?.focus();
+            menu.open = false;
+          }
+          onOpen();
+        }}><SlidersHorizontal size={16} aria-hidden="true" />Audio settings</button>
+      </div>
+    </details>
     {open && <TrainingDialog title="Sound of the Confluence" onClose={onClose}>
       <p>An epic instrumental score and elemental card effects.</p>
       <div className="wd-sound-panel">

@@ -2,7 +2,7 @@ export const criticalCoverageFiles = [
   'src/config/release.ts',
   'src/game/authoritativeClient.ts',
   'src/game/authoritativeClientHttpTransport.ts',
-  'src/game/authoritativeExecutor.ts',
+  '.coverage-engine/game/authoritativeExecutor.js',
   'src/game/authoritativeHttp.ts',
   'src/game/authoritativeHttpShared.ts',
   'src/game/authoritativeInitialization.ts',
@@ -11,12 +11,12 @@ export const criticalCoverageFiles = [
   'src/game/authoritativeProjectionHttp.ts',
   'src/game/authoritativeRateLimit.ts',
   'src/game/durableAuthoritativeService.ts',
-  'src/game/invariants.ts',
+  '.coverage-engine/game/invariants.js',
   'src/game/projectionWire.ts',
-  'src/game/projections.ts',
-  'src/game/protocol.ts',
-  'src/game/random.ts',
-  'src/game/replay.ts',
+  '.coverage-engine/game/projections.js',
+  '.coverage-engine/game/protocol.js',
+  '.coverage-engine/game/random.js',
+  '.coverage-engine/game/replay.js',
 ];
 
 export const perFileCoverageThresholds = {

@@ -6,6 +6,13 @@
 /lobby /index.html 200
 /profile /index.html 200
 /leaderboard /index.html 200
+/standings /index.html 200
+/competition /index.html 200
+/league /index.html 200
+/wagers /index.html 200
+/league-admin /index.html 200
+/duel/* /index.html 200
+/replay/* /index.html 200
 /game/* /index.html 200
 /game-initializing/* /index.html 200
 /nft-selection/* /index.html 200

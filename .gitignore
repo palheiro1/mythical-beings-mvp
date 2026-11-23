@@ -31,3 +31,4 @@ supabase/.branches/
 
 # Local UI verification captures and bounded check logs
 /artifacts/
+/.coverage-engine/

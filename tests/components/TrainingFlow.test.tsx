@@ -32,7 +32,7 @@ afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); });
 describe('public practice journey', () => {
   it('completes the mobile lesson through card faces, keeping inspection separate', () => {
     orientation(false, true); const { container } = renderFlow();
-    expect(container.querySelector('.wd-empty-slot')).not.toBeInTheDocument();
+    expect(container.querySelector('.wd-empty-slot')).toHaveAttribute('aria-hidden', 'true');
     expect(container.querySelector('.wd-lane-action,.wd-card-action')).not.toBeInTheDocument();
     click('Start learning');
     const inspect = screen.getByRole('button', { name:'Inspect Lepidoptera', exact:true });
@@ -56,7 +56,7 @@ describe('public practice journey', () => {
     fireEvent.click(within(play).getByRole('img', { name:'Tarasca' }));
     expect(screen.getByRole('dialog')).toHaveAccessibleName('Tulpar');
     click('Skip effect'); click('End Turn'); botTurn(); click('Continue Practice');
-    expect(screen.getByText('30s')).toBeInTheDocument();
+    expect(screen.getByText('0:30')).toBeInTheDocument();
     expect(localStorage.getItem(TUTORIAL_PROGRESS_KEY)).toBe('completed');
   });
   it('retains a mobile selection on an invalid target and lets the same hand card cancel it', () => {
@@ -102,13 +102,27 @@ describe('public practice journey', () => {
     const rotate = orientation(); renderFlow(); click('Skip tutorial'); click('Continue Practice');
     click('Draw Lepidoptera');
     act(() => { vi.advanceTimersByTime(5_000); });
-    expect(screen.getByText('25s')).toBeInTheDocument();
+    expect(screen.getByText('0:25')).toBeInTheDocument();
     rotate(true); act(() => { vi.advanceTimersByTime(60_000); }); rotate(false);
-    expect(screen.getByText('25s')).toBeInTheDocument();
+    expect(screen.getByText('0:25')).toBeInTheDocument();
     expect(screen.getByText('Turn 1')).toBeInTheDocument();
     expect(screen.getByRole('button', { name:'Select Lepidoptera' })).toBeInTheDocument();
     act(() => { vi.advanceTimersByTime(25_000); });
     expect(screen.getByText('Bot’s turn')).toBeInTheDocument();
+  });
+  it('opens Rules in the match and resumes with the same turn, cards and clock', () => {
+    renderFlow(); click('Skip tutorial'); click('Continue Practice');
+    click('Draw Lepidoptera');
+    act(() => { vi.advanceTimersByTime(5_000); });
+    expect(screen.getByText('0:25')).toBeInTheDocument();
+    click('Rules');
+    expect(screen.getByRole('dialog')).toHaveAccessibleName('Duel rules');
+    act(() => { vi.advanceTimersByTime(60_000); });
+    click('Resume duel');
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.getByText('0:25')).toBeInTheDocument();
+    expect(screen.getByText('Turn 1')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Select Lepidoptera' })).toBeInTheDocument();
   });
   it('suspends scheduled bot moves while rotating and resumes the same turn', () => {
     const rotate = orientation(); renderFlow(); click('Start learning'); click('Draw Lepidoptera'); click('Rotate Tarasca');
@@ -126,7 +140,7 @@ describe('public practice journey', () => {
     orientation(true); renderFlow(); click('Can’t rotate? Continue in portrait');
     click('Skip tutorial'); click('Continue Practice');
     act(() => { vi.advanceTimersByTime(1_000); });
-    expect(screen.getByText('29s')).toBeInTheDocument();
+    expect(screen.getByText('0:29')).toBeInTheDocument();
   });
   it('starts the recommended team without a wallet, with a paused tutorial', () => {
     renderFlow('/bot-selection?mode=guided');
@@ -158,9 +172,10 @@ describe('public practice journey', () => {
     act(() => { vi.advanceTimersByTime(60_000); });
     expect(screen.getByText(turn!)).toBeInTheDocument();
     click('Continue Practice');
-    expect(screen.getByText('30s')).toBeInTheDocument();
+    expect(screen.getByText('0:30')).toBeInTheDocument();
     act(() => { vi.advanceTimersByTime(29_000); });
-    expect(screen.getByText('1s')).toBeInTheDocument();
+    expect(screen.getByText('0:01')).toBeInTheDocument();
+    expect(screen.getByRole('timer', { name: 'Turn clock' })).toHaveClass('wd-clock-low');
     act(() => { vi.advanceTimersByTime(1000); });
     expect(screen.getByText('Bot’s turn')).toBeInTheDocument();
     expect(emit.mock.calls.filter(call => call[0] === 'first_action')).toHaveLength(1);
@@ -187,7 +202,7 @@ describe('public practice journey', () => {
     expect(emit.mock.calls.filter(call => call[0] === 'training_complete')).toHaveLength(1);
     click('Play Again');
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-    expect(screen.getByText('30s')).toBeInTheDocument();
+    expect(screen.getByText('0:30')).toBeInTheDocument();
     expect(screen.getByRole('button', { name:'Rotate Tarasca' })).toBeInTheDocument();
     act(() => { vi.advanceTimersByTime(1); });
     expect(emit.mock.calls.filter(call => call[0] === 'training_start')).toHaveLength(2);
@@ -201,13 +216,13 @@ describe('public practice journey', () => {
     choices.slice(0,3).forEach(button => fireEvent.click(button));
     expect(screen.getByRole('button', { name:'Start Practice' })).toBeEnabled();
     click('Start Practice');
-    expect(screen.getByText('30s')).toBeInTheDocument();
+    expect(screen.getByText('0:30')).toBeInTheDocument();
   });
   it('does not call a skipped lesson complete and restarts a full free-practice clock', () => {
     renderFlow(); click('Skip tutorial');
     expect(localStorage.getItem(TUTORIAL_PROGRESS_KEY)).toBe('skipped');
     click('Continue Practice');
-    expect(screen.getByText('30s')).toBeInTheDocument();
+    expect(screen.getByText('0:30')).toBeInTheDocument();
     expect(screen.queryByRole('complementary', { name:'Guided lesson' })).not.toBeInTheDocument();
   });
 });

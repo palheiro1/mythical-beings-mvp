@@ -24,4 +24,4 @@ export function assertPvpEnabled(): void {
 
 export const TRAINING_PREVIEW_LABEL = 'Training Preview';
 export const CHAMPIONSHIP_MESSAGE =
-  'Multiplayer competition opens with the Wisdom Duel Championship in the coming months.';
+  'The competitive league and optional wager duels will open after validation. Training remains available.';

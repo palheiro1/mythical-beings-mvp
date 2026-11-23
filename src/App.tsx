@@ -11,16 +11,17 @@ import { PVP_ENABLED } from './config/release.js';
 
 // Moralis is now initialized in main.tsx to ensure polyfills are loaded first
 
-const Lobby = lazy(() => import('./pages/Lobby.js'));
+const CompetitiveHub = lazy(() => import('./pages/CompetitiveHub.js'));
+const LeagueQueue = lazy(() => import('./pages/LeagueQueue.js'));
+const WagerLobby = lazy(() => import('./pages/WagerLobby.js'));
+const CompetitiveMatch = lazy(() => import('./pages/CompetitiveMatch.js'));
+const CompetitiveReplay = lazy(() => import('./pages/CompetitiveReplay.js'));
+const LeagueStandings = lazy(() => import('./pages/LeagueStandings.js'));
+const LeagueAdmin = lazy(() => import('./pages/LeagueAdmin.js'));
 const TrainingSelection = lazy(() => import('./pages/TrainingSelection.js'));
 const BotGame = lazy(() => import('./pages/BotGame.js'));
-const GameScreen = lazy(() => import('./pages/GameScreen.js'));
-const GameInitializing = lazy(() => import('./pages/GameInitializing.js'));
 const ProfilePage = lazy(() => import('./pages/Profile.js'));
-const NFTSelectionSimplified = lazy(() => import('./pages/NFTSelectionSimplified.js'));
 const HowToPlay = lazy(() => import('./pages/HowToPlay.js'));
-const Leaderboard = lazy(() => import('./pages/Leaderboard.js'));
-const WaitingScreen = lazy(() => import('./pages/WaitingScreen.js'));
 const NotFound = lazy(() => import('./pages/NotFound.js'));
 
 function RouteScrollReset() {
@@ -52,27 +53,29 @@ function AppContent() {
           <Route path="/how-to-play" element={<HowToPlay />} />
           <Route path="/bot-selection" element={<TrainingSelection />} />
           <Route path="/bot-game" element={<BotGame />} />
-          <Route path="/leaderboard" element={PVP_ENABLED ? <Leaderboard /> : <Navigate to="/" replace />} />
+          <Route path="/leaderboard" element={<Navigate to="/standings" replace />} />
+          <Route path="/standings" element={<LeagueStandings />} />
+          <Route path="/competition" element={PVP_ENABLED ? <CompetitiveHub /> : <Navigate to="/" replace />} />
           {/* Handle legacy/auth callback route by redirecting to lobby */}
           <Route path="/auth" element={<Navigate to="/lobby" replace />} />
 
           {/* Protected Routes */}
           <Route element={<ProtectedRoute />}>
-            <Route path="/lobby" element={<Lobby />} />
+            <Route path="/lobby" element={<Navigate to={PVP_ENABLED ? '/competition' : '/'} replace />} />
             <Route path="/profile" element={<ProfilePage />} />
+            {/* Recovery routes remain reachable when new public admission is closed. */}
+            <Route path="/duel/:matchId" element={<CompetitiveMatch />} />
+            <Route path="/replay/:matchId" element={<CompetitiveReplay />} />
+            <Route path="/league-admin" element={<LeagueAdmin />} />
             {PVP_ENABLED ? (
               <>
-                <Route path="/game/:gameId" element={<GameScreen />} />
-                <Route path="/game-initializing/:gameId" element={<GameInitializing />} />
-                <Route path="/nft-selection/:gameId" element={<NFTSelectionSimplified />} />
-                <Route path="/waiting/:gameId" element={<WaitingScreen />} />
+                <Route path="/league" element={<LeagueQueue />} />
+                <Route path="/wagers" element={<WagerLobby />} />
               </>
             ) : (
               <>
-                <Route path="/game/:gameId" element={<Navigate to="/lobby" replace />} />
-                <Route path="/game-initializing/:gameId" element={<Navigate to="/lobby" replace />} />
-                <Route path="/nft-selection/:gameId" element={<Navigate to="/lobby" replace />} />
-                <Route path="/waiting/:gameId" element={<Navigate to="/lobby" replace />} />
+                <Route path="/league" element={<Navigate to="/" replace />} />
+                <Route path="/wagers" element={<Navigate to="/" replace />} />
               </>
             )}
           </Route>

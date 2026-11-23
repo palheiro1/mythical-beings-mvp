@@ -1,0 +1,701 @@
+import { useEffect, useState } from 'react';
+import { Link, useParams } from 'react-router-dom';
+import type {
+  CompetitiveCommand,
+  CompetitiveProjection,
+  Creature,
+  Knowledge,
+} from '@mythicalb/wisdom-duel-engine';
+import creatures from '../assets/creatures.json';
+import CardFaceByImage from '../components/CardFaceByImage.js';
+import { ArenaButton, PageShell, Panel } from '../components/ui/index.js';
+import { useAuth } from '../hooks/useAuth.js';
+import { useCompetitiveMatch, useMatchClock } from '../hooks/useCompetitiveMatch.js';
+import {
+  competitive,
+  competitiveError,
+  competitiveWalletConfig,
+  formatGem,
+  type WisdomMatchView,
+} from '../services/competitiveService.js';
+
+function ClockDisplay({ projection, playerId }: { projection: CompetitiveProjection; playerId: string }) {
+  const clock = useMatchClock(projection);
+  const label = (id: string) => {
+    const seconds = Math.ceil(clock(id) / 1000);
+    return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
+  };
+  return (
+    <div className="flex flex-wrap gap-5 text-xl tabular-nums" aria-label="Relógios da partida">
+      {projection.players.map((p) => (
+        <span
+          key={p.id}
+          className={projection.clock.runningPlayerId === p.id ? 'text-amber-200' : 'text-slate-300'}
+        >
+          {p.id === playerId ? 'Tu' : 'Adversário'}: <strong>{label(p.id)}</strong>
+        </span>
+      ))}
+      {projection.clock.suspendedAt ? <strong>Suspensa</strong> : null}
+    </div>
+  );
+}
+function Countdown({ deadline, serverNow }: { deadline: string; serverNow: string }) {
+  const [remaining, setRemaining] = useState(0);
+  useEffect(() => {
+    const start = performance.now(),
+      initial = Date.parse(deadline) - Date.parse(serverNow);
+    const update = () => setRemaining(Math.max(0, Math.ceil((initial - (performance.now() - start)) / 1000)));
+    update();
+    const timer = setInterval(update, 1000);
+    return () => clearInterval(timer);
+  }, [deadline, serverNow]);
+  return <span className="tabular-nums">{remaining}s</span>;
+}
+function Card({ card, children }: { card: Creature | Knowledge; children?: React.ReactNode }) {
+  return (
+    <div className="w-32 shrink-0 space-y-2 sm:w-40">
+      <CardFaceByImage card={card} src={card.image} alt={card.name} />
+      <p className="text-sm font-semibold">{card.name}</p>
+      {children}
+    </div>
+  );
+}
+function Board({
+  projection,
+  playerId,
+  disabled,
+  send,
+}: {
+  projection: CompetitiveProjection;
+  playerId: string;
+  disabled: boolean;
+  send: (command: CompetitiveCommand) => Promise<unknown>;
+}) {
+  const [selected, setSelected] = useState<Knowledge | null>(null);
+  const mine = projection.players.find((p) => p.id === playerId)!,
+    rival = projection.players.find((p) => p.id !== playerId)!;
+  const canAct =
+    !disabled &&
+    !projection.outcome &&
+    !projection.clock.suspendedAt &&
+    !projection.pendingEffect &&
+    projection.currentPlayerId === playerId &&
+    projection.decisionPlayerId === playerId;
+  const canSpend = canAct && projection.actionsTakenThisTurn < projection.actionsPerTurn;
+  const hand = mine.hand.visibility === 'visible' ? mine.hand.cards : [];
+  const chosen = selected && hand.some((k) => k.instanceId === selected.instanceId) ? selected : null;
+  async function summon(creatureId: string) {
+    if (!chosen?.instanceId) return;
+    const result = await send({
+      type: 'summon_knowledge',
+      creatureId,
+      handInstanceId: chosen.instanceId,
+    });
+    if (result === 'accepted' || result === 'duplicate') setSelected(null);
+  }
+  return (
+    <div className="space-y-5">
+      <Panel className="space-y-3 p-4">
+        <h2 className="text-xl font-bold">
+          Adversário · {rival.power} Poder · {rival.hand.count} cartas na mão
+        </h2>
+        <div className="flex gap-4 overflow-x-auto pb-2">
+          {rival.creatures.map((c) => (
+            <div key={c.id} className="space-y-2">
+              <Card card={c} />
+              {rival.field.find((f) => f.creatureId === c.id)?.knowledge ? (
+                <Card card={rival.field.find((f) => f.creatureId === c.id)!.knowledge!} />
+              ) : null}
+            </div>
+          ))}
+        </div>
+      </Panel>
+      <Panel className="space-y-3 p-4">
+        <h2 className="text-xl font-bold">Mercado · {projection.deckCount} cartas no baralho</h2>
+        <div className="flex gap-4 overflow-x-auto pb-2">
+          {projection.market.map((k) => (
+            <Card key={k.instanceId} card={k}>
+              <ArenaButton
+                size="sm"
+                fullWidth
+                disabled={!canSpend}
+                onClick={() =>
+                  void send({
+                    type: 'draw_knowledge',
+                    marketInstanceId: k.instanceId!,
+                  })
+                }
+              >
+                Comprar
+              </ArenaButton>
+            </Card>
+          ))}
+        </div>
+      </Panel>
+      <Panel className="space-y-3 p-4">
+        <h2 className="text-xl font-bold">A tua equipa · {mine.power} Poder</h2>
+        {chosen ? (
+          <p role="status" className="text-amber-200">
+            Escolhe a criatura para invocar {chosen.name}. Uma carta já nesse espaço será descartada.{' '}
+            <button className="underline" onClick={() => setSelected(null)}>
+              Cancelar seleção
+            </button>
+          </p>
+        ) : null}
+        <div className="flex gap-5 overflow-x-auto pb-2">
+          {mine.creatures.map((c) => {
+            const knowledge = mine.field.find((f) => f.creatureId === c.id)?.knowledge;
+            return (
+              <div key={c.id} className="space-y-3">
+                <Card card={c}>
+                  <ArenaButton
+                    size="sm"
+                    fullWidth
+                    disabled={!canSpend}
+                    onClick={() =>
+                      chosen
+                        ? void summon(c.id)
+                        : void send({
+                            type: 'rotate_creature',
+                            creatureId: c.id,
+                          })
+                    }
+                  >
+                    {chosen ? 'Invocar aqui' : 'Rodar criatura'}
+                  </ArenaButton>
+                </Card>
+                {knowledge ? (
+                  <Card card={knowledge}>
+                    <ArenaButton
+                      size="sm"
+                      fullWidth
+                      disabled={!canSpend}
+                      onClick={() =>
+                        void send({
+                          type: 'rotate_knowledge',
+                          creatureId: c.id,
+                          fieldInstanceId: knowledge.instanceId!,
+                        })
+                      }
+                    >
+                      Rodar conhecimento
+                    </ArenaButton>
+                  </Card>
+                ) : (
+                  <p className="text-sm text-slate-400">Espaço livre</p>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </Panel>
+      <Panel className="space-y-3 p-4">
+        <h2 className="text-xl font-bold">A tua mão</h2>
+        <div className="flex gap-4 overflow-x-auto pb-2">
+          {hand.map((k) => (
+            <Card key={k.instanceId} card={k}>
+              <ArenaButton
+                size="sm"
+                fullWidth
+                disabled={!canSpend}
+                aria-pressed={chosen?.instanceId === k.instanceId}
+                variant={chosen?.instanceId === k.instanceId ? 'primary' : 'secondary'}
+                onClick={() => setSelected(chosen?.instanceId === k.instanceId ? null : k)}
+              >
+                {chosen?.instanceId === k.instanceId ? 'Selecionado' : 'Invocar'}
+              </ArenaButton>
+            </Card>
+          ))}
+        </div>
+        {hand.length === 0 ? <p>A tua mão está vazia. Compra um conhecimento no mercado.</p> : null}
+      </Panel>
+      {projection.pendingEffect ? (
+        <Panel className="space-y-3 border-amber-300 p-5" role="region" aria-label="Decisão pendente">
+          <h2 className="text-xl font-bold">{projection.pendingEffect.prompt}</h2>
+          <div className="flex flex-wrap gap-3">
+            {projection.pendingEffect.choices.map((choice) => (
+              <ArenaButton
+                key={choice.key}
+                disabled={
+                  disabled ||
+                  Boolean(projection.clock.suspendedAt) ||
+                  projection.decisionPlayerId !== playerId
+                }
+                onClick={() =>
+                  void send({
+                    type: 'resolve_pending_effect',
+                    effectId: projection.pendingEffect!.id,
+                    choiceKey: choice.key,
+                  })
+                }
+              >
+                {choice.label}
+              </ArenaButton>
+            ))}
+            {projection.pendingEffect.optional ? (
+              <ArenaButton
+                variant="ghost"
+                disabled={
+                  disabled ||
+                  Boolean(projection.clock.suspendedAt) ||
+                  projection.decisionPlayerId !== playerId
+                }
+                onClick={() =>
+                  void send({
+                    type: 'resolve_pending_effect',
+                    effectId: projection.pendingEffect!.id,
+                    skip: true,
+                  })
+                }
+              >
+                Passar efeito
+              </ArenaButton>
+            ) : null}
+          </div>
+        </Panel>
+      ) : null}
+      <div className="flex flex-wrap items-center gap-4">
+        <ArenaButton disabled={!canAct} onClick={() => void send({ type: 'end_turn' })}>
+          Terminar turno
+        </ArenaButton>
+        <p>
+          {projection.decisionPlayerId === playerId ? 'A tua decisão' : 'À espera do adversário'} · turno{' '}
+          {projection.turn} · {projection.actionsTakenThisTurn}/{projection.actionsPerTurn} ações
+        </p>
+      </div>
+      <details>
+        <summary className="cursor-pointer text-cyan-200">Descartes e acontecimentos públicos</summary>
+        <p>{projection.discardPile.map((k) => k.name).join(', ') || 'Sem descartes.'}</p>
+        <ol className="mt-3 space-y-1 text-sm">
+          {projection.events.slice(-12).map((event) => (
+            <li key={event.sequence}>
+              {event.sequence}. {event.actorId === playerId ? 'Tu' : 'Adversário'} ·{' '}
+              {event.type.replace(/_/g, ' ')}
+            </li>
+          ))}
+        </ol>
+      </details>
+    </div>
+  );
+}
+
+function Preparation({
+  match,
+  serverNow,
+  refresh,
+}: {
+  match: WisdomMatchView;
+  serverNow: string;
+  refresh: () => Promise<void>;
+}) {
+  const [selected, setSelected] = useState<string[]>([]),
+    [busy, setBusy] = useState(false),
+    [error, setError] = useState(''),
+    [acknowledged, setAcknowledged] = useState(false),
+    [txHash, setTxHash] = useState(''),
+    [deferredCards, setDeferredCards] = useState<{ cardId: string; amount: string }[] | null>(null),
+    [cardRecipient, setCardRecipient] = useState(''),
+    [cardClaimHash, setCardClaimHash] = useState('');
+  const { polygonWallet, connectPolygonWallet, user } = useAuth();
+  const storageKey = `wisdom-economy:${user?.id}:${match.matchId}`;
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(storageKey);
+      if (saved) setTxHash(JSON.parse(saved).txHash);
+    } catch {
+      /* optional recovery record */
+    }
+  }, [storageKey]);
+  const run = async (operation: () => Promise<unknown>) => {
+    setBusy(true);
+    setError('');
+    try {
+      await operation();
+      await refresh();
+    } catch (e) {
+      setError(competitiveError(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+  const transact = async (kind: 'deposit' | 'lock' | 'settle' | 'refund') => {
+    const { executeWisdomWager } = await import('@mythicalb/sdk/wisdom-duel-wallet');
+    const result = await executeWisdomWager(
+      competitive,
+      competitiveWalletConfig(),
+      match.matchId,
+      kind,
+      (hash) => {
+        setTxHash(hash);
+        try {
+          localStorage.setItem(storageKey, JSON.stringify({ txHash: hash, kind }));
+        } catch {
+          /* Receipt can also be reconciled by the server. */
+        }
+      },
+    );
+    return result;
+  };
+  const retryReceipt = async () => {
+    const saved = JSON.parse(localStorage.getItem(storageKey) ?? 'null');
+    if (saved)
+      await competitive.invoke('wager', {
+        action: 'wager_verify',
+        matchId: match.matchId,
+        kind: saved.kind,
+        txHash: saved.txHash,
+      });
+  };
+  const outcomeFinished = match.status === 'finished';
+  return (
+    <Panel className="space-y-4 p-6">
+      {match.status === 'waiting' ? (
+        <>
+          <h2 className="text-2xl font-bold">Convida um adversário</h2>
+          <label className="block">
+            Ligação da sala
+            <input
+              className="mt-2 w-full rounded border border-white/20 bg-slate-950 p-3"
+              readOnly
+              value={`${location.origin}/wagers?join=${match.matchId}&mode=${match.mode}`}
+              onFocus={(e) => e.target.select()}
+            />
+          </label>
+        </>
+      ) : null}
+      {match.status === 'confirming' ? (
+        <>
+          <p>
+            Confirma este encontro em <Countdown deadline={match.deadline} serverNow={serverNow} />.
+          </p>
+          <ArenaButton
+            disabled={match.accepted || busy}
+            onClick={() => void run(() => competitive.queue('queue_accept', { matchId: match.matchId }))}
+          >
+            Aceitar partida
+          </ArenaButton>
+        </>
+      ) : null}
+      {match.mode === 'wager' ? (
+        <>
+          <p className="text-lg">
+            Aposta por jogador:{' '}
+            <strong>{formatGem(match.stakeAtomic ?? '0', match.tokenDecimals ?? 18)} GEM</strong>
+          </p>
+          {!polygonWallet ? (
+            <ArenaButton loading={busy} onClick={() => void run(connectPolygonWallet)}>
+              Associar carteira Polygon
+            </ArenaButton>
+          ) : null}
+          {match.status === 'depositing' ? (
+            <>
+              <p>
+                Se perderes, perdes a aposta GEM e uma das três cartas utilizadas. Perder a última cópia pode
+                deixar a carteira abaixo do mínimo para outro duelo. A liga gratuita continua disponível.
+              </p>
+              {!match.deposited ? (
+                <label className="flex gap-3">
+                  <input
+                    type="checkbox"
+                    checked={acknowledged}
+                    onChange={(e) => setAcknowledged(e.target.checked)}
+                  />
+                  Compreendo a aposta e a possível perda de uma carta.
+                </label>
+              ) : null}
+              <ArenaButton
+                loading={busy}
+                disabled={!polygonWallet || match.deposited || !acknowledged}
+                onClick={() => void run(() => transact('deposit'))}
+              >
+                {match.deposited ? 'Depósito confirmado' : 'Depositar GEM'}
+              </ArenaButton>
+              <p>
+                {match.opponentDeposited
+                  ? 'O adversário já depositou.'
+                  : 'À espera do depósito do adversário.'}
+              </p>
+            </>
+          ) : null}
+          {match.status === 'locking' ? (
+            <>
+              <p>As duas equipas estão fechadas. Cada jogador bloqueia agora as suas três cartas.</p>
+              <ArenaButton
+                loading={busy}
+                disabled={match.locked}
+                onClick={() => void run(() => transact('lock'))}
+              >
+                {match.locked ? 'Cartas bloqueadas' : 'Bloquear as três cartas'}
+              </ArenaButton>
+              <p>
+                {match.opponentLocked
+                  ? 'Cartas do adversário confirmadas.'
+                  : 'À espera do bloqueio do adversário.'}
+              </p>
+            </>
+          ) : null}
+          {(outcomeFinished || match.status === 'cancelled') &&
+          ['ready', 'refund_pending'].includes(match.settlementStatus) ? (
+            <div className="flex flex-wrap gap-3">
+              <ArenaButton
+                loading={busy}
+                onClick={() =>
+                  void run(() =>
+                    transact(
+                      match.settlementStatus === 'refund_pending' || match.status === 'cancelled'
+                        ? 'refund'
+                        : 'settle',
+                    ),
+                  )
+                }
+              >
+                Receber liquidação ou reembolso
+              </ArenaButton>
+            </div>
+          ) : null}
+          {['finalized', 'refunded'].includes(match.settlementStatus) ? (
+            <div className="space-y-3">
+              <p role="status">
+                {match.settlementStatus === 'refunded' ? 'Reembolso confirmado.' : 'Liquidação confirmada.'}
+              </p>
+              <p>Se a tua carteira não conseguiu receber alguma carta, podes levantá-la separadamente.</p>
+              <ArenaButton
+                variant="ghost"
+                loading={busy}
+                onClick={() =>
+                  void run(async () => {
+                    const { getWisdomDeferredCards } = await import('@mythicalb/sdk/wisdom-duel-wallet');
+                    setDeferredCards(await getWisdomDeferredCards(competitiveWalletConfig(), match.matchId));
+                  })
+                }
+              >
+                Verificar cartas por receber
+              </ArenaButton>
+              {deferredCards?.length === 0 ? (
+                <p role="status">Não tens cartas pendentes neste duelo.</p>
+              ) : null}
+              {deferredCards && deferredCards.length > 0 ? (
+                <>
+                  <label className="block">
+                    Carteira para receber as cartas (vazio para usar a carteira ligada)
+                    <input
+                      className="mt-2 w-full rounded border border-white/20 bg-slate-950 p-3"
+                      value={cardRecipient}
+                      onChange={(event) => setCardRecipient(event.target.value)}
+                      placeholder="0x…"
+                    />
+                  </label>
+                  <p>Usa uma carteira tua que aceite estas cartas. Confirma o endereço antes de autorizar.</p>
+                  {deferredCards.map(({ cardId, amount }) => (
+                    <ArenaButton
+                      key={cardId}
+                      loading={busy}
+                      onClick={() =>
+                        void run(async () => {
+                          const { claimWisdomDeferredCard } =
+                            await import('@mythicalb/sdk/wisdom-duel-wallet');
+                          setCardClaimHash(
+                            await claimWisdomDeferredCard(competitiveWalletConfig(), cardId, cardRecipient),
+                          );
+                        })
+                      }
+                    >
+                      Levantar uma cópia da carta {cardId} ({amount} por receber)
+                    </ArenaButton>
+                  ))}
+                </>
+              ) : null}
+              {cardClaimHash ? (
+                <p role="status" className="break-all">
+                  Levantamento enviado: {cardClaimHash}. Volta a verificar as cartas após a confirmação da
+                  rede.
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+          {txHash ? (
+            <div className="space-y-2">
+              <p className="break-all text-sm">
+                Transação enviada: {txHash}. A confirmação final da rede pode demorar.
+              </p>
+              <ArenaButton variant="ghost" loading={busy} onClick={() => void run(retryReceipt)}>
+                Verificar confirmação
+              </ArenaButton>
+            </div>
+          ) : null}
+        </>
+      ) : null}
+      {match.status === 'selecting' ? (
+        <>
+          <h2 className="text-2xl font-bold">
+            Escolhe três criaturas · <Countdown deadline={match.deadline} serverNow={serverNow} />
+          </h2>
+          <p>A equipa permanece secreta até ambos confirmarem. Depois de confirmada, não podes mudá-la.</p>
+          <div className="flex gap-4 overflow-x-auto pb-2">
+            {(match.offer ?? []).map((id) => {
+              const c = creatures.find((c) => c.id === id) as Creature | undefined;
+              if (!c) return null;
+              const chosen = (match.selection ?? selected).includes(id);
+              return (
+                <div className="w-36 shrink-0" key={id}>
+                  <button
+                    type="button"
+                    className={`w-full rounded-xl p-2 focus:ring-2 focus:ring-cyan-200 ${chosen ? 'bg-amber-300/25 ring-2 ring-amber-300' : ''}`}
+                    disabled={Boolean(match.selection) || busy || (!chosen && selected.length === 3)}
+                    aria-pressed={chosen}
+                    aria-label={`Selecionar ${c.name}`}
+                    onClick={() =>
+                      setSelected((ids) => (ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id]))
+                    }
+                  >
+                    <CardFaceByImage card={c} src={c.image} alt={c.name} />
+                    <span>{c.name}</span>
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+          <ArenaButton
+            loading={busy}
+            disabled={Boolean(match.selection) || selected.length !== 3}
+            onClick={() => void run(() => competitive.selection(match.matchId, selected))}
+          >
+            {match.selection ? 'Equipa confirmada' : 'Confirmar as três criaturas'}
+          </ArenaButton>
+          <p>{match.opponentSelected ? 'O adversário confirmou.' : 'À espera da seleção do adversário.'}</p>
+        </>
+      ) : null}
+      {['preparing', 'initializing'].includes(match.status) ? (
+        <p role="status">A preparar a partida no servidor…</p>
+      ) : null}
+      {match.status === 'cancelled' ? (
+        <p>
+          A preparação foi cancelada. A classificação não mudou. Os fundos depositados seguem o percurso de
+          reembolso.
+        </p>
+      ) : null}
+      {['waiting', 'depositing', 'selecting', 'locking'].includes(match.status) && match.mode !== 'league' ? (
+        <ArenaButton
+          variant="ghost"
+          loading={busy}
+          onClick={() => void run(() => competitive.cancelPreparation(match.matchId))}
+        >
+          Cancelar preparação
+        </ArenaButton>
+      ) : null}
+      {error ? (
+        <p role="alert" className="text-red-200">
+          {error}
+        </p>
+      ) : null}
+    </Panel>
+  );
+}
+
+export default function CompetitiveMatch() {
+  const { matchId = '' } = useParams(),
+    { user } = useAuth();
+  const { data, error, sending, retryable, refresh, submit } = useCompetitiveMatch(matchId, user?.id ?? '');
+  const [confirmResign, setConfirmResign] = useState(false);
+  const projection = data?.projection;
+  return (
+    <PageShell contentClassName="space-y-5">
+      <Link className="text-cyan-200" to="/competition">
+        ← Modos de jogo
+      </Link>
+      <h1 className="text-3xl font-bold">
+        {data?.match.mode === 'league'
+          ? 'Partida da liga'
+          : data?.match.mode === 'wager'
+            ? 'Duelo com aposta'
+            : 'Encontro casual'}
+      </h1>
+      {!data ? <p>A recuperar a partida…</p> : null}
+      {error ? (
+        <p role="alert" className="rounded border border-red-400/40 bg-red-950/40 p-3 text-red-100">
+          {error}
+        </p>
+      ) : null}
+      {retryable ? (
+        <ArenaButton loading={sending} onClick={() => void submit()}>
+          Verificar a jogada enviada
+        </ArenaButton>
+      ) : null}
+      {projection ? (
+        <>
+          <ClockDisplay projection={projection} playerId={user!.id} />
+          {projection.outcome ? (
+            <Panel className="space-y-3 p-6" role="status">
+              <h2 className="text-3xl font-bold">
+                {projection.outcome.winnerId === null
+                  ? 'Empate'
+                  : projection.outcome.winnerId === user?.id
+                    ? 'Vitória'
+                    : 'Derrota'}
+              </h2>
+              <p>
+                {
+                  {
+                    timeout: 'Tempo esgotado.',
+                    resign: 'Desistência.',
+                    power: 'Batalha concluída.',
+                    draw: 'Batalha empatada.',
+                  }[projection.outcome.reason]
+                }
+              </p>
+              <Link className="text-cyan-200 underline" to={`/replay/${matchId}`}>
+                Ver replay completo
+              </Link>{' '}
+              ·{' '}
+              <Link className="text-cyan-200 underline" to="/standings">
+                Classificação
+              </Link>
+            </Panel>
+          ) : null}
+          {projection.clock.suspendedAt ? (
+            <p role="status">
+              A partida está suspensa por um incidente técnico. A organização irá rever e retomar o encontro
+              com o tempo preservado.
+            </p>
+          ) : null}
+          <Board projection={projection} playerId={user!.id} disabled={sending || retryable} send={submit} />
+          {!projection.outcome && !projection.clock.suspendedAt ? (
+            <div className="space-y-3">
+              {confirmResign ? (
+                <div role="alert">
+                  <p>
+                    Desistir conta como derrota
+                    {projection.mode === 'wager' ? ' e implica perder a aposta e uma carta' : ''}.
+                  </p>
+                  <div className="mt-3 flex gap-3">
+                    <ArenaButton
+                      variant="danger"
+                      disabled={sending || retryable}
+                      onClick={() => void submit({ type: 'resign' }).then(() => setConfirmResign(false))}
+                    >
+                      Confirmar desistência
+                    </ArenaButton>
+                    <ArenaButton variant="ghost" onClick={() => setConfirmResign(false)}>
+                      Continuar a jogar
+                    </ArenaButton>
+                  </div>
+                </div>
+              ) : (
+                <ArenaButton
+                  variant="ghost"
+                  disabled={sending || retryable}
+                  onClick={() => setConfirmResign(true)}
+                >
+                  Desistir
+                </ArenaButton>
+              )}
+            </div>
+          ) : null}
+        </>
+      ) : null}
+      {data && (!projection || (projection.outcome && data.match.mode === 'wager')) ? (
+        <Preparation match={data.match} serverNow={data.serverNow} refresh={refresh} />
+      ) : null}
+    </PageShell>
+  );
+}

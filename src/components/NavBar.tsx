@@ -1,4 +1,4 @@
-import { Link, NavLink } from 'react-router-dom';
+import { Link, NavLink, useMatch } from 'react-router-dom';
 import { BookOpen, Bot, Home, LogIn, LogOut, Swords, Trophy, User, UserCircle, WalletCards } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth.js';
 import { cn } from './ui/cn.js';
@@ -8,6 +8,9 @@ import { BUILD_LABEL, BUILD_SHA } from '../config/build.js';
 
 const NavBar: React.FC = () => {
   const { user, profile, polygonWallet, loading, signOut } = useAuth();
+  const practiceMatch = useMatch('/bot-game');
+
+  if (practiceMatch) return null;
 
   const handleSignOut = async () => {
     try {
@@ -29,11 +32,11 @@ const NavBar: React.FC = () => {
     { to: '/', label: 'Home', icon: Home },
     ...(TRAINING_PREVIEW_ENABLED
       ? [{ to: '/bot-selection', label: 'Training', icon: Bot }]
-      : user && polygonWallet
-        ? [{ to: '/lobby', label: 'Lobby', icon: Swords }]
+      : user
+        ? [{ to: '/league', label: 'Liga', icon: Swords }, { to: '/wagers', label: 'Duelos com aposta', icon: WalletCards }, { to: '/bot-selection', label: 'Treinar', icon: Bot }]
         : []),
     { to: '/how-to-play', label: 'How to Play', icon: BookOpen },
-    ...(PVP_ENABLED ? [{ to: '/leaderboard', label: 'Leaderboard', icon: Trophy }] : []),
+    ...(PVP_ENABLED ? [{ to: '/standings', label: 'Classificação e prémios', icon: Trophy }] : []),
     ...(user && polygonWallet ? [{ to: '/profile', label: 'Profile', icon: User }] : []),
   ];
 
@@ -60,7 +63,7 @@ const NavBar: React.FC = () => {
     <nav className="sticky top-0 z-40 flex h-[var(--navbar-height)] items-center justify-between border-b border-white/10 bg-[#060912]/88 px-4 text-white shadow-[0_18px_36px_-24px_rgba(0,0,0,0.9)] backdrop-blur-xl">
       <div className="flex min-w-0 items-center gap-5">
         <Link
-          to={TRAINING_PREVIEW_ENABLED ? '/' : user ? '/lobby' : '/'}
+          to={TRAINING_PREVIEW_ENABLED ? '/' : user ? '/competition' : '/'}
           className="group flex min-w-0 items-center gap-3"
           aria-label="Wisdom Duel home"
         >
