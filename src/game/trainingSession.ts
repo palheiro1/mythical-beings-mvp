@@ -69,7 +69,7 @@ export function trainingSessionReducer(session: TrainingSession, event: Training
   }
   if (session.game.phase === 'gameOver') return session;
   if (event.type === 'resign') return { ...session, resigned: true, selectedId: null,
-    game: { ...session.game, winner: BOT_ID, phase: 'gameOver', pendingEffect: null,
+    game: { ...session.game, winner: BOT_ID, phase: 'gameOver', pendingEffect: null, presentationCues: [],
       log: [...session.game.log, 'You conceded the practice match.'] } };
 
   if (event.type !== 'play') return session;

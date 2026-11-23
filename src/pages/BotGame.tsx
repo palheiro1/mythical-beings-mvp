@@ -65,8 +65,10 @@ function PracticeMatch({ team, mode, gameId, onReplay }: { team: string[]; mode:
   const { capture, announcement, presenting } = useTrainingMotion(game, containerRef, motionLayerRef, `${directCards}-${tab}`, orientationPaused, audio.presentation);
   const onAction = useCallback((action: TrainingAction) => { capture(); dispatch({ type: 'play', action }); }, [capture]);
   useTrainingBot(game, onAction, orientationPaused || rulesOpen);
-  const isMyTurn = game.currentPlayerIndex === 0 && game.phase === 'action';
+  const playerTurn = game.currentPlayerIndex === 0;
+  const isMyTurn = playerTurn && game.phase === 'action';
   const gameOver = game.phase === 'gameOver';
+  const pending = game.pendingEffect;
   const lastSoundTurn = useRef(game.turn);
   const resultSoundPlayed = useRef(false);
   useEffect(() => {
@@ -85,8 +87,8 @@ function PracticeMatch({ team, mode, gameId, onReplay }: { team: string[]; mode:
   }, [gameOver, game.winner, game.turn, isMyTurn, presenting, orientationPaused, audio.presentation]);
   const paused = guide !== 'free';
   const endTurn = useCallback(() => onAction({ type: 'END_TURN', payload: { playerId: HUMAN_ID } }), [onAction]);
-  const remainingTime = useTurnTimer({ isMyTurn: isMyTurn && !game.pendingEffect && !paused, phase: game.phase === 'action' ? 'action' : null,
-    turnDurationSeconds: 30, onTimerEnd: endTurn, gameTurn: game.turn, currentPlayerIndex: game.currentPlayerIndex, paused: orientationPaused || rulesOpen });
+  const remainingTime = useTurnTimer({ isMyTurn: isMyTurn && !paused, phase: game.phase === 'action' ? 'action' : null,
+    turnDurationSeconds: 30, onTimerEnd: endTurn, gameTurn: game.turn, currentPlayerIndex: game.currentPlayerIndex, paused: orientationPaused || rulesOpen || !!pending });
   const observed = useRef({ started: false, first: false, ended: false, abandonTimeout: 0 });
   useEffect(() => {
     window.clearTimeout(observed.current.abandonTimeout);
@@ -126,9 +128,9 @@ function PracticeMatch({ team, mode, gameId, onReplay }: { team: string[]; mode:
   const [player, bot] = game.players;
   const selected = player.hand.find(card => card.instanceId === session.selectedId);
   const actionsLeft = Math.max(0, game.actionsPerTurn - game.actionsTakenThisTurn);
-  const pending = game.pendingEffect;
   const clockPaused = paused || !!pending || rulesOpen;
   const clockRunning = isMyTurn && !clockPaused;
+  const clockWarning = isMyTurn && !paused && remainingTime <= 10 ? remainingTime <= 5 ? 'red' : 'amber' : undefined;
   const clockText = `${Math.floor(remainingTime / 60)}:${String(remainingTime % 60).padStart(2, '0')}`;
   const message = session.feedback || (paused && !gameOver && !game.pendingEffect && isMyTurn ? guide === 'welcome' ? 'Start the lesson whenever you are ready.' : guide === 'complete' || guide === 'handoff' ? 'Continue Practice starts the turn clock.' : 'Follow the highlighted lesson action. Take your time.' : gameOver ? 'The duel is over.' : pending ? pending.playerId === HUMAN_ID ? 'Choose a target to resolve the card effect.' : 'The bot is resolving a card effect.' : !isMyTurn ? 'The bot is thinking. Your next turn is coming.' : selected ? `Play ${selected.name} on a highlighted creature.` : directCards ? 'Tap a creature to rotate, a market card to draw, or a hand card to select.' : 'Rotate a creature, draw from the market, or select a card in your hand.');
   if (orientationPaused) return <div className="wd wd-rotate-notice">
@@ -140,14 +142,15 @@ function PracticeMatch({ team, mode, gameId, onReplay }: { team: string[]; mode:
     <Link className="wd-button" to="/">Back to Home</Link>
     <button className="wd-button" onClick={() => setAllowPortrait(true)}>Can’t rotate? Continue in portrait</button>
   </div>;
-  return <div ref={containerRef} onPointerDownCapture={audio.unlock} onKeyDownCapture={audio.unlock} className={`wd wd-match wd-confluence wd-kai ${paused && !gameOver ? 'has-guide' : ''} ${directCards ? 'wd-direct' : ''}`} data-active-side={gameOver ? undefined : isMyTurn ? 'player' : 'opponent'}>
+  return <div ref={containerRef} onPointerDownCapture={audio.unlock} onKeyDownCapture={audio.unlock} className={`wd wd-match wd-confluence wd-kai ${paused && !gameOver ? 'has-guide' : ''} ${directCards ? 'wd-direct' : ''}`} data-active-side={gameOver ? undefined : playerTurn ? 'player' : 'opponent'}>
     <h1 className="sr-only">Wisdom Duel — Solo practice</h1>
     <div ref={motionLayerRef} className="wd-motion-layer" aria-hidden="true" inert />
     <p className="sr-only" role="status" aria-live="polite" aria-atomic="true">{announcement}</p>
-    <header className="wd-match-header">
+    <header className="wd-match-header" data-clock-warning={clockWarning}>
+      {clockWarning && <span key={clockWarning} className="wd-clock-flare" aria-hidden="true" />}
       <Link to="/" className="wd-brand" aria-label="Wisdom Duel home"><img src="/logos/logo-header-dark.webp" alt="" width="44" height="34" /><span>Wisdom Duel</span></Link>
       <div className="wd-match-controls">
-        {!gameOver && <div className={`wd-match-clock ${clockRunning && remainingTime <= 5 ? 'wd-clock-low' : ''}`} role="timer" aria-label="Turn clock">
+        {!gameOver && <div className={`wd-match-clock ${clockRunning && clockWarning === 'red' ? 'wd-clock-low' : ''}`} role="timer" aria-label="Turn clock">
           <Clock3 size={15} aria-hidden="true" />
           {clockPaused ? 'Clock paused' : clockRunning ? clockText : '—'}
         </div>}
@@ -159,8 +162,8 @@ function PracticeMatch({ team, mode, gameId, onReplay }: { team: string[]; mode:
     <div className="wd-game-layout">
       <TrainingBoard direct={directCards} session={session} onAction={onAction} onInspect={setInspection} hud={{
         opponent: <PowerMedallion power={bot.power} side="opponent" handSize={bot.hand.length} />,
-        turn: <div className="wd-turn"><span>Turn {game.turn}</span><strong>{gameOver ? 'Duel complete' : isMyTurn ? 'Your turn' : 'Bot’s turn'}</strong></div>,
-        player: <PowerMedallion power={player.power} side="player" actions={{ remaining: isMyTurn ? actionsLeft : 0, total: game.actionsPerTurn }} />,
+        turn: <div className="wd-turn"><span>Turn {game.turn}</span><strong key={`${game.turn}:${game.currentPlayerIndex}`} className={gameOver ? undefined : 'wd-turn-callout'}>{gameOver ? 'Duel complete' : playerTurn ? 'Your turn' : 'Bot’s turn'}</strong></div>,
+        player: <PowerMedallion power={player.power} side="player" actions={{ remaining: isMyTurn && !pending ? actionsLeft : 0, total: game.actionsPerTurn }} />,
       }} />
       <TrainingTrays direct={directCards} session={session} tab={tab} setTab={setTab} onAction={onAction} onSelect={instanceId => dispatch({ type: 'select', instanceId })} onInspect={setInspection} />
     </div>
