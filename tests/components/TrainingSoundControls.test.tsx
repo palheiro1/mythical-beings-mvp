@@ -24,6 +24,7 @@ describe('sound controls', () => {
   it('disables sound samples while muted and enables sound only explicitly', async () => {
     const user = userEvent.setup(); const update = vi.fn();
     render(<TrainingSoundControls preferences={DEFAULT_AUDIO} update={update} play={vi.fn()} error="" open={false} onOpen={vi.fn()} onClose={vi.fn()} />);
+    await user.click(screen.getByLabelText('Sound settings'));
     await user.click(screen.getByRole('button', { name: 'Enable sound' }));
     expect(update).toHaveBeenCalledWith({ enabled: true });
   });

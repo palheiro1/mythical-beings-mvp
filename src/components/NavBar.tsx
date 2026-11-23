@@ -1,4 +1,4 @@
-import { Link, NavLink } from 'react-router-dom';
+import { Link, NavLink, useMatch } from 'react-router-dom';
 import { BookOpen, Bot, Home, LogIn, LogOut, Swords, Trophy, User, UserCircle, WalletCards } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth.js';
 import { cn } from './ui/cn.js';
@@ -8,6 +8,9 @@ import { BUILD_LABEL, BUILD_SHA } from '../config/build.js';
 
 const NavBar: React.FC = () => {
   const { user, profile, polygonWallet, loading, signOut } = useAuth();
+  const practiceMatch = useMatch('/bot-game');
+
+  if (practiceMatch) return null;
 
   const handleSignOut = async () => {
     try {

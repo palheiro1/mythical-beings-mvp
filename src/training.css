@@ -74,6 +74,7 @@
 .wd-card { height:100%; position:relative; min-width:0; }
 .wd-card-art { display:block; background:transparent; border:0; margin:auto; padding:0; height:100%; max-width:100%; min-width:44px; min-height:44px; aspect-ratio:720/951; border-radius:6px; transform:rotate(var(--card-rotation,0deg)); transition:transform .25s ease; }
 .wd-card-art img { border-radius:6px; }
+.wd-card-detail-mark { display:none; }
 .wd-card.is-selected .wd-card-art { outline:2px solid var(--wd-gold); outline-offset:3px; }
 .wd-match { --wd-card-size:clamp(66px,calc((100dvh - 320px)/4),112px); padding:0 max(16px,calc((100vw - 1380px)/2)); min-height:calc(100dvh - 60px); }
 .wd-match.has-guide { --wd-card-size:clamp(64px,calc((100dvh - 430px)/4),108px); }

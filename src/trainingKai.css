@@ -1,0 +1,362 @@
+/* Practice arena. Match controls and presentation anchors stay on the live board. */
+.wd-kai.wd-confluence {
+  --wd-medallion-size: 60px;
+  --wd-duel-card: clamp(62px, calc((100dvh - 348px) * .34), 128px);
+  --wd-fan-angle: 4deg;
+  --wd-fan-offset: 12px;
+  min-height: 100dvh;
+}
+.wd-kai.has-guide { --wd-duel-card: clamp(56px, calc((100dvh - 420px) * .34), 118px); }
+
+.wd-match-header,
+.wd-match-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.wd-match-header {
+  justify-content: space-between;
+  min-height: 50px;
+  margin-bottom: 10px;
+  padding: 3px 8px 3px 12px;
+  border: 1px solid #b3965d80;
+  border-radius: 8px;
+  background: #091c23;
+  position: relative;
+  z-index: 45;
+  flex-shrink: 0;
+}
+.wd-match-header .wd-brand { color: #f3e5c8; }
+.wd-match-controls { gap: 6px; }
+.wd-match-controls .wd-match-rules {
+  min-height: 44px;
+  padding: 6px 11px;
+  border: 1px solid #a98d5580;
+  border-radius: 7px;
+  background: #10272c;
+}
+.wd-match-clock {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px;
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+  white-space: nowrap;
+  color: #f3dcab;
+}
+.wd-match-clock.wd-clock-low {
+  background: #491e1e;
+  border-radius: 6px;
+  box-shadow: 0 0 12px #ed554a65;
+}
+.wd-sound-menu { position: relative; }
+.wd-sound-menu summary { cursor: pointer; list-style: none; }
+.wd-sound-menu summary::-webkit-details-marker { display: none; }
+.wd-sound-menu-items {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  width: max-content;
+  min-width: 150px;
+  padding: 4px;
+  border: 1px solid #aa8b56;
+  border-radius: 8px;
+  background: #152e32;
+  box-shadow: 0 6px 18px #071114c9;
+}
+.wd-sound-menu-items .wd-button { display: flex; width: 100%; justify-content: flex-start; min-height: 44px; }
+.wd-sound-menu-items .wd-button:hover { background: #263e3d; }
+.wd-rules-list { list-style: disc; padding-inline-start: 22px; margin: 12px 0; }
+.wd-rules-list li + li { margin-top: 7px; }
+
+.wd-kai.wd-confluence .wd-board {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
+  min-width: 0;
+  container-type: normal;
+  padding: 8px 10px;
+  border: 0;
+  box-shadow: none;
+  background: #0b252b49;
+}
+.wd-kai.wd-confluence .wd-lanes {
+  flex: 1;
+  width: 100%;
+  height: auto;
+  min-height: 0;
+  grid-template-rows: auto minmax(34px, 1fr) auto auto;
+  gap: 6px 10px;
+}
+.wd-kai .wd-lane { display: contents; }
+.wd-kai .wd-lane:nth-child(1) > * { grid-column: 1; }
+.wd-kai .wd-lane:nth-child(2) > * { grid-column: 2; }
+.wd-kai .wd-lane:nth-child(3) > * { grid-column: 3; }
+.wd-kai .wd-enemy-pair { grid-row: 1; }
+.wd-kai .wd-turn { grid-column: 1 / -1; grid-row: 2; place-self: center; }
+.wd-kai .wd-player-pair { grid-row: 3; }
+.wd-kai .wd-lane-action { grid-row: 4; }
+.wd-kai.wd-confluence .wd-turn {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+  padding: 0 16px;
+  white-space: nowrap;
+}
+.wd-kai .wd-turn > span {
+  padding: 2px 8px;
+  border: 1px solid #c2a06480;
+  border-radius: 20px;
+  background: #0c2329;
+}
+.wd-kai .wd-turn strong { font: 700 clamp(15px, 2vw, 23px) Georgia, serif; }
+
+.wd-kai.wd-confluence .wd-card-pair {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 2px 3px;
+  border-color: transparent;
+  background: none;
+  box-shadow: none;
+}
+.wd-kai .wd-card-pair::before,
+.wd-kai .wd-card-pair::after { content: none; }
+.wd-kai.wd-confluence .wd-player-pair.is-target {
+  border-color: #dfbf79;
+  background: #1e3e3666;
+  box-shadow: 0 0 10px #f2d18b35;
+}
+.wd-kai .wd-lane:first-child .wd-enemy-pair,
+.wd-kai .wd-lane:nth-child(3) .wd-player-pair { rotate: calc(-1 * var(--wd-fan-angle)); }
+.wd-kai .wd-lane:nth-child(3) .wd-enemy-pair,
+.wd-kai .wd-lane:first-child .wd-player-pair { rotate: var(--wd-fan-angle); }
+.wd-kai .wd-lane:is(:first-child, :nth-child(3)) .wd-enemy-pair { translate: 0 calc(-1 * var(--wd-fan-offset)); }
+.wd-kai .wd-lane:is(:first-child, :nth-child(3)) :is(.wd-player-pair, .wd-lane-action) { translate: 0 var(--wd-fan-offset); }
+.wd-kai.wd-confluence .wd-card-pair > .wd-creature-slot {
+  order: 0;
+  flex: 0 1 var(--wd-duel-card);
+  width: var(--wd-duel-card);
+  max-width: 57%;
+  min-width: 0;
+}
+.wd-kai.wd-confluence .wd-card-pair > .wd-knowledge-slot {
+  flex: 0 1 calc(var(--wd-duel-card) * .72);
+  width: calc(var(--wd-duel-card) * .72);
+  max-width: 40%;
+  min-width: 0;
+  height: auto;
+  align-self: center;
+  aspect-ratio: auto;
+}
+.wd-kai.wd-confluence .wd-card-pair .wd-card-board,
+.wd-kai.wd-confluence .wd-card-pair .wd-empty-slot { width: 100%; height: auto; max-width: none; }
+.wd-kai.wd-confluence .wd-card-pair .wd-card-art { width: 100%; height: auto; min-width: 0; }
+.wd-kai .wd-card-art { position: relative; }
+.wd-kai .wd-card-detail-mark {
+  position: absolute;
+  right: 5px;
+  bottom: 23%;
+  display: grid;
+  place-items: center;
+  padding: 2px;
+  border-radius: 50%;
+  background: #0a1b21;
+  color: #f5dfac;
+}
+.wd-kai.wd-confluence .wd-empty-slot {
+  aspect-ratio: 720 / 951;
+  border-color: #a78b58b0;
+  border-radius: 7px;
+  background: #0b252bea;
+  gap: 3px;
+  font-size: 10px;
+  text-align: center;
+}
+.wd-kai .wd-empty-slot svg { width: 16px; color: #bf9f63; }
+.wd-kai .wd-lane-action { margin-inline: 5px; min-height: 38px; }
+
+.wd-power-medallion {
+  position: relative;
+  display: grid;
+  place-items: center;
+  height: var(--wd-medallion-size);
+  isolation: isolate;
+}
+.wd-power-medallion::before {
+  content: '';
+  pointer-events: none;
+  position: absolute;
+  z-index: -1;
+  inset-inline: max(8%, calc(50% - 135px));
+  height: 72%;
+  border-block-end: 2px solid #d9b46b;
+  border-radius: 0 0 50% 50% / 0 0 100% 100%;
+  box-shadow: 0 3px 0 -1px #624620;
+}
+.wd-power-player::before { transform: rotate(180deg); }
+.wd-power-medallion::after {
+  content: '';
+  pointer-events: none;
+  position: absolute;
+  z-index: -1;
+  bottom: 14%;
+  width: calc(var(--wd-medallion-size) * 2.8);
+  aspect-ratio: 4.7;
+  background: url('/images/arena/power-laurels.webp') center / contain no-repeat;
+}
+.wd-power-player::after { bottom: -6%; }
+.wd-power-value {
+  display: grid;
+  place-items: center;
+  width: var(--wd-medallion-size);
+  height: var(--wd-medallion-size);
+  border: 2px solid #e5c181;
+  border-radius: 50%;
+  background: radial-gradient(circle at 42% 23%, #2a5055, #10272f 75%);
+  box-shadow: inset 0 0 0 3px #162227, inset 0 0 0 4px #b98d4e, 0 3px 7px #050c10c0;
+  font: 700 calc(var(--wd-medallion-size) * .52) Georgia, serif;
+  color: #fae6b4;
+}
+.wd-power-opponent .wd-power-value { background: radial-gradient(circle at 42% 23%, #633e36, #241a21 75%); }
+.wd-kai[data-active-side=player] .wd-power-player .wd-power-value,
+.wd-kai[data-active-side=opponent] .wd-power-opponent .wd-power-value { border-color: #ffe2a0; }
+.wd-action-lights {
+  position: absolute;
+  left: calc(50% + var(--wd-medallion-size) / 2 + 8px);
+  top: 28%;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.wd-action-lights > span[aria-hidden] {
+  width: 11px;
+  height: 11px;
+  border: 1px solid #dabc77;
+  border-radius: 50%;
+  background: #10252c;
+}
+.wd-action-lights > span.is-available {
+  background: #ffd177;
+  box-shadow: 0 0 7px #efae69bb, inset 0 0 0 2px #ffe5ae;
+}
+
+.wd-kai.wd-direct .wd-market .wd-tray-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  overflow: auto;
+  scroll-snap-type: none;
+}
+.wd-kai.wd-direct .wd-market-row {
+  width: 100%;
+  padding: 2px;
+  flex: none;
+}
+.wd-kai.wd-direct .wd-market-row .wd-card {
+  display: flex;
+  align-items: stretch;
+  gap: 3px;
+  height: auto;
+}
+.wd-kai.wd-direct .wd-market-row .wd-card-art {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 7px;
+  width: auto;
+  aspect-ratio: auto;
+  text-align: left;
+}
+.wd-market-row .dc-frame.dc-play {
+  width: 37px;
+  flex: 0 0 37px;
+  grid-template-rows: 26px 14px;
+}
+.wd-market-row .dc-play .dc-art-window { height: 26px; aspect-ratio: auto; }
+.wd-market-row .dp-unit,
+.wd-market-row .dp-ticks { display: none; }
+.wd-market-row-name { min-width: 0; flex: 1; font-size: 12px; }
+.wd-market-row-name > * { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wd-market-row-name small { font-size: 10px; color: var(--wd-muted); }
+.wd-market-row-draw {
+  padding: 5px 6px;
+  border: 1px solid #bca36d80;
+  border-radius: 5px;
+  background: #233936;
+  font-size: 11px;
+}
+.wd-market-row [aria-disabled=true] .wd-market-row-draw { opacity: .55; }
+.wd-market-row-inspect {
+  flex: 0 0 44px;
+  min-height: 44px;
+  display: grid;
+  place-items: center;
+  color: #ead7b0;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+}
+
+@media (min-width: 1051px) and (min-height: 601px) {
+  .wd-kai.wd-confluence { height: auto; }
+  .wd-kai.wd-confluence .wd-game-layout { flex: 1; }
+  .wd-kai.wd-confluence .wd-tray-cards { max-height: calc(100dvh - 230px); }
+  .wd-kai.wd-confluence.has-guide .wd-tray-cards { max-height: calc(100dvh - 315px); }
+}
+@media (max-width: 767px) and (orientation: portrait) {
+  .wd-kai.wd-confluence { --wd-medallion-size: 43px; --wd-fan-angle: 2deg; --wd-fan-offset: 6px; padding-top: 4px; }
+  .wd-kai .wd-match-header { padding-inline: 5px; margin-bottom: 6px; }
+  .wd-kai .wd-match-rules { width: 44px; padding: 4px; }
+  .wd-kai .wd-match-rules > span { display: none; }
+  .wd-kai .wd-match-clock svg { display: none; }
+  .wd-kai .wd-match-controls { gap: 4px; }
+  .wd-kai .wd-coach { top: 0; }
+  .wd-kai.wd-confluence .wd-board { padding-inline: 2px; }
+  .wd-kai.wd-confluence .wd-lanes { gap: 5px; }
+  .wd-kai.wd-confluence .wd-empty-slot span { display: none; }
+  .wd-kai.wd-direct .wd-market .wd-tray-cards { max-height: 262px; }
+}
+@media (orientation: landscape) and (max-height: 600px) {
+  .wd-kai.wd-match {
+    --wd-medallion-size: clamp(33px, 9dvh, 50px);
+    --wd-duel-card: clamp(44px, calc((100dvh - 252px) * .35), 90px);
+    --wd-fan-angle: 2deg;
+    --wd-fan-offset: 8px;
+    height: auto;
+    grid-template-columns: minmax(0, 1.9fr) minmax(180px, 1fr);
+    grid-template-rows: 48px minmax(0, 1fr) auto;
+    column-gap: 8px;
+  }
+  .wd-kai .wd-match-header { grid-column: 1 / -1; grid-row: 1; min-height: 44px; margin: 0 0 2px; padding: 0 6px; }
+  .wd-kai .wd-match-header .wd-brand { gap: 5px; font-size: 16px; }
+  .wd-kai .wd-match-header .wd-brand img { width: 32px; height: 28px; }
+  .wd-kai.wd-confluence .wd-board { align-self: stretch; gap: 2px; padding: 1px 4px; }
+  .wd-kai.wd-confluence .wd-lanes { grid-template-rows: auto minmax(24px, 1fr) auto; gap: 3px 5px; }
+  .wd-kai.wd-confluence .wd-turn { gap: 6px; }
+  .wd-kai .wd-turn strong { font-size: 17px; }
+  .wd-kai .wd-turn > span { padding: 0 5px; }
+  .wd-kai .wd-board .dc-play { grid-template-rows: auto 18px 3px; }
+  .wd-kai .wd-board .dc-play .dc-art-window { aspect-ratio: 1.2; }
+  .wd-kai .wd-board .wd-play-caption { min-height: 16px; height: 16px; font-size: 9px; }
+  .wd-kai .wd-board button.wd-play-caption { min-height: 24px; height: 24px; }
+  .wd-kai.wd-confluence .wd-empty-slot { font-size: 8px; }
+  .wd-kai .wd-action-lights > span[aria-hidden] { width: 9px; height: 9px; }
+  .wd-kai.wd-confluence .wd-actionbar { padding: 4px 5px 4px 72px; margin-top: 2px; }
+  .wd-kai .wd-action-buttons > .wd-button-primary { min-width: 98px; }
+  .wd-kai.wd-direct .wd-tray .wd-tray-cards { max-height: max(96px, calc(100dvh - 173px - var(--wd-coach-height))); }
+  .wd-kai.wd-direct .wd-market .wd-tray-cards { gap: 1px; }
+}
+@media (orientation: landscape) and (max-height: 405px) {
+  .wd-kai.wd-confluence .wd-empty-slot span { display: none; }
+  .wd-kai.wd-confluence .wd-actionbar { position: sticky; bottom: env(safe-area-inset-bottom); }
+}
+@media (orientation: landscape) and (max-height: 340px) {
+  .wd-kai .wd-tray-tabs { grid-row: 2; margin-top: calc(var(--wd-coach-height) + 4px); }
+  .wd-kai .wd-tray { margin-top: calc(var(--wd-coach-height) + 50px); }
+}

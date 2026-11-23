@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { ArrowRight, Clock3, Flag, History, Home, Layers, RotateCcw, Smartphone, X } from 'lucide-react';
+import { ArrowRight, BookOpen, Clock3, Flag, History, Layers, RotateCcw, Smartphone, X } from 'lucide-react';
 import creatureData from '../assets/creatures.json';
 import { track } from '../analytics/productAnalytics.js';
 import { isValidBotCreatureSelection, readBotCreatureSelection, clearBotCreatureSelection } from '../utils/botSelection.js';
@@ -26,6 +26,24 @@ import '../trainingLandscape.css';
 import '../trainingMotion.css';
 import '../trainingArena.css';
 import '../trainingAudio.css';
+import '../trainingKai.css';
+
+function PowerMedallion({ power, side, handSize, actions }: {
+  power: number;
+  side: 'player' | 'opponent';
+  handSize?: number;
+  actions?: { remaining: number; total: number };
+}) {
+  const isPlayer = side === 'player';
+  const value = Math.max(0, power);
+  return <div className={`wd-power-medallion wd-power-${side}`} data-motion-anchor={isPlayer ? undefined : `hand:${BOT_ID}`} title={isPlayer ? undefined : `Bot · ${handSize} in hand`}>
+    <strong className="wd-power-value" data-motion-anchor={`power:${isPlayer ? HUMAN_ID : BOT_ID}`} aria-label={`${isPlayer ? 'Your' : 'Bot'} Power: ${value}`}>{value}</strong>
+    {actions && <div className="wd-action-lights">
+      <span className="sr-only">{actions.remaining} / {actions.total} actions left</span>
+      {Array.from({ length: actions.total }, (_, index) => <span key={index} className={index < actions.remaining ? 'is-available' : undefined} aria-hidden="true" />)}
+    </div>}
+  </div>;
+}
 
 function PracticeMatch({ team, mode, gameId, onReplay }: { team: string[]; mode: TrainingMode; gameId: string; onReplay: () => void }) {
   const navigate = useNavigate();
@@ -34,7 +52,8 @@ function PracticeMatch({ team, mode, gameId, onReplay }: { team: string[]; mode:
   const [tab, setTab] = useState<TrayTab>('market');
   const [inspection, setInspection] = useState<DisplayCard | null>(null);
   const closeInspection = useCallback(() => setInspection(null), []);
-  const [dialog, setDialog] = useState<'history' | 'resign' | 'discard' | 'sound' | null>(null);
+  const [dialog, setDialog] = useState<'history' | 'resign' | 'discard' | 'sound' | 'rules' | null>(null);
+  const rulesOpen = dialog === 'rules';
   const [resultDismissed, setResultDismissed] = useState(false);
   const portrait = usePortraitViewport();
   const directCards = useDirectCards();
@@ -45,7 +64,7 @@ function PracticeMatch({ team, mode, gameId, onReplay }: { team: string[]; mode:
   const audio = useTrainingAudio(orientationPaused);
   const { capture, announcement, presenting } = useTrainingMotion(game, containerRef, motionLayerRef, `${directCards}-${tab}`, orientationPaused, audio.presentation);
   const onAction = useCallback((action: TrainingAction) => { capture(); dispatch({ type: 'play', action }); }, [capture]);
-  useTrainingBot(game, onAction, orientationPaused);
+  useTrainingBot(game, onAction, orientationPaused || rulesOpen);
   const isMyTurn = game.currentPlayerIndex === 0 && game.phase === 'action';
   const gameOver = game.phase === 'gameOver';
   const lastSoundTurn = useRef(game.turn);
@@ -67,7 +86,7 @@ function PracticeMatch({ team, mode, gameId, onReplay }: { team: string[]; mode:
   const paused = guide !== 'free';
   const endTurn = useCallback(() => onAction({ type: 'END_TURN', payload: { playerId: HUMAN_ID } }), [onAction]);
   const remainingTime = useTurnTimer({ isMyTurn: isMyTurn && !game.pendingEffect && !paused, phase: game.phase === 'action' ? 'action' : null,
-    turnDurationSeconds: 30, onTimerEnd: endTurn, gameTurn: game.turn, currentPlayerIndex: game.currentPlayerIndex, paused: orientationPaused });
+    turnDurationSeconds: 30, onTimerEnd: endTurn, gameTurn: game.turn, currentPlayerIndex: game.currentPlayerIndex, paused: orientationPaused || rulesOpen });
   const observed = useRef({ started: false, first: false, ended: false, abandonTimeout: 0 });
   useEffect(() => {
     window.clearTimeout(observed.current.abandonTimeout);
@@ -108,6 +127,9 @@ function PracticeMatch({ team, mode, gameId, onReplay }: { team: string[]; mode:
   const selected = player.hand.find(card => card.instanceId === session.selectedId);
   const actionsLeft = Math.max(0, game.actionsPerTurn - game.actionsTakenThisTurn);
   const pending = game.pendingEffect;
+  const clockPaused = paused || !!pending || rulesOpen;
+  const clockRunning = isMyTurn && !clockPaused;
+  const clockText = `${Math.floor(remainingTime / 60)}:${String(remainingTime % 60).padStart(2, '0')}`;
   const message = session.feedback || (paused && !gameOver && !game.pendingEffect && isMyTurn ? guide === 'welcome' ? 'Start the lesson whenever you are ready.' : guide === 'complete' || guide === 'handoff' ? 'Continue Practice starts the turn clock.' : 'Follow the highlighted lesson action. Take your time.' : gameOver ? 'The duel is over.' : pending ? pending.playerId === HUMAN_ID ? 'Choose a target to resolve the card effect.' : 'The bot is resolving a card effect.' : !isMyTurn ? 'The bot is thinking. Your next turn is coming.' : selected ? `Play ${selected.name} on a highlighted creature.` : directCards ? 'Tap a creature to rotate, a market card to draw, or a hand card to select.' : 'Rotate a creature, draw from the market, or select a card in your hand.');
   if (orientationPaused) return <div className="wd wd-rotate-notice">
     <Smartphone size={64} strokeWidth={1.2} aria-hidden="true" />
@@ -116,26 +138,35 @@ function PracticeMatch({ team, mode, gameId, onReplay }: { team: string[]; mode:
     <p>The board, your hand and the market fit side by side in landscape.</p>
     <p role="status">Your match and clock are paused. Rotate your phone to continue.</p>
     <Link className="wd-button" to="/">Back to Home</Link>
-    <button className="wd-text-button" onClick={() => setAllowPortrait(true)}>Can’t rotate? Continue in portrait</button>
+    <button className="wd-button" onClick={() => setAllowPortrait(true)}>Can’t rotate? Continue in portrait</button>
   </div>;
-  return <div ref={containerRef} onPointerDownCapture={audio.unlock} onKeyDownCapture={audio.unlock} className={`wd wd-match wd-confluence ${paused && !gameOver ? 'has-guide' : ''} ${directCards ? 'wd-direct' : ''}`} data-active-side={gameOver ? undefined : isMyTurn ? 'player' : 'opponent'}>
+  return <div ref={containerRef} onPointerDownCapture={audio.unlock} onKeyDownCapture={audio.unlock} className={`wd wd-match wd-confluence wd-kai ${paused && !gameOver ? 'has-guide' : ''} ${directCards ? 'wd-direct' : ''}`} data-active-side={gameOver ? undefined : isMyTurn ? 'player' : 'opponent'}>
     <h1 className="sr-only">Wisdom Duel — Solo practice</h1>
     <div ref={motionLayerRef} className="wd-motion-layer" aria-hidden="true" inert />
     <p className="sr-only" role="status" aria-live="polite" aria-atomic="true">{announcement}</p>
-    <header className="wd-scorebar">
-      <div className="wd-score"><span>You</span><strong data-motion-anchor={`power:${HUMAN_ID}`} aria-label={`Your Power: ${Math.max(0, player.power)}`}>{Math.max(0, player.power)}</strong><small>Power</small></div>
-      <div className="wd-turn-cluster"><div className="wd-turn"><span>Turn {game.turn}</span><strong>{gameOver ? 'Duel complete' : isMyTurn ? 'Your turn' : 'Bot’s turn'}</strong></div><TrainingSoundControls preferences={audio.preferences} update={audio.update} error={audio.error} play={audio.presentation.play} open={dialog === 'sound' && !pending && !inspection && (!gameOver || resultDismissed)} onOpen={() => setDialog('sound')} onClose={() => setDialog(null)} /></div>
-      <div className="wd-score wd-score-bot"><small>Power</small><strong data-motion-anchor={`power:${BOT_ID}`} aria-label={`Bot Power: ${Math.max(0, bot.power)}`}>{Math.max(0, bot.power)}</strong><span data-motion-anchor={`hand:${BOT_ID}`}>Bot <small>{bot.hand.length} in hand</small></span></div>
+    <header className="wd-match-header">
+      <Link to="/" className="wd-brand" aria-label="Wisdom Duel home"><img src="/logos/logo-header-dark.webp" alt="" width="44" height="34" /><span>Wisdom Duel</span></Link>
+      <div className="wd-match-controls">
+        {!gameOver && <div className={`wd-match-clock ${clockRunning && remainingTime <= 5 ? 'wd-clock-low' : ''}`} role="timer" aria-label="Turn clock">
+          <Clock3 size={15} aria-hidden="true" />
+          {clockPaused ? 'Clock paused' : clockRunning ? clockText : '—'}
+        </div>}
+        <button type="button" className="wd-button wd-match-rules" aria-label="Rules" disabled={!!pending} onClick={() => setDialog('rules')}><BookOpen size={17} aria-hidden="true" /><span>Rules</span></button>
+        <TrainingSoundControls preferences={audio.preferences} update={audio.update} error={audio.error} play={audio.presentation.play} open={dialog === 'sound' && !pending && !inspection && (!gameOver || resultDismissed)} onOpen={() => setDialog('sound')} onClose={() => setDialog(null)} />
+      </div>
     </header>
     {!gameOver && <TrainingCoach direct={directCards} resolvingEffect={!!game.pendingEffect} step={guide} onStart={() => dispatch({ type: 'start-guide' })} onSkip={() => dispatch({ type: 'skip-guide' })} onContinue={() => dispatch({ type: 'continue' })} />}
     <div className="wd-game-layout">
-      <TrainingBoard direct={directCards} session={session} onAction={onAction} onInspect={setInspection} />
+      <TrainingBoard direct={directCards} session={session} onAction={onAction} onInspect={setInspection} hud={{
+        opponent: <PowerMedallion power={bot.power} side="opponent" handSize={bot.hand.length} />,
+        turn: <div className="wd-turn"><span>Turn {game.turn}</span><strong>{gameOver ? 'Duel complete' : isMyTurn ? 'Your turn' : 'Bot’s turn'}</strong></div>,
+        player: <PowerMedallion power={player.power} side="player" actions={{ remaining: isMyTurn ? actionsLeft : 0, total: game.actionsPerTurn }} />,
+      }} />
       <TrainingTrays direct={directCards} session={session} tab={tab} setTab={setTab} onAction={onAction} onSelect={instanceId => dispatch({ type: 'select', instanceId })} onInspect={setInspection} />
     </div>
     <footer className="wd-actionbar">
-      <div className="wd-action-context"><p className={session.rejected ? 'wd-error' : ''} role={session.rejected ? 'alert' : 'status'}>{message}</p><div className="wd-action-meta"><span>{gameOver ? 'Practice match' : isMyTurn ? `${actionsLeft} / ${game.actionsPerTurn} actions left` : 'Waiting for bot'}</span><span className={remainingTime <= 8 && !paused && isMyTurn ? 'wd-clock-low' : ''}><Clock3 size={14} />{paused ? 'Clock paused' : isMyTurn ? `${remainingTime}s` : '30s per turn'}</span></div></div>
+      <div className="wd-action-context"><p className={session.rejected ? 'wd-error' : ''} role={session.rejected ? 'alert' : 'status'}>{message}</p></div>
       <div className="wd-action-buttons">
-        <Link to="/" className="wd-icon-button wd-landscape-only" aria-label="Back to Home"><Home size={18} /></Link>
         {selected && <button className="wd-icon-button" aria-label="Cancel card selection" onClick={() => dispatch({ type: 'select', instanceId: null })}><X size={18} /></button>}
         <button className="wd-discard-button" data-motion-anchor="discard" aria-label={`Discard pile, ${game.discardPile.length} ${game.discardPile.length === 1 ? 'card' : 'cards'}`} onClick={() => setDialog('discard')}><Layers size={17} /><span>{game.discardPile.length}</span><span className="wd-discard-label">Discards</span></button>
         <button className="wd-icon-button" aria-label="Game history" onClick={() => setDialog('history')}><History size={18} /></button>
@@ -145,6 +176,18 @@ function PracticeMatch({ team, mode, gameId, onReplay }: { team: string[]; mode:
     </footer>
     <div className="wd-match-links"><button className="wd-text-button" onClick={() => navigate('/bot-selection?mode=guided')}><RotateCcw size={14} />Repeat tutorial</button><span>Solo practice · No competitive rewards</span></div>
     <CardDetailOverlay card={inspection} open={!!inspection} onClose={closeInspection} contextLabel="Card details" />
+    {rulesOpen && !pending && (!gameOver || resultDismissed) && <TrainingDialog title="Duel rules" onClose={() => setDialog(null)}>
+      <p>Reduce the bot’s Power to zero to win.</p>
+      <ul className="wd-rules-list">
+        <li>You normally have two actions each turn. Draw from the market, rotate a creature, or play Knowledge from your hand.</li>
+        <li>Rotating a creature advances its Wisdom. It can play Knowledge that costs no more than its current Wisdom.</li>
+        <li>Active Knowledge resolves its effects automatically. Select End Turn when you’re ready to pass.</li>
+      </ul>
+      <div className="wd-dialog-actions">
+        <button type="button" className="wd-button wd-button-primary" onClick={() => setDialog(null)}>Resume duel</button>
+        <Link className="wd-button" to="/how-to-play" target="_blank" rel="noopener">Full rules</Link>
+      </div>
+    </TrainingDialog>}
     {pending?.playerId === HUMAN_ID && !inspection && !presenting && <TrainingDialog title={pending.sourceKnowledgeName || 'Choose a target'}><p>{pending.prompt}</p><div className="wd-effect-choices">{pending.choices.map((choice, index) => { const targetCard = getPendingEffectCard(game, choice); return <button key={index} className="wd-effect-choice" onClick={() => onAction({ type: 'RESOLVE_PENDING_EFFECT', payload: { playerId: HUMAN_ID, resolution: { effectId: pending.id, choice } } })}>{directCards && targetCard ? <span className="wd-effect-art"><PlayCardFace card={targetCard} /></span> : choice.image && <CardFaceByImage src={choice.image} alt={choice.label} card={targetCard} className="mx-auto mb-2 w-[100px]" />}<span>{choice.label}</span></button>; })}</div>{pending.optional && <button className="wd-button" onClick={() => onAction({ type: 'RESOLVE_PENDING_EFFECT', payload: { playerId: HUMAN_ID, resolution: { effectId: pending.id, skip: true } } })}>Skip effect</button>}</TrainingDialog>}
     {dialog === 'discard' && !pending && (!gameOver || resultDismissed) && <TrainingDialog title="Discard pile" onClose={() => setDialog(null)}><p>{game.discardPile.length ? `${game.discardPile.length} ${game.discardPile.length === 1 ? 'card' : 'cards'} · Most recent first` : 'Cards that leave play arrive here.'}</p><div className="wd-discard-grid">{[...game.discardPile].reverse().map(card => <button key={card.instanceId} className="wd-discard-card" aria-label={`Inspect discarded ${card.name}`} onClick={() => { setDialog(null); setInspection(card); }}><PlayCardFace card={card} /><span>{card.name}</span></button>)}</div></TrainingDialog>}
     {dialog === 'history' && !pending && (!gameOver || resultDismissed) && <TrainingDialog title="Game history" onClose={() => setDialog(null)}><ol className="wd-history">{game.log.map((entry, index) => <li key={index}>{entry.split(HUMAN_ID).join('You').split(BOT_ID).join('Bot').replace(/^\[[^\]]+\]\s*/, '')}</li>)}</ol></TrainingDialog>}
