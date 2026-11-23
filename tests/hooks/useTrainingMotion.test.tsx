@@ -72,9 +72,9 @@ describe('training animation lifecycle', () => {
     expect(sound.play).not.toHaveBeenCalled();
     await act(async () => view.rerender(<StrictMode><Board game={after} /></StrictMode>));
     expect(sound.play.mock.calls.map(([cue]) => cue.kind)).toEqual(['attack']);
-    await act(async () => vi.advanceTimersByTimeAsync(660));
+    await act(async () => vi.advanceTimersByTimeAsync(120));
     expect(sound.play.mock.calls.map(([cue]) => cue.kind)).toEqual(['attack', 'block']);
-    await act(async () => vi.advanceTimersByTimeAsync(300));
+    await act(async () => vi.advanceTimersByTimeAsync(150));
     expect(sound.play.mock.calls.map(([cue]) => cue.kind)).toEqual(['attack', 'block', 'damage']);
     await act(async () => vi.runAllTimersAsync());
     view.rerender(<StrictMode><Board game={after} /></StrictMode>);
@@ -99,7 +99,6 @@ describe('training animation lifecycle', () => {
     await act(async () => view.rerender(<Board game={after} />));
     await act(async () => vi.runAllTimersAsync());
     expect(sound.play.mock.calls.map(([cue]) => cue.kind)).toEqual(['attack', 'block', 'damage']);
-    expect(sound.play.mock.calls.at(-1)?.[0].delay).toBe(0.15);
     sound.stopEffects.mockClear();
     view.unmount();
     expect(sound.stopEffects).toHaveBeenCalled();
@@ -179,18 +178,18 @@ describe('training animation lifecycle', () => {
     expect(vi.getTimerCount()).toBe(0);
   });
 
-  it('shows a fully blocked attack as a shield and readable result without damage feedback', async () => {
+  it('shows a brief defense pulse and a blocked result without damage feedback', async () => {
     const { before, after } = hit(0, 3);
     const view = render(<Board game={before} />);
     await act(async () => view.rerender(<Board game={after} />));
     const layer = view.getByTestId('layer');
     expect(layer.querySelector('.wd-motion-result')).toBeNull();
-    await act(async () => vi.advanceTimersByTimeAsync(660));
-    expect(layer.querySelector('.wd-motion-guard')).not.toBeNull();
-    expect(layer.querySelector('.is-blocked')).toHaveTextContent('3BlockedNo Power lost');
-    expect(layer.querySelector('.is-damage')).toBeNull();
-    await act(async () => vi.advanceTimersByTimeAsync(850));
-    expect(layer.querySelector('.is-blocked')).not.toBeNull();
+    await act(async () => vi.advanceTimersByTimeAsync(120));
+    expect(layer.querySelector('.wd-motion-ring')).toBeInTheDocument();
+    await act(async () => vi.advanceTimersByTimeAsync(150));
+    expect(layer.querySelector('.wd-motion-result')).toHaveTextContent(/^Blocked 3$/);
+    await act(async () => vi.advanceTimersByTimeAsync(450));
+    expect(layer.querySelector('.wd-motion-result')).not.toBeNull();
     expect(view.getByTestId('board')).toHaveAttribute('data-presenting', 'true');
     await act(async () => vi.runAllTimersAsync());
     expect(layer).toBeEmptyDOMElement();
@@ -201,29 +200,28 @@ describe('training animation lifecycle', () => {
     const { before, after } = hit(2, 3);
     const view = render(<Board game={before} />);
     await act(async () => view.rerender(<Board game={after} />));
-    await act(async () => vi.advanceTimersByTimeAsync(660));
+    await act(async () => vi.advanceTimersByTimeAsync(120));
     const layer = view.getByTestId('layer');
-    expect(layer.querySelector('.wd-motion-guard')).not.toBeNull();
-    expect(layer.querySelector('.wd-motion-strike')).not.toBeNull();
+    expect(layer.querySelector('.wd-motion-ring')).toBeInTheDocument();
     expect(layer.querySelector('.wd-motion-result')).toBeNull();
-    await act(async () => vi.advanceTimersByTimeAsync(300));
-    expect(layer.querySelector('.is-damage')).toHaveTextContent('−2Damage5 attack · 3 blocked');
+    await act(async () => vi.advanceTimersByTimeAsync(150));
+    expect(layer.querySelector('.wd-motion-result')).toHaveTextContent('−2 Power');
+    expect(layer.querySelector('.wd-motion-result small')).toHaveTextContent('3 blocked');
     expect(view.getByRole('status')).toHaveTextContent('3 blocked · 2 damage');
     act(() => window.dispatchEvent(new Event('resize')));
     await act(async () => vi.runAllTimersAsync());
     expect(layer).toBeEmptyDOMElement();
   });
 
-  it('retains combat reading time and shields with reduced motion without a travelling strike', async () => {
+  it('retains the result long enough to read in reduced motion', async () => {
     reduced = true;
     const { before, after } = hit(1, 2);
     const view = render(<Board game={before} />);
     await act(async () => view.rerender(<Board game={after} />));
-    await act(async () => vi.advanceTimersByTimeAsync(1000));
+    await act(async () => vi.advanceTimersByTimeAsync(700));
     const layer = view.getByTestId('layer');
-    expect(layer.querySelector('.is-damage')).toHaveTextContent('−1Damage3 attack · 2 blocked');
-    expect(layer.querySelector('.wd-motion-guard')).not.toBeNull();
-    expect(layer.querySelector('.wd-motion-strike')).toBeNull();
+    expect(layer.querySelector('.wd-motion-result')).toHaveTextContent('−1 Power');
+    expect(layer.querySelector('.wd-motion-result small')).toHaveTextContent('2 blocked');
     expect(calls.every(call => call.frames.every(frame => !frame.transform))).toBe(true);
     await act(async () => vi.runAllTimersAsync());
     expect(layer).toBeEmptyDOMElement();

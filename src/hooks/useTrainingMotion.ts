@@ -92,10 +92,9 @@ export function useTrainingMotion(game: GameState, root: RefObject<HTMLDivElemen
     pendingBatches.current++;
     const valid = () => token === generation.current && overlay.isConnected;
     const find = (id: string) => next.get(id) ?? old.get(id);
-    const duration = steps.length > 6 ? 220 : 320;
-    const impactDuration = Math.max(180, Math.min(360, 1200 / Math.max(1, steps.filter(step => step.kind !== 'move' && step.kind !== 'rotate').length)));
-    // Combat needs enough time to read even when several cards activate together.
-    const combatDuration = steps.filter(step => step.kind === 'combat' || (step.kind === 'power' && (step.amount ?? 0) < 0)).length > 3 ? 950 : 1150;
+    const duration = 200;
+    const resultDuration = steps.filter(step => step.kind === 'combat' || step.kind === 'power').length > 2 ? 430 : 650;
+    const resultFade = [{ opacity: 0 }, { opacity: 1, offset: .12 }, { opacity: 1, offset: .82 }, { opacity: 0 }];
     const held = new Map<string, HTMLElement>();
 
     function copyFace(anchor: Anchor) {
@@ -130,83 +129,50 @@ export function useTrainingMotion(game: GameState, root: RefObject<HTMLDivElemen
       if (!anchor || !valid()) return;
       const node = marker(anchor.rect, 'wd-motion-ring', '', color);
       Object.assign(node.style, { left: `${anchor.rect.x - 3}px`, top: `${anchor.rect.y - 3}px`, width: `${anchor.rect.width + 6}px`, height: `${anchor.rect.height + 6}px` });
-      await animate(node, reduced ? [{ opacity: .9 }, { opacity: 0 }] : [{ opacity: 0, transform: 'scale(.97)' }, { opacity: 1, transform: 'scale(1.02)', offset: .35 }, { opacity: 0, transform: 'scale(1.05)' }], reduced ? Math.min(time, 180) : time);
+      await animate(node, [{ opacity: .85 }, { opacity: 0 }], time);
       node.remove();
     }
-    async function strike(from: Anchor | undefined, to: Anchor, time = 460) {
-      if (reduced || !from || from === to || !valid()) return;
-      const node = document.createElement('div');
-      node.className = 'wd-motion-strike';
-      const x = from.rect.x + from.rect.width / 2, y = from.rect.y + from.rect.height / 2;
-      const dx = to.rect.x + to.rect.width / 2 - x, dy = to.rect.y + to.rect.height / 2 - y;
-      node.style.cssText = `left:${x}px;top:${y}px;width:${Math.hypot(dx, dy)}px;rotate:${Math.atan2(dy, dx)}rad`;
-      overlay!.append(node);
-      await animate(node, [
-        { transform: 'scaleX(0)', opacity: 0 },
-        { transform: 'scaleX(.15)', opacity: 1, offset: .16 },
-        { transform: 'scaleX(1)', opacity: 1, offset: .8 },
-        { transform: 'scaleX(1)', opacity: 0 },
-      ], time, 'linear');
+    async function powerResult(target: Anchor, text: string, color: string, detail?: string) {
+      const node = marker(target.rect, 'wd-motion-result', text, color);
+      Object.assign(node.style, { left: `${target.rect.left - 8}px`, top: `${target.rect.top + target.rect.height / 2}px` });
+      if (detail) {
+        const description = document.createElement('small');
+        description.textContent = detail;
+        node.append(description);
+      }
+      await animate(node, resultFade, resultDuration, 'linear');
       node.remove();
     }
     async function combat(step: Extract<MotionStep, { kind: 'combat' | 'power' | 'effect' }>, source: Anchor | undefined, target: Anchor) {
       const damage = step.kind === 'combat' ? step.amount ?? 0 : Math.abs(step.amount ?? 0);
       const blocked = step.kind === 'combat' ? step.blocked ?? 0 : 0;
-      const defenders = blocked ? (step.defenders ?? []).map(find).filter((anchor): anchor is Anchor => !!anchor) : [];
-      const guard = defenders[0] ?? target;
       audio.current?.play({ kind: 'attack', element: step.element });
-      await pulse(source, '#ffc38c', 200);
-      await strike(source, blocked ? guard : target);
+      await pulse(source, '#ffc38c', 120);
       if (!valid()) return;
-
-      const linger: Keyframe[] = reduced ? [{ opacity: 0 }, { opacity: 1, offset: .12 }, { opacity: 1, offset: .84 }, { opacity: 0 }]
-        : [{ opacity: 0, transform: 'scale(.88)' }, { opacity: 1, transform: 'scale(1.06)', offset: .12 },
-          { opacity: 1, transform: 'scale(1)', offset: .24 }, { opacity: 1, transform: 'scale(1)', offset: .84 }, { opacity: 0, transform: 'scale(1)' }];
-      const work: Promise<void>[] = [];
       if (blocked) {
+        const defenders = (step.defenders ?? []).map(find).filter((anchor): anchor is Anchor => !!anchor);
         audio.current?.play({ kind: 'block', amount: blocked });
-        for (const defender of defenders.length ? defenders : [target]) {
-          const shield = marker(defender.rect, 'wd-motion-guard', '', colors.water);
-          const icon = document.createElement('span');
-          icon.className = 'wd-motion-shield';
-          icon.textContent = '✓';
-          shield.append(icon);
-          Object.assign(shield.style, { left: `${defender.rect.x - 5}px`, top: `${defender.rect.y - 5}px`, width: `${defender.rect.width + 10}px`, height: `${defender.rect.height + 10}px` });
-          work.push(animate(shield, linger, combatDuration).then(() => shield.remove()));
-        }
-        // Only damage that gets through continues from the defending card to Power.
-        if (damage) await strike(guard, target, 300);
+        await Promise.all((defenders.length ? defenders : [target]).map(defender => pulse(defender, colors.water, 150)));
       }
       if (!valid()) return;
-      if (damage) audio.current?.play({ kind: 'damage', amount: damage, delay: reduced && blocked ? 0.15 : 0 });
-      const color = damage ? '#ffb3a5' : colors.water;
-      const result = marker(target.rect, `wd-motion-result ${damage ? 'is-damage' : 'is-blocked'}`, '', color);
-      const value = document.createElement('strong');
-      value.textContent = damage ? `−${damage}` : String(blocked);
-      const label = document.createElement('span');
-      label.textContent = damage ? 'Damage' : 'Blocked';
-      const detail = document.createElement('small');
-      detail.textContent = !damage ? 'No Power lost' : step.bypass ? 'Defense bypassed'
-        : blocked ? `${damage + blocked} attack · ${blocked} blocked` : step.label;
-      result.append(value, label, detail);
-      const width = Math.min(176, window.innerWidth - 16);
-      Object.assign(result.style, {
-        width: `${width}px`,
-        left: `${Math.max(8, Math.min(window.innerWidth - width - 8, target.rect.x + target.rect.width / 2 - width / 2))}px`,
-        top: `${Math.max(8, Math.min(window.innerHeight - 108, target.rect.y < window.innerHeight / 2 ? target.rect.bottom + 8 : target.rect.top - 100))}px`,
-      });
-      work.push(animate(result, linger, combatDuration).then(() => result.remove()));
-      work.push(pulse(target, color, combatDuration));
-      await Promise.all(work);
+      if (!damage) {
+        await powerResult(target, `Blocked ${blocked}`, colors.water);
+        return;
+      }
+      const color = '#ffb3a5';
+      const detail = blocked ? `${blocked} blocked` : step.bypass ? 'Defense bypassed' : undefined;
+      audio.current?.play({ kind: 'damage', amount: damage });
+      await Promise.all([pulse(target, color), powerResult(target, `−${damage} Power`, color, detail)]);
     }
     async function play(step: MotionStep) {
       if (!valid()) return;
       if (step.kind === 'move') {
         held.get(step.from.anchor)?.remove();
         held.delete(step.from.anchor);
+        const cue = motionSounds(step)[0];
+        if (step.to.zone === 'market' || step.to.zone === 'discard') { audio.current?.play(cue); return; }
         const from = old.get(step.from.anchor) ?? old.get(step.from.zone) ?? find(step.from.zone);
         const to = next.get(step.to.anchor) ?? next.get(step.to.zone);
-        const cue = motionSounds(step)[0];
         if (!to) { audio.current?.play(cue); return; }
         if (reduced || !from) { audio.current?.play(cue); await pulse(to, colors.neutral); return; }
         if (cue.kind !== 'place') audio.current?.play(cue);
@@ -225,7 +191,6 @@ export function useTrainingMotion(game: GameState, root: RefObject<HTMLDivElemen
           ? animate(to.element, [{ opacity: 0 }, { opacity: 0, offset: .85 }, { opacity: 1 }]) : Promise.resolve();
         await Promise.all([conceal, animate(flight, [
           { transform: 'translate(0,0) scale(1)', opacity: 1 },
-          { transform: `translate(${dx * .45}px,${dy * .45 - 14}px) scale(1.06) rotate(-3deg)`, opacity: 1, offset: .45 },
           { transform: `translate(${dx}px,${dy}px) scale(${scale})`, opacity: to.face ? 1 : .15 },
         ])]);
         flight.remove();
@@ -238,15 +203,13 @@ export function useTrainingMotion(game: GameState, root: RefObject<HTMLDivElemen
         const target = find(step.to.anchor);
         if (!target) return;
         const delta = (step.to.card.rotation ?? 0) - (step.from.card.rotation ?? 0);
-        const label = marker(target.rect, 'wd-motion-rotation', `${delta < 0 ? '↶' : '↷'} ${Math.abs(delta)}°`);
         const surface = held.get(step.to.anchor) ?? target.element;
-        const tick = surface.querySelector<HTMLElement>('.dp-ticks>.is-current,.dc-ticks>.is-current');
-        if (tick && !reduced) void animate(tick, [{ transform: 'scaleX(.2)', opacity: .35 }, { transform: 'scaleX(1)', opacity: 1 }]);
+        const indicator = surface.querySelector<HTMLElement>('.dc-being :is(.dp-primary,.dc-primary),.dp-ticks>.is-current,.dc-ticks>.is-current');
+        const accent = indicator ? animate(indicator, [{ backgroundColor: '#e8c38366' }, { backgroundColor: 'transparent' }]) : pulse(target, colors.neutral);
         const tilt = !reduced && surface.isConnected ? animate(surface, [
-          { transform: 'rotate(0deg)' }, { transform: `rotate(${delta < 0 ? -9 : 9}deg) scale(1.035)`, offset: .45 }, { transform: 'rotate(0deg)' },
+          { transform: 'rotate(0deg)' }, { transform: `rotate(${delta < 0 ? -6 : 6}deg)`, offset: .45 }, { transform: 'rotate(0deg)' },
         ]) : Promise.resolve();
-        await Promise.all([tilt, pulse(target, colors.neutral), animate(label, [{ opacity: 0 }, { opacity: 1, offset: .2 }, { opacity: 0 }])]);
-        label.remove();
+        await Promise.all([tilt, accent]);
         return;
       }
       const source = find(step.source);
@@ -256,32 +219,23 @@ export function useTrainingMotion(game: GameState, root: RefObject<HTMLDivElemen
         await combat(step, source, target);
         return;
       }
-      const color = step.kind === 'power' ? '#a9e7bd' : colors[step.element];
-      await pulse(source, colors[step.element], 100);
+      if (source !== target) await pulse(source, colors[step.element], 120);
       if (!valid()) return;
       motionSounds(step).forEach(cue => audio.current?.play(cue));
-      const work: Promise<void>[] = [];
-      const text = step.kind === 'power' ? `+${step.amount ?? 0} Power` : step.label;
-      const node = marker(target.rect, `wd-motion-${step.kind} wd-motion-${step.element}`, text, color);
-      if (!reduced && source && source !== target) {
-        const trail = document.createElement('div');
-        trail.className = 'wd-motion-trail';
-        const x = source.rect.x + source.rect.width / 2, y = source.rect.y + source.rect.height / 2;
-        const dx = target.rect.x + target.rect.width / 2 - x, dy = target.rect.y + target.rect.height / 2 - y;
-        trail.style.cssText = `left:${x}px;top:${y}px;width:${Math.hypot(dx, dy)}px;rotate:${Math.atan2(dy, dx)}rad;--motion-color:${color}`;
-        overlay!.append(trail);
-        work.push(animate(trail, [{ transform: 'scaleX(0)', opacity: 0 }, { transform: 'scaleX(1)', opacity: .8, offset: .5 }, { transform: 'scaleX(1)', opacity: 0 }], 220).then(() => trail.remove()));
+      if (step.kind === 'power') {
+        const color = '#a9e7bd';
+        await Promise.all([pulse(target, color), powerResult(target, `+${step.amount ?? 0} Power`, color)]);
+        return;
       }
-      work.push(pulse(target, color, impactDuration));
-      work.push(animate(node, reduced ? [{ opacity: 1 }, { opacity: 1, offset: .8 }, { opacity: 0 }]
-        : [{ opacity: 0, transform: 'translateY(5px) scale(.96)' }, { opacity: 1, transform: 'translateY(0) scale(1)', offset: .2 }, { opacity: 1, offset: .75 }, { opacity: 0, transform: 'translateY(-12px)' }], impactDuration));
-      await Promise.all(work);
+      const color = colors[step.element];
+      const node = marker(target.rect, 'wd-motion-effect', step.label, color);
+      await Promise.all([pulse(target, color), animate(node, resultFade, 360, 'linear')]);
       node.remove();
     }
     chain.current = chain.current.then(async () => {
       if (!valid()) return;
       // Keep expired cards on the table while their last activation is presented.
-      if (!reduced) steps.forEach(step => {
+      steps.forEach(step => {
         if (step.kind !== 'move' || step.to.zone !== 'discard' || !step.from.zone.startsWith('slot:')) return;
         const source = old.get(step.from.anchor);
         if (!source?.face) return;
