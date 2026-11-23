@@ -20,7 +20,7 @@ export function useTurnTimer({
   paused = false
 }: UseTurnTimerProps): number {
   const [remainingTime, setRemainingTime] = useState(turnDurationSeconds);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const remainingMs = useRef(turnDurationSeconds * 1000);
   const onTimerEndRef = useRef(onTimerEnd); // Use ref to avoid effect dependency issues
   const contextRef = useRef('');
 
@@ -30,48 +30,26 @@ export function useTurnTimer({
   }, [onTimerEnd]);
 
   useEffect(() => {
-    // Function to clear existing interval
-    const clearTimerInterval = () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
-    };
-
     const context = `${gameTurn}:${currentPlayerIndex}:${isMyTurn}:${phase}:${turnDurationSeconds}`;
     if (context !== contextRef.current) {
       contextRef.current = context;
+      remainingMs.current = turnDurationSeconds * 1000;
       setRemainingTime(turnDurationSeconds);
     }
-    clearTimerInterval();
-    // Orientation pauses keep the remaining time and the current match intact.
-    if (paused) return clearTimerInterval;
+    if (paused || !isMyTurn || phase !== 'action') return;
 
-    // Start timer only if it's my turn and in the action phase
-    if (isMyTurn && phase === 'action') {
-      console.log(`[useTurnTimer] Starting timer for turn ${gameTurn}, player ${currentPlayerIndex}. Duration: ${turnDurationSeconds}s`);
-      intervalRef.current = setInterval(() => {
-        setRemainingTime((prevTime) => {
-          if (prevTime <= 1) {
-            clearTimerInterval(); // Clear interval when time runs out
-            console.log(`[useTurnTimer] Timer ended for turn ${gameTurn}, player ${currentPlayerIndex}. Calling onTimerEnd.`);
-            onTimerEndRef.current(); // Call the latest end turn function
-            return 0;
-          }
-          return prevTime - 1;
-        });
-      }, 1000);
-    } else {
-      // If not my turn or not action phase, clear interval and reset display time
-      clearTimerInterval();
-      setRemainingTime(turnDurationSeconds); // Reset display time
-      // console.log(`[useTurnTimer] Timer stopped/reset. isMyTurn: ${isMyTurn}, phase: ${phase}`);
+    const deadline = performance.now() + remainingMs.current;
+    let timeout: ReturnType<typeof setTimeout>;
+    function tick() {
+      const left = Math.max(0, Math.ceil(deadline - performance.now()));
+      setRemainingTime(Math.ceil(left / 1000));
+      if (left === 0) onTimerEndRef.current();
+      else timeout = setTimeout(tick, left % 1000 || 1000);
     }
-
-    // Cleanup function to clear interval on unmount or when dependencies change
+    tick();
     return () => {
-      clearTimerInterval();
-      // console.log(`[useTurnTimer] Cleanup effect. Interval cleared.`);
+      clearTimeout(timeout);
+      remainingMs.current = Math.max(0, deadline - performance.now());
     };
   }, [isMyTurn, phase, turnDurationSeconds, gameTurn, currentPlayerIndex, paused]);
 

@@ -31,7 +31,7 @@ function positions(game: GameState) {
 }
 
 /** Instance IDs distinguish identical cards. No log parsing or guessed attackers. */
-export function trainingMotion(previous: GameState, current: GameState): MotionStep[] {
+export function trainingMotion(previous: GameState, current: GameState, showPendingChoice = true): MotionStep[] {
   if (previous.gameId !== current.gameId || previous === current) return [];
   const before = positions(previous);
   const after = positions(current);
@@ -57,7 +57,7 @@ export function trainingMotion(previous: GameState, current: GameState): MotionS
   }
   const cues: MotionStep[] = [...current.presentationCues ?? []];
   const pending = current.pendingEffect;
-  if (pending && pending.id !== previous.pendingEffect?.id) {
+  if (showPendingChoice && pending && pending.id !== previous.pendingEffect?.id) {
     const owner = current.players.find(player => player.id === pending.sourcePlayerId);
     const candidates = owner?.field.filter(slot => slot.knowledge?.id === pending.sourceKnowledgeId) ?? [];
     const source = owner?.creatures.find(card => card.name === pending.sourceKnowledgeName)
