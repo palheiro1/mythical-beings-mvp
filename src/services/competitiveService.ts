@@ -53,22 +53,22 @@ export function competitiveWalletConfig(requireEscrow = true): WisdomWalletConfi
 export function competitiveError(error: unknown): string {
   const code = error && typeof error === 'object' && 'code' in error ? String(error.code) : '';
   const messages: Record<string, string> = {
-    admission_closed: 'As novas entradas estão temporariamente fechadas.',
-    challenge_unavailable: 'A fila desta edição ainda não abriu ou já fechou.',
+    admission_closed: 'The queue is temporarily closed.',
+    challenge_unavailable: 'The queue is closed for this edition.',
     season_unavailable: 'Esta temporada ainda não está aberta ou já fechou a fila.',
-    queue_cooldown: 'Aguarda cinco minutos antes de voltar à fila.',
-    already_active: 'Já tens uma entrada ou partida ativa.',
-    persistent_account_required: 'Entra com uma conta permanente do Play Hub.',
-    selection_immutable: 'A equipa já foi confirmada e não pode mudar.',
-    selection_unavailable: 'O prazo de seleção terminou.',
-    rule_violation: 'Esta jogada não é permitida no estado atual. Podes escolher outra ação.',
-    suspended: 'A partida está suspensa para revisão técnica. O tempo está preservado.',
-    version_conflict: 'O tabuleiro mudou. Escolhe a jogada a partir do estado atualizado.',
+    queue_cooldown: 'Wait five minutes before joining the queue again.',
+    already_active: 'You are already in the queue or in a duel.',
+    persistent_account_required: 'Sign in with a permanent Play Hub account.',
+    selection_immutable: 'You have already confirmed your team.',
+    selection_unavailable: 'The team selection timer has expired.',
+    rule_violation: 'That move is unavailable. Choose another action.',
+    suspended: 'The duel is under review. Both clocks are paused.',
+    version_conflict: 'The board has changed. Choose your move again.',
     five_creatures_required:
       'Precisas de cinco criaturas elegíveis diferentes para um duelo com aposta. Podes continuar na liga gratuita.',
     insufficient_gem: 'O saldo GEM não chega para esta aposta.',
     verified_wallet_required: 'Associa e verifica a carteira Polygon antes de continuar.',
-    both_selections_required: 'Aguarda que os dois jogadores confirmem as equipas.',
+    both_selections_required: 'Waiting for both players to confirm their teams.',
     finality_unavailable: 'A confirmação final da rede está indisponível. A operação continua pendente.',
     admin_required: 'Esta conta não tem acesso à administração.',
     review_incomplete: 'A revisão ainda não terminou ou há reclamações por resolver.',
@@ -76,8 +76,8 @@ export function competitiveError(error: unknown): string {
     wallet_changed: 'A conta da carteira mudou. Seleciona novamente a conta associada à partida.',
     wrong_chain: 'Seleciona a rede Polygon na carteira.',
     authorization_expired: 'A autorização expirou. Atualiza a operação para obter uma nova.',
-    connection_failed: 'A ligação ao servidor falhou. Tenta novamente.',
-    match_not_playable: 'A partida terminou ou ainda não está pronta.',
+    connection_failed: 'Could not reach the server. Try again.',
+    match_not_playable: 'The duel is over or has not started yet.',
     distribution_locked: 'A distribuição já foi aprovada e está fechada a alterações.',
     review_window_closed: 'A janela de reclamações já terminou.',
   };
@@ -85,10 +85,10 @@ export function competitiveError(error: unknown): string {
     messages[code] ??
     (error instanceof Error && !code
       ? error.message
-      : 'Não foi possível concluir o pedido. Atualiza e tenta novamente.')
+      : 'Could not complete the request. Refresh and try again.')
   );
 }
-export const localDate = (value: string) => new Date(value).toLocaleString();
+export const localDate = (value: string, locale?: string) => new Date(value).toLocaleString(locale);
 export function formatGem(atomic: string, decimals = 18): string {
   const amount = BigInt(atomic),
     scale = 10n ** BigInt(decimals),

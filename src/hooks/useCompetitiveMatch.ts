@@ -131,7 +131,7 @@ export function useCompetitiveMatch(matchId: string, playerId: string) {
         if (alive.current) {
           setRetryable(false);
           if (response.status === 'version_conflict')
-            setError('O tabuleiro mudou. Escolhe novamente a jogada.');
+            setError(competitiveError({ code: 'version_conflict' }));
         }
         await refresh();
         return response.status;

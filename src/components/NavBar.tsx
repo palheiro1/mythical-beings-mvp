@@ -36,7 +36,7 @@ const NavBar: React.FC = () => {
         ? [{ to: '/league', label: 'Liga', icon: Swords }, { to: '/wagers', label: 'Duelos com aposta', icon: WalletCards }, { to: '/bot-selection', label: 'Treinar', icon: Bot }]
         : []),
     { to: '/how-to-play', label: 'How to Play', icon: BookOpen },
-    ...(WEEKLY_CHALLENGE_ENABLED ? [{ to: '/challenge', label: 'Repto', icon: Trophy }] : []),
+    ...(WEEKLY_CHALLENGE_ENABLED ? [{ to: '/challenge', label: 'Weekly Challenge', icon: Trophy }] : []),
     ...(PVP_ENABLED ? [{ to: '/standings', label: 'Classificação e prémios', icon: Trophy }] : []),
     ...(user && polygonWallet ? [{ to: '/profile', label: 'Profile', icon: User }] : []),
   ];
@@ -53,7 +53,7 @@ const NavBar: React.FC = () => {
       <Link to="/" className="wd-brand" aria-label="Wisdom Duel home"><img src="/logos/logo-header-dark.webp" alt="" width="52" height="39" /><span>Wisdom Duel</span></Link>
       <div className="wd-nav-links">
         <NavLink to="/bot-selection?mode=free" aria-label="Training"><Bot size={17} /><span>Practice</span></NavLink>
-        {WEEKLY_CHALLENGE_ENABLED ? <NavLink to="/challenge" aria-label="Repto semanal"><Trophy size={17} /><span>Repto</span></NavLink> : null}
+        {WEEKLY_CHALLENGE_ENABLED ? <NavLink to="/challenge" aria-label="Weekly Challenge"><Trophy size={17} /><span>Challenge</span></NavLink> : null}
         <NavLink to="/how-to-play" aria-label="How to Play"><BookOpen size={17} /><span>Rules</span></NavLink>
         {user && polygonWallet && <Link to="/profile" aria-label="Profile"><User size={17} /></Link>}
         {user ? <button onClick={handleSignOut} aria-label="Sign out"><LogOut size={17} /></button> : <Link to="/#account" aria-label="Sign in to Play Hub"><UserCircle size={17} /><span className="wd-account-label">Account</span></Link>}

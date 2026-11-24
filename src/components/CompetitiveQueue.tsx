@@ -81,22 +81,22 @@ export default function CompetitiveQueue({ group }: { group: QueueGroup | null }
     <Panel className="space-y-4 p-6">
       {queue?.match ? (
         <div role="status" className="space-y-3">
-          <h2 className="text-2xl text-amber-200">Adversário encontrado</h2>
-          <p>Confirma até {localDate(queue.match.deadline)}.</p>
+          <h2 className="text-2xl text-amber-200">Opponent found</h2>
+          <p>Accept the duel by {localDate(queue.match.deadline, 'en-GB')}.</p>
           <ArenaButton
             loading={busy}
             disabled={queue.match.accepted}
             onClick={() => void act('queue_accept')}
           >
-            {queue.match.accepted ? 'À espera do adversário' : 'Aceitar partida'}
+            {queue.match.accepted ? 'Waiting for your opponent' : 'Accept duel'}
           </ArenaButton>
         </div>
       ) : queue?.ticket ? (
         <>
-          <p aria-live="polite">{queue.searchingCount} pessoas à procura de partida.</p>
-          <p>A procurar desde {localDate(queue.ticket.joinedAt)}. A pesquisa alarga-se com o tempo.</p>
+          <p aria-live="polite">Players looking for a duel · {queue.searchingCount}</p>
+          <p>Searching since {localDate(queue.ticket.joinedAt, 'en-GB')}. The search widens over time.</p>
           <ArenaButton variant="ghost" loading={busy} onClick={() => void act('queue_leave')}>
-            Cancelar procura
+            Cancel search
           </ArenaButton>
         </>
       ) : (
@@ -105,10 +105,10 @@ export default function CompetitiveQueue({ group }: { group: QueueGroup | null }
           disabled={!group || !queue || Boolean(queue.cooldownUntil)}
           onClick={() => void act('queue_enter')}
         >
-          Procurar adversário
+          Find an opponent
         </ArenaButton>
       )}
-      {queue?.cooldownUntil ? <p>Nova entrada disponível às {localDate(queue.cooldownUntil)}.</p> : null}
+      {queue?.cooldownUntil ? <p>You can join the queue again at {localDate(queue.cooldownUntil, 'en-GB')}.</p> : null}
       {error || connectionError ? <p role="alert" className="text-red-200">{error || connectionError}</p> : null}
     </Panel>
   );

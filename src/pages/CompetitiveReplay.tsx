@@ -24,7 +24,7 @@ export default function CompetitiveReplay() {
       try {
         let page = await competitive.replay(matchId),
           current = page.initial as CompetitiveSnapshot;
-        if (!current) throw new Error('O estado inicial do replay não está disponível.');
+        if (!current) throw new Error('The initial replay state is unavailable.');
         const snapshots = [current];
         let cursor = 0;
         for (;;) {
@@ -36,12 +36,12 @@ export default function CompetitiveReplay() {
                   ? resumeMatch(current, event.occurred_at)
                   : advanceMatch(current, event.actor_id, event.envelope, event.occurred_at);
             if (current.version !== event.sequence)
-              throw new Error('A sequência do replay não coincide com os eventos guardados.');
+              throw new Error('The replay sequence does not match the recorded events.');
             snapshots.push(current);
             cursor = event.sequence;
           }
           if (cursor >= page.version) break;
-          if (!page.events.length) throw new Error('O replay tem eventos em falta.');
+          if (!page.events.length) throw new Error('Some replay events are missing.');
           page = await competitive.replay(matchId, cursor);
         }
         if (live) {
@@ -68,15 +68,15 @@ export default function CompetitiveReplay() {
   return (
     <PageShell contentClassName="space-y-6">
       <Link className="text-cyan-200" to={`/duel/${matchId}`}>
-        ← Resultado
+        ← Back to result
       </Link>
-      <h1 className="text-4xl font-bold">Replay completo</h1>
-      <p>Reconstituído a partir da versão do motor e dos eventos guardados pelo servidor.</p>
+      <h1 className="text-4xl font-bold">Full replay</h1>
+      <p>This replay uses the original game engine version and the events recorded during the duel.</p>
       {frames.length ? (
         <label className="block">
-          Evento {index} de {frames.length - 1}
+          Event {index} of {frames.length - 1}
           <input
-            aria-label="Evento do replay"
+            aria-label="Replay event"
             className="mt-3 w-full"
             type="range"
             min="0"
@@ -86,12 +86,12 @@ export default function CompetitiveReplay() {
           />
         </label>
       ) : (
-        <p>A carregar os eventos…</p>
+        <p>Loading replay events…</p>
       )}
       {projection?.players.map((player) => (
         <Panel className="space-y-3 p-5" key={player.id}>
           <h2 className="text-2xl font-bold">
-            {player.id === user?.id ? 'Tu' : 'Adversário'} · {player.power} Poder
+            {player.id === user?.id ? 'You' : 'Opponent'} · {player.power} Power
           </h2>
           <div className="flex gap-4 overflow-x-auto">
             {player.creatures.map((c) => (
@@ -101,18 +101,18 @@ export default function CompetitiveReplay() {
                   <CardFaceByImage
                     card={player.field.find((f) => f.creatureId === c.id)!.knowledge!}
                     src={player.field.find((f) => f.creatureId === c.id)!.knowledge!.image}
-                    alt="Conhecimento em jogo"
+                    alt="Knowledge card in play"
                   />
                 ) : null}
               </div>
             ))}
           </div>
-          <p>Mão: {player.hand.count} cartas.</p>
+          <p>Cards in hand · {player.hand.count}</p>
         </Panel>
       ))}
       {frame ? (
         <p>
-          Turno {frame.state.turn} · {frame.events[frame.events.length - 1]?.type ?? 'Início'}
+          Turn {frame.state.turn} · {frame.events[frame.events.length - 1]?.type ?? 'Start'}
           {frame.outcome ? ` · ${frame.outcome.reason}` : ''}
         </p>
       ) : null}

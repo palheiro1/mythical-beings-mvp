@@ -45,10 +45,10 @@ describe('weekly challenge arena', () => {
       ...projection, phase: 'gameOver', decisionPlayerId: null,
       outcome: { reason: 'timeout', winnerId: rival.id, finishedAt: now },
     }, actor);
-    const result = screen.getByRole('dialog', { name: 'Derrota' });
-    expect(within(result).getByText(/esgotou o relógio/)).toBeInTheDocument();
-    expect(within(result).getByRole('link', { name: 'Classificação' })).toHaveAttribute('href', '/challenge?period=fixture');
-    expect(within(result).getByRole('link', { name: 'Ver replay completo' })).toHaveAttribute('href', `/replay/${matchId}`);
+    const result = screen.getByRole('dialog', { name: 'Defeat' });
+    expect(within(result).getByText(/ran out of time/)).toBeInTheDocument();
+    expect(within(result).getByRole('link', { name: 'Standings' })).toHaveAttribute('href', '/challenge?period=fixture');
+    expect(within(result).getByRole('link', { name: 'View full replay' })).toHaveAttribute('href', `/replay/${matchId}`);
     expect(screen.getByRole('button', { name: 'View Result' })).toBeInTheDocument();
     expect(send).not.toHaveBeenCalled();
   });
