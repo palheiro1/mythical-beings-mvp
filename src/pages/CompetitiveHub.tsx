@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { PageShell, Panel } from '../components/ui/index.js';
 import { WEEKLY_CHALLENGE_ENABLED } from '../config/release.js';
 const entries = [
-  ...(WEEKLY_CHALLENGE_ENABLED ? [['/challenge', 'Repto semanal', 'Joga e consulta a classificação por edição.']] : []),
+  ...(WEEKLY_CHALLENGE_ENABLED ? [['/challenge', 'Weekly Challenge', 'Find a duel and see the standings for each edition.']] : []),
   ['/bot-selection', 'Treinar', 'Aprende as regras e experimenta equipas.'],
   ['/league', 'Jogar na liga', 'Uma oferta igual para ambos. Sem NFTs nem aposta.'],
   ['/wagers', 'Duelos com aposta', 'GEM e uma das cartas utilizadas estão em jogo.'],

@@ -367,13 +367,13 @@ function Preparation({
       {match.status === 'confirming' ? (
         <>
           <p>
-            Confirma este encontro em <Countdown deadline={match.deadline} serverNow={serverNow} />.
+            Accept this duel within <Countdown deadline={match.deadline} serverNow={serverNow} />.
           </p>
           <ArenaButton
             disabled={match.accepted || busy}
             onClick={() => void run(() => competitive.queue('queue_accept', { matchId: match.matchId }))}
           >
-            Aceitar partida
+            Accept duel
           </ArenaButton>
         </>
       ) : null}
@@ -529,9 +529,9 @@ function Preparation({
       {match.status === 'selecting' ? (
         <>
           <h2 className="text-2xl font-bold">
-            Escolhe três criaturas · <Countdown deadline={match.deadline} serverNow={serverNow} />
+            Choose three creatures · <Countdown deadline={match.deadline} serverNow={serverNow} />
           </h2>
-          <p>A equipa permanece secreta até ambos confirmarem. Depois de confirmada, não podes mudá-la.</p>
+          <p>Your team stays hidden until both players confirm. Once you confirm your team, your choices are final.</p>
           <div className="flex gap-4 overflow-x-auto pb-2">
             {(match.offer ?? []).map((id) => {
               const c = creatures.find((c) => c.id === id) as Creature | undefined;
@@ -544,7 +544,7 @@ function Preparation({
                     className={`w-full rounded-xl p-2 focus:ring-2 focus:ring-cyan-200 ${chosen ? 'bg-amber-300/25 ring-2 ring-amber-300' : ''}`}
                     disabled={Boolean(match.selection) || busy || (!chosen && selected.length === 3)}
                     aria-pressed={chosen}
-                    aria-label={`Selecionar ${c.name}`}
+                    aria-label={`Select ${c.name}`}
                     onClick={() =>
                       setSelected((ids) => (ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id]))
                     }
@@ -561,18 +561,18 @@ function Preparation({
             disabled={Boolean(match.selection) || selected.length !== 3}
             onClick={() => void run(() => competitive.selection(match.matchId, selected))}
           >
-            {match.selection ? 'Equipa confirmada' : 'Confirmar as três criaturas'}
+            {match.selection ? 'Team confirmed' : 'Confirm team'}
           </ArenaButton>
-          <p>{match.opponentSelected ? 'O adversário confirmou.' : 'À espera da seleção do adversário.'}</p>
+          <p>{match.opponentSelected ? 'Your opponent confirmed their team.' : 'Waiting for your opponent to choose a team.'}</p>
         </>
       ) : null}
       {['preparing', 'initializing'].includes(match.status) ? (
-        <p role="status">A preparar a partida no servidor…</p>
+        <p role="status">Preparing the duel…</p>
       ) : null}
       {match.status === 'cancelled' ? (
         <p>
-          A preparação foi cancelada. A classificação não mudou. Os fundos depositados seguem o percurso de
-          reembolso.
+          This duel was cancelled before play and does not count toward the standings.
+          {match.mode === 'wager' ? ' Deposited funds will be refunded.' : ''}
         </p>
       ) : null}
       {['waiting', 'depositing', 'selecting', 'locking'].includes(match.status) && match.mode !== 'league' && !challengeMatchId(match) ? (
@@ -612,16 +612,16 @@ export default function CompetitiveMatch() {
   return (
     <PageShell contentClassName="space-y-5">
       <Link className="text-cyan-200" to={challengeId ? standingsPath : '/competition'}>
-        {challengeId ? '← Classificação do repto' : '← Modos de jogo'}
+        {challengeId ? '← Challenge standings' : '← Game modes'}
       </Link>
       <h1 className="text-3xl font-bold">
-        {challengeId ? 'Partida do repto' : data?.match.mode === 'league'
+        {!data ? 'Duel' : challengeId ? 'Weekly Challenge duel' : data.match.mode === 'league'
           ? 'Partida da liga'
           : data?.match.mode === 'wager'
             ? 'Duelo com aposta'
             : 'Encontro casual'}
       </h1>
-      {!data ? <p>A recuperar a partida…</p> : null}
+      {!data ? <p>Loading your duel…</p> : null}
       {error ? (
         <p role="alert" className="rounded border border-red-400/40 bg-red-950/40 p-3 text-red-100">
           {error}
@@ -629,7 +629,7 @@ export default function CompetitiveMatch() {
       ) : null}
       {retryable ? (
         <ArenaButton loading={sending} onClick={() => void submit()}>
-          Verificar a jogada enviada
+          Check submitted move
         </ArenaButton>
       ) : null}
       {projection ? (

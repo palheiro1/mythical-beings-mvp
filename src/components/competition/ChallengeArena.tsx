@@ -44,10 +44,10 @@ function Scorebar({ projection, mine, rival }: {
 }
 
 const outcomeReasons = {
-  timeout: 'A partida terminou quando um dos jogadores esgotou o relógio.',
-  resign: 'Um dos jogadores desistiu.',
-  power: 'Um dos jogadores ficou sem Poder.',
-  draw: 'A batalha terminou empatada.',
+  timeout: 'One player ran out of time.',
+  resign: 'One player conceded the duel.',
+  power: 'One player ran out of Power.',
+  draw: 'The duel ended in a draw.',
 };
 
 export default function ChallengeArena({ projection, playerId, standingsPath, sending, retryable, error, send }: {
@@ -82,7 +82,7 @@ export default function ChallengeArena({ projection, playerId, standingsPath, se
   };
 
   return <div className={`wd wd-match wd-confluence ${direct ? 'wd-direct' : ''}`} data-active-side={activeSide}>
-    <h1 className="sr-only">Wisdom Duel — Partida do repto</h1>
+    <h1 className="sr-only">Wisdom Duel — Weekly Challenge duel</h1>
     <Scorebar projection={projection} mine={mine} rival={rival} />
     <div className="wd-game-layout">
       <DuelBoard player={mine} opponent={rival} opponentLabel="Opponent’s creatures" direct={direct} onInspect={setInspection}
@@ -133,7 +133,7 @@ export default function ChallengeArena({ projection, playerId, standingsPath, se
         </div>
       </div>
       <div className="wd-action-buttons">
-        <Link to={standingsPath} className="wd-icon-button" aria-label="Classificação" title="Classificação"><Trophy size={18} /></Link>
+        <Link to={standingsPath} className="wd-icon-button" aria-label="Standings" title="Standings"><Trophy size={18} /></Link>
         {selected ? <button type="button" className="wd-icon-button" aria-label="Cancel card selection" onClick={() => setSelectedId(null)}><X size={18} /></button> : null}
         <button type="button" className="wd-discard-button" aria-label="Discard pile" onClick={() => setDialog('discard')}><Layers size={17} /><span>{projection.discardPile.length}</span><span className="wd-discard-label">Discards</span></button>
         <button type="button" className="wd-icon-button" aria-label="Game history" onClick={() => setDialog('history')}><History size={18} /></button>
@@ -143,13 +143,13 @@ export default function ChallengeArena({ projection, playerId, standingsPath, se
             : <button type="button" className="wd-button wd-button-primary" disabled={!canAct} onClick={() => void play({ type: 'end_turn' })}>End Turn <ArrowRight size={16} /></button>}
       </div>
     </footer>
-    <div className="wd-match-links"><Link className="wd-text-button" to={standingsPath}>Classificação do repto</Link><span>Weekly challenge · Play Hub</span></div>
+    <div className="wd-match-links"><Link className="wd-text-button" to={standingsPath}>Challenge standings</Link><span>Weekly challenge · Play Hub</span></div>
 
-    {hasResultDialog && outcome ? <TrainingDialog title={outcome.winnerId === null ? 'Empate' : outcome.winnerId === playerId ? 'Vitória' : 'Derrota'} onClose={() => setResultDismissed(true)}>
+    {hasResultDialog && outcome ? <TrainingDialog title={outcome.winnerId === null ? 'Draw' : outcome.winnerId === playerId ? 'Victory' : 'Defeat'} onClose={() => setResultDismissed(true)}>
       <p>{outcomeReasons[outcome.reason]}</p>
       <div className="wd-dialog-actions">
-        <Link className="wd-button wd-button-primary" to={standingsPath}>Classificação</Link>
-        <Link className="wd-button" to={`/replay/${projection.matchId}`}>Ver replay completo</Link>
+        <Link className="wd-button wd-button-primary" to={standingsPath}>Standings</Link>
+        <Link className="wd-button" to={`/replay/${projection.matchId}`}>View full replay</Link>
       </div>
     </TrainingDialog> : null}
 
