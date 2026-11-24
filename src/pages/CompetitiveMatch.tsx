@@ -8,6 +8,7 @@ import type {
 } from '@mythicalb/wisdom-duel-engine';
 import creatures from '../assets/creatures.json';
 import CardFaceByImage from '../components/CardFaceByImage.js';
+import ChallengeArena from '../components/competition/ChallengeArena.js';
 import { ArenaButton, PageShell, Panel } from '../components/ui/index.js';
 import { useAuth } from '../hooks/useAuth.js';
 import { useCompetitiveMatch, useMatchClock } from '../hooks/useCompetitiveMatch.js';
@@ -574,7 +575,7 @@ function Preparation({
           reembolso.
         </p>
       ) : null}
-      {['waiting', 'depositing', 'selecting', 'locking'].includes(match.status) && match.mode !== 'league' ? (
+      {['waiting', 'depositing', 'selecting', 'locking'].includes(match.status) && match.mode !== 'league' && !challengeMatchId(match) ? (
         <ArenaButton
           variant="ghost"
           loading={busy}
@@ -592,19 +593,29 @@ function Preparation({
   );
 }
 
+function challengeMatchId(match: WisdomMatchView | undefined) {
+  return match && 'challengeId' in match && typeof match.challengeId === 'string' ? match.challengeId : null;
+}
+
 export default function CompetitiveMatch() {
   const { matchId = '' } = useParams(),
     { user } = useAuth();
   const { data, error, sending, retryable, refresh, submit } = useCompetitiveMatch(matchId, user?.id ?? '');
   const [confirmResign, setConfirmResign] = useState(false);
   const projection = data?.projection;
+  const challengeId = challengeMatchId(data?.match);
+  const standingsPath = challengeId ? `/challenge?period=${challengeId}` : '/standings';
+  if (projection && challengeId && user) {
+    return <ChallengeArena key={matchId} projection={projection} playerId={user.id} standingsPath={standingsPath}
+      sending={sending} retryable={retryable} error={error} send={submit} />;
+  }
   return (
     <PageShell contentClassName="space-y-5">
-      <Link className="text-cyan-200" to="/competition">
-        ← Modos de jogo
+      <Link className="text-cyan-200" to={challengeId ? standingsPath : '/competition'}>
+        {challengeId ? '← Classificação do repto' : '← Modos de jogo'}
       </Link>
       <h1 className="text-3xl font-bold">
-        {data?.match.mode === 'league'
+        {challengeId ? 'Partida do repto' : data?.match.mode === 'league'
           ? 'Partida da liga'
           : data?.match.mode === 'wager'
             ? 'Duelo com aposta'
@@ -647,7 +658,7 @@ export default function CompetitiveMatch() {
                 Ver replay completo
               </Link>{' '}
               ·{' '}
-              <Link className="text-cyan-200 underline" to="/standings">
+              <Link className="text-cyan-200 underline" to={standingsPath}>
                 Classificação
               </Link>
             </Panel>

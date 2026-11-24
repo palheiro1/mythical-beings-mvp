@@ -1,6 +1,7 @@
 const pvpFlag = String(import.meta.env.VITE_ENABLE_PVP ?? '').trim().toLowerCase();
 
 export const PVP_ENABLED = pvpFlag === 'true';
+export const WEEKLY_CHALLENGE_ENABLED = import.meta.env.VITE_ENABLE_WEEKLY_CHALLENGE === 'true';
 export const TRAINING_PREVIEW_ENABLED = !PVP_ENABLED;
 
 export const PVP_DISABLED_CODE = 'multiplayer_disabled';

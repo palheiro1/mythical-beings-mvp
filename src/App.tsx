@@ -7,11 +7,12 @@ import Home from './pages/Home.js';
 import ProtectedRoute from './components/ProtectedRoute.js';
 import NavBar from './components/NavBar.js';
 import { SpinnerEmblem } from './components/ui/index.js';
-import { PVP_ENABLED } from './config/release.js';
+import { PVP_ENABLED, WEEKLY_CHALLENGE_ENABLED } from './config/release.js';
 
 // Moralis is now initialized in main.tsx to ensure polyfills are loaded first
 
 const CompetitiveHub = lazy(() => import('./pages/CompetitiveHub.js'));
+const WeeklyChallenge = lazy(() => import('./pages/WeeklyChallenge.js'));
 const LeagueQueue = lazy(() => import('./pages/LeagueQueue.js'));
 const WagerLobby = lazy(() => import('./pages/WagerLobby.js'));
 const CompetitiveMatch = lazy(() => import('./pages/CompetitiveMatch.js'));
@@ -55,13 +56,14 @@ function AppContent() {
           <Route path="/bot-game" element={<BotGame />} />
           <Route path="/leaderboard" element={<Navigate to="/standings" replace />} />
           <Route path="/standings" element={<LeagueStandings />} />
-          <Route path="/competition" element={PVP_ENABLED ? <CompetitiveHub /> : <Navigate to="/" replace />} />
+          <Route path="/competition" element={PVP_ENABLED ? <CompetitiveHub /> : <Navigate to={WEEKLY_CHALLENGE_ENABLED ? '/challenge' : '/'} replace />} />
+          {WEEKLY_CHALLENGE_ENABLED ? <Route path="/challenge" element={<WeeklyChallenge />} /> : null}
           {/* Handle legacy/auth callback route by redirecting to lobby */}
           <Route path="/auth" element={<Navigate to="/lobby" replace />} />
 
           {/* Protected Routes */}
           <Route element={<ProtectedRoute />}>
-            <Route path="/lobby" element={<Navigate to={PVP_ENABLED ? '/competition' : '/'} replace />} />
+            <Route path="/lobby" element={<Navigate to={PVP_ENABLED || WEEKLY_CHALLENGE_ENABLED ? '/competition' : '/'} replace />} />
             <Route path="/profile" element={<ProfilePage />} />
             {/* Recovery routes remain reachable when new public admission is closed. */}
             <Route path="/duel/:matchId" element={<CompetitiveMatch />} />

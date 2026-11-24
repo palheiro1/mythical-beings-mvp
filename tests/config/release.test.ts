@@ -14,8 +14,10 @@ describe('release mode', () => {
   it('keeps practice public when no release flag is configured', async () => {
     vi.resetModules();
     vi.stubEnv('VITE_ENABLE_PVP', undefined);
+    vi.stubEnv('VITE_ENABLE_WEEKLY_CHALLENGE', undefined);
     const release = await import('../../src/config/release.js');
     expect(release.PVP_ENABLED).toBe(false);
+    expect(release.WEEKLY_CHALLENGE_ENABLED).toBe(false);
     expect(release.TRAINING_PREVIEW_ENABLED).toBe(true);
   });
 
@@ -26,6 +28,16 @@ describe('release mode', () => {
     expect(release.PVP_ENABLED).toBe(true);
     expect(release.TRAINING_PREVIEW_ENABLED).toBe(false);
     expect(release.assertPvpEnabled).not.toThrow();
+  });
+
+  it('shows the weekly challenge independently of the funded league and wagers', async () => {
+    vi.resetModules();
+    vi.stubEnv('VITE_ENABLE_PVP', 'false');
+    vi.stubEnv('VITE_ENABLE_WEEKLY_CHALLENGE', 'true');
+    const release = await import('../../src/config/release.js');
+    expect(release.WEEKLY_CHALLENGE_ENABLED).toBe(true);
+    expect(release.PVP_ENABLED).toBe(false);
+    expect(release.TRAINING_PREVIEW_ENABLED).toBe(true);
   });
 
   it('defaults public builds to the training-only preview', () => {

@@ -18,6 +18,24 @@ export type {
   WisdomSeason,
   WisdomLeagueResponse,
 } from '@mythicalb/sdk/wisdom-duel';
+export interface WisdomChallengeResponse {
+  periods: Array<{
+    id: string;
+    name: string;
+    startsAt: string;
+    endsAt: string;
+    queueClosesAt: string;
+    admissionOpen: boolean;
+  }>;
+  periodId: string | null;
+  standings: Array<{ position: number; playerName: string; rating: string; games: number; isMe: boolean }>;
+  myResults: Array<{ matchId: string; finishedAt: string; outcome: 'win' | 'loss' | 'draw'; ranked: boolean }>;
+}
+
+export function challengeStandings(challengeId?: string, offset = 0) {
+  return competitive.invoke<WisdomChallengeResponse>('league', { action: 'challenge_list', challengeId, offset });
+}
+
 export function competitiveWalletConfig(requireEscrow = true): WisdomWalletConfig {
   const escrow = String(import.meta.env.VITE_WISDOM_DUEL_ESCROW_V2_ADDRESS ?? '').trim()
     || (requireEscrow ? '' : '0x0000000000000000000000000000000000000000');
@@ -36,6 +54,7 @@ export function competitiveError(error: unknown): string {
   const code = error && typeof error === 'object' && 'code' in error ? String(error.code) : '';
   const messages: Record<string, string> = {
     admission_closed: 'As novas entradas estão temporariamente fechadas.',
+    challenge_unavailable: 'A fila desta edição ainda não abriu ou já fechou.',
     season_unavailable: 'Esta temporada ainda não está aberta ou já fechou a fila.',
     queue_cooldown: 'Aguarda cinco minutos antes de voltar à fila.',
     already_active: 'Já tens uma entrada ou partida ativa.',

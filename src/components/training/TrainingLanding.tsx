@@ -5,6 +5,7 @@ import DigitalCardFace from '../DigitalCardFace.js';
 import creatureData from '../../assets/creatures.json';
 import type { Creature } from '../../game/types.js';
 import { BUILD_LABEL } from '../../config/build.js';
+import { WEEKLY_CHALLENGE_ENABLED } from '../../config/release.js';
 
 const heroCards = ['adaro', 'tarasca', 'tulpar'].map(id => creatureData.find(card => card.id === id) as Creature);
 
@@ -19,6 +20,7 @@ export default function TrainingLanding({ children }: { children: ReactNode }) {
         <div className="wd-hero-actions">
           <button className="wd-button wd-button-primary" onClick={() => navigate('/bot-selection?mode=guided')}><BookOpen size={18} />Learn to Play<ArrowRight size={18} /></button>
           <button className="wd-button" onClick={() => navigate('/bot-selection?mode=free')}>Practice</button>
+          {WEEKLY_CHALLENGE_ENABLED ? <Link className="wd-button" to="/challenge">Ver repto semanal<ArrowRight size={18} aria-hidden /></Link> : null}
         </div>
         <p className="wd-caption">Solo play against the bot. No account or wallet needed.</p>
       </div>
