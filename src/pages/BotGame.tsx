@@ -87,7 +87,7 @@ function PracticeMatch({ team, mode, gameId, rulesOpen, openRules, resumeDuel, o
     containerRef.current?.querySelector<HTMLElement>('.wd-coach h2')?.focus();
     // Draw the eye to "1. Gather knowledge": let the coach render normally first, then pulse its frame gold.
     const startTimer = window.setTimeout(() => setCoachHighlighted(true), 150);
-    const endTimer = window.setTimeout(() => setCoachHighlighted(false), 1350);
+    const endTimer = window.setTimeout(() => setCoachHighlighted(false), 1450);
     return () => { window.clearTimeout(startTimer); window.clearTimeout(endTimer); };
   }, [introOpen]);
   const motionLayerRef = useRef<HTMLDivElement>(null);
