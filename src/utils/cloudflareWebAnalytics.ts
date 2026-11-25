@@ -3,9 +3,8 @@ export const CLOUDFLARE_WEB_ANALYTICS_SCRIPT =
   'https://static.cloudflareinsights.com/beacon.min.js';
 
 const beaconId = 'wisdom-duel-cloudflare-web-analytics';
-// A Web Analytics site tag is intentionally public in every instrumented page;
-// it authorizes no Cloudflare API access. Keep the API read token separate.
-const productionSiteTag = 'efc5fdf99a0441b983c3173515099c62';
+// Cloudflare supplies this public token in the installation snippet for the game's hostname.
+const productionBeaconToken = 'c22df15381c049ccb03e6aed3cf31adc';
 
 export interface CloudflareWebAnalyticsOptions {
   token: string | undefined;
@@ -24,7 +23,7 @@ export function startCloudflareWebAnalytics(
   options?: Partial<CloudflareWebAnalyticsOptions>,
 ): boolean {
   if (typeof window === 'undefined' || typeof document === 'undefined') return false;
-  const token = options?.token ?? import.meta.env.VITE_CF_WEB_ANALYTICS_TOKEN ?? productionSiteTag;
+  const token = options?.token ?? import.meta.env.VITE_CF_WEB_ANALYTICS_TOKEN ?? productionBeaconToken;
   const hostname = options?.hostname ?? window.location.hostname;
   if (!shouldEnableCloudflareWebAnalytics({ token, hostname })) return false;
   if (document.getElementById(beaconId)) return true;
