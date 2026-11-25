@@ -2,6 +2,7 @@ import { ArrowRight, BookOpen } from 'lucide-react';
 import type { GuideStep, TrainingSession } from '../../game/trainingSession.js';
 
 const steps: Record<Exclude<GuideStep, 'free'>, { title: string; text: string; progress: number }> = {
+  // Fallback only: guided lessons dispatch 'start-guide' from the introduction, so 'welcome' is unreachable in practice.
   welcome: { title: 'Your first duel', text: 'Your three creatures share 20 Power. Bring the other side to zero to win. Each creature can carry one Knowledge card if its Wisdom meets the cost. Those cards and creature abilities deal damage.', progress: 0 },
   draw: { title: '1. Gather knowledge', text: 'You normally get two actions per turn. Lepidoptera needs 1 Wisdom. Spend your first action to draw it from the market into your hand.', progress: 1 },
   rotate: { title: '2. Grow your wisdom', text: 'Tarasca has 0 Wisdom. Spend your second action to rotate it a quarter turn. Its Wisdom rises to 2, enough to summon Lepidoptera next turn.', progress: 2 },
@@ -36,7 +37,7 @@ export default function TrainingCoach({ session, direct, lessonBonus, onStart, o
   if (step === 'strike' && firstStrike) text = `Lepidoptera dealt ${firstStrike.damage} damage as your turn began. Bot Power fell from ${firstStrike.before} to ${firstStrike.after}. The spell then rotated on its own.`;
   const finished = step === 'complete' || step === 'handoff';
   return <aside className="wd-coach" data-step={step} aria-label="Guided lesson">
-    <div className="wd-coach-copy" aria-live="polite" aria-atomic="true"><span className="wd-eyebrow"><BookOpen size={13} />Guided lesson · Clock paused</span><h2>{content.title}</h2><p>{text}</p></div>
+    <div className="wd-coach-copy" aria-live="polite" aria-atomic="true"><span className="wd-eyebrow"><BookOpen size={13} />Guided lesson · Clock paused</span><h2 tabIndex={-1}>{content.title}</h2><p>{text}</p></div>
     <div className="wd-coach-controls">
       {step === 'welcome' && <button className="wd-button wd-button-primary" onClick={onStart}>Start learning <ArrowRight size={16} /></button>}
       {step === 'strike' && <button className="wd-button wd-button-primary" onClick={onShowBonus}>See Tulpar’s bonus <ArrowRight size={16} /></button>}

@@ -21,6 +21,7 @@ import PlayCardFace from '../components/training/PlayCardFace.js';
 import TrainingTrays, { type TrayTab } from '../components/training/TrainingTrays.js';
 import TrainingCoach from '../components/training/TrainingCoach.js';
 import TrainingDialog from '../components/training/TrainingDialog.js';
+import TrainingIntro from '../components/training/TrainingIntro.js';
 import type { DisplayCard } from '../components/training/TrainingCard.js';
 import '../trainingLandscape.css';
 import '../trainingMotion.css';
@@ -72,12 +73,23 @@ function PracticeMatch({ team, mode, gameId, rulesOpen, openRules, resumeDuel, o
   const directCards = useDirectCards();
   const [allowPortrait, setAllowPortrait] = useState(false);
   const orientationPaused = portrait && !allowPortrait;
+  // A guided lesson opens with a short, non-dismissable introduction; never stack it over the Rules dialog.
+  const [introOpen, setIntroOpen] = useState(mode === 'guided' && !rulesOpen);
+  // The step lives here, not in TrainingIntro, so the portrait early return cannot restart the walkthrough.
+  const [introStep, setIntroStep] = useState(0);
+  const introFinished = useRef(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (introOpen || !introFinished.current) return;
+    introFinished.current = false;
+    // TrainingDialog restores focus to the pre-intro element (usually <body>); hand it to the coach instead.
+    containerRef.current?.querySelector<HTMLElement>('.wd-coach h2')?.focus();
+  }, [introOpen]);
   const motionLayerRef = useRef<HTMLDivElement>(null);
   const audio = useTrainingAudio(orientationPaused);
-  const { capture, announcement, presenting } = useTrainingMotion(game, containerRef, motionLayerRef, `${directCards}-${tab}`, orientationPaused || rulesOpen, audio.presentation, !lessonBonus);
+  const { capture, announcement, presenting } = useTrainingMotion(game, containerRef, motionLayerRef, `${directCards}-${tab}`, orientationPaused || rulesOpen || introOpen, audio.presentation, !lessonBonus);
   const onAction = useCallback((action: TrainingAction) => { capture(); dispatch({ type: 'play', action }); }, [capture]);
-  useTrainingBot(game, onAction, orientationPaused || rulesOpen);
+  useTrainingBot(game, onAction, orientationPaused || rulesOpen || introOpen);
   const playerTurn = game.currentPlayerIndex === 0;
   const isMyTurn = playerTurn && game.phase === 'action';
   const gameOver = game.phase === 'gameOver';
@@ -105,7 +117,7 @@ function PracticeMatch({ team, mode, gameId, rulesOpen, openRules, resumeDuel, o
     onAction({ type: 'END_TURN', payload: { playerId: HUMAN_ID } });
   }, [lessonBonus, pending, onAction]);
   const remainingTime = useTurnTimer({ isMyTurn: isMyTurn && !paused, phase: game.phase === 'action' ? 'action' : null,
-    turnDurationSeconds: 30, onTimerEnd: endTurn, gameTurn: game.turn, currentPlayerIndex: game.currentPlayerIndex, paused: orientationPaused || rulesOpen || !!pending });
+    turnDurationSeconds: 30, onTimerEnd: endTurn, gameTurn: game.turn, currentPlayerIndex: game.currentPlayerIndex, paused: orientationPaused || rulesOpen || introOpen || !!pending });
   const observed = useRef({ started: false, first: false, ended: false, abandonTimeout: 0 });
   useEffect(() => {
     window.clearTimeout(observed.current.abandonTimeout);
@@ -183,7 +195,7 @@ function PracticeMatch({ team, mode, gameId, rulesOpen, openRules, resumeDuel, o
         <TrainingSoundControls preferences={audio.preferences} update={audio.update} error={audio.error} play={audio.presentation.play} open={dialog === 'sound' && !pending && !inspection && (!gameOver || resultDismissed)} onOpen={() => setDialog('sound')} onClose={() => setDialog(null)} />
       </div>
     </header>
-    {!gameOver && <TrainingCoach session={session} direct={directCards} lessonBonus={lessonBonus} onStart={() => dispatch({ type: 'start-guide' })} onSkip={() => dispatch({ type: 'skip-guide' })} onShowBonus={() => dispatch({ type: 'show-bonus' })} onContinue={() => dispatch({ type: 'continue' })} />}
+    {!gameOver && !introOpen && <TrainingCoach session={session} direct={directCards} lessonBonus={lessonBonus} onStart={() => dispatch({ type: 'start-guide' })} onSkip={() => dispatch({ type: 'skip-guide' })} onShowBonus={() => dispatch({ type: 'show-bonus' })} onContinue={() => dispatch({ type: 'continue' })} />}
     <div className="wd-game-layout">
       <TrainingBoard direct={directCards} session={session} onAction={onAction} onInspect={setInspection} hud={{
         opponent: <PowerMedallion power={bot.power} side="opponent" handSize={bot.hand.length} />,
@@ -204,6 +216,7 @@ function PracticeMatch({ team, mode, gameId, rulesOpen, openRules, resumeDuel, o
     </footer>
     <div className="wd-match-links"><button className="wd-text-button" onClick={() => navigate('/bot-selection?mode=guided')}><RotateCcw size={14} />Repeat tutorial</button><span>Solo practice · No competitive rewards</span></div>
     <CardDetailOverlay card={inspection} open={!!inspection && !rulesOpen} onClose={closeInspection} contextLabel="Card details" />
+    {introOpen && <TrainingIntro step={introStep} onStep={setIntroStep} onFinish={() => { introFinished.current = true; setIntroOpen(false); dispatch({ type: 'start-guide' }); }} />}
     {rulesOpen && <TrainingDialog title="Duel rules" onClose={resumeDuel}>
       <p>Turn {game.turn} · Duel paused</p>
       <ul className="wd-rules-list">
