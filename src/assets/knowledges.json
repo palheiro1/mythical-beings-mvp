@@ -5,7 +5,7 @@
     "type": "spell",
     "cost": 1,
     "effect": "Apparition: Gain 1 power point. Deals damage based on rotation.",
-    "image": "/images/spells/aerial1.jpg",
+    "image": "/images/spells/aerial1.webp",
     "maxRotations": 2,
     "element": "air",
     "valueCycle": [1, 1]
@@ -16,7 +16,7 @@
     "type": "spell",
     "cost": 2,
     "effect": "Gain [1, 2, 3] power points, according to rotation.",
-    "image": "/images/spells/aerial2.jpg",
+    "image": "/images/spells/aerial2.webp",
     "maxRotations": 3,
     "element": "air"
   },
@@ -26,7 +26,7 @@
     "type": "spell",
     "cost": 3,
     "effect": "While in play, adds +1 to the Wisdom of all your Creatures. Deals damage based on rotation.",
-    "image": "/images/spells/aerial3.jpg",
+    "image": "/images/spells/aerial3.webp",
     "maxRotations": 3,
     "element": "air",
     "valueCycle": [1, 1, 2]
@@ -37,7 +37,7 @@
     "type": "spell",
     "cost": 4,
     "effect": "Each point of damage caused by it to the opponent generates +1 power point to the owner. Deals damage based on rotation.",
-    "image": "/images/spells/aerial4.jpg",
+    "image": "/images/spells/aerial4.webp",
     "maxRotations": 3,
     "element": "air",
     "valueCycle": [1, 2, 2]
@@ -48,7 +48,7 @@
     "type": "spell",
     "cost": 5,
     "effect": "The Rival reduces all his Creatures 1 step.",
-    "image": "/images/spells/aerial5.jpg",
+    "image": "/images/spells/aerial5.webp",
     "maxRotations": 1,
     "element": "air",
     "valueCycle": [2]
@@ -59,7 +59,7 @@
     "type": "spell",
     "cost": 1,
     "effect": "Rotate a Knowledge 1 step.",
-    "image": "/images/spells/aquatic1.jpg",
+    "image": "/images/spells/aquatic1.webp",
     "maxRotations": 1,
     "element": "water"
   },
@@ -69,7 +69,7 @@
     "type": "spell",
     "cost": 2,
     "effect": "Gain +1 when defending if the opposing Creature has no summoned Knowledges. Deals damage/defense based on rotation.",
-    "image": "/images/spells/aquatic2.jpg",
+    "image": "/images/spells/aquatic2.webp",
     "maxRotations": 4,
     "element": "water",
     "valueCycle": [-1, 1, -1, 1]
@@ -80,7 +80,7 @@
     "type": "spell",
     "cost": 3,
     "effect": "The opposing Creature cannot summon Knowledges.",
-    "image": "/images/spells/aquatic3.jpg",
+    "image": "/images/spells/aquatic3.webp",
     "maxRotations": 2,
     "element": "water"
   },
@@ -90,7 +90,7 @@
     "type": "spell",
     "cost": 4,
     "effect": "Appearance: Draw 1 card from the Market without spending Action. Deals damage/defense based on rotation.",
-    "image": "/images/spells/aquatic4.jpg",
+    "image": "/images/spells/aquatic4.webp",
     "maxRotations": 4,
     "element": "water",
     "valueCycle": [1, -2, 1, 2]
@@ -101,7 +101,7 @@
     "type": "spell",
     "cost": 5,
     "effect": "Final: win 1 extra Action your next Action phase. Deals damage/defense based on rotation.",
-    "image": "/images/spells/aquatic5.jpg",
+    "image": "/images/spells/aquatic5.webp",
     "maxRotations": 4,
     "element": "water",
     "valueCycle": [-2, 2, -2, 2]
@@ -112,7 +112,7 @@
     "type": "spell",
     "cost": 1,
     "effect": "If the opposing Creature has not summoned Knowledges, it causes +1 damage. Deals damage based on rotation.",
-    "image": "/images/spells/terrestrial1.jpg",
+    "image": "/images/spells/terrestrial1.webp",
     "maxRotations": 3,
     "element": "earth",
     "valueCycle": [1, 0, 2]
@@ -123,7 +123,7 @@
     "type": "spell",
     "cost": 2,
     "effect": "Apparition: Look at the Rival's Hand and discard 1 of his cards. Deals damage based on rotation.",
-    "image": "/images/spells/terrestrial2.jpg",
+    "image": "/images/spells/terrestrial2.webp",
     "maxRotations": 4,
     "element": "earth",
     "valueCycle": [1, 0, 1, 0]
@@ -134,7 +134,7 @@
     "type": "spell",
     "cost": 3,
     "effect": "It causes as many points of damage as the wisdom of the summoning Creature.",
-    "image": "/images/spells/terrestrial3.jpg",
+    "image": "/images/spells/terrestrial3.webp",
     "maxRotations": 1,
     "element": "earth"
   },
@@ -144,7 +144,7 @@
     "type": "spell",
     "cost": 4,
     "effect": "Rival Knowledges of wisdom [2, 1] or lower are eliminated.",
-    "image": "/images/spells/terrestrial4.jpg",
+    "image": "/images/spells/terrestrial4.webp",
     "maxRotations": 2,
     "element": "earth"
   },
@@ -154,7 +154,7 @@
     "type": "spell",
     "cost": 5,
     "effect": "Final: remove 1 summoned Knowledge of the Rival's Table. Deals damage based on rotation.",
-    "image": "/images/spells/terrestrial5.jpg",
+    "image": "/images/spells/terrestrial5.webp",
     "maxRotations": 4,
     "element": "earth",
     "valueCycle": [1, 1, 2, 3]

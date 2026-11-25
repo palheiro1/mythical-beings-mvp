@@ -91,7 +91,6 @@ describe('Kyzy Passive', () => {
     });
 
     it('should NOT force discard if opponent summons earth knowledge but has no other cards', () => {
-      const p1Id = 'player1'; // Kyzy's owner
       const p2Id = 'player2'; // Summoner
       const initialState = createInitialTestState('game10', ['kyzy'], ['pele'], { // P1 has Kyzy
         currentPlayerIndex: 1, // Player 2's turn
@@ -104,7 +103,6 @@ describe('Kyzy Passive', () => {
       initialState.players[1].hand = [earthCard]; // Summoner's hand has only this card
       initialState.players[1].creatures[0].currentWisdom = 1;
 
-      const initialSummonerHandSize = initialState.players[1].hand.length; // Should be 1
       const initialDiscardSize = initialState.discardPile.length;
 
       const summonAction = {
@@ -197,7 +195,6 @@ describe('Kyzy Passive', () => {
       initialState.players[1].hand = [];
 
       const initialP1HandSize = initialState.players[0].hand.length;
-      const initialP2HandSize = initialState.players[1].hand.length; // Should be 0
       const initialDiscardSize = initialState.discardPile.length;
 
       const summonAction = {

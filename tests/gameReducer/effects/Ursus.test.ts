@@ -1,13 +1,11 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { knowledgeEffects } from '../../../src/game/effects';
-import { GameState, Knowledge, PlayerState } from '../../../src/game/types';
+import { GameState, Knowledge } from '../../../src/game/types';
 import { createInitialTestState, createTestKnowledge } from '../../utils/testHelpers';
 
 describe('Ursus (terrestrial1) Effect', () => {
   let initialState: GameState;
   let ursusCard: Knowledge;
-  const p1Id = 'player1';
-  const p2Id = 'player2';
   const p1CreatureId = 'adaro'; // Assume Adaro is at index 0 for P1
   const p2CreatureId = 'pele';  // Assume Pele is at index 0 for P2
   const fieldSlotIndex = 0; // Both creatures are in the first slot
@@ -58,7 +56,7 @@ describe('Ursus (terrestrial1) Effect', () => {
   });
 
   it('should deal 2 damage at 0 degrees rotation (opponent has NO knowledge)', () => {
-    let state = placeUrsus(initialState, 0);
+    const state = placeUrsus(initialState, 0);
     // Opponent slot is empty by default in beforeEach
     const p2InitialPower = state.players[1].power;
 
@@ -78,7 +76,7 @@ describe('Ursus (terrestrial1) Effect', () => {
   });
 
   it('should deal 0 damage at 90 degrees rotation', () => {
-    let state = placeUrsus(initialState, 90);
+    const state = placeUrsus(initialState, 90);
     // Doesn't matter if opponent has knowledge or not
     const p2InitialPower = state.players[1].power;
 
@@ -118,7 +116,7 @@ describe('Ursus (terrestrial1) Effect', () => {
   });
 
   it('should deal 3 damage at 180 degrees rotation (opponent has NO knowledge)', () => {
-    let state = placeUrsus(initialState, 180);
+    const state = placeUrsus(initialState, 180);
     // Opponent slot is empty
     const p2InitialPower = state.players[1].power;
 
@@ -139,7 +137,7 @@ describe('Ursus (terrestrial1) Effect', () => {
 
   // Optional: Test for 270 degrees if it should do nothing
   it('should deal 0 damage at 270 degrees rotation', () => {
-    let state = placeUrsus(initialState, 270);
+    const state = placeUrsus(initialState, 270);
     const p2InitialPower = state.players[1].power;
 
     const result = knowledgeEffects.terrestrial1({

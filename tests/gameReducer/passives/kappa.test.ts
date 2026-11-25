@@ -8,7 +8,6 @@ describe('Kappa Passive', () => {
   describe('SUMMON_KNOWLEDGE (Owner) - Summoning aquatic knowledge is free', () => {
     it('should NOT consume an action when owner summons aquatic knowledge', () => {
       const p1Id = 'player1'; // Kappa's owner
-      const p2Id = 'player2';
       const initialState = createInitialTestState('game19', ['kappa', 'adaro'], ['pele'], { // P1 has Kappa
         currentPlayerIndex: 0, // Player 1's turn
         phase: 'action',
@@ -45,7 +44,6 @@ describe('Kappa Passive', () => {
 
     it('should consume an action when owner summons non-aquatic knowledge', () => {
       const p1Id = 'player1'; // Kappa's owner
-      const p2Id = 'player2';
       const initialState = createInitialTestState('game20', ['kappa', 'adaro'], ['pele'], { // P1 has Kappa
         currentPlayerIndex: 0, // Player 1's turn
         phase: 'action',
@@ -82,7 +80,6 @@ describe('Kappa Passive', () => {
     });
 
     it('should consume an action when opponent summons aquatic knowledge', () => {
-      const p1Id = 'player1'; // Kappa's owner
       const p2Id = 'player2'; // Opponent / Summoner
       const initialState = createInitialTestState('game21', ['kappa'], ['pele', 'adaro'], { // P1 has Kappa
         currentPlayerIndex: 1, // Player 2's turn

@@ -7,7 +7,6 @@ describe('Trempulcahue Passive', () => {
   describe('AFTER_PLAYER_SUMMON - Summoned knowledges gain +1 defense', () => {
     it('should grant +1 defense to any knowledge summoned by owner, regardless of element', () => {
       const p1Id = 'player1';
-      const p2Id = 'player2';
       // P1 has Trempulcahue and Adaro
       const initialState = createInitialTestState('game40', ['trempulcahue', 'adaro'], ['pele'], {
         currentPlayerIndex: 0,
@@ -38,7 +37,6 @@ describe('Trempulcahue Passive', () => {
     });
 
     it('should NOT grant defense when opponent summons a knowledge', () => {
-      const p1Id = 'player1';
       const p2Id = 'player2';
       // P1 has Trempulcahue, P2 summons
       const initialState = createInitialTestState('game41', ['trempulcahue'], ['adaro', 'pele'], {

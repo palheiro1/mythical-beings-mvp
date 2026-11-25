@@ -4,7 +4,8 @@ import { ArrowLeft, CheckCircle2, Circle, CircleDot, ShieldAlert } from 'lucide-
 import { useAuth } from '../hooks/useAuth';
 import { getGameDetails, getGameState, updateGameState } from '../utils/supabase';
 import { initializeGame } from '../game/state';
-import { ArenaButton, cn, CopyChip, ErrorRecoveryPanel, Panel, SpinnerEmblem, StatusBadge } from '../components/ui/index.js';
+import { ArenaButton, CopyChip, ErrorRecoveryPanel, Panel, SpinnerEmblem, StatusBadge } from '../components/ui/index.js';
+import { cn } from '../components/ui/cn.js';
 
 const GameInitializing: React.FC = () => {
   const { gameId } = useParams<{ gameId: string }>();

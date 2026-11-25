@@ -8,7 +8,6 @@ describe('Adaro Passive', () => {
   describe('AFTER_PLAYER_SUMMON (on self) - If summoned knowledge is water, draw 1 card from market (free)', () => {
     it('should draw 1 card from market when water knowledge is summoned onto Adaro', () => {
       const p1Id = 'player1';
-      const p2Id = 'player2';
       const initialState = createInitialTestState('game3', ['adaro'], ['pele'], {
         currentPlayerIndex: 0, // Player 1's turn
         phase: 'action',
@@ -54,7 +53,6 @@ describe('Adaro Passive', () => {
 
     it('should NOT draw a card if non-water knowledge is summoned onto Adaro', () => {
       const p1Id = 'player1';
-      const p2Id = 'player2';
       const initialState = createInitialTestState('game4', ['adaro'], ['pele'], {
         currentPlayerIndex: 0,
         phase: 'action',
@@ -95,7 +93,6 @@ describe('Adaro Passive', () => {
 
     it('should NOT draw a card if water knowledge is summoned onto a different creature', () => {
       const p1Id = 'player1';
-      const p2Id = 'player2';
       // Player 1 has Adaro and another creature (e.g., Dudugera)
       const initialState = createInitialTestState('game5', ['adaro', 'dudugera'], ['pele'], {
         currentPlayerIndex: 0,
@@ -139,7 +136,6 @@ describe('Adaro Passive', () => {
 
     it('should NOT draw a card if the market is empty when passive triggers', () => {
       const p1Id = 'player1';
-      const p2Id = 'player2';
       const initialState = createInitialTestState('game6', ['adaro'], ['pele'], {
         currentPlayerIndex: 0,
         phase: 'action',

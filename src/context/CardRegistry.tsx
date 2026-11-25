@@ -1,16 +1,12 @@
-import React, { createContext, useCallback, useContext, useMemo, useRef } from 'react';
-
-export type RegistryId = string;
+import React, { useCallback, useMemo, useRef } from 'react';
+import {
+  CardRegistryContext,
+  type RegistryId,
+} from './CardRegistryContext.js';
 
 type RegistryMap = Map<RegistryId, HTMLElement>;
 
-type CardRegistryContextType = {
-  register: (id: RegistryId, el: HTMLElement | null) => void;
-  getRect: (id: RegistryId) => DOMRect | null;
-  has: (id: RegistryId) => boolean;
-};
-
-const CardRegistryContext = createContext<CardRegistryContextType | null>(null);
+export type { RegistryId } from './CardRegistryContext.js';
 
 export const CardRegistryProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const mapRef = useRef<RegistryMap>(new Map());
@@ -29,9 +25,13 @@ export const CardRegistryProvider: React.FC<{ children: React.ReactNode }> = ({ 
     return el ? el.getBoundingClientRect() : null;
   }, []);
 
+  const getElement = useCallback((id: RegistryId): HTMLElement | null => (
+    mapRef.current.get(id) ?? null
+  ), []);
+
   const has = useCallback((id: RegistryId) => mapRef.current.has(id), []);
 
-  const value = useMemo(() => ({ register, getRect, has }), [register, getRect, has]);
+  const value = useMemo(() => ({ register, getElement, getRect, has }), [register, getElement, getRect, has]);
 
   return (
     <CardRegistryContext.Provider value={value}>
@@ -39,9 +39,3 @@ export const CardRegistryProvider: React.FC<{ children: React.ReactNode }> = ({ 
     </CardRegistryContext.Provider>
   );
 };
-
-export function useCardRegistry(): CardRegistryContextType {
-  const ctx = useContext(CardRegistryContext);
-  if (!ctx) throw new Error('useCardRegistry must be used within CardRegistryProvider');
-  return ctx;
-}

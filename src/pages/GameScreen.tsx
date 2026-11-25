@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { RefreshCw } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth.js';
@@ -13,19 +13,28 @@ import HandsColumn from '../components/game/HandsColumn.js';
 import {
   COMPETITION_SETTLEMENT_EVENT,
   getPendingCompetitionSettlement,
-  getProfile,
   retryCompetitionSettlement,
 } from '../utils/supabase.js';
 import type { CompetitionSettlementNotice, ProfileInfo } from '../utils/supabase.js';
 import GameAnnouncer from '../components/game/GameAnnouncer.js';
 import CardMoveLayer from '../components/game/CardMoveLayer.js';
 import CombatFloaters from '../components/game/CombatFloaters.js';
-import { useCardRegistry } from '../context/CardRegistry.js';
+import { useCardRegistry } from '../hooks/useCardRegistry.js';
 import GameShell from '../components/game/GameShell.js';
 import GameAuxPanels from '../components/game/GameAuxPanels.js';
 import { ArenaButton, ErrorRecoveryPanel, SpinnerEmblem, StatusBadge } from '../components/ui/index.js';
 import PendingEffectPanel from '../components/game/PendingEffectPanel.js';
 import { getPlayerDisplayName } from '../utils/format.js';
+import { usePlayerProfiles } from '../hooks/usePlayerProfiles.js';
+import {
+  createFieldKnowledgeSnapshot,
+  detectPowerDamage,
+  findAttackMoveSource,
+  findRemovedFieldKnowledge,
+  getViewerPlayerIndex,
+  isViewerTurn,
+  type FieldKnowledgeSnapshot,
+} from '../game/viewer.js';
 
 const fallbackProfile = (id: string, label: string): ProfileInfo => ({
   id,
@@ -43,9 +52,14 @@ const GameScreen: React.FC = () => {
 
   const [gameState, dispatch, gameLoading, gameId] = useGameInitialization(currentPlayerId || null, setError);
 
-  const [isMyTurn, setIsMyTurn] = useState(false);
-  const [playerProfiles, setPlayerProfiles] = useState<{ [key: string]: ProfileInfo }>({});
-  const [profilesLoading, setProfilesLoading] = useState(true);
+  const playerIndex = getViewerPlayerIndex(gameState, currentPlayerId);
+  const isMyTurn = isViewerTurn(gameState, currentPlayerId);
+  const profilePlayerOneId = gameState?.players?.[0]?.id;
+  const profilePlayerTwoId = gameState?.players?.[1]?.id;
+  const { profiles: playerProfiles, loading: profilesLoading } = usePlayerProfiles({
+    playerIds: [profilePlayerOneId, profilePlayerTwoId],
+    upstreamLoading: gameLoading,
+  });
   const [selectedKnowledgeId, setSelectedKnowledgeId] = useState<string | null>(null);
   const [settlementRetry, setSettlementRetry] = useState<CompetitionSettlementNotice | null>(null);
   const [settlementRetrying, setSettlementRetrying] = useState(false);
@@ -61,10 +75,16 @@ const GameScreen: React.FC = () => {
 
   // Animation overlay state
   const [moveEvent, setMoveEvent] = useState<import('../types/vfx.js').MoveEvent | null>(null);
-  const [damageEvent, setDamageEvent] = useState<{ x: number; y: number; damage?: number; blocked?: number; crit?: boolean; bypass?: boolean } | null>(null);
+  const [damageEvent, setDamageEvent] = useState<import('../components/game/CombatFloaters.js').DamageEvent | null>(null);
   const registry = useCardRegistry();
+  const damageEventSequenceRef = React.useRef(0);
   const prevPowersRef = React.useRef<{ p0: number; p1: number } | null>(null);
-  const prevFieldRef = React.useRef<{ my: string[]; opp: string[]; idToCard: Record<string, { image: string }> } | null>(null);
+  const previousDamageGameIdRef = React.useRef<string | null>(null);
+  const prevFieldRef = React.useRef<FieldKnowledgeSnapshot | null>(null);
+  const previousFieldGameIdRef = React.useRef<string | null>(null);
+  const lastLogIndexRef = React.useRef<number>(-1);
+  const previousLogGameIdRef = React.useRef<string | null>(null);
+  const clearDamageEvent = useCallback(() => setDamageEvent(null), []);
 
   useEffect(() => {
     if (!gameId) return;
@@ -126,197 +146,109 @@ const GameScreen: React.FC = () => {
   });
   // --- End Turn Timer ---
 
-  useEffect(() => {
-    const fetchProfiles = async (playerIds: [string, string]) => {
-      console.log('[GameScreen] Starting profile fetch for:', playerIds);
-      setProfilesLoading(true);
-      const fetchedProfiles: { [key: string]: ProfileInfo } = {};
-      try {
-        await Promise.all(playerIds.map(async (playerId) => {
-          if (!playerId) return;
-          const profile = await getProfile(playerId);
-          fetchedProfiles[playerId] = {
-            id: playerId,
-            username: profile?.username || null,
-            display_name: profile?.display_name || null,
-            avatar_url: profile?.avatar_url || null,
-          };
-        }));
-        setPlayerProfiles(fetchedProfiles);
-        console.log('[GameScreen] Fetched player profiles:', fetchedProfiles);
-      } catch (profileError) {
-        console.error("Error fetching player profiles:", profileError);
-        playerIds.forEach(playerId => {
-          if (playerId && !fetchedProfiles[playerId]) {
-            fetchedProfiles[playerId] = { id: playerId, username: null, display_name: null, avatar_url: null };
-          }
-        });
-        setPlayerProfiles(fetchedProfiles);
-      } finally {
-        setProfilesLoading(false);
-      }
-    };
-
-    const p1Id = gameState?.players?.[0]?.id;
-    const p2Id = gameState?.players?.[1]?.id;
-    const arePlayersValid = p1Id && p2Id;
-
-    if (!gameLoading && gameState && arePlayersValid) {
-      if (!playerProfiles[p1Id] || !playerProfiles[p2Id]) {
-        console.log('[GameScreen] Game loaded and players valid, initiating profile fetch.');
-        fetchProfiles([p1Id, p2Id]);
-      } else {
-        if (profilesLoading) {
-          console.log('[GameScreen] Profiles already fetched, ensuring profilesLoading is false.');
-          setProfilesLoading(false);
-        }
-      }
-    } else if (!gameLoading && gameState && !arePlayersValid) {
-      console.warn('[GameScreen] Game loaded but player IDs in state are invalid.');
-      setProfilesLoading(false);
-    } else if (!gameLoading && !gameState) {
-      console.warn('[GameScreen] Game sync finished, but gameState is null.');
-      setProfilesLoading(false);
-    } else if (gameLoading && !profilesLoading) {
-      setProfilesLoading(true);
-    }
-  }, [gameLoading, gameState, playerProfiles]);
-
-  useEffect(() => {
-    console.log('[GameScreen] State/PlayerID update check:', { phase: gameState?.phase, currentPlayerIndex: gameState?.currentPlayerIndex, currentPlayerId, p1: gameState?.players?.[0]?.id, p2: gameState?.players?.[1]?.id });
-    if (!currentPlayerId || !gameState || gameState.players.length < 2) {
-      setIsMyTurn(false);
-      console.log('[GameScreen] Setting as spectator/waiting (no user ID or game not fully initialized/loaded)');
-      return;
-    }
-
-    const playerIndex = gameState.players[0].id === currentPlayerId ? 0 : (gameState.players[1].id === currentPlayerId ? 1 : -1);
-
-    if (playerIndex === -1) {
-      setIsMyTurn(false);
-      console.log('[GameScreen] Setting as spectator (user ID not in game)');
-    } else {
-      const turnCheck = gameState.currentPlayerIndex === playerIndex && gameState.winner === null;
-      setIsMyTurn(turnCheck);
-      console.log(`[GameScreen] Setting as Player ${playerIndex + 1}. Is my turn: ${turnCheck}`);
-    }
-  }, [gameState?.currentPlayerIndex, gameState?.phase, gameState?.winner, gameState?.actionsTakenThisTurn, gameState?.actionsPerTurn, currentPlayerId, gameState?.players, isMyTurn]);
-
   // Compute player/opponent indices and objects early so all hooks can safely run before any early returns
-  const playerIndex = gameState?.players?.[0]?.id === currentPlayerId ? 0 : (gameState?.players?.[1]?.id === currentPlayerId ? 1 : -1);
   const isSpectator = playerIndex === -1;
   const viewerPlayerIndex = isSpectator ? 0 : playerIndex;
   const viewerOpponentIndex = viewerPlayerIndex === 0 ? 1 : 0;
   const player: PlayerState | undefined = gameState ? gameState.players[viewerPlayerIndex] : undefined;
   const opponent: PlayerState | undefined = gameState ? gameState.players[viewerOpponentIndex] : undefined;
-
-  // Helper: parse defense info from latest logs for a target player
-  const parseDefenseFromLogs = (targetId: string): { blocked?: number; bypass?: boolean } => {
-    const logs = gameState?.log || [];
-    for (let i = logs.length - 1; i >= Math.max(0, logs.length - 10); i--) {
-      const line = logs[i];
-      if (!line) continue;
-      if (line.includes('deals') && line.includes(targetId)) {
-        const defMatch = line.match(/Defense:\s*(\d+)/i);
-        const bypass = /bypass(ed)?/i.test(line);
-        const blocked = defMatch ? parseInt(defMatch[1], 10) : undefined;
-        return { blocked, bypass };
-      }
-    }
-    return {};
-  };
+  const damageGameId = gameState?.gameId ?? null;
+  const playerOnePower = gameState?.players[0]?.power ?? 0;
+  const playerTwoPower = gameState?.players[1]?.power ?? 0;
+  const playerOneId = gameState?.players[0]?.id;
+  const playerTwoId = gameState?.players[1]?.id;
+  const gameLog = gameState?.log;
+  const fieldPlayers = gameState?.players;
 
   // Damage floater: watch power changes (must run every render to keep hook order stable)
   useEffect(() => {
-    if (!gameState) return;
-    const p0 = gameState.players[0]?.power ?? 0;
-    const p1 = gameState.players[1]?.power ?? 0;
-    const prev = prevPowersRef.current;
-    if (prev) {
-      const deltas: Array<{ idx: 0 | 1; delta: number }> = [];
-      if (p0 < prev.p0) deltas.push({ idx: 0, delta: prev.p0 - p0 });
-      if (p1 < prev.p1) deltas.push({ idx: 1, delta: prev.p1 - p1 });
-      if (deltas.length > 0) {
-        const first = deltas[0];
-        const rect = registry.getRect(`power:${first.idx}`);
-        if (rect) {
-          const targetId = gameState.players[first.idx]?.id || '';
-          const { blocked, bypass } = parseDefenseFromLogs(targetId);
-          setDamageEvent({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2, damage: first.delta, blocked, bypass });
-        }
+    if (!damageGameId) return;
+    const current = { p0: playerOnePower, p1: playerTwoPower };
+    if (previousDamageGameIdRef.current !== damageGameId) {
+      previousDamageGameIdRef.current = damageGameId;
+      prevPowersRef.current = current;
+      return;
+    }
+    const detected = detectPowerDamage(
+      prevPowersRef.current,
+      current,
+      [playerOneId, playerTwoId],
+      gameLog ?? [],
+    );
+    if (detected) {
+      const rect = registry.getRect(`power:${detected.playerIndex}`);
+      if (rect) {
+        damageEventSequenceRef.current += 1;
+        setDamageEvent({
+          key: `damage-${damageEventSequenceRef.current}`,
+          x: rect.left + rect.width / 2,
+          y: rect.top + rect.height / 2,
+          damage: detected.damage,
+          blocked: detected.blocked,
+          bypass: detected.bypass,
+        });
       }
     }
-    prevPowersRef.current = { p0, p1 };
-  }, [gameState?.players?.[0]?.power, gameState?.players?.[1]?.power]);
+    prevPowersRef.current = current;
+  }, [
+    damageGameId,
+    gameLog,
+    playerOneId,
+    playerOnePower,
+    playerTwoId,
+    playerTwoPower,
+    registry,
+  ]);
 
   // Discard animation: detect knowledge leaving field (must run every render to keep hook order stable)
   useEffect(() => {
-    if (!gameState) return;
-    const me = gameState.players[viewerPlayerIndex] ?? null;
-    const opp = gameState.players[viewerOpponentIndex] ?? null;
-    const currentMy = me ? me.field.map(s => s.knowledge?.instanceId).filter(Boolean) as string[] : [];
-    const currentOpp = opp ? opp.field.map(s => s.knowledge?.instanceId).filter(Boolean) as string[] : [];
-
-    const idToCard: Record<string, { image: string }> = {};
-    gameState.players.forEach(pl => pl.field.forEach(s => { if (s.knowledge?.instanceId) idToCard[s.knowledge.instanceId] = { image: s.knowledge.image }; }));
-
-    const prev = prevFieldRef.current;
-    if (prev) {
-      const removed: string[] = [];
-      prev.my.forEach(id => { if (!currentMy.includes(id)) removed.push(id); });
-      prev.opp.forEach(id => { if (!currentOpp.includes(id)) removed.push(id); });
-      if (removed.length > 0) {
-        const id = removed[0];
-        const fromId = `table:${id}`;
-        const toId = `discard:anchor`;
-        if (registry.has(fromId) && registry.has(toId)) {
-          const image = prev.idToCard[id]?.image || idToCard[id]?.image || '/images/spells/back.jpg';
-          setMoveEvent({ id, fromId, toId, image });
-        }
+    if (!damageGameId || !fieldPlayers) return;
+    const current = createFieldKnowledgeSnapshot(fieldPlayers, viewerPlayerIndex);
+    if (previousFieldGameIdRef.current !== damageGameId) {
+      previousFieldGameIdRef.current = damageGameId;
+      prevFieldRef.current = current;
+      return;
+    }
+    const removed = findRemovedFieldKnowledge(prevFieldRef.current, current);
+    if (removed) {
+      const fromId = `table:${removed.instanceId}`;
+      const toId = 'discard:anchor';
+      if (registry.has(fromId) && registry.has(toId)) {
+        setMoveEvent({
+          id: removed.instanceId,
+          fromId,
+          toId,
+          image: removed.image ?? '/images/spells/back.webp',
+        });
       }
     }
+    prevFieldRef.current = current;
+  }, [damageGameId, fieldPlayers, registry, viewerPlayerIndex]);
 
-    prevFieldRef.current = { my: currentMy, opp: currentOpp, idToCard };
-  }, [gameState?.players, viewerPlayerIndex, viewerOpponentIndex]);
-
-  // Knowledge-phase damage floater: react to new log lines mentioning deals <n> damage
-  const lastLogIndexRef = React.useRef<number>(-1);
+  // Knowledge-phase attack movement: damage floaters come only from observed power deltas.
   useEffect(() => {
-    if (!gameState) return;
-    const logs = gameState.log || [];
-    const lastSeen = lastLogIndexRef.current;
-    if (logs.length === 0 || logs.length - 1 === lastSeen) return;
-    const newIdx = logs.length - 1;
-    lastLogIndexRef.current = newIdx;
-    const line = logs[newIdx];
-    if (!line) return;
-    // Try to extract target player id and damage number
-    const dmgMatch = line.match(/deals\s+(\d+)\s+damage\s+to\s+([0-9a-f-]{36})/i);
-    if (dmgMatch) {
-      const amount = parseInt(dmgMatch[1], 10);
-      const targetId = dmgMatch[2];
-      // choose the power anchor based on which player id matches
-      const idx: 0 | 1 | null = gameState.players[0]?.id === targetId ? 0 : (gameState.players[1]?.id === targetId ? 1 : null);
-      if (idx !== null) {
-        const rect = registry.getRect(`power:${idx}`);
-        if (rect) {
-          setDamageEvent({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2, damage: amount });
-        } else {
-          // Fallback to screen center if anchors are missing
-          setDamageEvent({ x: window.innerWidth / 2, y: 80, damage: amount });
-        }
-        // Attempt a quick attack motion from a random player table slot towards the damaged power anchor
-        const sourceSlots = idx === 0 ? gameState.players[1].field : gameState.players[0].field; // attacker likely opposite of target
-        const src = sourceSlots.find(s => s.knowledge?.instanceId);
-        const attackerId = src?.knowledge?.instanceId;
-        const targetAnchor = `power:${idx}`;
-        if (attackerId && registry.has(`table:${attackerId}`) && registry.has(targetAnchor)) {
-          const image = src!.knowledge!.image;
-          setMoveEvent({ id: attackerId, fromId: `table:${attackerId}`, toId: targetAnchor, image });
-        }
-      }
+    if (!damageGameId || !fieldPlayers || !gameLog) return;
+    const newIdx = gameLog.length - 1;
+    if (previousLogGameIdRef.current !== damageGameId) {
+      previousLogGameIdRef.current = damageGameId;
+      lastLogIndexRef.current = newIdx;
+      return;
     }
-  }, [gameState?.log]);
+    if (newIdx < 0 || newIdx === lastLogIndexRef.current) return;
+    lastLogIndexRef.current = newIdx;
+    const attack = findAttackMoveSource(gameLog[newIdx], fieldPlayers);
+    if (!attack) return;
+    const fromId = `table:${attack.attackerInstanceId}`;
+    const targetAnchor = `power:${attack.targetPlayerIndex}`;
+    if (registry.has(fromId) && registry.has(targetAnchor)) {
+      setMoveEvent({
+        id: attack.attackerInstanceId,
+        fromId,
+        toId: targetAnchor,
+        image: attack.image,
+      });
+    }
+  }, [damageGameId, fieldPlayers, gameLog, registry]);
 
   if (authLoading || idLoading || gameLoading || profilesLoading) {
     console.log(`[Render] Showing Loading Game... (auth: ${authLoading}, id: ${idLoading}, game: ${gameLoading}, profiles: ${profilesLoading})`);
@@ -439,7 +371,7 @@ const GameScreen: React.FC = () => {
       overlays={(
         <>
           <CardMoveLayer event={moveEvent} onDone={() => setMoveEvent(null)} />
-          <CombatFloaters event={damageEvent ? { key: Math.random().toString(36).slice(2), x: damageEvent.x, y: damageEvent.y, damage: damageEvent.damage, blocked: damageEvent.blocked, bypass: damageEvent.bypass } : null} onDone={() => setDamageEvent(null)} />
+          <CombatFloaters event={damageEvent} onDone={clearDamageEvent} />
           <GameAnnouncer
             turn={gameState.turn}
             phase={mapPhaseForTableArea(gameState.phase)}
@@ -551,6 +483,7 @@ const GameScreen: React.FC = () => {
       isMyTurn={isMyTurn && !gameState.pendingEffect}
       phase={mapPhaseForTableArea(gameState.phase)}
       logs={gameState.log}
+      playerLabels={playerLabelsById}
       onDrawKnowledge={handleMarketClick}
     />
       </div>

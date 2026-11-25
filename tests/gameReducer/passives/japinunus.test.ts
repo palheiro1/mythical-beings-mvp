@@ -8,7 +8,6 @@ describe('Japinunus Passive', () => {
   describe('AFTER_SUMMON (Owner) - If owner summoned air knowledge, owner gains +1 Power', () => {
     it('should give owner +1 Power when they summon air knowledge', () => {
       const p1Id = 'player1'; // Japinunus's owner and summoner
-      const p2Id = 'player2';
       const initialState = createInitialTestState('game12', ['japinunus', 'adaro'], ['pele'], { // P1 has Japinunus
         currentPlayerIndex: 0, // Player 1's turn
         phase: 'action',
@@ -45,7 +44,6 @@ describe('Japinunus Passive', () => {
 
     it('should NOT give owner Power if they summon non-air knowledge', () => {
       const p1Id = 'player1'; // Japinunus's owner and summoner
-      const p2Id = 'player2';
       const initialState = createInitialTestState('game13', ['japinunus', 'adaro'], ['pele'], { // P1 has Japinunus
         currentPlayerIndex: 0, // Player 1's turn
         phase: 'action',

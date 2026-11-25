@@ -10,6 +10,7 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
+coverage
 *.local
 .netlify/
 
@@ -27,3 +28,7 @@ dist-ssr
 # Supabase CLI (generated)
 supabase/.temp/
 supabase/.branches/
+
+# Local UI verification captures and bounded check logs
+/artifacts/
+/.coverage-engine/
