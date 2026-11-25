@@ -149,6 +149,10 @@
 .wd-dialog .wd-button,.wd-dialog .wd-icon-button { border-color:#4b586a; color:#f2f0ea; }
 .wd-dialog .wd-text-button { color:#e8c383!important; }
 .wd-dialog-actions { display:flex; flex-wrap:wrap; gap:10px; margin:25px 0 12px; }
+/* Intro walkthrough: themed like the confluence arena — deep green panel, golden double frame and gold text. */
+.wd-dialog-intro { background:linear-gradient(160deg,#1c3126,#0e1f18 72%); border:1px solid #a68d5e; box-shadow:inset 0 0 0 3px #0d1f16,inset 0 0 0 4px #ba9a624a,0 7px 22px #040d1340; color:#e0ceb0; }
+.wd-dialog-intro h2 { color:var(--wd-gold); }
+.wd-dialog-intro p { color:#d8cbaa; }
 .wd-result-score { display:flex; align-items:center; justify-content:space-between; padding:25px 10px; border-block:1px solid #344252; }
 .wd-result-score>span { font-size:13px; color:#bcc6d1; }
 .wd-result-score strong { display:block; font:48px Georgia,serif; color:#e8c383; }

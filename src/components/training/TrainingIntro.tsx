@@ -27,7 +27,7 @@ interface TrainingIntroProps {
 export default function TrainingIntro({ step, onStep, onFinish }: TrainingIntroProps) {
   const current = STEPS[step];
   const isLastStep = step === STEPS.length - 1;
-  return <TrainingDialog title={current.title}>
+  return <TrainingDialog title={current.title} className="wd-dialog-intro">
     {/* The dialog title lives in the header, so repeat it here: live regions only announce content that changes. */}
     <div aria-live="polite" aria-atomic="true">
       <p className="sr-only">{current.title}</p>

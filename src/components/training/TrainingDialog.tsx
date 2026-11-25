@@ -2,7 +2,7 @@ import { useEffect, useId, useRef, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 
-export default function TrainingDialog({ title, children, onClose }: { title: string; children: ReactNode; onClose?: () => void }) {
+export default function TrainingDialog({ title, children, onClose, className }: { title: string; children: ReactNode; onClose?: () => void; className?: string }) {
   const ref = useRef<HTMLDivElement>(null);
   const closeRef = useRef(onClose);
   closeRef.current = onClose;
@@ -33,7 +33,7 @@ export default function TrainingDialog({ title, children, onClose }: { title: st
     };
   }, []);
   return createPortal(<div className="wd-dialog-backdrop" onMouseDown={event => { if (event.target === event.currentTarget) onClose?.(); }}>
-    <div ref={ref} className="wd-dialog" role="dialog" aria-modal="true" aria-labelledby={id} tabIndex={-1}>
+    <div ref={ref} className={className ? `wd-dialog ${className}` : 'wd-dialog'} role="dialog" aria-modal="true" aria-labelledby={id} tabIndex={-1}>
       <header><h2 id={id}>{title}</h2>{onClose && <button className="wd-icon-button" aria-label="Close dialog" onClick={onClose}><X size={20} /></button>}</header>
       {children}
     </div>
