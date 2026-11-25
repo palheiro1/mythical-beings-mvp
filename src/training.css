@@ -72,7 +72,7 @@
 .wd-team-start { display:flex; align-items:center; gap:16px; }
 .wd-team-start>span { font-size:12px; color:var(--wd-muted); white-space:nowrap; }
 .wd-card { height:100%; position:relative; min-width:0; }
-.wd-card-art { display:block; background:transparent; border:0; margin:auto; padding:0; height:100%; max-width:100%; min-width:44px; min-height:44px; aspect-ratio:720/951; border-radius:6px; transform:rotate(var(--card-rotation,0deg)); transition:transform .25s ease; }
+.wd-card-art { display:block; background:transparent; border:0; margin:auto; padding:0; height:100%; max-width:100%; min-width:44px; min-height:44px; aspect-ratio:720/951; border-radius:6px; transform:rotate(var(--card-rotation,0deg)); transition:transform .25s ease,box-shadow .35s ease; }
 .wd-card-art img { border-radius:6px; }
 .wd-card-detail-mark { display:none; }
 .wd-card.is-selected .wd-card-art { outline:2px solid var(--wd-gold); outline-offset:3px; }
@@ -133,6 +133,11 @@
    Transition-based (not keyframes) so the brightness ramps smoothly in and out instead of stepping. */
 .wd-coach { transition:border-color .35s ease,box-shadow .35s ease; }
 .wd-coach-highlight { border-color:var(--wd-gold); box-shadow:0 0 0 2px #e8c38344,0 0 11px 2px #e8c3832b; }
+/* The same golden ring marks whichever control the guided lesson asks for next.
+   Every step's pulse rides the same transition ramp, so it eases in and out. */
+.wd-lane-action,.wd-card-action,.wd-button { transition:box-shadow .35s ease; }
+.wd-guide-glow { box-shadow:0 0 0 2px #e8c38344,0 0 11px 2px #e8c3832b; }
+.wd-button.wd-guide-glow { box-shadow:0 0 0 3px #e8c38366,0 0 15px 4px #e8c3833a; }
 .wd-lesson-progress,.wd-intro-progress { color:var(--wd-gold); font-size:15px; }
 .wd-actionbar { position:sticky; bottom:0; z-index:30; background:#0e1723fa; backdrop-filter:blur(12px); border-top:1px solid #4b4436; padding:10px 0; margin-top:8px; display:flex; justify-content:space-between; align-items:center; gap:18px; box-shadow:0 -10px 25px #090f1944; }
 .wd-action-context { max-width:680px; padding-left:6px; }

@@ -23,6 +23,14 @@ function finishIntro() {
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
 }
 function botTurn() { for (let i = 0; i < 5; i++) act(() => { vi.advanceTimersByTime(550); }); }
+/** Advance fake timers in small steps until the bot's turn lands on the next guided step. */
+function advanceUntil(predicate: () => boolean, step = 100) {
+  for (let elapsed = 0; elapsed < 8000; elapsed += step) {
+    if (predicate()) return;
+    act(() => { vi.advanceTimersByTime(step); });
+  }
+  if (!predicate()) throw new Error('Timed out waiting for the next guided step.');
+}
 function orientation(initial = false, direct = false) {
   let portrait = initial;
   const listeners = new Set<() => void>();
@@ -70,6 +78,60 @@ describe('public practice journey', () => {
     expect(screen.getByText('0:30')).toBeInTheDocument();
     expect(localStorage.getItem(TUTORIAL_PROGRESS_KEY)).toBe('completed');
   });
+  it('pulses each guided step’s target in order', () => {
+    renderFlow(); finishIntro();
+    // 1. Gather knowledge: the coach banner speaks first, then the market card it points at.
+    act(() => { vi.advanceTimersByTime(150); });
+    expect(screen.getByLabelText('Guided lesson')).toHaveClass('wd-coach-highlight');
+    act(() => { vi.advanceTimersByTime(1450); });
+    expect(screen.getByLabelText('Guided lesson')).not.toHaveClass('wd-coach-highlight');
+    expect(screen.getByRole('button', { name: 'Draw Lepidoptera', exact: true })).toHaveClass('wd-guide-glow');
+    act(() => { vi.advanceTimersByTime(1300); });
+    expect(screen.getByRole('button', { name: 'Draw Lepidoptera', exact: true })).not.toHaveClass('wd-guide-glow');
+    click('Draw Lepidoptera');
+    // 2. Grow your wisdom: the rotate control.
+    act(() => { vi.advanceTimersByTime(150); });
+    expect(screen.getByRole('button', { name: 'Rotate Tarasca', exact: true })).toHaveClass('wd-guide-glow');
+    act(() => { vi.advanceTimersByTime(1300); });
+    expect(screen.getByRole('button', { name: 'Rotate Tarasca', exact: true })).not.toHaveClass('wd-guide-glow');
+    click('Rotate Tarasca');
+    // 4. Play your knowledge: the hand card first, then Tarasca's "Play here".
+    advanceUntil(() => !!screen.queryByRole('heading', { name: '4. Play your knowledge' }));
+    act(() => { vi.advanceTimersByTime(150); });
+    expect(screen.getByRole('button', { name: 'Select Lepidoptera', exact: true })).toHaveClass('wd-guide-glow');
+    act(() => { vi.advanceTimersByTime(1300); });
+    expect(screen.getByRole('button', { name: 'Select Lepidoptera', exact: true })).not.toHaveClass('wd-guide-glow');
+    click('Select Lepidoptera');
+    act(() => { vi.advanceTimersByTime(150); });
+    expect(screen.getByRole('button', { name: 'Play Lepidoptera on Tarasca', exact: true })).toHaveClass('wd-guide-glow');
+    act(() => { vi.advanceTimersByTime(1300); });
+    expect(screen.getByRole('button', { name: 'Play Lepidoptera on Tarasca', exact: true })).not.toHaveClass('wd-guide-glow');
+    click('Play Lepidoptera on Tarasca');
+    // 5. Lepidoptera enters play: End Turn.
+    act(() => { vi.advanceTimersByTime(150); });
+    expect(screen.getByRole('button', { name: 'End Turn', exact: true })).toHaveClass('wd-guide-glow');
+    act(() => { vi.advanceTimersByTime(1300); });
+    expect(screen.getByRole('button', { name: 'End Turn', exact: true })).not.toHaveClass('wd-guide-glow');
+    click('End Turn');
+    // 6. Lepidoptera strikes: "See Tulpar's bonus", then "Continue Practice".
+    advanceUntil(() => !!screen.queryByRole('button', { name: 'See Tulpar’s bonus' }));
+    act(() => { vi.advanceTimersByTime(150); });
+    const bonus = screen.getByRole('button', { name: 'See Tulpar’s bonus', exact: true });
+    expect(bonus).toHaveAttribute('data-guide-target', 'bonus');
+    expect(bonus).toHaveClass('wd-guide-glow');
+    act(() => { vi.advanceTimersByTime(1300); });
+    expect(bonus).not.toHaveClass('wd-guide-glow');
+    click('See Tulpar’s bonus');
+    act(() => { vi.advanceTimersByTime(150); });
+    const cont = screen.getByRole('button', { name: 'Continue Practice', exact: true });
+    expect(cont).toHaveAttribute('data-guide-target', 'continue');
+    expect(cont).toHaveClass('wd-guide-glow');
+    act(() => { vi.advanceTimersByTime(1300); });
+    expect(cont).not.toHaveClass('wd-guide-glow');
+    click('Continue Practice');
+    act(() => { vi.advanceTimersByTime(1450); });
+    expect(document.querySelector('.wd-guide-glow')).not.toBeInTheDocument();
+  }, 20_000);
   it('retains a mobile selection on an invalid target and lets the same hand card cancel it', () => {
     orientation(false, true); renderFlow(); finishIntro(); click('Skip tutorial'); click('Continue Practice');
     click('Draw Lepidoptera'); click('Select Lepidoptera');

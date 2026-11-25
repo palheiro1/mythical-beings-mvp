@@ -1,6 +1,7 @@
 import { cardAnchor } from '../../game/presentation.js';
 import { BookOpen, Library } from 'lucide-react';
 import { HUMAN_ID, validateTrainingAction, type TrainingAction, type TrainingSession } from '../../game/trainingSession.js';
+import type { GuideGlowTarget } from '../../hooks/useGuideGlow.js';
 import TrainingCard, { type CardAction, type DisplayCard } from './TrainingCard.js';
 import type { Knowledge } from '../../game/types.js';
 
@@ -19,7 +20,7 @@ export function DuelTrays({ playerId, hand, market, deckCount, selectedId, tab, 
       <TrainingCard motionAnchor={cardAnchor('', card)} card={card} selected={selectedId === card.instanceId} playFace={direct} onInspect={onInspect}
         action={direct ? action : undefined} marketRow={marketRow} />
       {!direct && <><span className="wd-tray-name">{card.name}</span><span className="wd-card-stat">{card.element}</span>
-      <button className="wd-card-action" type="button" aria-disabled={!action.valid} aria-pressed={action.pressed} aria-label={action.label} data-guide-target={action.guideTarget} onClick={action.onActivate}>{inMarket ? 'Draw' : selectedId === card.instanceId ? 'Selected' : 'Select'}</button></>}
+      <button className={`wd-card-action ${action.glowing ? 'wd-guide-glow' : ''}`} type="button" aria-disabled={!action.valid} aria-pressed={action.pressed} aria-label={action.label} data-guide-target={action.guideTarget} onClick={action.onActivate}>{inMarket ? 'Draw' : selectedId === card.instanceId ? 'Selected' : 'Select'}</button></>}
     </article>;
   };
   return <>
@@ -41,10 +42,11 @@ export function DuelTrays({ playerId, hand, market, deckCount, selectedId, tab, 
   </>;
 }
 
-export default function TrainingTrays({ session, tab, setTab, onAction, onSelect, onInspect, direct = false }: {
+export default function TrainingTrays({ session, tab, setTab, onAction, onSelect, onInspect, direct = false, glow }: {
   session: TrainingSession; tab: TrayTab; setTab: (tab: TrayTab) => void;
   onAction: (action: TrainingAction) => void; onSelect: (id: string) => void; onInspect: (card: DisplayCard) => void;
   direct?: boolean;
+  glow?: GuideGlowTarget | null;
 }) {
   const { game, selectedId, guide } = session;
   const humanTurn = game.currentPlayerIndex === 0 && game.phase === 'action' && !game.pendingEffect;
@@ -54,13 +56,15 @@ export default function TrainingTrays({ session, tab, setTab, onAction, onSelect
       const action: TrainingAction = { type: 'DRAW_KNOWLEDGE', payload: { playerId: HUMAN_ID, knowledgeId: card.id, instanceId: card.instanceId! } };
       const validation = market ? validateTrainingAction(session, action) : { isValid: humanTurn && (guide === 'free' || guide === 'summon') };
       const highlighted = (market && guide === 'draw' && card.id === 'aerial1') || (!market && guide === 'summon' && card.id === 'aerial1');
+      const guideTarget = highlighted ? market ? 'market' : 'hand' : undefined;
       return {
         label: `${market ? 'Draw' : 'Select'} ${card.name}`,
         onActivate: () => { if (market) onAction(action); else if (validation.isValid) onSelect(card.instanceId!); },
         valid: validation.isValid,
         highlighted,
+        glowing: glow != null && guideTarget === glow,
         pressed: market ? undefined : selectedId === card.instanceId,
-        guideTarget: highlighted ? market ? 'market' : 'hand' : undefined,
+        guideTarget,
       };
     }} />
 }

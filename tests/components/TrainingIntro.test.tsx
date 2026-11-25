@@ -75,6 +75,21 @@ describe('training introduction', () => {
     expect(screen.getByLabelText('Guided lesson')).not.toHaveClass('wd-coach-highlight');
   });
 
+  it('then hands the glow from the coach to the market card', () => {
+    renderFlow();
+    click('Next');
+    click('Next');
+    click('Ok, let’s start the practice');
+    act(() => { vi.advanceTimersByTime(150); });
+    expect(screen.getByLabelText('Guided lesson')).toHaveClass('wd-coach-highlight');
+    // 150 ms lead-in + 1300 ms of coach glow + 150 ms gap, then the market card pulses.
+    act(() => { vi.advanceTimersByTime(1450); });
+    expect(screen.getByLabelText('Guided lesson')).not.toHaveClass('wd-coach-highlight');
+    expect(screen.getByRole('button', { name: 'Draw Lepidoptera', exact: true })).toHaveClass('wd-guide-glow');
+    act(() => { vi.advanceTimersByTime(1300); });
+    expect(screen.getByRole('button', { name: 'Draw Lepidoptera', exact: true })).not.toHaveClass('wd-guide-glow');
+  });
+
   it('does not show the introduction in a free practice match', () => {
     renderFlow('/bot-selection?mode=free');
     screen.getAllByRole('button', { name: /^Choose / }).slice(0, 3).forEach(button => fireEvent.click(button));
