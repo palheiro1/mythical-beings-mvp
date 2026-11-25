@@ -34,7 +34,7 @@ Each Knowledge has:
 
 Board limits:
 - Each Creature slot can hold **at most 1 Knowledge**.
-- **Knowledge replacement is not allowed**: you cannot summon a Knowledge onto an occupied slot.
+- **Knowledge replacement is allowed**: summoning onto an occupied slot discards its previous Knowledge.
 - Some effects can **block** a slot from summoning (example: `aquatic3`).
 
 ## Turn Structure
@@ -58,7 +58,7 @@ The current player gets `actionsPerTurn` actions (normally **2**, but some effec
 Available actions:
 - **Rotate a Creature**: +90 degrees (max 270). Updates its Wisdom using the wisdom cycle.
 - **Draw a Knowledge** from the Market: hand max size is **5**. The Market refills from the deck if possible.
-- **Summon a Knowledge** from hand onto a Creature slot (must be empty and not blocked, and Wisdom >= cost).
+- **Summon a Knowledge** from hand onto a Creature slot (must not be blocked, and Wisdom >= cost; an occupied slot discards its previous Knowledge).
   - Summoning usually costs 1 action.
   - Some passives can make a summon **free** (does not spend an action).
 - **End Turn**: you may end early; otherwise the turn ends automatically when you spend all actions.

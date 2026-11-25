@@ -55,7 +55,6 @@ describe('Tulpar Passive', () => {
 
     it('should NOT rotate any creature when owner summons non-air knowledge', () => {
       const p1Id = 'player1'; // Tulpar's owner
-      const p2Id = 'player2';
       const initialState = createInitialTestState('game33', ['tulpar'], ['adaro'], {
         currentPlayerIndex: 0,
         phase: 'action',
@@ -134,7 +133,6 @@ describe('Tulpar Passive', () => {
 
      it('should log correctly and not rotate if all owner creatures are fully rotated', () => {
       const p1Id = 'player1'; // Tulpar's owner
-      const p2Id = 'player2';
       const initialState = createInitialTestState('game35', ['tulpar'], ['adaro'], {
         currentPlayerIndex: 0,
         phase: 'action',

@@ -1,0 +1,29 @@
+/* The phone play face gives the artwork its own square, clear of controls. */
+.dc-frame.dc-play { height:auto; padding:0; display:grid; grid-template-columns:minmax(0,1fr); grid-template-rows:auto 22px 3px; border:1px solid color-mix(in srgb,var(--dc-accent) 65%,#344151); border-radius:6px; overflow:hidden; background:var(--dc-bottom); box-shadow:0 2px 5px #0005; }
+.dc-play .dc-art-window { width:100%; aspect-ratio:1; min-height:0; border:0; border-radius:0; }
+.dc-play .dc-art-source { border-radius:0; }
+.dp-stats { display:flex; align-items:center; justify-content:space-between; gap:3px; padding:0 5px; color:var(--dc-accent); }
+.dp-primary,.dp-effect { display:flex; align-items:center; gap:3px; line-height:1; }
+.dp-primary { color:#ffe2a2; }
+.dp-primary strong { font-size:17px; font-weight:800; font-variant-numeric:tabular-nums; }
+.dp-unit { font-size:8px; font-weight:650; letter-spacing:.025em; }
+.dp-effect strong { font-size:13px; font-weight:700; font-variant-numeric:tabular-nums; }
+.dp-effect svg,.dp-element { width:12px; height:12px; flex-shrink:0; }
+.dp-defense { color:#a3eee3; }
+.dp-damage { color:#f5ded5; }
+.dp-ticks { display:flex; gap:3px; padding:0 4px 1px; }
+.dp-ticks>span { flex:1; min-width:0; height:2px; border-radius:1px; background:#aabcc433; }
+.dp-ticks>.is-current { background:var(--dc-accent); }
+.dc-being .dp-ticks>.is-current,.dc-play[data-final=true] .dp-ticks>.is-current { background:#ffe2a2; }
+@container (max-width:68px) { .dp-unit { display:none; } .dp-stats { padding-inline:4px; } }
+@container (max-width:82px) { .dc-knowledge .dp-unit { display:none; } }
+@container (max-width:55px) { .dp-stats { gap:2px; padding-inline:3px; } .dp-effect { gap:1px; } .dp-effect svg { width:9px; height:9px; } .dp-effect strong { font-size:11px; } .dp-primary strong { font-size:16px; } }
+
+.wd-play-card { width:100%; height:auto; display:block; }
+.wd-play-card .wd-card-art { display:block; position:relative; width:100%; height:auto; aspect-ratio:auto; min-width:0; border-radius:6px; }
+.wd-play-caption { display:flex; align-items:center; justify-content:center; gap:3px; width:100%; height:24px; min-height:24px; padding:0 1px; border:0; border-radius:3px; background:transparent; color:#dce5ed; font:500 10px/1.2 system-ui,sans-serif; }
+.wd-play-caption>span { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.wd-play-caption svg { width:10px; height:10px; flex-shrink:0; color:#aabcc9; }
+button.wd-play-caption:hover,button.wd-play-caption:focus-visible { color:#ffe2a2; background:#ffffff0a; }
+.wd-play-caption>span>span { display:block; overflow:hidden; text-overflow:ellipsis; }
+.wd-play-replacement { display:block; overflow:hidden; text-overflow:ellipsis; color:#ffe2a2; font-size:8px; line-height:10px; }

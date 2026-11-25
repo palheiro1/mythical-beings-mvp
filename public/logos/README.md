@@ -5,22 +5,11 @@ This is a practical raster asset kit generated from the selected Wisdom Duel log
 ## Included assets
 
 ### Main logo
-- `logo-primary-dark.png` — main logo, dark background, ~1200px wide.
-- `logo-primary-dark@2x.png` — larger version for high-density displays.
-- `logo-header-dark.png` — header/navbar version.
-- `logo-header-dark@2x.png` — high-density navbar version.
-- `logo-loading.png` — loading/splash use.
+- `logo-primary-dark.webp` — main logo, dark background, ~1200px wide.
+- `logo-header-dark.webp` — lightweight header/navbar version.
 
 ### Icons
-- `icon-1024.png`
-- `icon-512.png`
-- `icon-256.png`
 - `icon-192.png`
-- `icon-180.png`
-- `icon-128.png`
-- `icon-64.png`
-- `icon-32.png`
-- `icon-16.png`
 - `favicon-32.png`
 - `favicon-16.png`
 - `apple-touch-icon.png`
@@ -28,7 +17,12 @@ This is a practical raster asset kit generated from the selected Wisdom Duel log
 - `pwa-512.png`
 
 ### Social
-- `social-preview-1600x900.png`
+- `wisdom-duel-social-20261023.png` — current Open Graph and X card image (1600 × 900).
+- `social-preview-1600x900.png` — original retained for previously cached cards.
+
+Keep the image URL versioned when refreshing social cards: platforms cache image
+URLs separately from page metadata. Update both `og:image` and `twitter:image` in
+`index.html`, including dimensions and alternative text, when changing the image.
 
 ### Developer helpers
 - `brand-tokens.css`
@@ -49,17 +43,17 @@ For final production, the recommended next step is to have a designer vectorize 
 
 ## Suggested usage
 
-Put the files in:
+The files are served from:
 
 ```txt
-/public/assets/branding/
+/public/logos/
 ```
 
 Example:
 
 ```tsx
 <img
-  src="/assets/branding/logo-header-dark.png"
+  src="/logos/logo-header-dark.webp"
   alt="Wisdom Duel"
   className="h-12 w-auto"
 />
@@ -70,8 +64,8 @@ For PWA:
 ```json
 {
   "icons": [
-    { "src": "/assets/branding/pwa-192.png", "sizes": "192x192", "type": "image/png" },
-    { "src": "/assets/branding/pwa-512.png", "sizes": "512x512", "type": "image/png" }
+    { "src": "/logos/pwa-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/logos/pwa-512.png", "sizes": "512x512", "type": "image/png" }
   ],
   "theme_color": "#0B1024",
   "background_color": "#050812"

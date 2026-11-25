@@ -1,0 +1,164 @@
+diff --git a/supabase/functions/_shared/competition.ts b/supabase/functions/_shared/competition.ts
+index c92c0eb..8038531 100644
+--- a/supabase/functions/_shared/competition.ts
++++ b/supabase/functions/_shared/competition.ts
+@@ -89 +89 @@ export function getCompetitionEnv(): CompetitionEnv {
+-    polygonRpcUrl: Deno.env.get("POLYGON_RPC_URL"),
++    polygonRpcUrl: Deno.env.get("POLYGON_RPC_URL") ?? null,
+diff --git a/supabase/functions/_shared/wisdomDuelRelease.test.ts b/supabase/functions/_shared/wisdomDuelRelease.test.ts
+new file mode 100644
+index 0000000..0def184
+--- /dev/null
++++ b/supabase/functions/_shared/wisdomDuelRelease.test.ts
+@@ -0,0 +1,55 @@
++import {
++  getWisdomDuelReleaseBlock,
++  isWisdomDuelReleaseEnabled,
++  WISDOM_DUEL_DISABLED_CODE,
++  WISDOM_DUEL_RELEASE_FLAG,
++} from "./wisdomDuelRelease.ts";
++
++function assert(condition: unknown, message: string): asserts condition {
++  if (!condition) throw new Error(message);
++}
++
++Deno.test("Wisdom Duel release gate is default-off", () => {
++  for (const value of [undefined, "", "false", "1", "yes", " true-ish "]) {
++    assert(
++      !isWisdomDuelReleaseEnabled(value),
++      `Expected ${String(value)} to remain disabled.`,
++    );
++  }
++
++  assert(
++    isWisdomDuelReleaseEnabled("true"),
++    "Expected true to enable the release.",
++  );
++  assert(
++    isWisdomDuelReleaseEnabled(" TRUE "),
++    "Expected normalized true to enable the release.",
++  );
++  assert(
++    WISDOM_DUEL_RELEASE_FLAG === "WISDOM_DUEL_PVP_ENABLED",
++    "Unexpected release flag name.",
++  );
++});
++
++Deno.test("Wisdom Duel release gate returns a stable 503 response", async () => {
++  const response = getWisdomDuelReleaseBlock(undefined);
++  assert(
++    response?.status === 503,
++    "Expected disabled release to return HTTP 503.",
++  );
++  assert(
++    response.headers.get("access-control-allow-origin") === "*",
++    "Expected the shared CORS headers.",
++  );
++
++  const payload = await response.json();
++  assert(payload.ok === false, "Expected the standard error envelope.");
++  assert(
++    payload.error?.code === WISDOM_DUEL_DISABLED_CODE,
++    "Expected the stable disabled code.",
++  );
++  assert(
++    getWisdomDuelReleaseBlock("true") === null,
++    "Expected an enabled release to pass the gate.",
++  );
++});
+diff --git a/supabase/functions/_shared/wisdomDuelRelease.ts b/supabase/functions/_shared/wisdomDuelRelease.ts
+new file mode 100644
+index 0000000..630ca9f
+--- /dev/null
++++ b/supabase/functions/_shared/wisdomDuelRelease.ts
+@@ -0,0 +1,20 @@
++import { fail } from "./http.ts";
++
++export const WISDOM_DUEL_RELEASE_FLAG = "WISDOM_DUEL_PVP_ENABLED";
++export const WISDOM_DUEL_DISABLED_CODE = "wisdom_duel_disabled";
++export const WISDOM_DUEL_DISABLED_MESSAGE =
++  "Wisdom Duel multiplayer is not available.";
++
++export function isWisdomDuelReleaseEnabled(value: string | undefined): boolean {
++  return value?.trim().toLowerCase() === "true";
++}
++
++export function getWisdomDuelReleaseBlock(
++  value: string | undefined = Deno.env.get(WISDOM_DUEL_RELEASE_FLAG),
++): Response | null {
++  if (isWisdomDuelReleaseEnabled(value)) {
++    return null;
++  }
++
++  return fail(WISDOM_DUEL_DISABLED_CODE, WISDOM_DUEL_DISABLED_MESSAGE, 503);
++}
+diff --git a/supabase/functions/card-game-card-lock-authorization/index.ts b/supabase/functions/card-game-card-lock-authorization/index.ts
+index 09bcc62..0d2ed74 100644
+--- a/supabase/functions/card-game-card-lock-authorization/index.ts
++++ b/supabase/functions/card-game-card-lock-authorization/index.ts
+@@ -2,0 +3 @@ import { fail, ok, options } from "../_shared/http.ts";
++import { getWisdomDuelReleaseBlock } from "../_shared/wisdomDuelRelease.ts";
+@@ -16,0 +18,3 @@ serve(async (request) => {
++  const releaseBlock = getWisdomDuelReleaseBlock();
++  if (releaseBlock) return releaseBlock;
++
+diff --git a/supabase/functions/card-game-competition-status/index.ts b/supabase/functions/card-game-competition-status/index.ts
+index 0d311c9..34e6af5 100644
+--- a/supabase/functions/card-game-competition-status/index.ts
++++ b/supabase/functions/card-game-competition-status/index.ts
+@@ -2,0 +3 @@ import { fail, ok, options } from "../_shared/http.ts";
++import { getWisdomDuelReleaseBlock } from "../_shared/wisdomDuelRelease.ts";
+@@ -7,0 +9,3 @@ serve(async (request) => {
++  const releaseBlock = getWisdomDuelReleaseBlock();
++  if (releaseBlock) return releaseBlock;
++
+diff --git a/supabase/functions/card-game-create-competition-session/index.ts b/supabase/functions/card-game-create-competition-session/index.ts
+index 73cd113..6e3e30e 100644
+--- a/supabase/functions/card-game-create-competition-session/index.ts
++++ b/supabase/functions/card-game-create-competition-session/index.ts
+@@ -2,0 +3 @@ import { fail, ok, options } from "../_shared/http.ts";
++import { getWisdomDuelReleaseBlock } from "../_shared/wisdomDuelRelease.ts";
+@@ -17,0 +19,3 @@ serve(async (request) => {
++  const releaseBlock = getWisdomDuelReleaseBlock();
++  if (releaseBlock) return releaseBlock;
++
+diff --git a/supabase/functions/card-game-join-competition-session/index.ts b/supabase/functions/card-game-join-competition-session/index.ts
+index b363d1b..8ffbde2 100644
+--- a/supabase/functions/card-game-join-competition-session/index.ts
++++ b/supabase/functions/card-game-join-competition-session/index.ts
+@@ -2,0 +3 @@ import { fail, ok, options } from "../_shared/http.ts";
++import { getWisdomDuelReleaseBlock } from "../_shared/wisdomDuelRelease.ts";
+@@ -12,0 +14,3 @@ serve(async (request) => {
++  const releaseBlock = getWisdomDuelReleaseBlock();
++  if (releaseBlock) return releaseBlock;
++
+diff --git a/supabase/functions/card-game-settlement-signature/index.ts b/supabase/functions/card-game-settlement-signature/index.ts
+index 03dc0c6..2905677 100644
+--- a/supabase/functions/card-game-settlement-signature/index.ts
++++ b/supabase/functions/card-game-settlement-signature/index.ts
+@@ -2,0 +3 @@ import { fail, ok, options } from "../_shared/http.ts";
++import { getWisdomDuelReleaseBlock } from "../_shared/wisdomDuelRelease.ts";
+@@ -29,0 +31,3 @@ serve(async (request) => {
++  const releaseBlock = getWisdomDuelReleaseBlock();
++  if (releaseBlock) return releaseBlock;
++
+diff --git a/supabase/functions/card-game-verify-card-lock/index.ts b/supabase/functions/card-game-verify-card-lock/index.ts
+index ab01502..177d460 100644
+--- a/supabase/functions/card-game-verify-card-lock/index.ts
++++ b/supabase/functions/card-game-verify-card-lock/index.ts
+@@ -2,0 +3 @@ import { fail, ok, options } from "../_shared/http.ts";
++import { getWisdomDuelReleaseBlock } from "../_shared/wisdomDuelRelease.ts";
+@@ -16,0 +18,3 @@ serve(async (request) => {
++  const releaseBlock = getWisdomDuelReleaseBlock();
++  if (releaseBlock) return releaseBlock;
++
+diff --git a/supabase/functions/card-game-verify-deposit/index.ts b/supabase/functions/card-game-verify-deposit/index.ts
+index afc6796..dc3ee32 100644
+--- a/supabase/functions/card-game-verify-deposit/index.ts
++++ b/supabase/functions/card-game-verify-deposit/index.ts
+@@ -2,0 +3 @@ import { fail, ok, options } from "../_shared/http.ts";
++import { getWisdomDuelReleaseBlock } from "../_shared/wisdomDuelRelease.ts";
+@@ -12,0 +14,3 @@ serve(async (request) => {
++  const releaseBlock = getWisdomDuelReleaseBlock();
++  if (releaseBlock) return releaseBlock;
++

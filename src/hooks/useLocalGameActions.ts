@@ -1,4 +1,4 @@
-import { useCallback, useRef, type Dispatch, type SetStateAction } from 'react';
+import { useCallback, useEffect, useRef, type Dispatch, type SetStateAction } from 'react';
 import { GameState, GameAction } from '../game/types.js';
 import { gameReducer } from '../game/state.js';
 import { isValidAction } from '../game/rules.js';
@@ -7,9 +7,15 @@ export function useLocalGameActions(
   currentGameState: GameState | null,
   setGameState: Dispatch<SetStateAction<GameState | null>>,
   currentPlayerId: string | null,
-  selectedKnowledgeId: string | null
+  selectedKnowledgeId: string | null,
+  onAccepted?: (action: GameAction) => void
 ) {
   const isProcessing = useRef(false);
+  const accepted = useRef<GameAction | null>(null);
+  useEffect(() => {
+    const action = accepted.current; accepted.current = null;
+    if (action) onAccepted?.(action);
+  }, [currentGameState, onAccepted]);
 
   const handleAction = useCallback((action: GameAction) => {
     if (action.type !== 'SET_GAME_STATE' && (!currentGameState || !currentPlayerId)) {
@@ -39,6 +45,7 @@ export function useLocalGameActions(
           }
         }
         const next = gameReducer(prev, action);
+        if (next !== prev && ['ROTATE_CREATURE', 'DRAW_KNOWLEDGE', 'SUMMON_KNOWLEDGE', 'RESOLVE_PENDING_EFFECT'].includes(action.type)) accepted.current = action;
         return next;
       });
     } finally {

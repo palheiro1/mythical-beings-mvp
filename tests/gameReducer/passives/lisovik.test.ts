@@ -1,7 +1,5 @@
 // File: /home/usuario/Documentos/GitHub/CardGame/mythical-beings-mvp/tests/gameReducer/passives/lisovik.test.ts
 import { describe, it, expect } from 'vitest';
-import { gameReducer } from '../../../src/game/state';
-import { GameState, GameAction } from '../../../src/game/types'; // Added GameAction
 import { createInitialTestState, createTestKnowledge } from '../../utils/testHelpers';
 import { executeKnowledgePhase } from '../../../src/game/rules'; // Added import
 
@@ -74,7 +72,6 @@ describe('Lisovik Passive', () => {
       const initialP1Power = initialState.players[0].power; // Lisovik's owner's power
       const initialP2Power = initialState.players[1].power; // Opponent's power
       const initialDiscardSize = initialState.discardPile.length;
-      const initialP2HandSize = initialState.players[1].hand.length;
 
       // Execute the knowledge phase
       const stateAfterKnowledgePhase = executeKnowledgePhase(initialState);

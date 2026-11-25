@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "version": "0.1.0",
+  "posthog": "1.430.2",
+  "files": [
+    {
+      "name": "analytics.js",
+      "bytes": 19384,
+      "sha256": "9aa11c514cab528e9a321e74fd3979576ebdf9b73f9375adf311754fa8af4506"
+    },
+    {
+      "name": "analytics-PMCQKV6M.js",
+      "bytes": 146250,
+      "sha256": "617805c528adf997c35bbb2d193c3160daeb06b0576dc9fbf0a57ca673b29fb8"
+    },
+    {
+      "name": "analytics-A5QQIJ6P.js",
+      "bytes": 159654,
+      "sha256": "3602eaa3657b009a2ef5967076677988100a04ed481c9868d886e7df8b22ba37"
+    }
+  ]
+}

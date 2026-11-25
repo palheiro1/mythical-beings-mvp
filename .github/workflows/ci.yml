@@ -15,17 +15,38 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version-file: .nvmrc
           cache: npm
+
+      - name: Verify runtime policy
+        run: node scripts/verify-runtime.mjs
 
       - name: Install
         run: npm ci
 
       - name: Lint
-        run: npm run lint
+        run: npm run lint:ci
 
-      - name: Test
-        run: npm test -- --run --silent
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Typecheck Edge Functions
+        run: npm run typecheck:edge
+
+      - name: Test and critical coverage
+        run: npm run test:coverage
 
       - name: Build
         run: npm run build
+
+      - name: Verify bundle budget
+        run: npm run verify:bundle-budget
+
+      - name: Verify public artifact policy
+        run: npm run verify:public-artifact
+
+      - name: Verify production logging policy
+        run: npm run verify:production-logging
+
+      - name: Production dependency audit
+        run: npm audit --omit=dev --audit-level=high

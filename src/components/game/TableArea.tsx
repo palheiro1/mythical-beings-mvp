@@ -1,8 +1,8 @@
 import React from 'react';
 import { Creature, Knowledge, PlayerState } from '../../game/types.js';
 import Card from '../Card.js';
-import { useCardRegistry } from '../../context/CardRegistry.js';
-import { cn } from '../ui/index.js';
+import { useCardRegistry } from '../../hooks/useCardRegistry.js';
+import { cn } from '../ui/cn.js';
 
 interface TableAreaProps {
     currentPlayer: PlayerState;
@@ -168,7 +168,7 @@ const TableArea: React.FC<TableAreaProps> = ({
                         {renderSlot({
                             cardData: opponentCreature ?? null,
                             keyName: opponentCreature ? `op-creature-${opponentCreature.id}` : `op-creature-empty-${index}`,
-                            rotation: ((opponentCreature?.rotation ?? 0) + 180),
+                            rotation: opponentCreature?.rotation ?? 0,
                             isDisabled: true,
                             kind: 'creature',
                             emptyLabel: 'Opponent',
@@ -178,7 +178,7 @@ const TableArea: React.FC<TableAreaProps> = ({
                             {renderSlot({
                                 cardData: opponentKnowledge,
                                 keyName: opponentKnowledge ? `op-knowledge-${opponentKnowledge.instanceId}` : `op-knowledge-empty-${opponentCreature?.id ?? index}`,
-                                rotation: ((opponentKnowledge?.rotation ?? 0) + 180),
+                                rotation: opponentKnowledge?.rotation ?? 0,
                                 isDisabled: true,
                                 kind: 'knowledge',
                                 emptyLabel: 'Knowledge',

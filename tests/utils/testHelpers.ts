@@ -1,6 +1,6 @@
 import { vi } from 'vitest';
-import { initializeGame, gameReducer } from '../../src/game/state.ts';
-import { GameState, GameAction, Creature, Knowledge } from '../../src/game/types.ts';
+import { initializeGame } from '../../src/game/state.ts';
+import { GameState, Creature, Knowledge } from '../../src/game/types.ts';
 import creatureData from '../../src/assets/creatures.json';
 import knowledgeData from '../../src/assets/knowledges.json';
 

@@ -1,7 +1,8 @@
 // Test setup configuration
-import { expect, afterEach } from 'vitest';
+import { afterEach } from 'vitest';
 import { cleanup } from '@testing-library/react';
 import '@testing-library/jest-dom';
+import { webcrypto } from 'node:crypto';
 
 // Cleanup after each test case (e.g. clearing jsdom)
 afterEach(() => {
@@ -60,10 +61,13 @@ vi.mock('react-router-dom', async (importOriginal) => {
   };
 });
 
-// Mock crypto for UUID generation
+// Keep the complete Web Crypto surface while making UUID-only tests reproducible.
+let testUuidCounter = 0;
 Object.defineProperty(global, 'crypto', {
   value: {
-    randomUUID: () => 'test-uuid-' + Math.random().toString(36).substr(2, 9),
+    getRandomValues: webcrypto.getRandomValues.bind(webcrypto),
+    subtle: webcrypto.subtle,
+    randomUUID: () => `00000000-0000-4000-8000-${(++testUuidCounter).toString(16).padStart(12, '0')}`,
   },
 });
 

@@ -39,7 +39,6 @@ describe('Tarasca Passive', () => {
     });
 
     it('should NOT deal damage when opponent summons non-terrestrial knowledge', () => {
-      const p1Id = 'player1';
       const p2Id = 'player2';
       const initialState = createInitialTestState('game37', ['tarasca'], ['adaro'], {
         currentPlayerIndex: 1,
@@ -68,7 +67,6 @@ describe('Tarasca Passive', () => {
 
     it('should NOT deal damage when owner summons terrestrial knowledge', () => {
       const p1Id = 'player1';
-      const p2Id = 'player2';
       const initialState = createInitialTestState('game38', ['tarasca', 'adaro'], ['pele'], {
         currentPlayerIndex: 0,
         phase: 'action',

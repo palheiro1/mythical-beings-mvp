@@ -1,0 +1,1 @@
+Generated from @mythicalb/analytics 0.1.0 in Tarasca-DAO/mythicalSDK, packages/analytics/build-browser.mjs. PostHog 1.430.2 is loaded only after consent. Rebuild and copy the complete manifest files together; do not edit generated code.
