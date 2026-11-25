@@ -23,9 +23,11 @@ interface CoachProps {
   onSkip: () => void;
   onShowBonus: () => void;
   onContinue: () => void;
+  /** Brief golden pulse on the frame right after the introduction closes. */
+  highlighted?: boolean;
 }
 
-export default function TrainingCoach({ session, direct, lessonBonus, onStart, onSkip, onShowBonus, onContinue }: CoachProps) {
+export default function TrainingCoach({ session, direct, lessonBonus, highlighted, onStart, onSkip, onShowBonus, onContinue }: CoachProps) {
   const { guide: step, firstStrike } = session;
   if (step === 'free') return null;
   const content = steps[step];
@@ -36,7 +38,7 @@ export default function TrainingCoach({ session, direct, lessonBonus, onStart, o
   if (step === 'end' && lessonBonus) text = 'Lepidoptera gives your team 1 Power as it enters. Choose End Turn to pass on this summon’s optional bonus and watch the spell on your next turn.';
   if (step === 'strike' && firstStrike) text = `Lepidoptera dealt ${firstStrike.damage} damage as your turn began. Bot Power fell from ${firstStrike.before} to ${firstStrike.after}. The spell then rotated on its own.`;
   const finished = step === 'complete' || step === 'handoff';
-  return <aside className="wd-coach" data-step={step} aria-label="Guided lesson">
+  return <aside className={highlighted ? 'wd-coach wd-coach-highlight' : 'wd-coach'} data-step={step} aria-label="Guided lesson">
     <div className="wd-coach-copy" aria-live="polite" aria-atomic="true"><span className="wd-eyebrow"><BookOpen size={13} />Guided lesson · Clock paused</span><h2 tabIndex={-1}>{content.title}</h2><p>{text}</p></div>
     <div className="wd-coach-controls">
       {step === 'welcome' && <button className="wd-button wd-button-primary" onClick={onStart}>Start learning <ArrowRight size={16} /></button>}

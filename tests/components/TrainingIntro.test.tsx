@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import BotGame from '../../src/pages/BotGame.js';
@@ -61,6 +61,16 @@ describe('training introduction', () => {
     expect(screen.getByRole('heading', { name: '1. Gather knowledge' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: '1. Gather knowledge' })).toHaveFocus();
     expect(screen.getByText('Clock paused')).toBeInTheDocument();
+  });
+
+  it('pulses the coach frame for about a second after the introduction closes', () => {
+    renderFlow();
+    click('Next');
+    click('Next');
+    click('Ok, let’s start the practice');
+    expect(screen.getByLabelText('Guided lesson')).toHaveClass('wd-coach-highlight');
+    act(() => { vi.advanceTimersByTime(1200); });
+    expect(screen.getByLabelText('Guided lesson')).not.toHaveClass('wd-coach-highlight');
   });
 
   it('does not show the introduction in a free practice match', () => {

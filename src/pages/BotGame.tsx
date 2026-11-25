@@ -77,6 +77,7 @@ function PracticeMatch({ team, mode, gameId, rulesOpen, openRules, resumeDuel, o
   const [introOpen, setIntroOpen] = useState(mode === 'guided' && !rulesOpen);
   // The step lives here, not in TrainingIntro, so the portrait early return cannot restart the walkthrough.
   const [introStep, setIntroStep] = useState(0);
+  const [coachHighlighted, setCoachHighlighted] = useState(false);
   const introFinished = useRef(false);
   const containerRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -84,6 +85,10 @@ function PracticeMatch({ team, mode, gameId, rulesOpen, openRules, resumeDuel, o
     introFinished.current = false;
     // TrainingDialog restores focus to the pre-intro element (usually <body>); hand it to the coach instead.
     containerRef.current?.querySelector<HTMLElement>('.wd-coach h2')?.focus();
+    // Draw the eye to "1. Gather knowledge" with a brief golden pulse on the coach frame.
+    setCoachHighlighted(true);
+    const timer = window.setTimeout(() => setCoachHighlighted(false), 1200);
+    return () => window.clearTimeout(timer);
   }, [introOpen]);
   const motionLayerRef = useRef<HTMLDivElement>(null);
   const audio = useTrainingAudio(orientationPaused);
@@ -195,7 +200,7 @@ function PracticeMatch({ team, mode, gameId, rulesOpen, openRules, resumeDuel, o
         <TrainingSoundControls preferences={audio.preferences} update={audio.update} error={audio.error} play={audio.presentation.play} open={dialog === 'sound' && !pending && !inspection && (!gameOver || resultDismissed)} onOpen={() => setDialog('sound')} onClose={() => setDialog(null)} />
       </div>
     </header>
-    {!gameOver && !introOpen && <TrainingCoach session={session} direct={directCards} lessonBonus={lessonBonus} onStart={() => dispatch({ type: 'start-guide' })} onSkip={() => dispatch({ type: 'skip-guide' })} onShowBonus={() => dispatch({ type: 'show-bonus' })} onContinue={() => dispatch({ type: 'continue' })} />}
+    {!gameOver && !introOpen && <TrainingCoach session={session} direct={directCards} lessonBonus={lessonBonus} highlighted={coachHighlighted} onStart={() => dispatch({ type: 'start-guide' })} onSkip={() => dispatch({ type: 'skip-guide' })} onShowBonus={() => dispatch({ type: 'show-bonus' })} onContinue={() => dispatch({ type: 'continue' })} />}
     <div className="wd-game-layout">
       <TrainingBoard direct={directCards} session={session} onAction={onAction} onInspect={setInspection} hud={{
         opponent: <PowerMedallion power={bot.power} side="opponent" handSize={bot.hand.length} />,
