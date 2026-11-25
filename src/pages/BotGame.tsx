@@ -85,10 +85,10 @@ function PracticeMatch({ team, mode, gameId, rulesOpen, openRules, resumeDuel, o
     introFinished.current = false;
     // TrainingDialog restores focus to the pre-intro element (usually <body>); hand it to the coach instead.
     containerRef.current?.querySelector<HTMLElement>('.wd-coach h2')?.focus();
-    // Draw the eye to "1. Gather knowledge" with a brief golden pulse on the coach frame.
-    setCoachHighlighted(true);
-    const timer = window.setTimeout(() => setCoachHighlighted(false), 1200);
-    return () => window.clearTimeout(timer);
+    // Draw the eye to "1. Gather knowledge": let the coach render normally first, then pulse its frame gold.
+    const startTimer = window.setTimeout(() => setCoachHighlighted(true), 150);
+    const endTimer = window.setTimeout(() => setCoachHighlighted(false), 1350);
+    return () => { window.clearTimeout(startTimer); window.clearTimeout(endTimer); };
   }, [introOpen]);
   const motionLayerRef = useRef<HTMLDivElement>(null);
   const audio = useTrainingAudio(orientationPaused);

@@ -132,8 +132,8 @@
 /* Brief golden pulse drawing attention to the coach after the intro modals close. */
 .wd-coach-highlight { border-color:var(--wd-gold); animation:wd-coach-pulse 1.2s ease-out; }
 @keyframes wd-coach-pulse {
-  0% { box-shadow:0 0 0 0 #e8c383aa,0 0 22px 4px #e8c38355; }
-  60% { box-shadow:0 0 0 3px #e8c38388,0 0 14px 2px #e8c38340; }
+  0% { box-shadow:0 0 0 0 #e8c38355,0 0 11px 2px #e8c3832b; }
+  60% { box-shadow:0 0 0 3px #e8c38344,0 0 7px 1px #e8c38320; }
   100% { box-shadow:0 0 0 0 #e8c38300,0 0 0 0 #e8c38300; }
 }
 @media (prefers-reduced-motion:reduce) { .wd-coach-highlight { animation:none; } }

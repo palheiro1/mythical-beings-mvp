@@ -68,6 +68,8 @@ describe('training introduction', () => {
     click('Next');
     click('Next');
     click('Ok, let’s start the practice');
+    expect(screen.getByLabelText('Guided lesson')).not.toHaveClass('wd-coach-highlight');
+    act(() => { vi.advanceTimersByTime(150); });
     expect(screen.getByLabelText('Guided lesson')).toHaveClass('wd-coach-highlight');
     act(() => { vi.advanceTimersByTime(1200); });
     expect(screen.getByLabelText('Guided lesson')).not.toHaveClass('wd-coach-highlight');
