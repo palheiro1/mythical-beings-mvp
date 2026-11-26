@@ -13,7 +13,7 @@ import { useTrainingMotion } from '../hooks/useTrainingMotion.js';
 import { useTrainingAudio } from '../hooks/useTrainingAudio.js';
 import TrainingSoundControls from '../components/training/TrainingSoundControls.js';
 import { useDirectCards } from '../hooks/useDirectCards.js';
-import { useGuideGlow } from '../hooks/useGuideGlow.js';
+import { guideGlowSequence, useGuideGlow } from '../hooks/useGuideGlow.js';
 import CardDetailOverlay from '../components/CardDetailOverlay.js';
 import CardFaceByImage from '../components/CardFaceByImage.js';
 import { getPendingEffectCard } from '../utils/pendingEffectCard.js';
@@ -22,13 +22,14 @@ import PlayCardFace from '../components/training/PlayCardFace.js';
 import TrainingTrays, { type TrayTab } from '../components/training/TrainingTrays.js';
 import TrainingCoach from '../components/training/TrainingCoach.js';
 import TrainingDialog from '../components/training/TrainingDialog.js';
-import TrainingIntro from '../components/training/TrainingIntro.js';
+import TrainingIntro, { type IntroProgress } from '../components/training/TrainingIntro.js';
 import type { DisplayCard } from '../components/training/TrainingCard.js';
 import '../trainingLandscape.css';
 import '../trainingMotion.css';
 import '../trainingArena.css';
 import '../trainingAudio.css';
 import '../trainingKai.css';
+import '../trainingLesson.css';
 
 function PowerMedallion({ power, side, handSize, actions }: {
   power: number;
@@ -74,17 +75,16 @@ function PracticeMatch({ team, mode, gameId, rulesOpen, openRules, resumeDuel, o
   const directCards = useDirectCards();
   const [allowPortrait, setAllowPortrait] = useState(false);
   const orientationPaused = portrait && !allowPortrait;
-  // A guided lesson opens with a short, non-dismissable introduction; never stack it over the Rules dialog.
-  const [introOpen, setIntroOpen] = useState(mode === 'guided' && !rulesOpen);
-  // The step lives here, not in TrainingIntro, so the portrait early return cannot restart the walkthrough.
-  const [introStep, setIntroStep] = useState(0);
+  // Keep the introduction in match state so a change of orientation preserves progress.
+  const [intro, setIntro] = useState<IntroProgress | null>(() =>
+    mode === 'guided' && !rulesOpen ? { step: 0, rotated: false } : null);
+  const introOpen = intro !== null;
   const introFinished = useRef(false);
   const containerRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (introOpen || !introFinished.current) return;
     introFinished.current = false;
-    // TrainingDialog restores focus to the pre-intro element (usually <body>); hand it to the coach instead.
-    containerRef.current?.querySelector<HTMLElement>('.wd-coach h2')?.focus();
+    containerRef.current?.querySelector<HTMLElement>('[data-guide-target="market"]')?.focus({ preventScroll: true });
   }, [introOpen]);
   const motionLayerRef = useRef<HTMLDivElement>(null);
   const audio = useTrainingAudio(orientationPaused);
@@ -143,7 +143,9 @@ function PracticeMatch({ team, mode, gameId, rulesOpen, openRules, resumeDuel, o
     if (guide === 'complete' || guide === 'handoff') rememberTutorial(session.tutorialCompleted);
     if (guide === 'draw') setTab('market');
     if (guide === 'summon') setTab('hand');
-    const target = guide === 'draw' ? 'market' : guide === 'rotate' ? 'creature' : guide === 'summon' ? 'hand' : guide === 'end' ? 'end' : null;
+  }, [guide, session.tutorialCompleted]);
+  useEffect(() => {
+    const target = guideGlowSequence(guide, session.selectedId).at(-1);
     if (!target) return;
     const frame = window.requestAnimationFrame(() => {
       const element = containerRef.current?.querySelector<HTMLElement>(`[data-guide-target="${target}"]`);
@@ -156,7 +158,7 @@ function PracticeMatch({ team, mode, gameId, rulesOpen, openRules, resumeDuel, o
       }
     });
     return () => window.cancelAnimationFrame(frame);
-  }, [guide, session.tutorialCompleted, orientationPaused]);
+  }, [guide, session.selectedId, orientationPaused]);
   const [player, bot] = game.players;
   const selected = player.hand.find(card => card.instanceId === session.selectedId);
   const actionsLeft = Math.max(0, game.actionsPerTurn - game.actionsTakenThisTurn);
@@ -219,14 +221,15 @@ function PracticeMatch({ team, mode, gameId, rulesOpen, openRules, resumeDuel, o
     </footer>
     <div className="wd-match-links"><button className="wd-text-button" onClick={() => navigate('/bot-selection?mode=guided')}><RotateCcw size={14} />Repeat tutorial</button><span>Solo practice · No competitive rewards</span></div>
     <CardDetailOverlay card={inspection} open={!!inspection && !rulesOpen} onClose={closeInspection} contextLabel="Card details" />
-    {introOpen && <TrainingIntro step={introStep} onStep={setIntroStep} onFinish={() => { introFinished.current = true; setIntroOpen(false); dispatch({ type: 'start-guide' }); }} />}
+    {intro && <TrainingIntro team={player} opponent={bot} firstSpell={game.market[0]} direct={directCards}
+      progress={intro} onProgress={setIntro} onFinish={() => { introFinished.current = true; setIntro(null); dispatch({ type: 'start-guide' }); }} />}
     {rulesOpen && <TrainingDialog title="Duel rules" onClose={resumeDuel}>
       <p>Turn {game.turn} · Duel paused</p>
       <ul className="wd-rules-list">
         <li>Each team’s three creatures share one Power total. Reduce your opponent’s Power to zero to win.</li>
-        <li>You normally have two actions each turn. Draw from the market, rotate a creature, or play Knowledge from your hand.</li>
+        <li>In your Knowledge Phase, the spells on your creatures take effect automatically and rotate. Their new position can change what they do next turn.</li>
+        <li>In your Action Phase, draw from the market, rotate a creature, or play Knowledge from your hand. You normally get two actions, and card effects can change that number.</li>
         <li>Rotating a creature advances its Wisdom. It can play Knowledge that costs no more than its current Wisdom.</li>
-        <li>At the start of your turn, active Knowledge resolves its effects and rotates. A different position can change what the card does.</li>
       </ul>
       <div className="wd-dialog-actions">
         <button type="button" className="wd-button wd-button-primary" onClick={resumeDuel}>Resume duel</button>
