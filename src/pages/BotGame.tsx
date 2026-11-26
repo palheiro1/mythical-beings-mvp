@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { ArrowRight, BookOpen, Clock3, Flag, History, Layers, RotateCcw, Smartphone, X } from 'lucide-react';
+import { ArrowRight, Flag, History, Layers, RotateCcw, Smartphone, X } from 'lucide-react';
 import { creatures as creatureData } from '@mythicalb/wisdom-duel-engine/catalog';
 import { track } from '../analytics/productAnalytics.js';
 import { isValidBotCreatureSelection, readBotCreatureSelection, clearBotCreatureSelection } from '../utils/botSelection.js';
@@ -24,29 +24,10 @@ import TrainingTrays, { type TrayTab } from '../components/training/TrainingTray
 import TrainingCoach from '../components/training/TrainingCoach.js';
 import TrainingDialog from '../components/training/TrainingDialog.js';
 import DuelTargetChoices from '../components/game/DuelTargetChoices.js';
-import ActionLights from '../components/game/ActionLights.js';
+import { ArenaHeader, DuelArena, PowerMedallion, TurnCallout } from '../components/game/DuelArena.js';
 import TrainingIntro, { type IntroProgress } from '../components/training/TrainingIntro.js';
 import type { DisplayCard } from '../components/training/TrainingCard.js';
-import '../trainingLandscape.css';
-import '../trainingMotion.css';
-import '../trainingArena.css';
-import '../trainingAudio.css';
-import '../trainingKai.css';
 import '../trainingLesson.css';
-
-function PowerMedallion({ power, side, handSize, actions }: {
-  power: number;
-  side: 'player' | 'opponent';
-  handSize?: number;
-  actions?: { remaining: number; total: number };
-}) {
-  const isPlayer = side === 'player';
-  const value = Math.max(0, power);
-  return <div className={`wd-power-medallion wd-power-${side}`} data-motion-anchor={isPlayer ? undefined : `hand:${BOT_ID}`} title={isPlayer ? undefined : `Bot · ${handSize} in hand`}>
-    <strong className="wd-power-value" data-motion-anchor={`power:${isPlayer ? HUMAN_ID : BOT_ID}`} aria-label={`${isPlayer ? 'Your' : 'Bot'} Power: ${value}`}>{value}</strong>
-    {actions && <ActionLights owner={isPlayer ? HUMAN_ID : BOT_ID} {...actions} />}
-  </div>;
-}
 
 interface PracticeMatchProps {
   team: string[];
@@ -188,28 +169,18 @@ function PracticeMatch({ team, mode, gameId, rulesOpen, openRules, resumeDuel, o
     <Link className="wd-button" to="/">Back to Home</Link>
     <button className="wd-button" onClick={() => setAllowPortrait(true)}>Can’t rotate? Continue in portrait</button>
   </div>;
-  return <div ref={containerRef} onPointerDownCapture={audio.unlock} onKeyDownCapture={audio.unlock} className={`wd wd-match wd-confluence wd-kai ${paused && !gameOver ? 'has-guide' : ''} ${directCards ? 'wd-direct' : ''}`} data-active-side={gameOver ? undefined : playerTurn ? 'player' : 'opponent'}>
-    <h1 className="sr-only">Wisdom Duel — Solo practice</h1>
-    <div ref={motionLayerRef} className="wd-motion-layer" aria-hidden="true" inert />
-    <p className="sr-only" role="status" aria-live="polite" aria-atomic="true">{announcement}</p>
-    <header className="wd-match-header" data-clock-warning={clockWarning}>
-      {clockWarning && <span key={clockWarning} className="wd-clock-flare" aria-hidden="true" />}
-      <Link to="/" className="wd-brand" aria-label="Wisdom Duel home"><img src="/logos/logo-header-dark.webp" alt="" width="44" height="34" /><span>Wisdom Duel</span></Link>
-      <div className="wd-match-controls">
-        {!gameOver && <div className={`wd-match-clock ${clockRunning && clockWarning === 'red' ? 'wd-clock-low' : ''}`} role="timer" aria-label="Turn clock">
-          <Clock3 size={15} aria-hidden="true" />
-          {clockPaused ? 'Clock paused' : clockRunning ? clockText : '—'}
-        </div>}
-        <button type="button" className="wd-button wd-match-rules" aria-label="Rules" onClick={openRules}><BookOpen size={17} aria-hidden="true" /><span>Rules</span></button>
-        <TrainingSoundControls preferences={audio.preferences} update={audio.update} error={audio.error} play={audio.presentation.play} open={dialog === 'sound' && !pending && !inspection && (!gameOver || resultDismissed)} onOpen={() => setDialog('sound')} onClose={() => setDialog(null)} />
-      </div>
-    </header>
+  return <DuelArena root={containerRef} layer={motionLayerRef} unlock={audio.unlock} direct={directCards} guided={paused && !gameOver}
+    activeSide={gameOver ? undefined : playerTurn ? 'player' : 'opponent'} title="Wisdom Duel — Solo practice" announcement={announcement}
+    header={<ArenaHeader warning={clockWarning} clock={gameOver ? undefined : clockPaused ? 'Clock paused' : clockRunning ? clockText : '—'} onRules={openRules}>
+      <TrainingSoundControls preferences={audio.preferences} update={audio.update} error={audio.error} play={audio.presentation.play}
+        open={dialog === 'sound' && !pending && !inspection && (!gameOver || resultDismissed)} onOpen={() => setDialog('sound')} onClose={() => setDialog(null)} />
+    </ArenaHeader>}>
     {!gameOver && !introOpen && <TrainingCoach session={session} direct={directCards} lessonBonus={lessonBonus} glow={glowTarget} onStart={() => dispatch({ type: 'start-guide' })} onSkip={() => dispatch({ type: 'skip-guide' })} onShowBonus={() => dispatch({ type: 'show-bonus' })} onContinue={() => dispatch({ type: 'continue' })} />}
     <div className="wd-game-layout">
       <TrainingBoard direct={directCards} session={session} onAction={onAction} onInspect={setInspection} glow={glowTarget} hud={{
-        opponent: <PowerMedallion power={bot.power} side="opponent" handSize={bot.hand.length} actions={!playerTurn ? { remaining: actionsLeft, total: game.actionsPerTurn } : undefined} />,
-        turn: <div className="wd-turn"><span>Turn {game.turn}</span><strong key={`${game.turn}:${game.currentPlayerIndex}`} className={gameOver ? undefined : 'wd-turn-callout'}>{gameOver ? 'Duel complete' : playerTurn ? 'Your turn' : 'Bot’s turn'}</strong></div>,
-        player: <PowerMedallion power={player.power} side="player" actions={playerTurn ? { remaining: actionsLeft, total: game.actionsPerTurn } : undefined} />,
+        opponent: <PowerMedallion owner={BOT_ID} label="Bot" power={bot.power} side="opponent" handSize={bot.hand.length} actions={!playerTurn ? { remaining: actionsLeft, total: game.actionsPerTurn } : undefined} />,
+        turn: <TurnCallout turn={game.turn} complete={gameOver} label={gameOver ? 'Duel complete' : playerTurn ? 'Your turn' : 'Bot’s turn'} />,
+        player: <PowerMedallion owner={HUMAN_ID} label="Your" power={player.power} side="player" actions={playerTurn ? { remaining: actionsLeft, total: game.actionsPerTurn } : undefined} />,
       }} />
       <TrainingTrays direct={directCards} session={session} tab={tab} setTab={setTab} onAction={onAction} onSelect={instanceId => dispatch({ type: 'select', instanceId })} onInspect={setInspection} glow={glowTarget} />
     </div>
@@ -256,7 +227,7 @@ function PracticeMatch({ team, mode, gameId, rulesOpen, openRules, resumeDuel, o
       <p>{game.winner === HUMAN_ID ? 'Your Creatures and Knowledge cards won the duel. Try another combination.' : 'Every duel is a chance to discover a new combination. Your next one starts here.'}</p>
       <div className="wd-dialog-actions"><button className="wd-button wd-button-primary" onClick={onReplay}><RotateCcw size={17} />Play Again</button><button className="wd-button" onClick={() => navigate('/bot-selection?mode=free')}>Choose Another Team</button></div><button className="wd-text-button" onClick={() => setResultDismissed(true)}>Review the board</button>
     </TrainingDialog>}
-  </div>;
+  </DuelArena>;
 }
 
 export default function BotGame() {

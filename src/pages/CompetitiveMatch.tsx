@@ -1,24 +1,15 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useLocation, useParams } from 'react-router-dom';
 import type {
-  CompetitiveCommand,
-  CompetitiveProjection,
   Creature,
-  Knowledge,
 } from '@mythicalb/wisdom-duel-engine';
 import { creatures } from '@mythicalb/wisdom-duel-engine/catalog';
 import CardFaceByImage from '../components/CardFaceByImage.js';
 import ChallengeArena from '../components/competition/ChallengeArena.js';
 import DuelInvitation from '../components/competition/DuelInvitation.js';
 import { ArenaButton, PageShell, Panel } from '../components/ui/index.js';
-import { useTrainingMotion } from '../hooks/useTrainingMotion.js';
-import { cardAnchor } from '../game/presentation.js';
-import ActionLights from '../components/game/ActionLights.js';
-import DuelTargetChoices from '../components/game/DuelTargetChoices.js';
-import DuelEffectHistory from '../components/game/DuelEffectHistory.js';
-import { CreatureStatus } from '../components/training/TrainingBoard.js';
 import { useAuth } from '../hooks/useAuth.js';
-import { useCompetitiveMatch, useMatchClock } from '../hooks/useCompetitiveMatch.js';
+import { useCompetitiveMatch } from '../hooks/useCompetitiveMatch.js';
 import {
   competitive,
   competitiveError,
@@ -27,26 +18,6 @@ import {
   type WisdomMatchView,
 } from '../services/competitiveService.js';
 
-function ClockDisplay({ projection, playerId }: { projection: CompetitiveProjection; playerId: string }) {
-  const clock = useMatchClock(projection);
-  const label = (id: string) => {
-    const seconds = Math.ceil(clock(id) / 1000);
-    return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
-  };
-  return (
-    <div className="flex flex-wrap gap-5 text-xl tabular-nums" aria-label="Relógios da partida">
-      {projection.players.map((p) => (
-        <span
-          key={p.id}
-          className={projection.clock.runningPlayerId === p.id ? 'text-amber-200' : 'text-slate-300'}
-        >
-          {p.id === playerId ? 'Tu' : 'Adversário'}: <strong>{label(p.id)}</strong>
-        </span>
-      ))}
-      {projection.clock.suspendedAt ? <strong>Suspensa</strong> : null}
-    </div>
-  );
-}
 function Countdown({ deadline, serverNow }: { deadline: string; serverNow: string }) {
   const [remaining, setRemaining] = useState(0);
   useEffect(() => {
@@ -59,241 +30,6 @@ function Countdown({ deadline, serverNow }: { deadline: string; serverNow: strin
   }, [deadline, serverNow]);
   return <span className="tabular-nums">{remaining}s</span>;
 }
-function Card({ card, owner = '', children }: { card: Creature | Knowledge; owner?: string; children?: React.ReactNode }) {
-  return (
-    <div data-motion-anchor={cardAnchor(owner,card)} data-motion-face className="w-32 shrink-0 space-y-2 sm:w-40">
-      <CardFaceByImage card={card} src={card.image} alt={card.name} />
-      <p className="text-sm font-semibold">{card.name}</p>
-      {children}
-    </div>
-  );
-}
-function Board({
-  projection,
-  playerId,
-  disabled,
-  send: submit,
-}: {
-  projection: CompetitiveProjection;
-  playerId: string;
-  disabled: boolean;
-  send: (command: CompetitiveCommand) => Promise<unknown>;
-}) {
-  const root = useRef<HTMLDivElement>(null);
-  const layer = useRef<HTMLDivElement>(null);
-  const motion = useTrainingMotion(projection, root, layer, 'classic', false, undefined, true, playerId);
-  function send(command: CompetitiveCommand) {
-    motion.finish();
-    motion.capture();
-    return submit(command);
-  }
-  const [selected, setSelected] = useState<Knowledge | null>(null);
-  const mine = projection.players.find((p) => p.id === playerId)!,
-    rival = projection.players.find((p) => p.id !== playerId)!;
-  const canAct =
-    !disabled &&
-    !projection.outcome &&
-    !projection.clock.suspendedAt &&
-    !projection.pendingEffect &&
-    projection.currentPlayerId === playerId &&
-    projection.decisionPlayerId === playerId;
-  const canSpend = canAct && projection.actionsTakenThisTurn < projection.actionsPerTurn;
-  const lights = !projection.outcome && <ActionLights owner={projection.currentPlayerId} remaining={Math.max(0, projection.actionsPerTurn - projection.actionsTakenThisTurn)} total={projection.actionsPerTurn} />;
-  const hand = mine.hand.visibility === 'visible' ? mine.hand.cards : [];
-  const chosen = selected && hand.some((k) => k.instanceId === selected.instanceId) ? selected : null;
-  async function summon(creatureId: string) {
-    if (!chosen?.instanceId) return;
-    const result = await send({
-      type: 'summon_knowledge',
-      creatureId,
-      handInstanceId: chosen.instanceId,
-    });
-    if (result === 'accepted' || result === 'duplicate') setSelected(null);
-  }
-  return (
-    <div className="space-y-5" ref={root}>
-      <div className="wd-motion-layer" ref={layer} aria-hidden="true" inert />
-      {motion.summary && <p role="status" aria-label="Latest effects" className="wd-effect-summary wd-classic-summary">{motion.summary}</p>}
-      <Panel className="space-y-3 p-4">
-        <h2 className="text-xl font-bold">
-          Adversário · <strong data-motion-anchor={`power:${rival.id}`}>{rival.power}</strong> Power · <span data-motion-anchor={`hand:${rival.id}`}>{rival.hand.count} cartas na mão</span> {projection.currentPlayerId === rival.id && lights}
-        </h2>
-        <div className="flex gap-4 overflow-x-auto pb-2">
-          {rival.creatures.map((c) => (
-            <div key={c.id} data-motion-anchor={`slot:${rival.id}:${c.id}`} className="space-y-2">
-              <CreatureStatus owl={rival.field.some(s => s.knowledge?.id === 'aerial3')} hurricane={mine.field[rival.creatures.indexOf(c)]?.knowledge?.id === 'aquatic3'} />
-              <Card owner={rival.id} card={c} />
-              {rival.field.find((f) => f.creatureId === c.id)?.knowledge ? (
-                <Card card={rival.field.find((f) => f.creatureId === c.id)!.knowledge!} />
-              ) : null}
-            </div>
-          ))}
-        </div>
-      </Panel>
-      <Panel className="space-y-3 p-4">
-        <h2 data-motion-anchor="market" className="text-xl font-bold">Mercado · {projection.deckCount} cartas no baralho</h2>
-        <div className="flex gap-4 overflow-x-auto pb-2">
-          {projection.market.map((k) => (
-            <Card key={k.instanceId} card={k}>
-              <ArenaButton
-                size="sm"
-                fullWidth
-                disabled={!canSpend}
-                onClick={() =>
-                  void send({
-                    type: 'draw_knowledge',
-                    marketInstanceId: k.instanceId!,
-                  })
-                }
-              >
-                Tirar do Mercado
-              </ArenaButton>
-            </Card>
-          ))}
-        </div>
-      </Panel>
-      <Panel className="space-y-3 p-4">
-        <h2 className="text-xl font-bold">A tua equipa · <strong data-motion-anchor={`power:${mine.id}`}>{mine.power}</strong> Power {projection.currentPlayerId === mine.id && lights}</h2>
-        {chosen ? (
-          <p role="status" className="text-amber-200">
-            Escolhe a criatura em que vais jogar {chosen.name}. Uma carta já nesse espaço será descartada.{' '}
-            <button className="underline" onClick={() => setSelected(null)}>
-              Cancelar seleção
-            </button>
-          </p>
-        ) : null}
-        <div className="flex gap-5 overflow-x-auto pb-2">
-          {mine.creatures.map((c) => {
-            const knowledge = mine.field.find((f) => f.creatureId === c.id)?.knowledge;
-            return (
-              <div key={c.id} data-motion-anchor={`slot:${mine.id}:${c.id}`} className="space-y-3">
-                <CreatureStatus owl={mine.field.some(s => s.knowledge?.id === 'aerial3')} hurricane={rival.field[mine.creatures.indexOf(c)]?.knowledge?.id === 'aquatic3'} />
-                <Card owner={mine.id} card={c}>
-                  <ArenaButton
-                    size="sm"
-                    fullWidth
-                    disabled={!canSpend}
-                    onClick={() =>
-                      chosen
-                        ? void summon(c.id)
-                        : void send({
-                            type: 'rotate_creature',
-                            creatureId: c.id,
-                          })
-                    }
-                  >
-                    {chosen ? 'Jogar aqui' : 'Rodar criatura'}
-                  </ArenaButton>
-                </Card>
-                {knowledge ? (
-                  <Card card={knowledge}>
-                    <ArenaButton
-                      size="sm"
-                      fullWidth
-                      disabled={!canSpend}
-                      onClick={() =>
-                        void send({
-                          type: 'rotate_knowledge',
-                          creatureId: c.id,
-                          fieldInstanceId: knowledge.instanceId!,
-                        })
-                      }
-                    >
-                      Rodar carta de Conhecimento
-                    </ArenaButton>
-                  </Card>
-                ) : (
-                  <p className="text-sm text-slate-400">Espaço livre</p>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </Panel>
-      <Panel className="space-y-3 p-4">
-        <h2 data-motion-anchor={`hand:${mine.id}`} className="text-xl font-bold">A tua mão</h2>
-        <div className="flex gap-4 overflow-x-auto pb-2">
-          {hand.map((k) => (
-            <Card key={k.instanceId} card={k}>
-              <ArenaButton
-                size="sm"
-                fullWidth
-                disabled={!canSpend}
-                aria-pressed={chosen?.instanceId === k.instanceId}
-                variant={chosen?.instanceId === k.instanceId ? 'primary' : 'secondary'}
-                onClick={() => setSelected(chosen?.instanceId === k.instanceId ? null : k)}
-              >
-                {chosen?.instanceId === k.instanceId ? 'Selecionado' : 'Selecionar'}
-              </ArenaButton>
-            </Card>
-          ))}
-        </div>
-        {hand.length === 0 ? <p>A tua mão está vazia. Tira uma carta de Conhecimento do Mercado.</p> : null}
-      </Panel>
-      {projection.pendingEffect ? (
-        <Panel className="space-y-3 border-amber-300 p-5" role="region" aria-label="Decisão pendente">
-          <h2 className="text-xl font-bold">{projection.pendingEffect.prompt}</h2>
-          <DuelTargetChoices view={projection} board={root} className="flex flex-wrap gap-3">
-            {projection.pendingEffect.choices.map((choice, index) => (
-              <ArenaButton
-                key={choice.key}
-                data-choice-index={index}
-                disabled={
-                  disabled ||
-                  Boolean(projection.clock.suspendedAt) ||
-                  projection.decisionPlayerId !== playerId
-                }
-                onClick={() =>
-                  void send({
-                    type: 'resolve_pending_effect',
-                    effectId: projection.pendingEffect!.id,
-                    choiceKey: choice.key,
-                  })
-                }
-              >
-                {choice.label}
-              </ArenaButton>
-            ))}
-            {projection.pendingEffect.optional ? (
-              <ArenaButton
-                variant="ghost"
-                disabled={
-                  disabled ||
-                  Boolean(projection.clock.suspendedAt) ||
-                  projection.decisionPlayerId !== playerId
-                }
-                onClick={() =>
-                  void send({
-                    type: 'resolve_pending_effect',
-                    effectId: projection.pendingEffect!.id,
-                    skip: true,
-                  })
-                }
-              >
-                Passar efeito
-              </ArenaButton>
-            ) : null}
-          </DuelTargetChoices>
-        </Panel>
-      ) : null}
-      <div className="flex flex-wrap items-center gap-4">
-        <ArenaButton disabled={!canAct} onClick={() => void send({ type: 'end_turn' })}>
-          Terminar turno
-        </ArenaButton>
-        <p>
-          {projection.decisionPlayerId === playerId ? 'A tua decisão' : 'À espera do adversário'} · turno{' '}
-          {projection.turn} · {projection.actionsTakenThisTurn}/{projection.actionsPerTurn} ações
-        </p>
-      </div>
-      <details>
-        <summary data-motion-anchor="discard" className="cursor-pointer text-cyan-200">Descartes e acontecimentos públicos</summary>
-        <p>{projection.discardPile.map((k) => k.name).join(', ') || 'Sem descartes.'}</p>
-        <DuelEffectHistory events={projection.events} viewer={playerId} />
-      </details>
-    </div>
-  );
-}
-
 function Preparation({
   match,
   serverNow,
@@ -548,7 +284,7 @@ function Preparation({
             Choose three creatures · <Countdown deadline={match.deadline} serverNow={serverNow} />
           </h2>
           <p>Your team stays hidden until both players confirm. Once you confirm your team, your choices are final.</p>
-          <p>When both teams are ready, anyone can watch the board. Your hand stays private.</p>
+          <p>When both teams are ready, anyone can watch the board. Your hand stays private. Each turn lasts 30 seconds. Missing two of your turns in a row without a move loses the duel.</p>
           <div className="flex gap-4 overflow-x-auto pb-2">
             {(match.offer ?? []).map((id) => {
               const c = creatures.find((c) => c.id === id) as Creature | undefined;
@@ -618,15 +354,17 @@ export default function CompetitiveMatch() {
   const { matchId = '' } = useParams(),
     { user } = useAuth();
   const { data, error, sending, retryable, refresh, submit } = useCompetitiveMatch(matchId, user?.id ?? '');
-  const [confirmResign, setConfirmResign] = useState(false);
   const projection = data?.projection;
   const challengeId = challengeMatchId(data?.match);
   const standingsPath = challengeId ? `/challenge?period=${challengeId}` : '/standings';
   const casualDuel = data?.match.mode === 'casual' && !challengeId;
-  const lobbyPath = casualDuel ? '/duels/public' : standingsPath;
-  if (projection && (challengeId || casualDuel) && user) {
-    return <ChallengeArena key={matchId} projection={projection} playerId={user.id} lobbyPath={lobbyPath} casualDuel={casualDuel}
-      sending={sending} retryable={retryable} error={error} send={submit} />;
+  const lobbyPath = casualDuel ? '/duels/public' : data?.match.mode === 'wager' ? '/wagers' : standingsPath;
+  if (projection && user && data) {
+    return <>
+      <ChallengeArena key={matchId} projection={projection} playerId={user.id} lobbyPath={lobbyPath} casualDuel={casualDuel}
+        sending={sending} retryable={retryable} error={error} send={submit} />
+      {projection.outcome && data.match.mode === 'wager' && <PageShell><Preparation match={data.match} serverNow={data.serverNow} refresh={refresh} /></PageShell>}
+    </>;
   }
   return (
     <PageShell contentClassName="space-y-5">
@@ -650,79 +388,6 @@ export default function CompetitiveMatch() {
         <ArenaButton loading={sending} onClick={() => void submit()}>
           Check submitted move
         </ArenaButton>
-      ) : null}
-      {projection ? (
-        <>
-          <ClockDisplay projection={projection} playerId={user!.id} />
-          {!projection.outcome && <Link className="text-cyan-200 underline" to={`/watch/${matchId}`} target="_blank" rel="noopener noreferrer">Open spectator view</Link>}
-          {projection.outcome ? (
-            <Panel className="space-y-3 p-6" role="status">
-              <h2 className="text-3xl font-bold">
-                {projection.outcome.winnerId === null
-                  ? 'Empate'
-                  : projection.outcome.winnerId === user?.id
-                    ? 'Vitória'
-                    : 'Derrota'}
-              </h2>
-              <p>
-                {
-                  {
-                    timeout: 'Tempo esgotado.',
-                    resign: 'Desistência.',
-                    power: 'Batalha concluída.',
-                    draw: 'Batalha empatada.',
-                  }[projection.outcome.reason]
-                }
-              </p>
-              <Link className="text-cyan-200 underline" to={`/replay/${matchId}`}>
-                Ver replay completo
-              </Link>{' '}
-              ·{' '}
-              <Link className="text-cyan-200 underline" to={standingsPath}>
-                Classificação
-              </Link>
-            </Panel>
-          ) : null}
-          {projection.clock.suspendedAt ? (
-            <p role="status">
-              A partida está suspensa por um incidente técnico. A organização irá rever e retomar o encontro
-              com o tempo preservado.
-            </p>
-          ) : null}
-          <Board projection={projection} playerId={user!.id} disabled={sending || retryable} send={submit} />
-          {!projection.outcome && !projection.clock.suspendedAt ? (
-            <div className="space-y-3">
-              {confirmResign ? (
-                <div role="alert">
-                  <p>
-                    Desistir conta como derrota
-                    {projection.mode === 'wager' ? ' e implica perder a aposta e uma carta' : ''}.
-                  </p>
-                  <div className="mt-3 flex gap-3">
-                    <ArenaButton
-                      variant="danger"
-                      disabled={sending || retryable}
-                      onClick={() => void submit({ type: 'resign' }).then(() => setConfirmResign(false))}
-                    >
-                      Confirmar desistência
-                    </ArenaButton>
-                    <ArenaButton variant="ghost" onClick={() => setConfirmResign(false)}>
-                      Continuar a jogar
-                    </ArenaButton>
-                  </div>
-                </div>
-              ) : (
-                <ArenaButton
-                  variant="ghost"
-                  disabled={sending || retryable}
-                  onClick={() => setConfirmResign(true)}
-                >
-                  Desistir
-                </ArenaButton>
-              )}
-            </div>
-          ) : null}
-        </>
       ) : null}
       {data && (!projection || (projection.outcome && data.match.mode === 'wager')) ? (
         <Preparation match={data.match} serverNow={data.serverNow} refresh={refresh} />

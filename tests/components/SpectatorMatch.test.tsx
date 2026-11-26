@@ -51,6 +51,7 @@ describe('watching a duel', () => {
     open('/watch');
     fireEvent.click(await screen.findByRole('link', { name: /Watch duel / }));
     expect(await screen.findByText('Player 1’s turn')).toBeInTheDocument();
+    expect(document.querySelector('.wd-kai .wd-motion-layer')).toBeInTheDocument();
     expect(service.subscribe).toHaveBeenCalledWith('wisdom-watch:' + id, expect.any(Function));
     expect(screen.getByText('1 in hand')).toBeInTheDocument();
     expect(screen.getByText('2 in hand')).toBeInTheDocument();
@@ -65,7 +66,7 @@ describe('watching a duel', () => {
     service.read.mockResolvedValue({ ...frame, version: 3, status: 'finished',
       clock: { ...frame.clock, runningSeat: null }, outcome: { winner: 0, reason: 'resign' } });
     act(() => notify());
-    expect(await screen.findByText('Player 1 wins')).toBeInTheDocument();
+    expect(await screen.findByRole('dialog', { name: 'Player 1 wins' })).toBeInTheDocument();
   });
 
   it('keeps a duel in preparation hidden and reopens the board once it starts', async () => {

@@ -9,6 +9,7 @@ const matchEventLabels: Record<PublicMatchEvent['type'], string> = {
   resolve_pending_effect: 'Resolve effect',
   end_turn: 'End Turn',
   resign: 'Concede',
+  turn_timeout: 'Turn expired',
   timeout: 'Time expired',
   suspend: 'Pause match',
   resume: 'Resume match',

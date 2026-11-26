@@ -64,7 +64,8 @@ describe('weekly challenge arena', () => {
     const send = page(projection, actor);
     expect(screen.getByRole('region', { name: 'Duel board' })).toBeInTheDocument();
     expect(screen.getByLabelText('Your Power: 20')).toBeInTheDocument();
-    expect(screen.getByLabelText('Opponent’s clock: 10:00')).toBeInTheDocument();
+    expect(screen.getByRole('timer', { name: 'Turn clock' })).toHaveTextContent('0:30');
+    expect(document.querySelector('.wd-kai .wd-power-medallion')).toBeInTheDocument();
     const [card] = projection.market;
     fireEvent.click(within(screen.getByRole('region', { name: 'Market' })).getAllByRole('button', { name: `Draw ${card.name}` })[0]);
     expect(send).toHaveBeenCalledWith({ type: 'draw_knowledge', marketInstanceId: card.instanceId });
@@ -80,7 +81,7 @@ describe('weekly challenge arena', () => {
       outcome: { reason: 'timeout', winnerId: rival.id, finishedAt: now },
     }, actor);
     const result = screen.getByRole('dialog', { name: 'Defeat' });
-    expect(within(result).getByText(/ran out of time/)).toBeInTheDocument();
+    expect(within(result).getByText(/Two consecutive turns passed without a move/)).toBeInTheDocument();
     expect(within(result).getByRole('link', { name: 'Standings' })).toHaveAttribute('href', '/challenge?period=fixture');
     expect(within(result).getByRole('link', { name: 'View full replay' })).toHaveAttribute('href', `/replay/${matchId}`);
     expect(screen.getByRole('button', { name: 'View Result' })).toBeInTheDocument();

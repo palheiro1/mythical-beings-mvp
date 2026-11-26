@@ -85,7 +85,7 @@ export default function WeeklyChallenge() {
           <p>{localDate(period.startsAt, 'en-GB')} — {localDate(period.endsAt, 'en-GB')} ({Intl.DateTimeFormat().resolvedOptions().timeZone})</p>
           <p>{period.admissionOpen ? `The queue is open until ${localDate(period.queueClosesAt, 'en-GB')}.` : 'The queue is closed.'}</p>
           <p>Both players get the same five creatures and secretly choose three. Entry is free with a permanent Play Hub account.</p>
-          <p>Each player has ten minutes in total to make their moves. If your clock runs out, you lose the duel.</p>
+          <p>Each turn lasts 30 seconds. When time runs out, the turn passes. Let two of your turns pass in a row without making a move and you lose the duel.</p>
           <p>You start each edition with an Elo rating of 1,500. Only duels that finish during the edition count, up to two per pair of opponents in 24 hours.</p>
           {!actor && !loading && period.admissionOpen ? (
             <Link className="text-cyan-200 underline" to="/#account">Sign in with a Play Hub account</Link>

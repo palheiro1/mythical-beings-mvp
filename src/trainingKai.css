@@ -417,3 +417,6 @@
   .wd-kai .wd-turn-callout, .wd-kai .wd-clock-flare { animation: none; }
   .wd-match-header[data-clock-warning=amber] .wd-match-clock { color: var(--wd-clock-glow); }
 }
+
+.wd-kai .wd-hidden-hands { padding:10px 14px; }
+.wd-kai .wd-hidden-hands p { display:flex; justify-content:space-between; gap:6px; padding:5px 0; }

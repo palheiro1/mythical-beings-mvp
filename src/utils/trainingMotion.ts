@@ -71,7 +71,8 @@ export function trainingMotion(previous: GameState, current: GameState, showPend
   return [...moves, ...rotations, ...discards];
 }
 
-export type DuelView = GameState | CompetitiveProjection;
+export type ArenaProjection = Pick<CompetitiveProjection, 'matchId' | 'stateVersion' | 'players' | 'events' | 'pendingEffect' | 'mode' | 'outcome' | 'clock' | 'turn' | 'decisionPlayerId' | 'currentPlayerId' | 'actionsTakenThisTurn' | 'actionsPerTurn' | 'phase' | 'market' | 'discardPile' | 'deckCount' | 'serverNow'>;
+export type DuelView = GameState | ArenaProjection;
 export const duelId = (game: DuelView) => ('gameId' in game ? game.gameId : game.matchId);
 
 export function duelMotion(previous: DuelView, current: DuelView, showChoices: boolean): MotionStep[] {
@@ -93,8 +94,9 @@ function describeTarget(target: CueTarget) {
 function zoneName(zone: string, viewer: string) {
   if (zone.startsWith('slot:') || zone.startsWith('creature:')) {
     const [, owner, id] = zone.split(':');
-    return `${owner === viewer ? 'your' : 'opposing'} ${getDisplayCardById(id)?.name ?? 'Creature'}`;
+    return `${viewer === 'spectator' ? (owner === '0' ? 'Player 1’s' : 'Player 2’s') : owner === viewer ? 'your' : 'opposing'} ${getDisplayCardById(id)?.name ?? 'Creature'}`;
   }
+  if (viewer === 'spectator' && zone.startsWith('hand:')) return zone === 'hand:0' ? 'Player 1’s hand' : 'Player 2’s hand';
   if (zone.startsWith('hand:')) return zone === `hand:${viewer}` ? 'your hand' : 'opponent’s hand';
   return ({ market: 'Market', discard: 'Discards', deck: 'Deck' } as Record<string, string>)[zone] ?? '';
 }
@@ -113,7 +115,7 @@ export function describeMotion(step: MotionStep, viewer?: string): string {
   }
   if (step.kind === 'rotate') return `${step.to.card.name} · ${step.to.card.rotation ?? 0}°`;
   const side =
-    step.target.startsWith('power:') && viewer ? (step.target === `power:${viewer}` ? 'your ' : 'opponent’s ') : '';
+    step.target.startsWith('power:') && viewer ? (viewer === 'spectator' ? (step.target === 'power:0' ? 'Player 1’s ' : 'Player 2’s ') : step.target === `power:${viewer}` ? 'your ' : 'opponent’s ') : '';
   const score =
     step.before === undefined || step.after === undefined
       ? ''
@@ -138,9 +140,7 @@ export function describeMotion(step: MotionStep, viewer?: string): string {
   const cards = step.targets?.map((t) => t.label).join(', ') ?? '';
   const hand =
     viewer && step.targets?.[0]?.destination?.startsWith('hand:')
-      ? step.targets[0].destination === `hand:${viewer}`
-        ? 'your hand'
-        : 'opponent’s hand'
+      ? zoneName(step.targets[0].destination, viewer)
       : 'hand';
   switch (step.action) {
     case 'draw':
