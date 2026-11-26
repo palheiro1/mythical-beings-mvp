@@ -55,12 +55,12 @@ const outcomeReasons = {
   draw: 'The duel ended in a draw.',
 };
 
-export default function ChallengeArena({ projection, playerId, lobbyPath, friendDuel = false, sending, retryable, error, send }: {
-  projection: CompetitiveProjection; playerId: string; lobbyPath: string; friendDuel?: boolean; sending: boolean; retryable: boolean;
+export default function ChallengeArena({ projection, playerId, lobbyPath, casualDuel = false, sending, retryable, error, send }: {
+  projection: CompetitiveProjection; playerId: string; lobbyPath: string; casualDuel?: boolean; sending: boolean; retryable: boolean;
   error: string; send: (command?: CompetitiveCommand) => Promise<unknown>;
 }) {
-  const modeName = friendDuel ? 'Friend duel' : 'Weekly challenge';
-  const lobbyLabel = friendDuel ? 'Friend duels' : 'Standings';
+  const modeName = casualDuel ? 'Casual duel' : 'Weekly challenge';
+  const lobbyLabel = casualDuel ? 'Player duels' : 'Standings';
   const [tab, setTab] = useState<TrayTab>('market');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [inspection, setInspection] = useState<DisplayCard | null>(null);
@@ -94,7 +94,7 @@ export default function ChallengeArena({ projection, playerId, lobbyPath, friend
   };
 
   return <div ref={root} className={`wd wd-match wd-confluence ${direct ? 'wd-direct' : ''}`} data-active-side={activeSide}>
-    <h1 className="sr-only">{friendDuel ? 'Wisdom Duel — Friend duel' : 'Wisdom Duel — Weekly Challenge duel'}</h1>
+    <h1 className="sr-only">{casualDuel ? 'Wisdom Duel — Casual duel' : 'Wisdom Duel — Weekly Challenge duel'}</h1>
     <div ref={layer} className="wd-motion-layer" aria-hidden="true" inert />
     <Scorebar projection={projection} mine={mine} rival={rival} />
     <div className="wd-game-layout">
@@ -147,7 +147,7 @@ export default function ChallengeArena({ projection, playerId, lobbyPath, friend
         </div>
       </div>
       <div className="wd-action-buttons">
-        <Link to={lobbyPath} className="wd-icon-button" aria-label={lobbyLabel} title={lobbyLabel}>{friendDuel ? <Swords size={18} /> : <Trophy size={18} />}</Link>
+        <Link to={lobbyPath} className="wd-icon-button" aria-label={lobbyLabel} title={lobbyLabel}>{casualDuel ? <Swords size={18} /> : <Trophy size={18} />}</Link>
         {selected ? <button type="button" className="wd-icon-button" aria-label="Cancel card selection" onClick={() => setSelectedId(null)}><X size={18} /></button> : null}
         <button type="button" className="wd-discard-button" data-motion-anchor="discard" aria-label="Discard pile" onClick={() => setDialog('discard')}><Layers size={17} /><span>{projection.discardPile.length}</span><span className="wd-discard-label">Discards</span></button>
         <button type="button" className="wd-icon-button" aria-label="Game history" onClick={() => setDialog('history')}><History size={18} /></button>
@@ -157,7 +157,7 @@ export default function ChallengeArena({ projection, playerId, lobbyPath, friend
             : <button type="button" className="wd-button wd-button-primary" disabled={!canAct} onClick={() => void play({ type: 'end_turn' })}>End Turn <ArrowRight size={16} /></button>}
       </div>
     </footer>
-    <div className="wd-match-links"><Link className="wd-text-button" to={lobbyPath}>{friendDuel ? lobbyLabel : 'Challenge standings'}</Link><span>{modeName} · Play Hub</span></div>
+    <div className="wd-match-links"><Link className="wd-text-button" to={lobbyPath}>{casualDuel ? lobbyLabel : 'Challenge standings'}</Link><span>{modeName} · Play Hub</span></div>
 
     {hasResultDialog && outcome ? <TrainingDialog title={outcome.winnerId === null ? 'Draw' : outcome.winnerId === playerId ? 'Victory' : 'Defeat'} onClose={() => setResultDismissed(true)}>
       <p>{outcomeReasons[outcome.reason]}</p>

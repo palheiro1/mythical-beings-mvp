@@ -11,6 +11,8 @@
 .wd-button-primary { background:var(--wd-gold); color:#171510!important; border-color:var(--wd-gold); }
 .wd-button-primary:hover:not(:disabled) { background:#f6d89f; border-color:#f6d89f; }
 .wd-button:disabled { opacity:.4; }
+.duel-lobby-link { display:inline-flex; min-height:44px; align-items:center; padding:8px 16px; border:1px solid #475569; border-radius:7px; color:#d8e2eb; }
+.duel-lobby-link[aria-current=page] { color:#f1d9a2; border-color:#ba945a; background:#28231c; }
 .wd-icon-button { min-width:44px; padding:9px; }
 .wd-text-button { border:0; padding:8px 4px; color:var(--wd-gold)!important; font-size:13px; }
 .wd-eyebrow { font-size:11px; font-weight:600; letter-spacing:.14em; text-transform:uppercase; color:var(--wd-gold); }

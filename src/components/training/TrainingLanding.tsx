@@ -20,10 +20,13 @@ export default function TrainingLanding({ children }: { children: ReactNode }) {
         <div className="wd-hero-actions">
           <button className="wd-button wd-button-primary" onClick={() => navigate('/bot-selection?mode=guided')}><BookOpen size={18} />Learn to Play<ArrowRight size={18} /></button>
           <button className="wd-button" onClick={() => navigate('/bot-selection?mode=free')}>Practice</button>
-          {CASUAL_DUELS_ENABLED ? <Link className="wd-button" to="/duels"><Swords size={18} aria-hidden />Challenge a friend</Link> : null}
+          {CASUAL_DUELS_ENABLED ? <>
+            <Link className="wd-button" to="/duels/public"><Swords size={18} aria-hidden />Public duels</Link>
+            <Link className="wd-button" to="/duels">Challenge a friend</Link>
+          </> : null}
           {WEEKLY_CHALLENGE_ENABLED ? <Link className="wd-button" to="/challenge">View Weekly Challenge<ArrowRight size={18} aria-hidden /></Link> : null}
         </div>
-        <p className="wd-caption">{CASUAL_DUELS_ENABLED ? 'Play solo as a guest or use your Play Hub account to duel a friend.' : 'Solo play against the bot. No account or wallet needed.'}</p>
+        <p className="wd-caption">{CASUAL_DUELS_ENABLED ? 'Play solo as a guest or use your Play Hub account to duel another player.' : 'Solo play against the bot. No account or wallet needed.'}</p>
       </div>
       <div className="wd-hero-gallery" aria-label="Original Mythical Beings card art">
         {heroCards.map((card, i) => <figure key={card.id} className={`wd-hero-card wd-hero-card-${i}`}>
