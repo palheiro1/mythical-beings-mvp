@@ -87,7 +87,7 @@ describe('practice motion and combat cues', () => {
     game.players[0].field.forEach((slot, i) => { slot.knowledge = [attack, heal, second][i]; });
     game.presentationCues = [];
     const after = executeKnowledgePhase(game, 0);
-    const sources = after.presentationCues!.map(cue => cue.source);
+    const sources = after.presentationCues!.filter(cue => cue.kind !== 'effect').map(cue => cue.source);
     expect(sources).toContain(cardAnchor(HUMAN_ID, attack));
     expect(sources).toContain(cardAnchor(HUMAN_ID, heal));
     expect(new Set(sources).size).toBe(sources.length);
@@ -110,7 +110,7 @@ describe('practice motion and combat cues', () => {
     const next = trainingSessionReducer(s, { type: 'play', action });
     const { presentationCues, ...rest } = next.game;
     expect(rest).toEqual(normal);
-    expect(presentationCues).toEqual([]);
+    expect(presentationCues).toMatchObject([{ action: 'draw', source: cardAnchor(HUMAN_ID, card) }]);
     const selected = trainingSessionReducer(next, { type: 'select', instanceId: card.instanceId! });
     expect(trainingMotion(next.game, selected.game)).toEqual([]);
     s = trainingSessionReducer(next, { type: 'play', action });

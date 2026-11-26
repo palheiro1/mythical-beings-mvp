@@ -1,9 +1,10 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 import { COMPETITIVE_CATALOG, initializeCompetitiveMatch, projectMatch } from '@mythicalb/wisdom-duel-engine';
 import type { CompetitiveProjection } from '@mythicalb/wisdom-duel-engine';
 import ChallengeArena from '../../src/components/competition/ChallengeArena.js';
+import { effectScenario, resolveScenario } from '../browser/duelEffectScenarios.js';
 
 const matchId = 'a1f2d04c-5d42-4536-981b-0f23451791b8';
 const now = '2026-11-09T13:00:00.000Z';
@@ -25,6 +26,39 @@ function page(projection: CompetitiveProjection, actor: string) {
 }
 
 describe('weekly challenge arena', () => {
+  it('draws one pointer only while aiming and sends the matching Tulpar choice from the board', async () => {
+    const match = resolveScenario('Tulpar', await effectScenario('Tulpar', now), now);
+    const projection = projectMatch(match, 'north', now);
+    const send = page(projection, 'north');
+    const options = screen.getByRole('region', { name: 'Resolve the card effect' });
+    const adaro = within(options).getByRole('button', { name: 'Adaro' });
+    const kappa = document.querySelector<HTMLElement>('[data-motion-anchor="creature:north:kappa"]')!;
+    const rects = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function(this: HTMLElement) {
+      const left = this.dataset.motionAnchor?.endsWith(':tulpar') ? 310 : this.dataset.motionAnchor?.endsWith(':kappa') ? 170 : 30;
+      return new DOMRect(left, 100, 64, 90);
+    });
+    try {
+      expect(document.querySelector('.wd-choice-pointer')).toBeNull();
+      act(() => adaro.focus());
+      const adaroPath = document.querySelector('.wd-choice-shaft')?.getAttribute('d');
+      expect(adaroPath).toMatch(/^M /);
+      fireEvent.pointerOver(kappa);
+      expect(document.querySelectorAll('.wd-choice-pointer')).toHaveLength(1);
+      expect(document.querySelector('.wd-choice-shaft')?.getAttribute('d')).not.toBe(adaroPath);
+      fireEvent.pointerOut(kappa);
+      expect(document.querySelector('.wd-choice-pointer')).toBeNull();
+      fireEvent.pointerDown(kappa);
+      expect(document.querySelector('.wd-choice-pointer')).toBeInTheDocument();
+      fireEvent.click(kappa);
+      expect(send).toHaveBeenCalledExactlyOnceWith({
+        type: 'resolve_pending_effect', effectId: projection.pendingEffect!.id, choiceKey: projection.pendingEffect!.choices[1].key,
+      });
+      expect(document.querySelector('.wd-choice-pointer')).toBeNull();
+    } finally {
+      rects.mockRestore();
+    }
+  });
+
   it('shows the shared arena and turns market and turn controls into authoritative commands', async () => {
     const { actor, projection } = await fixture();
     const send = page(projection, actor);

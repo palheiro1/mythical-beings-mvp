@@ -3,7 +3,7 @@ import { getDisplayCardById, type DisplayCard } from './cardCatalog.js';
 import type { Knowledge } from '../game/types.js';
 
 export type { DisplayCard } from './cardCatalog.js';
-export type CycleKind = 'wisdom' | 'damage' | 'defense' | 'power' | 'rotate' | 'block' | 'limit' | 'effect';
+export type CycleKind = 'wisdom' | 'damage' | 'defense' | 'power' | 'rotate' | 'reverse' | 'block' | 'limit' | 'effect';
 export interface CardCycleStep { value: number | string; kind: CycleKind; label: string }
 
 export const isKnowledgeCard = (card: DisplayCard): card is Knowledge => 'cost' in card && 'effect' in card;
@@ -15,6 +15,7 @@ export function getCardCycle(card: DisplayCard): CardCycleStep[] {
   }
   const steps = Math.max(1, card.maxRotations ?? card.valueCycle?.length ?? 4);
   return Array.from({ length: steps }, (_, index): CardCycleStep => {
+    if (card.id === 'aerial5') return { value: 1, kind: 'reverse', label: 'Rotate opposing Creatures back one step' };
     const value = card.valueCycle?.[index];
     if (typeof value === 'number') {
       const kind = value < 0 ? 'defense' : 'damage';

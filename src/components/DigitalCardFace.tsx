@@ -1,11 +1,11 @@
-import { Ban, Heart, RotateCw, Shield, Sparkles, Swords, type LucideIcon } from 'lucide-react';
+import { Ban, Heart, RotateCcw, RotateCw, Shield, Sparkles, Swords, type LucideIcon } from 'lucide-react';
 import CardArtwork from './CardArtwork.js';
 import ElementIcon from './ElementIcon.js';
 import { getCardArtClass, getCardPresentation, type CycleKind, type DisplayCard } from '../utils/digitalCards.js';
 import '../digital-cards.css';
 
-const cycleIcons: Record<CycleKind, LucideIcon> = { wisdom: Sparkles, damage: Swords, defense: Shield, power: Heart, rotate: RotateCw, block: Ban, limit: Ban, effect: Sparkles };
-const shortKinds: Record<CycleKind, string> = { wisdom: 'WIS', damage: 'DMG', defense: 'DEF', power: 'PWR', rotate: 'ROT', block: 'BLOCK', limit: 'MAX', effect: 'EFFECT' };
+const cycleIcons: Record<CycleKind, LucideIcon> = { wisdom: Sparkles, damage: Swords, defense: Shield, power: Heart, rotate: RotateCw, reverse: RotateCcw, block: Ban, limit: Ban, effect: Sparkles };
+const shortKinds: Record<CycleKind, string> = { wisdom: 'WIS', damage: 'DMG', defense: 'DEF', power: 'PWR', rotate: 'ROT', reverse: 'BACK', block: 'BLOCK', limit: 'MAX', effect: 'EFFECT' };
 
 interface DigitalCardFaceProps {
   card: DisplayCard;
@@ -28,7 +28,7 @@ export default function DigitalCardFace({ card, rotation = card.rotation ?? 0, v
     <span className="dc-face">
       <span className="dc-header">
         {detail && <span className="dc-value" aria-label={view.valueLabel}>
-          <strong>{view.value}</strong><span>{view.knowledge ? 'WIS REQ' : 'WISDOM'}</span>
+          <strong data-motion-wisdom={view.knowledge ? undefined : ''}>{view.value}</strong><span>{view.knowledge ? 'WIS REQ' : 'WISDOM'}</span>
         </span>}
         <span className="dc-name-block"><span className="dc-name">{card.name}</span><span className="dc-type">{view.typeLabel}</span></span>
         {(detail || view.knowledge) && <span className="dc-element" aria-label={card.element}><ElementIcon element={card.element} aria-hidden="true" /></span>}
@@ -55,7 +55,7 @@ export default function DigitalCardFace({ card, rotation = card.rotation ?? 0, v
         </> : <>
           <span className="dc-summary">
             <span className="dc-primary" aria-label={view.valueLabel}>
-              <strong>{view.value}</strong><span>{view.knowledge ? 'Wis req' : 'Wisdom'}</span>
+              <strong data-motion-wisdom={view.knowledge ? undefined : ''}>{view.value}</strong><span>{view.knowledge ? 'Wis req' : 'Wisdom'}</span>
             </span>
             {view.knowledge ? <span className="dc-compact-stat" aria-label={view.current.label}>
               <CurrentIcon aria-hidden="true" /><span>{view.current.kind === 'limit' ? '≤' : ''}{view.current.value}</span><span className="dc-stat-kind">{shortKinds[view.current.kind]}</span>

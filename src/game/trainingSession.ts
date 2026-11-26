@@ -23,6 +23,7 @@ export interface TrainingSession {
 }
 export type TrainingEvent =
   | { type: 'play'; action: TrainingAction }
+  | { type: 'end-guided-turn' }
   | { type: 'select'; instanceId: string | null }
   | { type: 'start-guide' | 'show-bonus' | 'skip-guide' | 'continue' | 'resign' };
 
@@ -60,6 +61,17 @@ export function validateTrainingAction(session: TrainingSession, action: Trainin
 }
 
 export function trainingSessionReducer(session: TrainingSession, event: TrainingEvent): TrainingSession {
+  if (event.type === 'end-guided-turn') {
+    const pending = session.game.pendingEffect;
+    if (session.guide !== 'end' || !pending?.optional || pending.sourceKnowledgeName !== 'Tulpar') return session;
+    const skipped = trainingSessionReducer(session, { type: 'play', action: { type: 'RESOLVE_PENDING_EFFECT',
+      payload: { playerId: HUMAN_ID, resolution: { effectId: pending.id, skip: true } } } });
+    if (skipped.game.turn !== session.game.turn || skipped.game.pendingEffect || skipped.rejected) return skipped;
+    const ended = trainingSessionReducer(skipped, { type: 'play', action: { type: 'END_TURN', payload: { playerId: HUMAN_ID } } });
+    return { ...ended, game: { ...ended.game, presentationCues: [
+      ...skipped.game.presentationCues ?? [], ...ended.game.presentationCues ?? [],
+    ] } };
+  }
   if (event.type === 'start-guide') return session.guide === 'welcome' ? { ...session, guide: 'draw' } : session;
   if (event.type === 'show-bonus') return session.guide === 'strike' ? { ...session, guide: 'complete', tutorialCompleted: true } : session;
   if (event.type === 'skip-guide') return { ...session, guide: 'handoff', selectedId: null, feedback: '', rejected: false };

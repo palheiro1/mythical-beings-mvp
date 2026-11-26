@@ -51,6 +51,16 @@ describe('digital card information', () => {
     expect(screen.getByLabelText('Rotation 90 degrees, step 2 of 4')).toBeInTheDocument();
   });
 
+  it('shows reverse rotation on both faces of Migration', () => {
+    const migration = knowledges.find(card => card.name === 'Migration') as Knowledge;
+    const { rerender } = render(<DigitalCardFace card={migration} />);
+    expect(screen.getByLabelText('Rotate opposing Creatures back one step')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Damage 2')).not.toBeInTheDocument();
+    rerender(<PlayCardFace card={migration} />);
+    expect(screen.getByLabelText('Rotate opposing Creatures back one step')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Damage 2')).not.toBeInTheDocument();
+  });
+
   it('does not repeat a desktop creature’s Wisdom beneath its card', () => {
     const session = createTrainingSession(GUIDED_TEAM, 'guided', 'desktop-wisdom-review');
     render(<TrainingBoard session={session} onAction={vi.fn()} onInspect={vi.fn()} />);
