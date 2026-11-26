@@ -7,7 +7,6 @@ export default function WagerLobby() {
   const [params] = useSearchParams(),
     navigate = useNavigate(),
     { polygonWallet, connectPolygonWallet } = useAuth();
-  const casual = params.get('mode') === 'casual';
   const [stake, setStake] = useState(''),
     [room, setRoom] = useState(params.get('join') ?? ''),
     [busy, setBusy] = useState(false),
@@ -16,13 +15,7 @@ export default function WagerLobby() {
     setBusy(true);
     setError('');
     try {
-      const match = casual
-        ? join
-          ? await competitive.joinCasual(room.trim())
-          : await competitive.createCasual()
-        : join
-          ? await competitive.joinWager(room.trim())
-          : await competitive.createWager(stake);
+      const match = join ? await competitive.joinWager(room.trim()) : await competitive.createWager(stake);
       navigate(`/duel/${match.matchId}`);
     } catch (e) {
       setError(competitiveError(e));
@@ -35,27 +28,22 @@ export default function WagerLobby() {
       <Link className="text-cyan-200" to="/competition">
         ← Modos de jogo
       </Link>
-      <h1 className="text-4xl font-bold">{casual ? 'Encontro casual' : 'Duelos com aposta'}</h1>
+      <h1 className="text-4xl font-bold">Duelos com aposta</h1>
       <p>
-        {casual
-          ? 'Joga por convite, sem aposta e sem alterar a liga.'
-          : 'Cada carteira oferece cinco criaturas de toda a coleção elegível. Escolhe três. O vencedor recebe os dois depósitos GEM e uma carta utilizada pelo derrotado.'}
+        Cada carteira oferece cinco criaturas de toda a coleção elegível. Escolhe três. O vencedor recebe os dois depósitos GEM e uma carta utilizada pelo derrotado.
       </p>
-      {!casual ? (
-        <p>
-          A aposta não altera o Elo nem os prémios da liga. Precisas de cinco criaturas diferentes. Perder a
-          última cópia de uma carta pode impedir outro duelo, mas a liga gratuita continua acessível.
-        </p>
-      ) : null}
-      {!casual && !polygonWallet ? (
+      <p>
+        A aposta não altera o Elo nem os prémios da liga. Precisas de cinco criaturas diferentes. Perder a
+        última cópia de uma carta pode impedir outro duelo, mas a liga gratuita continua acessível.
+      </p>
+      {!polygonWallet ? (
         <ArenaButton onClick={() => void connectPolygonWallet().catch((e) => setError(competitiveError(e)))}>
           Associar carteira Polygon
         </ArenaButton>
       ) : null}
       <Panel className="space-y-4 p-6">
         <h2 className="text-xl font-bold">Criar uma sala</h2>
-        {!casual ? (
-          <label className="block">
+        <label className="block">
             Aposta de cada jogador em GEM
             <Input
               className="mt-2"
@@ -64,11 +52,10 @@ export default function WagerLobby() {
               onChange={(e) => setStake(e.target.value.replace(/\D/g, ''))}
               placeholder="Montante inteiro"
             />
-          </label>
-        ) : null}
+        </label>
         <ArenaButton
           loading={busy}
-          disabled={!casual && (!polygonWallet || !stake)}
+          disabled={!polygonWallet || !stake}
           onClick={() => void act(false)}
         >
           Criar convite
@@ -82,7 +69,7 @@ export default function WagerLobby() {
         </label>
         <ArenaButton
           loading={busy}
-          disabled={!room || (!casual && !polygonWallet)}
+          disabled={!room || !polygonWallet}
           onClick={() => void act(true)}
         >
           Entrar na sala

@@ -3,8 +3,9 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { LogIn, Mail, ShieldCheck, WalletCards } from 'lucide-react';
 import TrainingLanding from '../components/training/TrainingLanding.js';
 import { useAuth } from '../hooks/useAuth.js';
-import { ArenaButton, Input, Panel } from '../components/ui/index.js';
-import { TRAINING_PREVIEW_ENABLED } from '../config/release.js';
+import { ArenaButton, Input, PageShell, Panel } from '../components/ui/index.js';
+import { CASUAL_DUELS_ENABLED, TRAINING_PREVIEW_ENABLED } from '../config/release.js';
+import { duelSignInIntent, signedInDuelPath } from '../game/duelInvitation.js';
 
 function formatCooldown(seconds: number): string {
   const minutes = Math.floor(seconds / 60);
@@ -20,6 +21,7 @@ function formatCooldown(seconds: number): string {
 const Home: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const duelIntent = CASUAL_DUELS_ENABLED && duelSignInIntent(location.search);
   const {
     user,
     profile,
@@ -46,13 +48,15 @@ const Home: React.FC = () => {
   const magicLinkCoolingDown = magicLinkCooldownSeconds > 0;
 
   useEffect(() => {
-    if (!TRAINING_PREVIEW_ENABLED && !loading && user && !user.isGuest) {
-      navigate('/competition');
+    if (!loading && user && !user.isGuest) {
+      const duelPath = CASUAL_DUELS_ENABLED && signedInDuelPath(location.search);
+      if (duelPath) navigate(duelPath, { replace: true });
+      else if (!TRAINING_PREVIEW_ENABLED) navigate('/competition');
     }
     if (error) {
       setAuthError(error);
     }
-  }, [user, polygonWallet, loading, navigate, error]);
+  }, [user, loading, navigate, error, location.search]);
 
   useEffect(() => {
     if (!magicLinkCooldownUntil) return;
@@ -107,18 +111,18 @@ const Home: React.FC = () => {
 
   const accountPanel = (
 <div className="mt-5 space-y-4">
-              {!user ? (
+              {!user || user.isGuest ? (
                 <div className="border-t border-white/10 pt-4">
-                  <button
+                  {!duelIntent && <button
                     type="button"
                     onClick={() => setShowSignInOptions((visible) => !visible)}
                     className="min-h-11 rounded-lg px-3 text-sm font-bold uppercase tracking-normal text-cyan-200 transition hover:bg-white/[0.05] hover:text-cyan-100"
                     aria-expanded={showSignInOptions}
                   >
                     {showSignInOptions ? 'Hide Play Hub sign-in' : 'Optional: sign in to Play Hub'}
-                  </button>
+                  </button>}
 
-                  {showSignInOptions && (
+                  {(duelIntent || showSignInOptions) && (
                     <div className="mt-4 space-y-4">
                       <ArenaButton
                         type="button"
@@ -188,12 +192,12 @@ const Home: React.FC = () => {
                 </div>
               )}
 
-              <div className="flex items-center justify-center gap-2 text-sm text-slate-400">
+              {!duelIntent && <div className="flex items-center justify-center gap-2 text-sm text-slate-400">
                 <ShieldCheck className="h-4 w-4 text-cyan-200" aria-hidden />
                 <span>Solo training does not affect rankings or award competitive rewards.</span>
-              </div>
+              </div>}
 
-              {authError && showSignInOptions && (
+              {authError && (duelIntent || showSignInOptions) && (
                 <div className="rounded-xl border border-red-300/35 bg-red-500/10 p-4 text-sm text-red-100" role="alert">
                   {authError}
                 </div>
@@ -201,6 +205,15 @@ const Home: React.FC = () => {
             </div>
   );
 
+  if (duelIntent) return (
+    <PageShell contentClassName="max-w-xl">
+      <Panel id="account" className="space-y-2 p-6">
+        <h1 className="text-3xl font-bold">{duelIntent === 'new' ? 'Sign in to create a duel' : 'Sign in to join this duel'}</h1>
+        <p>Continue with your Play Hub account to return to the invitation.</p>
+        {accountPanel}
+      </Panel>
+    </PageShell>
+  );
   if (TRAINING_PREVIEW_ENABLED) return <TrainingLanding>{accountPanel}</TrainingLanding>;
 
   return (

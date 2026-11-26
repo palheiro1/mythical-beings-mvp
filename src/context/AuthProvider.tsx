@@ -1,3 +1,4 @@
+import { playHubRedirectUrl } from '../game/duelInvitation.js';
 import { analytics, track } from '../analytics/productAnalytics.js';
 import React, { useState, useEffect } from 'react';
 import type { LinkedWallet } from '@mythicalb/sdk';
@@ -242,7 +243,7 @@ class AuthStateManager {
 
     try {
       const { mythical } = await loadAuthServices();
-      await mythical.auth.signInWithMagicLink(normalizedEmail, window.location.origin);
+      await mythical.auth.signInWithMagicLink(normalizedEmail, playHubRedirectUrl());
       const nextCooldownUntil = Date.now() + MAGIC_LINK_COOLDOWN_MS;
       persistMagicLinkCooldown(normalizedEmail, nextCooldownUntil);
       this.updateState({

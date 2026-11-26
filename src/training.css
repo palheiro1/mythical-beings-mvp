@@ -179,6 +179,9 @@
  .wd-coach-controls { flex-direction:column; gap:0; }
  .wd-selection-grid { grid-template-columns:repeat(3,minmax(0,1fr)); }
 }
+@media (max-width:420px) {
+ .wd-brand span { display:none; }
+}
 @media (max-width:767px) {
  .wd-nav { padding:0 12px; height:56px; }
  .wd-brand { font-size:16px; gap:5px; }
@@ -195,8 +198,8 @@
  .wd-hero-card { max-width:155px; flex-basis:42%; }
  .wd-hero-card figcaption { font-size:10px; margin-top:8px; }
  .wd-lead { order:3; font-size:14px; line-height:1.7; }
- .wd-hero-actions { order:4; margin:20px 0 12px; width:100%; flex-wrap:nowrap; }
- .wd-hero-actions .wd-button { padding:12px; flex:1; min-height:48px; font-size:13px; white-space:nowrap; }
+ .wd-hero-actions { order:4; margin:20px 0 12px; width:100%; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); }
+ .wd-hero-actions .wd-button { padding:8px; min-height:48px; font-size:13px; }
  .wd-hero .wd-caption { order:5; font-size:11px; }
  .wd-intro-strip { grid-template-columns:1fr; gap:22px; padding:25px 0; }
  .wd-about { grid-template-columns:1fr; gap:20px; padding:35px 0 20px; }

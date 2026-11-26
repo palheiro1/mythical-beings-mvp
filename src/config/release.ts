@@ -1,6 +1,7 @@
 const pvpFlag = String(import.meta.env.VITE_ENABLE_PVP ?? '').trim().toLowerCase();
 
 export const PVP_ENABLED = pvpFlag === 'true';
+export const CASUAL_DUELS_ENABLED = PVP_ENABLED || import.meta.env.VITE_ENABLE_CASUAL_DUELS === 'true';
 export const WEEKLY_CHALLENGE_ENABLED = import.meta.env.VITE_ENABLE_WEEKLY_CHALLENGE === 'true';
 export const TRAINING_PREVIEW_ENABLED = !PVP_ENABLED;
 

@@ -58,6 +58,7 @@ export function competitiveError(error: unknown): string {
     season_unavailable: 'Esta temporada ainda não está aberta ou já fechou a fila.',
     queue_cooldown: 'Wait five minutes before joining the queue again.',
     already_active: 'You are already in the queue or in a duel.',
+    room_unavailable: 'This invitation has expired, was cancelled, or has already been used.',
     persistent_account_required: 'Sign in with a permanent Play Hub account.',
     selection_immutable: 'You have already confirmed your team.',
     selection_unavailable: 'The team selection timer has expired.',
