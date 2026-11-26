@@ -94,7 +94,7 @@ const CardDetailOverlay: React.FC<CardDetailOverlayProps> = ({ card, open, onClo
           <div>
             {contextLabel && <p className="text-xs text-cyan-200">{contextLabel}</p>}
             <h2 id="card-detail-title" className="font-display text-xl font-bold">{showBack ? 'Hidden card' : card.name}</h2>
-            {!showBack && <span className="text-xs text-slate-300">{presentation.knowledge ? 'Cost' : 'Wisdom'} {presentation.value}</span>}
+            {!showBack && <span className="text-xs text-slate-300">{presentation.valueLabel}</span>}
           </div>
           <button ref={closeButtonRef} type="button" className="grid h-11 w-11 shrink-0 place-items-center rounded-lg border border-white/15 text-slate-100 hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-cyan-200" onClick={onClose} aria-label="Close card details">
             <X className="h-5 w-5" aria-hidden />

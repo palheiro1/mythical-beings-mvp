@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { ArrowRight, BookOpen, Clock3, Flag, History, Layers, RotateCcw, Smartphone, X } from 'lucide-react';
-import creatureData from '../assets/creatures.json';
+import { creatures as creatureData } from '@mythicalb/wisdom-duel-engine/catalog';
 import { track } from '../analytics/productAnalytics.js';
 import { isValidBotCreatureSelection, readBotCreatureSelection, clearBotCreatureSelection } from '../utils/botSelection.js';
+import { formatGameHistoryEntry } from '../utils/gameHistory.js';
 import { GUIDED_TEAM, rememberTutorial, trainingModeFromSearch, type TrainingMode } from '../utils/trainingMode.js';
 import { BOT_ID, HUMAN_ID, createTrainingSession, trainingSessionReducer, type TrainingAction } from '../game/trainingSession.js';
 import { useTurnTimer } from '../hooks/useTurnTimer.js';
@@ -207,10 +208,10 @@ function PracticeMatch({ team, mode, gameId, rulesOpen, openRules, resumeDuel, o
     {rulesOpen && <TrainingDialog title="Duel rules" onClose={resumeDuel}>
       <p>Turn {game.turn} · Duel paused</p>
       <ul className="wd-rules-list">
-        <li>Each team’s three creatures share one Power total. Reduce your opponent’s Power to zero to win.</li>
-        <li>You normally have two actions each turn. Draw from the market, rotate a creature, or play Knowledge from your hand.</li>
-        <li>Rotating a creature advances its Wisdom. It can play Knowledge that costs no more than its current Wisdom.</li>
-        <li>At the start of your turn, active Knowledge resolves its effects and rotates. A different position can change what the card does.</li>
+        <li>Each team’s three Creatures share 20 starting Power. Reduce your opponent’s Power to zero to win.</li>
+        <li>You normally have two actions each turn. Draw from the Market, rotate a Creature, or play a Knowledge card from your hand.</li>
+        <li>Rotate a Creature to advance its Wisdom. You can play an Ally or a Spell on it if it meets the Wisdom requirement. It keeps its Wisdom.</li>
+        <li>During your Knowledge Phase, your Knowledge cards in play resolve at their current rotation, then rotate. On final rotation, they resolve and leave play.</li>
       </ul>
       <div className="wd-dialog-actions">
         <button type="button" className="wd-button wd-button-primary" onClick={resumeDuel}>Resume duel</button>
@@ -226,7 +227,7 @@ function PracticeMatch({ team, mode, gameId, rulesOpen, openRules, resumeDuel, o
       </div>
     </TrainingDialog>}
     {dialog === 'discard' && !pending && (!gameOver || resultDismissed) && <TrainingDialog title="Discard pile" onClose={() => setDialog(null)}><p>{game.discardPile.length ? `${game.discardPile.length} ${game.discardPile.length === 1 ? 'card' : 'cards'} · Most recent first` : 'Cards that leave play arrive here.'}</p><div className="wd-discard-grid">{[...game.discardPile].reverse().map(card => <button key={card.instanceId} className="wd-discard-card" aria-label={`Inspect discarded ${card.name}`} onClick={() => { setDialog(null); setInspection(card); }}><PlayCardFace card={card} /><span>{card.name}</span></button>)}</div></TrainingDialog>}
-    {dialog === 'history' && !pending && (!gameOver || resultDismissed) && <TrainingDialog title="Game history" onClose={() => setDialog(null)}><ol className="wd-history">{game.log.map((entry, index) => <li key={index}>{entry.split(HUMAN_ID).join('You').split(BOT_ID).join('Bot').replace(/^\[[^\]]+\]\s*/, '')}</li>)}</ol></TrainingDialog>}
+    {dialog === 'history' && !pending && (!gameOver || resultDismissed) && <TrainingDialog title="Game history" onClose={() => setDialog(null)}><ol className="wd-history">{game.log.map((entry, index) => <li key={index}>{formatGameHistoryEntry(entry, { [HUMAN_ID]: 'You', [BOT_ID]: 'Bot' })}</li>)}</ol></TrainingDialog>}
     {dialog === 'resign' && !pending && !gameOver && <TrainingDialog title="Concede this match?" onClose={() => setDialog(null)}><p>You can start another practice match at any time.</p><div className="wd-dialog-actions"><button className="wd-button" onClick={() => setDialog(null)}>Keep Playing</button><button className="wd-button wd-button-primary" onClick={() => { setDialog(null); dispatch({ type: 'resign' }); }}>Concede Match</button></div></TrainingDialog>}
     {gameOver && !rulesOpen && !resultDismissed && !inspection && !presenting && <TrainingDialog title={session.resigned ? 'Match conceded' : game.winner === HUMAN_ID ? 'Victory is yours.' : game.winner === BOT_ID ? 'The bot wins this duel.' : 'A draw between legends.'} onClose={() => setResultDismissed(true)}>
       <p className="wd-eyebrow">Practice complete · Turn {game.turn}</p><div className="wd-result-score"><span>You <strong>{Math.max(0, player.power)}</strong></span><span>Power</span><span>Bot <strong>{Math.max(0, bot.power)}</strong></span></div>

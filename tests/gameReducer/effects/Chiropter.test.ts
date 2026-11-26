@@ -35,7 +35,7 @@ describe('Chiropter (aerial4) Effect', () => {
     expect(result.players[1].power).toBe(19);
     expect(result.players[0].power).toBe(21);
     expect(result.log.some(log => log.includes('deals 1 damage') && log.includes('Chiropter'))).toBe(true);
-    expect(result.log.some(log => log.includes('grants 1 power to') && log.includes('Chiropter'))).toBe(true);
+    expect(result.log.some(log => log.includes('grants 1 Power to') && log.includes('Chiropter'))).toBe(true);
   });
 
   it('should deal 2 damage and gain 2 power at 90º rotation', () => {
@@ -51,7 +51,7 @@ describe('Chiropter (aerial4) Effect', () => {
     expect(result.players[1].power).toBe(18);
     expect(result.players[0].power).toBe(22);
     expect(result.log.some(log => log.includes('deals 2 damage') && log.includes('Chiropter'))).toBe(true);
-    expect(result.log.some(log => log.includes('grants 2 power to') && log.includes('Chiropter'))).toBe(true);
+    expect(result.log.some(log => log.includes('grants 2 Power to') && log.includes('Chiropter'))).toBe(true);
   });
 
   it('should deal 2 damage and gain 2 power at 180º rotation', () => {
@@ -67,7 +67,7 @@ describe('Chiropter (aerial4) Effect', () => {
     expect(result.players[1].power).toBe(18);
     expect(result.players[0].power).toBe(22);
     expect(result.log.some(log => log.includes('deals 2 damage') && log.includes('Chiropter'))).toBe(true);
-    expect(result.log.some(log => log.includes('grants 2 power to') && log.includes('Chiropter'))).toBe(true);
+    expect(result.log.some(log => log.includes('grants 2 Power to') && log.includes('Chiropter'))).toBe(true);
   });
 
   it('should deal 0 damage and gain 0 power at 270º rotation', () => {
@@ -82,6 +82,6 @@ describe('Chiropter (aerial4) Effect', () => {
     });
     expect(result.players[1].power).toBe(20);
     expect(result.players[0].power).toBe(20);
-    expect(result.log.some(log => log.includes('causes no damage or power gain') && log.includes('Chiropter'))).toBe(true);
+    expect(result.log.some(log => log.includes('causes no damage or Power gain') && log.includes('Chiropter'))).toBe(true);
   });
 });

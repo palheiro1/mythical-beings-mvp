@@ -88,7 +88,7 @@ describe('public practice journey', () => {
     expect(screen.getByText('2 / 2 actions left')).toBeInTheDocument();
     screen.getByRole('button', { name:'Draw Lepidoptera', exact:true }).focus();
     await user.keyboard(' ');
-    expect(screen.getByRole('heading', { name:'2. Grow your wisdom' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name:'2. Rotate Tarasca' })).toBeInTheDocument();
     screen.getByRole('button', { name:'Rotate Tarasca', exact:true }).focus();
     await user.keyboard('{Enter}');
     expect(screen.getByText('Bot’s turn')).toBeInTheDocument();
@@ -163,7 +163,7 @@ describe('public practice journey', () => {
     expect(screen.getByText('Bot’s turn')).toBeInTheDocument();
     expect(screen.getByText('Turn 1')).toBeInTheDocument();
     botTurn();
-    expect(screen.getByRole('heading', { name:'4. Play your knowledge' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name:'4. Play Lepidoptera' })).toBeInTheDocument();
     click('Select Lepidoptera'); rotate(true); rotate(false);
     expect(screen.getByRole('button', { name:'Select Lepidoptera' })).toHaveAttribute('aria-pressed', 'true');
     click('Play Lepidoptera on Tarasca');
@@ -191,12 +191,12 @@ describe('public practice journey', () => {
     click('Draw Lepidoptera');
     click('Rotate Tarasca');
     botTurn();
-    expect(screen.getByRole('heading', { name:'4. Play your knowledge' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name:'4. Play Lepidoptera' })).toBeInTheDocument();
     click('Select Lepidoptera');
     click('Play Lepidoptera on Tarasca');
     expect(screen.getByLabelText('Bot Power: 20')).toBeInTheDocument();
     expect(screen.getByLabelText('Your Power: 21')).toBeInTheDocument();
-    expect(screen.getByText(/End Turn to pass on this summon’s optional bonus/)).toBeInTheDocument();
+    expect(screen.getByText(/End Turn to skip Tulpar’s optional rotation/)).toBeInTheDocument();
     click('End Turn');
     botTurn();
     expect(screen.getByText(/Lepidoptera dealt 1 damage.*from 20 to 19/)).toBeInTheDocument();

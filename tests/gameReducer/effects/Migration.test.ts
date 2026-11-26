@@ -32,8 +32,7 @@ describe('Migration (aerial5) Effect', () => {
     result.players[1].creatures.forEach(creature => {
       expect(creature.rotation).toBe(0);
     });
-    // Accept both 'Migration' and 'Aerial5' in the log for flexibility
-    expect(result.log.some(log => (log.toLowerCase().includes('migration') || log.toLowerCase().includes('aerial5')) && log.toLowerCase().includes('rotated') && log.includes('90º'))).toBe(true);
+    expect(result.log).toContain('Migration rotated 1 opposing Creature back one step.');
   });
 
   it('should not reduce below 0º rotation', () => {

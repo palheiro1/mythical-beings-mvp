@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, Check, Shuffle } from 'lucide-react';
-import creatureData from '../assets/creatures.json';
+import { creatures as creatureData } from '@mythicalb/wisdom-duel-engine/catalog';
 import type { Creature } from '../game/types.js';
 import CardDetailOverlay from '../components/CardDetailOverlay.js';
 import TrainingCard, { type DisplayCard } from '../components/training/TrainingCard.js';

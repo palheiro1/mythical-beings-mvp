@@ -32,7 +32,7 @@ describe('Trempulcahue Passive', () => {
 
       // Passive log should appear indicating defense buff
       expect(stateAfter.log).toContain(
-        `[Passive Effect] Trempulcahue (Owner: ${p1Id}) grants +1 defense to summoned knowledge ${earthCard.name}.`
+        `[Passive Effect] Trempulcahue (Owner: ${p1Id}) grants +1 Defense to the Knowledge card ${earthCard.name}.`
       );
     });
 

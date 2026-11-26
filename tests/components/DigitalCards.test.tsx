@@ -17,12 +17,36 @@ const kappa = creatures.find(card => card.id === 'kappa') as Creature;
 const asteroid = knowledges.find(card => card.id === 'aquatic2') as Knowledge;
 
 describe('digital card information', () => {
+  it('matches the printed subtypes in the playable deck and the compendium', () => {
+    const allies = ['aerial1', 'aerial3', 'aerial4', 'aquatic2', 'aquatic4', 'aquatic5', 'terrestrial1', 'terrestrial2', 'terrestrial5'];
+    const spells = ['aerial2', 'aerial5', 'aquatic1', 'aquatic3', 'terrestrial3', 'terrestrial4'];
+    const { game } = createTrainingSession(GUIDED_TEAM, 'guided', 'catalog-types');
+    for (const catalog of [knowledges, [...game.market, ...game.knowledgeDeck]]) {
+      const ids = (type: string) => [...new Set(catalog.filter(card => card.type === type).map(card => card.id))].sort();
+      expect(ids('ally')).toEqual(allies);
+      expect(ids('spell')).toEqual(spells);
+    }
+  });
+
+  it('uses the current print details on old snapshots and preserves live values', () => {
+    const legacy = { ...asteroid, type: 'spell' as const, effect: 'Obsolete text', cost: 3, rotation: 90 };
+    const { rerender } = render(<DigitalCardFace card={legacy} variant="detail" />);
+    expect(screen.getByText('Water Ally')).toBeInTheDocument();
+    expect(screen.getByText(asteroid.effect)).toBeInTheDocument();
+    expect(screen.getByLabelText('Requires 3 Wisdom')).toBeInTheDocument();
+    expect(screen.queryByText('Obsolete text')).not.toBeInTheDocument();
+    rerender(<PlayCardFace card={legacy} />);
+    expect(screen.getByText('Water Ally')).toBeInTheDocument();
+    expect(screen.getByLabelText('Rotation 90 degrees, step 2 of 4')).toBeInTheDocument();
+    expect(legacy.type).toBe('spell');
+  });
+
   it('shows one desktop Wisdom value and preserves separate Knowledge cost and effect', () => {
     const { rerender } = render(<DigitalCardFace card={{ ...kappa, rotation: 180, currentWisdom: 5 }} />);
     expect(screen.getAllByLabelText('Wisdom 5')).toHaveLength(1);
     expect(screen.getAllByText('5', { exact: true })).toHaveLength(1);
     rerender(<DigitalCardFace card={asteroid} rotation={90} />);
-    expect(screen.getByLabelText('Cost 2')).toBeInTheDocument();
+    expect(screen.getByLabelText('Requires 2 Wisdom')).toBeInTheDocument();
     expect(screen.getByLabelText('Damage 1')).toBeInTheDocument();
     expect(screen.getByLabelText('Rotation 90 degrees, step 2 of 4')).toBeInTheDocument();
   });
@@ -39,7 +63,7 @@ describe('digital card information', () => {
     expect(screen.getAllByLabelText('Wisdom 5')).toHaveLength(1);
     expect(screen.getAllByText('5')).toHaveLength(1);
     rerender(<PlayCardFace card={asteroid} rotation={90} />);
-    expect(screen.getByLabelText('Cost 2')).toBeInTheDocument();
+    expect(screen.getByLabelText('Requires 2 Wisdom')).toBeInTheDocument();
     expect(screen.getByLabelText('Damage 1')).toBeInTheDocument();
     expect(screen.getByLabelText('Rotation 90 degrees, step 2 of 4')).toBeInTheDocument();
   });
@@ -56,10 +80,10 @@ describe('digital card information', () => {
 
   it('keeps cost separate from the changing attack/defense cycle', () => {
     const { rerender } = render(<DigitalCardFace card={asteroid} variant="detail" />);
-    expect(screen.getByLabelText('Cost 2')).toBeInTheDocument();
+    expect(screen.getByLabelText('Requires 2 Wisdom')).toBeInTheDocument();
     expect(screen.getByLabelText('0 degrees: Defense 1')).toHaveAttribute('aria-current', 'step');
     rerender(<DigitalCardFace card={asteroid} rotation={90} variant="detail" />);
-    expect(screen.getByLabelText('Cost 2')).toBeInTheDocument();
+    expect(screen.getByLabelText('Requires 2 Wisdom')).toBeInTheDocument();
     expect(screen.getByLabelText('90 degrees: Damage 1')).toHaveAttribute('aria-current', 'step');
     rerender(<DigitalCardFace card={asteroid} rotation={270} variant="detail" />);
     expect(screen.getByText('Final rotation')).toBeInTheDocument();
@@ -81,7 +105,7 @@ describe('digital card information', () => {
   it('shows power, limits and variable damage correctly when there is no numeric valueCycle', () => {
     const card = (id: string) => knowledges.find(item => item.id === id) as Knowledge;
     expect(getCardPresentation(card('aerial2'), 180).current).toMatchObject({ kind: 'power', value: 3 });
-    expect(getCardPresentation(card('terrestrial4'), 90).current).toMatchObject({ kind: 'limit', value: 1 });
+    expect(getCardPresentation(card('terrestrial4'), 90).current).toMatchObject({ kind: 'limit', value: 2 });
     expect(getCardPresentation(card('terrestrial3')).current).toMatchObject({ kind: 'damage', value: 'W' });
     expect(getCardPresentation(card('aquatic1')).cycle).toHaveLength(1);
     expect(getCardPresentation(card('aquatic3')).cycle).toHaveLength(2);
@@ -113,6 +137,6 @@ describe('digital card information', () => {
     expect(screen.getByRole('dialog', { name: 'Hidden card' })).toBeInTheDocument();
     expect(screen.queryByText('Asteroid')).not.toBeInTheDocument();
     expect(screen.queryByRole('img', { name: 'Asteroid' })).not.toBeInTheDocument();
-    expect(screen.queryByLabelText('Cost 2')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Requires 2 Wisdom')).not.toBeInTheDocument();
   });
 });

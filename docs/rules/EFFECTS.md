@@ -6,16 +6,7 @@ The effects of Knowledge cards (Spells/Allies) in the Mythical Beings MVP are im
 
 ## Standardized Effect Triggers
 
-All knowledge card effects are now mapped to a standardized set of triggers, fully documented in `TRIGGERS.md`:
-
-- **onSummon**: When the card is summoned/enters play.
-- **onPhase**: Each knowledge phase (rotation step).
-- **onFinalRotation**: When the card leaves play due to reaching its max rotation.
-- **whileInPlay**: As long as the card remains on the field.
-- **TURN_START**: At the start of a player's turn (for passives).
-- **AFTER_PLAYER_SUMMON / AFTER_OPPONENT_SUMMON**: After a player or opponent summons a knowledge card.
-- **AFTER_PLAYER_DRAW / AFTER_OPPONENT_DRAW**: After a player or opponent draws a card.
-- **KNOWLEDGE_LEAVE**: When a knowledge card leaves play (for passives that care about this event).
+Use the [timing table](TRIGGERS.md) for public terms and their engine identifiers. Both Allies and Spells use the same play action.
 
 Each effect function in `effects.ts` is responsible for handling the logic for the appropriate trigger(s). The reducer or phase logic ensures the correct trigger and context are passed.
 
@@ -37,7 +28,7 @@ Each effect function in `effects.ts` is responsible for handling the logic for t
   - The function can modify the game state (damage, defense, power, etc.) and always appends a detailed log message to `state.log` for user feedback and debugging.
 
 - **Effect Execution:**
-  - During the Knowledge Phase (`executeKnowledgePhase` in `rules.ts`), each summoned Knowledge card's effect function is called with the current context.
+  - During the Knowledge Phase (`executeKnowledgePhase` in `rules.ts`), the effect function of each of the active player’s Knowledge cards is called with the current context.
   - The effect function is responsible for applying its logic for the current rotation.
   - Effects that require special handling (e.g., "on summon", "on leave", "while in play") are noted in the code and may require additional logic in the reducer or UI.
 

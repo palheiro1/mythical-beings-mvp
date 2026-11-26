@@ -1,4 +1,6 @@
-# Card Effects Implementation Status
+# Historical card implementation checklist
+
+This early checklist records the original implementation work. For current card text and digital targets, use the [Knowledge card catalog](../../src/assets/knowledges.json), [Creature catalog](../../src/assets/creatures.json) and [digital rules](RULES.md).
 
 **Legend:**
 *   ✅: Implemented and working correctly based on available information.

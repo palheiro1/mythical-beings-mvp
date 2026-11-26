@@ -8,7 +8,7 @@ import { getCardGameSessionState, getGameDetails, lockCompetitiveCards, PLAYHUB_
 import { useAuth } from '../hooks/useAuth.js';
 import { NFTSelectionNavigationManager } from '../utils/NavigationManager.js';
 // --- Import the base creature data ---
-import creatureData from '../assets/creatures.json' with { type: 'json' };
+import { creatures as creatureData } from '@mythicalb/wisdom-duel-engine/catalog';
 import { ArenaButton, ErrorRecoveryPanel, Panel, SpinnerEmblem, StatusBadge } from '../components/ui/index.js';
 import { cn } from '../components/ui/cn.js';
 import { clearBotCreatureSelection, writeBotCreatureSelection } from '../utils/botSelection.js';

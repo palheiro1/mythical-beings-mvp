@@ -1,117 +1,41 @@
-# 🔮 Mythical Beings: A Strategic Card Game of Wisdom and Elemental Power
+# Wisdom Duel · Mythical Beings
 
 ![Game Banner](public/images/kukul.png)
 
-Enter a world where legendary creatures wield elemental knowledge. Build a team, rotate your beings to gather wisdom, and unleash powerful effects to outmaneuver your opponent.
+Build a team of three Creatures from the world of Mythical Beings. Draw Knowledge cards from a shared Market, rotate your Creatures and play Allies and Spells to reduce your opponent’s Power to zero.
 
-— Learn the rules in minutes. Master them over many duels.
+## Objective and setup
 
-## What Is Mythical Beings?
+Each player starts with 20 Power shared across their three Creatures. If both players reach zero or less simultaneously, the game is a draw. Five Knowledge cards start face up in the Market. Each Creature has an element, a passive ability and a Wisdom cycle. A Creature can hold one Knowledge card at a time.
 
-Mythical Beings is a fast, tactical, turn-based card game for two players. Each player commands three creatures (mythical beings) and equips them with Knowledge cards (spells/skills) from the Market. Rotate beings to gain wisdom and pay knowledge costs, trigger card effects and passives, and whittle down your opponent’s power to win.
+## Playing a turn
 
-## Objective
+In your **Knowledge Phase**, your Knowledge cards in play resolve at their current rotation, then rotate one step (90°). Some deal damage, provide Defense or grant Power. A card leaves play after its final rotation. Replacing a card also makes it leave play and can trigger a Creature’s passive ability.
 
-- Reduce your opponent’s power to 0.
-- If both players reach 0 power or less simultaneously, the game is a draw.
+In your **Action Phase**, you normally have two actions. **Draw from the Market** to add a card to your hand. **Rotate a Creature** to advance its Wisdom cycle. **Play a Knowledge card** from your hand on a Creature that meets its Wisdom requirement. If your hand exceeds five cards, discard down to five. **End Turn** lets you finish early.
 
-## Components At A Glance
+## Example turn
 
-- Creatures: Your three beings on the battlefield. Each has a passive ability and gains wisdom by rotating.
-- Knowledge Cards: Elemental cards (Aquatic/Water, Terrestrial/Earth, Aerial/Air). Played onto a specific creature’s slot. Each has a cost, an effect that depends on rotation, and eventually leaves play after a number of rotations.
-- Market: The shared row where players draw knowledge from.
-- Power: Your life total. When it reaches 0, you lose.
-- Hand: Knowledge cards you’re holding (max size 5).
+Draw Lepidoptera and rotate Tarasca from 0 Wisdom to 2. Next turn, play Lepidoptera on Tarasca. The Air Ally requires 1 Wisdom, so Tarasca keeps its 2 Wisdom and Lepidoptera gives you 1 Power on play.
 
-## Turn Structure (2 Actions Per Turn)
+## Passives and signature interactions
 
-Every turn flows through clear phases:
+- **Kappa** lets you play Water Knowledge cards without spending an action. **Dudugera** does the same for any Knowledge card played on it.
+- **Lisovik** deals 1 damage when one of your Earth Knowledge cards leaves play. **Tarasca** deals 1 damage when your opponent plays an Earth Knowledge card.
+- **Lafaic** can rotate another of your Knowledge cards when you play a Water card on it. **Zhar Ptitsa** lets damage from an Air Knowledge card on it bypass Defense.
 
-1) Knowledge Phase
-- All knowledge cards on the field rotate +90°.
-- Their effects trigger according to the card’s value cycle (see below).
-- Cards that reach their final rotation leave play (discard). “Leaves play” can trigger passives.
+## Strategy tips
 
-2) Action Phase
-- You have 2 actions by default. Typical actions:
-  - Draw 1 knowledge from the Market (if space in hand).
-  - Summon 1 knowledge from your hand onto one of your creatures.
-  - Rotate one of your creatures 90° to change its wisdom.
-  - End Turn (always allowed when it’s your turn).
+- Plan around rotations. The next step on a card’s cycle shows how much damage, Defense or Power to expect.
+- Time a replacement to trigger an ability when a Knowledge card leaves play.
+- Hurricane can block an opposing Creature. Fire can discard several opposing Knowledge cards in one Knowledge Phase.
+- Keep room in your hand for a Market draw. The hand limit is five.
 
-3) End Turn
-- Any end-of-turn effects resolve. Turn passes to your opponent.
+## Learn the cards
 
-Notes
-- You can’t take actions if it’s not your Action Phase.
-- Some passives can make specific summons free (don’t consume actions) or modify normal rules.
+The digital rules explain card types, actions, effect timing and the differences from the printed edition. [Digital rules](docs/rules/RULES.md) · [Card compendium](https://wisdomduel.mythicalbeings.io/how-to-play) · [Physical rulebook](public/RULEBOOK.pdf)
 
-## Core Mechanics
-
-Creatures and Wisdom
-- Each creature has a current wisdom value determined by its rotation (wisdom cycle).
-- Wisdom pays the cost to summon knowledge onto that creature’s slot.
-
-Summoning Knowledge
-- A creature may hold at most one knowledge card on its slot.
-- To summon: the creature’s current wisdom must be ≥ the knowledge cost.
-- Knowledge replacement is allowed: summoning onto an occupied slot discards the previous Knowledge.
-- Some slots may be blocked by effects (you can’t summon there while blocked).
-
-Rotation & Value Cycles
-- Each knowledge has a valueCycle, mapping rotation (0°/90°/180°/270°) to the effect’s strength or behavior.
-- During the Knowledge Phase, the effect uses the pre-increment rotation to determine values, then rotates +90°.
-- After a number of rotations (maxRotations), the knowledge leaves play (goes to discard).
-
-Leaves Play Triggers
-- When a knowledge leaves play, some creatures’ passives react. Example: Lisovik deals 1 damage to the opponent when its owner’s earth knowledge leaves play.
-
-Damage, Defense, and Power
-- Many effects deal damage directly to the opposing player’s power.
-- Some knowledge provides defense or modifies how damage is applied.
-- If multiple effects/passives trigger, the game resolves them deterministically and logs the sequence.
-
-Market & Hand
-- Draw from the Market into your hand (max hand size: 5).
-- The Market refills according to the game rules (see logs/effects for specifics in edge cases).
-
-## Example Turn
-
-Setup: You control Lisovik and two other beings. You’ve summoned an Earth knowledge onto one creature.
-
-1) Knowledge Phase
-- Your Earth knowledge triggers at its current rotation and then rotates. If it reaches its final rotation, it’s discarded. If it was yours and Earth, Lisovik may deal 1 damage on leave.
-
-2) Action Phase (2 actions)
-- Action 1: Rotate your second creature to gain wisdom.
-- Action 2: Summon an Air knowledge from your hand (you meet the cost thanks to the rotation).
-
-3) End Turn
-- Any pending effects resolve. It’s now your opponent’s turn.
-
-## Passives & Signature Interactions (Examples)
-
-- Lisovik (Earth synergy): When your Earth knowledge leaves play, deal 1 damage to the opponent.
-- Kappa: Summoning Aquatic knowledge can be a free action on Kappa (does not consume actions).
-- Dudugera: Summoning onto Dudugera can be free (specific conditions apply).
-- Zhar-Ptitsa: Start-of-turn draw; aerial damage may bypass defense in specific checks.
-- Tarasca: Punishes opponents when they summon terrestrial knowledge.
-- Lafaic: Rotates another friendly knowledge when you summon Aquatic onto Lafaic.
-
-These examples illustrate how passives shape your plan: time rotations, line up leaves-play triggers, and pressure your opponent’s power.
-
-## Strategy Tips
-
-- Plan around rotations: many effects peak at specific angles. Don’t waste a strong tick.
-- Prepare for leaves-play: set up passives that benefit when your cards rotate out.
-- Deny the opponent: block, discard, or rotate their board to disrupt timing.
-- Hand discipline: keep space for pivotal Market draws (max 5).
-
-## Learn the Cards
-
-- Rulebook PDF: public/RULEBOOK.pdf (visual reference of creatures and knowledges)
-- Digital rules (matches engine): docs/rules/RULES.md
-- Tests as specs: the tests in `tests/gameReducer` document edge cases and intended behaviors.
+The reducer tests cover individual card interactions and edge cases. [Card and turn tests](tests/gameReducer)
 
 ## Play Locally
 
@@ -220,7 +144,7 @@ requires a server-assigned organization role. League login needs a persistent
 account; a verified Polygon wallet is required only for prizes and wagers.
 
 The app and authoritative SDK use the exact vendored
-`@mythicalb/wisdom-duel-engine@1.0.0` and `@mythicalb/sdk@0.3.0` packages. Tactical
+`@mythicalb/wisdom-duel-engine@1.0.0` and `@mythicalb/sdk@0.4.0` packages. Tactical
 modules re-export the shared engine. Browsers submit intentions with command IDs
 and expected versions; private state, clocks, results, ratings and payments are
 committed by the server. The client recovers pending commands across reconnects.

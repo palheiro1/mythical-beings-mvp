@@ -14,8 +14,9 @@ export default function PlayCardFace({ card, rotation = card.rotation ?? 0 }: { 
     <span className={`dc-art-window ${getCardArtClass(card)}`}>
       <CardArtwork src={card.image} alt={card.name} className="dc-art-source" sizes="180px" />
     </span>
+    <span className="dp-type">{view.typeLabel}</span>
     <span className="dp-stats">
-      <span className="dp-primary" aria-label={`${view.knowledge ? 'Cost' : 'Wisdom'} ${view.value}`}><strong>{view.value}</strong><span className="dp-unit">{view.knowledge ? 'COST' : 'WIS'}</span></span>
+      <span className="dp-primary" aria-label={view.valueLabel}><strong>{view.value}</strong><span className="dp-unit">{view.knowledge ? 'REQ' : 'WIS'}</span></span>
       {view.knowledge ? <span className={`dp-effect dp-${view.current.kind}`} aria-label={view.current.label}><Effect aria-hidden="true" /><strong>{view.current.kind === 'limit' ? '≤' : ''}{view.current.value}</strong></span> : <ElementIcon element={card.element} className="dp-element" aria-label={card.element} />}
     </span>
     <span className="dp-ticks" aria-label={`Rotation ${view.step * 90} degrees, step ${view.step + 1} of ${view.cycle.length}${view.final ? ', final rotation' : ''}`}>

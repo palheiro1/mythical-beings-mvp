@@ -38,7 +38,7 @@ describe('Kappa Passive', () => {
       // Assert: actionsTakenThisTurn is still 0
       expect(stateAfterSummon.actionsTakenThisTurn).toBe(initialActionsTaken);
       // Assert: Log message indicates free action
-      expect(stateAfterSummon.log).toContain(`[Passive Effect] Kappa allows summoning aquatic knowledge ${aquaticCard.name} without spending an action.`);
+      expect(stateAfterSummon.log).toContain(`[Passive Effect] Kappa lets you play ${aquaticCard.name} without spending an action.`);
       expect(stateAfterSummon.log).toContain(`Action SUMMON_KNOWLEDGE completed (Free). Actions: 0/2`); // Check specific log
     });
 
@@ -74,7 +74,7 @@ describe('Kappa Passive', () => {
       // Assert: actionsTakenThisTurn increased by 1
       expect(stateAfterSummon.actionsTakenThisTurn).toBe(initialActionsTaken + 1);
       // Assert: Log message for Kappa passive should NOT be present
-      expect(stateAfterSummon.log).not.toContain(`[Passive Effect] Kappa allows summoning`);
+      expect(stateAfterSummon.log).not.toContainEqual(expect.stringContaining('Kappa lets you play'));
       // Assert: Standard action log IS present
       expect(stateAfterSummon.log).toContain(`Action SUMMON_KNOWLEDGE completed. Actions: 1/2`);
     });
@@ -111,7 +111,7 @@ describe('Kappa Passive', () => {
       // Assert: actionsTakenThisTurn increased by 1 for the opponent (current player)
       expect(stateAfterSummon.actionsTakenThisTurn).toBe(initialActionsTaken + 1);
       // Assert: Log message for Kappa passive should NOT be present
-      expect(stateAfterSummon.log).not.toContain(`[Passive Effect] Kappa allows summoning`);
+      expect(stateAfterSummon.log).not.toContainEqual(expect.stringContaining('Kappa lets you play'));
       // Assert: Standard action log IS present
       expect(stateAfterSummon.log).toContain(`Action SUMMON_KNOWLEDGE completed. Actions: 1/2`);
     });

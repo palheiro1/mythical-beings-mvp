@@ -1,7 +1,8 @@
 /* The phone play face gives the artwork its own square, clear of controls. */
-.dc-frame.dc-play { height:auto; padding:0; display:grid; grid-template-columns:minmax(0,1fr); grid-template-rows:auto 22px 3px; border:1px solid color-mix(in srgb,var(--dc-accent) 65%,#344151); border-radius:6px; overflow:hidden; background:var(--dc-bottom); box-shadow:0 2px 5px #0005; }
+.dc-frame.dc-play { height:auto; padding:0; display:grid; grid-template-columns:minmax(0,1fr); grid-template-rows:auto auto 22px 3px; border:1px solid color-mix(in srgb,var(--dc-accent) 65%,#344151); border-radius:6px; overflow:hidden; background:var(--dc-bottom); box-shadow:0 2px 5px #0005; }
 .dc-play .dc-art-window { width:100%; aspect-ratio:1; min-height:0; border:0; border-radius:0; }
 .dc-play .dc-art-source { border-radius:0; }
+.dp-type { padding:2px 3px 0; color:var(--dc-accent); font-size:9px; line-height:1.1; text-align:center; }
 .dp-stats { display:flex; align-items:center; justify-content:space-between; gap:3px; padding:0 5px; color:var(--dc-accent); }
 .dp-primary,.dp-effect { display:flex; align-items:center; gap:3px; line-height:1; }
 .dp-primary { color:#ffe2a2; }
