@@ -12,8 +12,7 @@ function renderFlow(path = '/bot-game?mode=guided') {
 }
 const click = (name: string) => fireEvent.click(screen.getByRole('button', { name, exact: true }));
 function finishIntro() {
-  click('Next');
-  click('Next');
+  for (let page = 1; page < 6; page++) click('Next');
   click('Start lesson');
 }
 
@@ -21,41 +20,63 @@ beforeEach(() => { vi.useFakeTimers(); localStorage.clear(); sessionStorage.clea
 afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); });
 
 describe('training introduction', () => {
-  it('shows three illustrated introductions and lets the player revisit the example', () => {
+  it('explains the duel before launching the untouched guided match', () => {
     renderFlow();
-    expect(screen.getByRole('dialog')).toHaveAccessibleName('Bring the bot’s Power to zero.');
-    const team = screen.getByRole('figure', { name: 'Your Creatures and their shared Power' });
-    expect(team).toHaveTextContent('Tarasca, Adaro, Tulpar');
-    expect(team).toHaveTextContent('20Shared team Power');
-    expect(screen.getByText('1 / 3')).toBeInTheDocument();
+    const dialog = screen.getByRole('dialog');
+    expect(dialog).toHaveAccessibleName('Bring the bot’s Power to zero.');
+    expect(screen.getByText('1 / 6')).toBeInTheDocument();
+    const teams = screen.getByRole('figure', { name: 'Both teams and their shared Power' });
+    expect(teams).toHaveTextContent('Tarasca, Adaro, Tulpar');
+    expect(within(teams).getAllByText('20 Power')).toHaveLength(2);
+
     click('Next');
-    expect(screen.getByRole('dialog')).toHaveAccessibleName('How a turn works');
-    expect(screen.getByText('2 / 3')).toBeInTheDocument();
-    const phases = within(screen.getByRole('list', { name: 'Turn order' })).getAllByRole('listitem');
-    expect(phases).toHaveLength(2);
-    expect(within(phases[0]).getByRole('heading', { name: 'Knowledge Phase' })).toBeInTheDocument();
-    expect(phases[0]).toHaveTextContent('Your Knowledge cards in play take effect automatically at the start of your turn, then rotate one step');
-    expect(phases[0]).toHaveTextContent('Lepidoptera in play');
-    expect(phases[0]).toHaveTextContent('1 damage');
-    expect(within(phases[1]).getByRole('heading', { name: 'Action Phase' })).toBeInTheDocument();
-    expect(phases[1]).toHaveTextContent('two actions. Card effects can change that number');
+    expect(dialog).toHaveAccessibleName('From the Market to your board');
+    expect(screen.getByRole('figure', { name: 'Map of the practice arena' })).toHaveTextContent('Market');
+    expect(dialog).toHaveTextContent('Each Creature can hold one Knowledge card at a time');
+
+    click('Next');
+    expect(dialog).toHaveAccessibleName('Two phases per turn');
+    const cycle = screen.getByRole('figure', { name: 'Explore the turn cycle' });
+    expect(cycle).toHaveTextContent('Your turn, Knowledge Phase.');
+    click('See your actions');
+    expect(cycle).toHaveTextContent('Your turn, Action Phase.');
+    click('Pass to the bot');
+    expect(cycle).toHaveTextContent('Bot’s turn, Knowledge Phase.');
+    click('See the bot’s actions');
+    expect(cycle).toHaveTextContent('Bot’s turn, Action Phase.');
+    click('Return to your turn');
+    expect(cycle).toHaveTextContent('Your turn, Knowledge Phase.');
+    expect(dialog).toHaveTextContent('two, though card effects can change that number');
+
+    click('Next');
+    expect(dialog).toHaveAccessibleName('Choose your actions');
+    const actions = screen.getByRole('figure', { name: 'Two actions in the opening turn' });
+    expect(actions).toHaveTextContent('Draw Lepidoptera');
+    expect(actions).toHaveTextContent('Rotate Tarasca');
+    expect(dialog).toHaveTextContent('End Turn');
+
+    click('Next');
     const example = screen.getByRole('figure', { name: 'Try a rotation with the lesson cards' });
     expect(example).toHaveTextContent('Air Ally');
     expect(example).toHaveTextContent('Lepidoptera requires 1 Wisdom. Tarasca has 0.');
     click('Try rotating Tarasca');
-    expect(screen.getByText('Tarasca can now play Lepidoptera and keep its 2 Wisdom.')).toBeInTheDocument();
+    expect(example).toHaveTextContent('Tarasca can now play Lepidoptera and keep its 2 Wisdom.');
+
     click('Next');
-    expect(screen.getByRole('dialog')).toHaveAccessibleName('Draw from the Market');
-    expect(screen.getByRole('dialog')).toHaveTextContent('the marked Air Ally');
-    expect(screen.getByText('3 / 3')).toBeInTheDocument();
-    expect(screen.getByRole('figure', { name: 'Map of the practice arena' })).toBeInTheDocument();
+    expect(screen.getByText('6 / 6')).toBeInTheDocument();
+    expect(dialog).toHaveAccessibleName('Follow one card across turns');
+    const timing = screen.getByRole('figure', { name: 'Lepidoptera across two of your turns' });
+    expect(timing).toHaveTextContent('On play, gain 1 Power.');
+    expect(timing).toHaveTextContent('Your next Knowledge Phase');
+    expect(timing).toHaveTextContent('1 damage to the bot');
     click('Back');
     expect(screen.getByRole('button', { name: 'Reset example' })).toBeInTheDocument();
-    click('Back');
-    expect(screen.getByRole('dialog')).toHaveAccessibleName('Bring the bot’s Power to zero.');
     expect(screen.queryByRole('complementary', { name: 'Guided lesson' })).not.toBeInTheDocument();
-    finishIntro();
+
+    click('Next'); click('Start lesson');
     expect(screen.getByText('2 / 2 actions left')).toBeInTheDocument();
+    expect(screen.getByLabelText('Your Power: 20')).toBeInTheDocument();
+    expect(screen.getByLabelText('Bot Power: 20')).toBeInTheDocument();
     click('Draw Lepidoptera');
     expect(screen.getByRole('img', { name: 'Tarasca’s Wisdom, from 0 to 2' })).toBeInTheDocument();
   });
@@ -78,7 +99,7 @@ describe('training introduction', () => {
     expect(screen.queryByRole('button', { name: 'Close dialog' })).not.toBeInTheDocument();
   });
 
-  it('focuses the first real draw control after the third introduction', () => {
+  it('focuses the first real draw control after the introduction finishes', () => {
     renderFlow();
     finishIntro();
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();

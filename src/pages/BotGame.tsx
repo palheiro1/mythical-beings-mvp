@@ -78,7 +78,7 @@ function PracticeMatch({ team, mode, gameId, rulesOpen, openRules, resumeDuel, o
   const orientationPaused = portrait && !allowPortrait;
   // Keep the introduction in match state so a change of orientation preserves progress.
   const [intro, setIntro] = useState<IntroProgress | null>(() =>
-    mode === 'guided' && !rulesOpen ? { step: 0, rotated: false } : null);
+    mode === 'guided' && !rulesOpen ? { step: 0, turnBeat: 0, rotated: false } : null);
   const introOpen = intro !== null;
   const introFinished = useRef(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -222,7 +222,7 @@ function PracticeMatch({ team, mode, gameId, rulesOpen, openRules, resumeDuel, o
     </footer>
     <div className="wd-match-links"><button className="wd-text-button" onClick={() => navigate('/bot-selection?mode=guided')}><RotateCcw size={14} />Repeat tutorial</button><span>Solo practice · No competitive rewards</span></div>
     <CardDetailOverlay card={inspection} open={!!inspection && !rulesOpen} onClose={closeInspection} contextLabel="Card details" />
-    {intro && <TrainingIntro team={player} opponent={bot} firstCard={game.market[0]} direct={directCards}
+    {intro && <TrainingIntro team={player} opponent={bot} market={game.market} direct={directCards}
       progress={intro} onProgress={setIntro} onFinish={() => { introFinished.current = true; setIntro(null); dispatch({ type: 'start-guide' }); }} />}
     {rulesOpen && <TrainingDialog title="Duel rules" onClose={resumeDuel}>
       <p>Turn {game.turn} · Duel paused</p>

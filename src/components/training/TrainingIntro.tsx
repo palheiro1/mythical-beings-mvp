@@ -1,152 +1,107 @@
-import { useRef } from 'react';
-import { ArrowLeft, ArrowRight, BookOpen, Check, Clock3, RotateCw } from 'lucide-react';
-import type { Creature, Knowledge, PlayerState } from '../../game/types.js';
-import { getCardArtClass, getCardPresentation } from '../../utils/digitalCards.js';
-import CardArtwork from '../CardArtwork.js';
-import DigitalCardFace from '../DigitalCardFace.js';
+import { useEffect, useRef } from 'react';
+import { ArrowLeft, ArrowRight, Clock3 } from 'lucide-react';
+import type { Knowledge, PlayerState } from '../../game/types.js';
+import { getCardPresentation } from '../../utils/digitalCards.js';
 import TrainingDialog from './TrainingDialog.js';
-
-const titles = ['Bring the bot’s Power to zero.', 'How a turn works', 'Draw from the Market'] as const;
+import { BoardMap, CardTiming, OpeningActions, Teams, TurnCycle, WisdomExample } from './TrainingIntroFigures.js';
 
 export interface IntroProgress {
   step: number;
+  turnBeat: number;
   rotated: boolean;
-}
-
-function TeamFigure({ team }: { team: PlayerState }) {
-  return <figure className="lesson-illustration lesson-team" aria-label="Your Creatures and their shared Power">
-    <div className="lesson-team-cards" aria-hidden="true">
-      {team.creatures.map(creature => (
-        <div className="lesson-team-card" key={creature.id}>
-          <DigitalCardFace card={creature} sizes="150px" />
-        </div>
-      ))}
-    </div>
-    <figcaption>
-      <span className="sr-only">{team.creatures.map(creature => creature.name).join(', ')}. </span>
-      <strong className="wd-power-value">{team.power}</strong>
-      <span>Shared team Power</span>
-    </figcaption>
-  </figure>;
-}
-
-function WisdomExample({ creature, card, rotated, onRotate }: {
-  creature: Creature; card: Knowledge; rotated: boolean; onRotate: () => void;
-}) {
-  const example = { ...creature, currentWisdom: undefined, rotation: rotated ? 90 : 0 };
-  const { value: wisdom } = getCardPresentation(example);
-  return <figure className="lesson-illustration lesson-example" aria-label="Try a rotation with the lesson cards">
-    <div className="lesson-example-pair" aria-hidden="true">
-      <div className="lesson-example-card">
-        <DigitalCardFace card={example} sizes="110px" />
-      </div>
-      {wisdom >= card.cost ? <Check size={20} /> : <RotateCw size={19} />}
-      <div className="lesson-example-card"><DigitalCardFace card={card} sizes="110px" /></div>
-    </div>
-    <figcaption aria-live="polite" aria-atomic="true">
-      {rotated
-        ? `${creature.name} can now play ${card.name} and keep its ${wisdom} Wisdom.`
-        : `${card.name} requires ${card.cost} Wisdom. ${creature.name} has ${wisdom}.`}
-    </figcaption>
-    <button type="button" className="wd-button lesson-try" onClick={onRotate}>
-      <RotateCw size={15} aria-hidden="true" />{rotated ? 'Reset example' : `Try rotating ${creature.name}`}
-    </button>
-  </figure>;
-}
-
-function TurnPhases({ card }: { card: Knowledge }) {
-  const { current } = getCardPresentation(card);
-  return <ol className="lesson-phases" aria-label="Turn order">
-    <li>
-      <span className="lesson-phase-number" aria-hidden="true">1</span>
-      <h3>Knowledge Phase</h3>
-      <p>Your Knowledge cards in play take effect automatically at the start of your turn, then rotate one step.</p>
-      <div className="lesson-phase-effect">
-        <span className={`dc-art-window ${getCardArtClass(card)}`} aria-hidden="true">
-          <CardArtwork src={card.image} alt="" className="dc-art-source" sizes="32px" />
-        </span>
-        <span>{card.name} in play</span>
-        <ArrowRight size={14} aria-hidden="true" />
-        <strong>{current.kind === 'damage' ? `${current.value} damage` : current.label}</strong>
-      </div>
-    </li>
-    <li>
-      <span className="lesson-phase-number" aria-hidden="true">2</span>
-      <h3>Action Phase</h3>
-      <p>You normally get <strong>two actions</strong>. Card effects can change that number. Choose to draw from the Market, rotate a Creature, or play a Knowledge card.</p>
-    </li>
-  </ol>;
-}
-
-function MapRow({ player, label }: { player: PlayerState; label: string }) {
-  return <div className="lesson-map-row">
-    <span>{label}</span>
-    <div className="lesson-map-cards">{player.creatures.map(card => (
-      <span key={card.id} className={`dc-art-window ${getCardArtClass(card)}`}>
-        <CardArtwork src={card.image} alt="" className="dc-art-source" sizes="40px" />
-      </span>
-    ))}</div>
-  </div>;
-}
-
-function BoardMap({ team, opponent, card, direct }: {
-  team: PlayerState; opponent: PlayerState; card: Knowledge; direct: boolean;
-}) {
-  return <figure className="lesson-illustration lesson-orientation" aria-label="Map of the practice arena">
-    <div className={`lesson-map ${direct ? 'lesson-map-tabs' : ''}`} aria-hidden="true">
-      <div className="lesson-map-clock"><Clock3 size={12} /> Clock</div>
-      <div className="lesson-map-coach"><BookOpen size={12} /> Coach</div>
-      {!direct && <div className="lesson-map-hand"><BookOpen size={18} /> Hand</div>}
-      <div className="lesson-map-board">
-        <MapRow player={opponent} label="Bot" />
-        <MapRow player={team} label="You" />
-      </div>
-      <div className="lesson-map-market">
-        <div className="lesson-map-trays">{direct && <span>Hand</span>}<strong>Market</strong></div>
-        <span className={`lesson-map-card dc-art-window ${getCardArtClass(card)}`}>
-          <CardArtwork src={card.image} alt="" className="dc-art-source" sizes="65px" />
-        </span>
-      </div>
-    </div>
-    <figcaption>
-      <span className="sr-only">The bot’s Creatures face yours. The turn clock is in the header. </span>
-      {direct ? 'Switch between Hand and Market using the tabs.' : 'Your hand is on the left. The Market is on the right.'}
-    </figcaption>
-  </figure>;
 }
 
 interface TrainingIntroProps {
   team: PlayerState;
   opponent: PlayerState;
-  firstCard: Knowledge;
+  market: Knowledge[];
   direct: boolean;
   progress: IntroProgress;
   onProgress: (value: IntroProgress) => void;
   onFinish: () => void;
 }
 
-export default function TrainingIntro({ team, opponent, firstCard, direct, progress, onProgress, onFinish }: TrainingIntroProps) {
-  const { step, rotated } = progress;
-  const title = titles[step];
+export default function TrainingIntro({ team, opponent, market, direct, progress, onProgress, onFinish }: TrainingIntroProps) {
+  const { step, turnBeat, rotated } = progress;
   const nextButton = useRef<HTMLButtonElement>(null);
-  const last = step === titles.length - 1;
-  const copy = [
-    <p>Your three Creatures share {team.power} Power. The bot starts with {opponent.power}. Deal damage with Creature abilities and Knowledge cards (Allies and Spells).</p>,
-    <TurnPhases card={firstCard} />,
-    <p>Your Creatures start with empty slots. For your first action, draw <strong>{firstCard.name}</strong>, the marked {getCardPresentation(firstCard).typeLabel}, from the Market into your hand.</p>,
+  const creature = team.creatures[0];
+  const card = market[0];
+  const pages = [
+    {
+      title: 'Bring the bot’s Power to zero.',
+      illustration: <Teams team={team} opponent={opponent} />,
+      copy: <>
+        <p>Your three <strong>Creatures</strong> share one total of <strong>{team.power} Power</strong>. The bot has three Creatures and {opponent.power} Power of its own.</p>
+        <p>Creature abilities and Knowledge cards can deal damage. Each point that gets past Defense takes 1 Power from the opposing team.</p>
+      </>,
+    },
+    {
+      title: 'From the Market to your board',
+      illustration: <BoardMap team={team} opponent={opponent} market={market} direct={direct} />,
+      copy: <>
+        <p>The shared <strong>Market</strong> starts with five face-up Knowledge cards. Each is an <strong>Ally</strong> or a <strong>Spell</strong>. Either player can draw one into their hand.</p>
+        <p>A card waits in your hand until you play it on a Creature. Each Creature can hold one Knowledge card at a time. Playing another there replaces it.</p>
+      </>,
+    },
+    {
+      title: 'Two phases per turn',
+      illustration: <TurnCycle team={team} opponent={opponent} beat={turnBeat}
+        onAdvance={next => onProgress({ ...progress, turnBeat: next })} />,
+      copy: <dl className="lesson-rules">
+        <dt>Knowledge Phase</dt>
+        <dd>Your Knowledge cards in play automatically apply the effect shown at their current rotation, then turn one step. Your Creatures start with empty slots.</dd>
+        <dt>Action Phase</dt>
+        <dd>You choose how to spend your actions. You normally get two, though card effects can change that number.</dd>
+        <dd className="lesson-rule-note">The bot takes both phases next. Then the turn comes back to you.</dd>
+      </dl>,
+    },
+    {
+      title: 'Choose your actions',
+      illustration: <OpeningActions creature={creature} card={card} />,
+      copy: <>
+        <dl className="lesson-rules">
+          <dt>Draw from the Market</dt><dd>Take a face-up Knowledge card into your hand.</dd>
+          <dt>Rotate a Creature</dt><dd>Advance to the next value on its Wisdom cycle.</dd>
+          <dt>Play a Knowledge card</dt><dd>Choose a card in your hand and a Creature with enough Wisdom.</dd>
+        </dl>
+        <p className="lesson-rule-note">Each move normally uses one action. You can repeat a move or choose <strong>End Turn</strong> early.</p>
+      </>,
+    },
+    {
+      title: 'Which cards can a Creature play?',
+      illustration: <WisdomExample creature={creature} card={card} rotated={rotated}
+        onRotate={() => onProgress({ ...progress, rotated: !rotated })} />,
+      copy: <>
+        <p>Each Creature has its own <strong>Wisdom</strong>. To play a Knowledge card, the Creature’s Wisdom must meet or exceed the card’s requirement.</p>
+        <p>Try rotating {creature.name} a quarter turn. Compare its new Wisdom with the requirement on {card.name}. Playing the card leaves the Creature’s Wisdom intact.</p>
+      </>,
+    },
+    {
+      title: 'Follow one card across turns',
+      illustration: <CardTiming card={card} />,
+      copy: <>
+        <p>{card.name} is an <strong>{getCardPresentation(card).typeLabel}</strong>. Play it on {creature.name} to trigger its <strong>On play</strong> effect. It stays there through the bot’s turn.</p>
+        <p>During <strong>your next Knowledge Phase</strong>, it deals damage and rotates. After its final rotation, the card goes to the discard pile.</p>
+      </>,
+    },
   ];
-  return <TrainingDialog title={title} className="lesson-opening">
-    {step === 0 && <TeamFigure team={team} />}
-    {step === 1 && <WisdomExample creature={team.creatures[0]} card={firstCard} rotated={rotated}
-      onRotate={() => onProgress({ step, rotated: !rotated })} />}
-    {step === 2 && <BoardMap team={team} opponent={opponent} card={firstCard} direct={direct} />}
+  const page = pages[step];
+  const last = step === pages.length - 1;
+
+  useEffect(() => {
+    const dialog = nextButton.current?.closest<HTMLElement>('[role="dialog"]');
+    if (dialog) dialog.scrollTop = 0;
+  }, [step]);
+
+  return <TrainingDialog title={page.title} className="lesson-opening">
+    {page.illustration}
     <div className="lesson-opening-copy">
-      <div aria-live="polite" aria-atomic="true">
-        <span className="sr-only">Introduction step {step + 1} of {titles.length}. {title} </span>
-        {copy[step]}
+      <div className="lesson-explanation" aria-live="polite" aria-atomic="true">
+        <span className="sr-only">Introduction step {step + 1} of {pages.length}. {page.title} </span>
+        {page.copy}
       </div>
       <div className="lesson-navigation">
-        <span className="lesson-progress" aria-hidden="true">{step + 1} / {titles.length}</span>
+        <span className="lesson-progress" aria-hidden="true">{step + 1} / {pages.length}</span>
         {step > 0 && <button type="button" className="lesson-back" onClick={() => {
           nextButton.current?.focus();
           onProgress({ ...progress, step: step - 1 });
@@ -156,7 +111,7 @@ export default function TrainingIntro({ team, opponent, firstCard, direct, progr
           {last ? 'Start lesson' : 'Next'} <ArrowRight size={16} aria-hidden="true" />
         </button>
       </div>
-      {last && <small><Clock3 size={14} aria-hidden="true" /> The clock is paused while you learn.</small>}
+      {last && <small><Clock3 size={14} aria-hidden="true" />The clock is paused. Your first move is to draw {card.name}.</small>}
     </div>
   </TrainingDialog>;
 }

@@ -16,8 +16,7 @@ function renderFlow(path = '/bot-game?mode=guided') {
 }
 const click = (name: string) => fireEvent.click(screen.getByRole('button', { name, exact: true }));
 function finishIntro() {
-  click('Next');
-  click('Next');
+  for (let page = 1; page < 6; page++) click('Next');
   click('Start lesson');
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
 }
@@ -175,13 +174,16 @@ describe('public practice journey', () => {
   });
   it('keeps the current introduction and example rotation across a portrait round-trip', () => {
     const rotate = orientation(); renderFlow();
-    click('Next'); click('Try rotating Tarasca');
+    click('Next'); click('Next'); click('See your actions');
+    click('Next'); click('Next'); click('Try rotating Tarasca');
     rotate(true);
     expect(screen.getByRole('heading', { name:'Turn your phone to play.' })).toBeInTheDocument();
     rotate(false);
-    expect(screen.getByRole('dialog')).toHaveAccessibleName('How a turn works');
+    expect(screen.getByRole('dialog')).toHaveAccessibleName('Which cards can a Creature play?');
     expect(screen.getByRole('button', { name:'Reset example' })).toBeInTheDocument();
-    click('Next'); click('Start lesson');
+    click('Back'); click('Back');
+    expect(screen.getByRole('button', { name: 'Pass to the bot' })).toBeInTheDocument();
+    click('Next'); click('Next'); click('Next'); click('Start lesson');
     expect(screen.getByRole('heading', { name:'Draw Lepidoptera' })).toBeInTheDocument();
   });
   it('pauses an active clock in portrait and resumes its remaining seconds without resetting the match', () => {
