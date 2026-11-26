@@ -1,14 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { ArrowLeft, Clock3, Eye } from 'lucide-react';
-import CardDetailOverlay from '../components/CardDetailOverlay.js';
-import { DuelBoard } from '../components/training/TrainingBoard.js';
-import TrainingCard from '../components/training/TrainingCard.js';
+import ChallengeArena from '../components/competition/ChallengeArena.js';
+import type { ArenaProjection } from '../utils/trainingMotion.js';
 import { PageShell } from '../components/ui/index.js';
 import { useSpectatorFeed } from '../hooks/useSpectatorFeed.js';
-import { duelKindNames, readWatchedDuel, type PublicCard, type Seat, type SpectatorSide, type WatchedDuel } from '../services/spectatorService.js';
-import { getDisplayCardById, type DisplayCard } from '../utils/cardCatalog.js';
-import '../spectator.css';
+import { readWatchedDuel, type PublicCard, type Seat, type SpectatorSide, type WatchedDuel } from '../services/spectatorService.js';
+import { getDisplayCardById } from '../utils/cardCatalog.js';
 
 const playerName = (seat: Seat) => `Player ${seat + 1}`;
 const finished = (frame: WatchedDuel | null) => frame?.status === 'finished';
@@ -18,7 +15,7 @@ function visibleCard(card: PublicCard) {
 }
 function boardSide(side: SpectatorSide, seat: Seat) {
   return {
-    id: String(seat),
+    id: String(seat), power: side.power, hand: { visibility: 'hidden' as const, count: side.handCount },
     creatures: side.creatures.flatMap(card => {
       const face = visibleCard(card);
       return face && 'passiveAbility' in face ? [face] : [];
@@ -45,6 +42,7 @@ function playLabel(event: WatchedDuel['events'][number]) {
     case 'rotate_knowledge': return who + 'rotated a Knowledge card' + (card ? ' on ' + card : '') + '.';
     case 'draw_knowledge': return who + 'drew from the Market.';
     case 'resolve_pending_effect': return who + 'resolved a card effect.';
+    case 'turn_timeout': return who + 'ran out of turn time.';
     case 'end_turn': return who + 'ended the turn.';
     case 'resign': return who + 'conceded.';
     case 'timeout': return 'A player ran out of time.';
@@ -54,62 +52,38 @@ function playLabel(event: WatchedDuel['events'][number]) {
   }
 }
 
-function Scores({ frame }: { frame: WatchedDuel }) {
-  const [elapsed, setElapsed] = useState(0);
-  useEffect(() => {
-    const received = performance.now();
-    setElapsed(0);
-    if (frame.clock.runningSeat === null) return;
-    const timer = window.setInterval(() => setElapsed(performance.now() - received), 250);
-    return () => clearInterval(timer);
-  }, [frame.serverNow, frame.clock.runningSeat]);
-  const atRead = Math.max(0, Date.parse(frame.serverNow) - Date.parse(frame.clock.updatedAt));
-  return <div className="ws-scores">{([0,1] as const).map(seat => {
-    const active = frame.clock.runningSeat === seat;
-    const seconds = Math.ceil(Math.max(0, frame.clock.remainingMs[seat] - (active ? atRead + elapsed : 0)) / 1000);
-    const time = `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
-    return <section className="ws-seat" key={seat} data-active={active} aria-label={playerName(seat)}>
-      <strong>{playerName(seat)}</strong><span className="ws-power" key={frame.players[seat].power}>{frame.players[seat].power} Power</span>
-      <small>{frame.players[seat].handCount} in hand</small><span className="ws-clock" aria-label={`${playerName(seat)} clock ${time}`}><Clock3 size={14} aria-hidden />{time}</span>
-    </section>;
-  })}</div>;
+function spectatorBoard(frame: WatchedDuel): ArenaProjection {
+  const pile = (cards: PublicCard[], zone: string) => cards.flatMap((card, index) => {
+    const face = visibleCard(card);
+    return face && 'cost' in face ? [{ ...face, instanceId: zone + '-' + index }] : [];
+  });
+  const reason = frame.outcome?.reason;
+  return {
+    matchId: frame.matchId, mode: frame.kind === 'weekly' ? 'casual' : frame.kind, stateVersion: frame.version,
+    players: [boardSide(frame.players[0], 0), boardSide(frame.players[1], 1)], market: pile(frame.market, 'market'),
+    discardPile: pile(frame.discard, 'discard'), deckCount: frame.deckCount, pendingEffect: null,
+    currentPlayerId: String(frame.currentSeat), decisionPlayerId: frame.clock.runningSeat === null ? null : String(frame.clock.runningSeat),
+    serverNow: frame.serverNow, turn: frame.turn, phase: frame.status === 'finished' ? 'gameOver' : frame.phase === 'knowledge' ? 'knowledge' : 'action',
+    actionsPerTurn: frame.actionsPerTurn, actionsTakenThisTurn: frame.actionsPerTurn - frame.actionsLeft,
+    clock: { updatedAt: frame.clock.updatedAt, turnMs: frame.clock.turnMs ?? undefined,
+      runningPlayerId: frame.clock.runningSeat === null ? null : String(frame.clock.runningSeat),
+      suspendedAt: frame.status === 'suspended' ? frame.clock.updatedAt : null,
+      remainingMs: { 0: frame.clock.remainingMs[0], 1: frame.clock.remainingMs[1] } },
+    outcome: frame.outcome && { reason: reason === 'resign' || reason === 'timeout' || reason === 'draw' ? reason : 'power',
+      winnerId: frame.outcome.winner === null ? null : String(frame.outcome.winner), finishedAt: frame.serverNow },
+    events: [...frame.events].reverse().flatMap(event => {
+      if (!event.cues?.length || event.kind === 'initialize') return [];
+      return [{ sequence: event.sequence, actorId: event.seat === null ? null : String(event.seat), at: frame.serverNow,
+        type: event.kind, cues: event.cues }];
+    }),
+  };
 }
 
 function Board({ frame }: { frame: WatchedDuel }) {
-  const [inspection, setInspection] = useState<DisplayCard | null>(null);
-  const [tray, setTray] = useState<'market'|'discard'>('market');
-  const close = useCallback(() => setInspection(null), []);
-  const cards = tray === 'market' ? frame.market : frame.discard;
-  const phase = frame.phase === 'knowledge' ? 'Knowledge phase' : frame.phase === 'action' ? 'Action phase' : null;
-  return <>
-    <header className="ws-heading"><h1>{duelKindNames[frame.kind]} <small>· {frame.matchId.slice(0,8).toUpperCase()}</small></h1>
-      <span className="ws-live" data-status={frame.status}><Eye size={16} aria-hidden />{frame.status === 'playing' ? 'Live' : frame.status === 'suspended' ? 'Paused' : 'Finished'}</span></header>
-    <Scores frame={frame} />
-    <div className="ws-turn" aria-live="polite"><strong>{turnLabel(frame)}</strong><span>Turn {frame.turn}
-      {frame.status === 'playing' && phase ? ` · ${phase}` : ''}
-      {frame.status === 'playing' && frame.phase === 'action' ? ` · ${frame.actionsLeft}/${frame.actionsPerTurn} actions left` : ''}</span></div>
-    <div className="ws-layout">
-      <DuelBoard direct player={boardSide(frame.players[0],0)} opponent={boardSide(frame.players[1],1)}
-        opponentLabel="Player 2’s Creatures" guidance="Player 1’s Creatures" onInspect={setInspection}/>
-      <aside className="ws-sidebar">
-        <section aria-label="Public cards"><div className="ws-trays">
-          <button type="button" aria-pressed={tray === 'market'} onClick={() => setTray('market')}>Market</button>
-          <button type="button" aria-pressed={tray === 'discard'} onClick={() => setTray('discard')}>Discard pile ({frame.discard.length})</button>
-        </div>
-          <div className="ws-cards">{cards.map((card,index) => {
-            const face = visibleCard(card);
-            return face ? <TrainingCard key={`${index}-${card.id}`} card={face} playFace onInspect={setInspection} /> : null;
-          })}</div>
-          {!cards.length && <p>{tray === 'market' ? 'The Market is empty.' : 'No discarded cards yet.'}</p>}
-          {tray === 'market' && <p>{frame.deckCount} cards in the deck</p>}
-        </section>
-        <section aria-label="Latest plays"><h2>Latest plays</h2>
-          {frame.events.length ? <ol>{frame.events.map(event => <li key={event.sequence}>{playLabel(event)}</li>)}</ol> : <p>The duel has just started.</p>}
-        </section>
-      </aside>
-    </div>
-    <CardDetailOverlay card={inspection} open={inspection !== null} onClose={close} contextLabel="Card details"/>
-  </>;
+  const projection = useMemo(() => spectatorBoard(frame), [frame]);
+  return <ChallengeArena projection={projection} lobbyPath="/watch" casualDuel={frame.kind === 'casual'}
+    observer={{ turnLabel: turnLabel(frame), latest: frame.events[0] ? playLabel(frame.events[0]) : 'Watching live',
+      history: <ol className="wd-history">{frame.events.map(event => <li key={event.sequence}>{playLabel(event)}</li>)}</ol> }} />;
 }
 
 function Watch({ matchId }: { matchId: string }) {
@@ -121,13 +95,11 @@ function Watch({ matchId }: { matchId: string }) {
     return frame;
   }, [matchId]);
   const { data, error, refresh } = useSpectatorFeed('wisdom-watch:' + matchId, read, finished);
-  return <section className="wd ws-watch" aria-label="Spectator view">
-    <Link className="ws-back" to="/watch"><ArrowLeft size={16} aria-hidden /> Live duels</Link>
-    {error && <div role="alert">The live board could not refresh. <button className="ws-retry" onClick={refresh}>Reconnect</button></div>}
-    {data === undefined && !error && <p role="status">Connecting to the live board…</p>}
-    {data === null && <p role="status">This duel is no longer live or has not started yet.</p>}
-    {data && <Board frame={data}/>}
-  </section>;
+  if (data) return <>{error && <div role="alert">Reconnecting to the live board…</div>}<Board frame={data} /></>;
+  return <PageShell><Link className="text-cyan-200 underline" to="/watch">Live duels</Link>
+    {error ? <div role="alert">The live board could not refresh. <button onClick={refresh}>Reconnect</button></div> :
+      <p role="status">{data === null ? 'This duel is no longer live or has not started yet.' : 'Connecting to the live board…'}</p>}
+  </PageShell>;
 }
 
 export default function SpectatorMatch() {

@@ -1,3 +1,5 @@
+import type { PublicMatchEvent } from '@mythicalb/wisdom-duel-engine';
+import type { PresentationCue } from '../game/presentation.js';
 import type { Database } from '@mythicalb/sdk';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { mythical } from './mythicalClient.js';
@@ -37,9 +39,9 @@ export interface WatchedDuel {
   market: PublicCard[];
   discard: PublicCard[];
   deckCount: number;
-  clock: { remainingMs: [number, number]; runningSeat: Seat | null; updatedAt: string };
+  clock: { turnMs?: number | null; remainingMs: [number, number]; runningSeat: Seat | null; updatedAt: string };
   outcome: { winner: Seat | null; reason: string } | null;
-  events: Array<{ sequence: number; seat: Seat | null; kind: string; creatureId: string | null }>;
+  events: Array<{ sequence: number; seat: Seat | null; kind: PublicMatchEvent['type'] | 'initialize'; creatureId: string | null; cues?: PresentationCue[] }>;
   serverNow: string;
 }
 

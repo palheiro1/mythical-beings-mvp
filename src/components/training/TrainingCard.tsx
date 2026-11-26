@@ -32,8 +32,8 @@ export default function TrainingCard({ card, onInspect, rotation = card.rotation
       aria-pressed={action?.pressed} title={action?.reason} data-guide-target={action?.guideTarget}>
       {playFace ? <PlayCardFace card={card} rotation={rotation} /> : <DigitalCardFace card={card} rotation={rotation} sizes={board ? '180px' : '(max-width: 767px) 250px, 360px'} />}
       {!playFace && !action && <span className="wd-card-detail-mark" aria-hidden="true"><Info size={13} /></span>}
-      {marketRow && <><span className="wd-market-row-name"><strong>{card.name}</strong><small>{getCardPresentation(card).typeLabel}</small></span><span className="wd-market-row-draw">Draw</span></>}
-      {playFace && !action && <span className="wd-play-caption">{caption}</span>}
+      {marketRow && <><span className="wd-market-row-name"><strong>{card.name}</strong><small>{getCardPresentation(card).typeLabel}</small></span>{action && <span className="wd-market-row-draw">Draw</span>}</>}
+      {playFace && !action && !marketRow && <span className="wd-play-caption">{caption}</span>}
       {!playFace && action?.replacement && <span className="wd-card-replacement">Replaces {action.replacement}</span>}
     </button>
     {action && <button type="button" className={marketRow ? 'wd-market-row-inspect' : playFace ? 'wd-play-caption' : 'wd-card-inspect'} aria-label={`Inspect ${card.name}`} onClick={() => onInspect({ ...card, rotation })}>{playFace && !marketRow ? caption : <Info size={16} aria-hidden="true" />}</button>}

@@ -90,6 +90,21 @@ export function useCompetitiveMatch(matchId: string, playerId: string) {
       void playHubSupabase.removeChannel(channel);
     };
   }, [matchId, playerId, storageKey, refresh]);
+  // Ask the authority to resolve the deadline, even if the other player has left.
+  const projection = data?.projection;
+  useEffect(() => {
+    const clock = projection?.clock;
+    const seat = clock?.runningPlayerId;
+    if (!projection || !clock?.turnMs || !seat || clock.suspendedAt || projection.outcome) return;
+    const remaining = Date.parse(clock.updatedAt) + clock.remainingMs[seat] - Date.parse(projection.serverNow);
+    const generation = epoch.current;
+    const timer = window.setTimeout(() => {
+      void competitive.invoke<WisdomMatchResponse>('command', { action: 'projection', matchId })
+        .then(next => { if (generation === epoch.current) accept(next); })
+        .catch(() => { /* The regular projection refresh and server reconciler also recover a lost connection. */ });
+    }, Math.max(250, remaining + 100));
+    return () => window.clearTimeout(timer);
+  }, [projection, matchId, accept]);
   const submit = useCallback(
     async (command?: CompetitiveCommand) => {
       if (busy.current || !alive.current) return;
@@ -163,7 +178,7 @@ export function useCompetitiveMatch(matchId: string, playerId: string) {
   return { data, error, sending, retryable, refresh, submit };
 }
 
-export function useMatchClock(projection: CompetitiveProjection | null) {
+export function useMatchClock(projection: Pick<CompetitiveProjection, 'clock' | 'serverNow'> | null) {
   const anchor = useRef(performance.now()),
     [elapsed, setElapsed] = useState(0);
   useEffect(() => {
@@ -171,11 +186,11 @@ export function useMatchClock(projection: CompetitiveProjection | null) {
     setElapsed(0);
     const timer = setInterval(() => setElapsed(performance.now() - anchor.current), 250);
     return () => clearInterval(timer);
-  }, [projection?.clock.updatedAt]);
+  }, [projection?.clock.updatedAt, projection?.serverNow]);
   return (id: string) =>
     Math.max(
       0,
       (projection?.clock.remainingMs[id] ?? 0) -
-        (projection?.clock.runningPlayerId === id && !projection.clock.suspendedAt ? elapsed : 0),
+        (projection?.clock.runningPlayerId === id && !projection.clock.suspendedAt ? elapsed + Math.max(0, Date.parse(projection.serverNow) - Date.parse(projection.clock.updatedAt)) : 0),
     );
 }
