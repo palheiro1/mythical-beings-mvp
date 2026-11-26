@@ -1,7 +1,7 @@
 # Digital card series
 
-The approved Kappa / Asteroid direction is applied to all 15 Beings and 15
-Knowledges. `DigitalCardFace` owns the shared frame in selection, the board,
+The approved Kappa / Asteroid direction is applied to all 15 Creatures and 15
+Knowledge cards. `DigitalCardFace` owns the shared frame in selection, the board,
 market, hand, inspection, target choices and card motion. It has a compact face
 for play and a detailed face for reading rules.
 
@@ -14,8 +14,8 @@ existing initial CSS budget is preserved.
 - Original illustrations remain in their existing assets; CSS clips the printed
   frame and puts editable, selectable text above clean digital panels.
 - Water, earth, air and fire use distinct accent colours and element icons.
-- The gold value shows effective Wisdom for a Being and summoning cost for a
-  Knowledge. The separate Knowledge effect and rotation track never replace cost.
+- The gold value shows effective Wisdom for a Creature and the Wisdom requirement for a
+  Knowledge card. The separate Knowledge effect and rotation track never replace cost.
 - Cards stay upright, including the opponent's cards. Rotation is communicated
   by the active cycle step. Knowledge cards identify their final rotation.
 - Effective Wisdom includes active bonuses. Effect choices resolve the actual
@@ -72,7 +72,7 @@ and gameplay rules are preserved.
 
 `PlayCardFace` is the phone and short-landscape face used by direct card controls.
 The original illustration has a square viewport; its value strip and rotation
-track sit below it. A Being shows effective Wisdom once. A Knowledge shows cost
+track sit below it. A Creature shows effective Wisdom once. A Knowledge card shows its Wisdom requirement
 and its current effect as separate values. Neither statistics nor controls cover
 its art. The card name appears once, below the frame, and is the inspection
 control when tapping the artwork performs a move.
@@ -83,7 +83,7 @@ is preserved. Pending-effect choices use the mobile face too.
 Replacement hints fit in the name row without covering values or adding height.
 
 Visual review uses both the reported sparse board and a full board with six
-attached Knowledges and five hand cards. Checks cover 793×380, 844×390, 667×375,
+attached Knowledge cards and five hand cards. Checks cover 793×380, 844×390, 667×375,
 568×320, 390×844 and 360×800, including square artwork, unclipped numeric values,
 separate inspection targets of at least 24×24 px and no horizontal page overflow.
 The complete touch tutorial and return to the desktop layout are also checked.
@@ -91,7 +91,7 @@ The complete touch tutorial and return to the desktop layout are also checked.
 ## Desktop play composition
 
 Compact cards reserve separate rows for the name, illustration and statistics.
-Being Wisdom appears once in the lower frame, beside the element icon. Knowledge
+Creature Wisdom appears once in the lower frame, beside the element icon. Knowledge
 cost and current effect occupy opposite ends of that row; its element sits in
 the title row. No numeric badge or element symbol covers the illustration.
 Board captions retain the creature name without repeating Wisdom, and market

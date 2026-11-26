@@ -5,6 +5,7 @@ import { useCardRegistry } from '../hooks/useCardRegistry.js';
 import { Creature, Knowledge } from '../game/types.js';
 import { cn } from './ui/cn.js';
 import CardDetailOverlay from './CardDetailOverlay.js';
+import { getCardPresentation } from '../utils/digitalCards.js';
 import DigitalCardFace from './DigitalCardFace.js';
 import '../digital-cards-compact.css';
 
@@ -65,8 +66,8 @@ const Card: React.FC<CardProps> = ({
 
   const getCardTypeLabel = () => {
     if (showBack) return 'Hidden card';
-    if ('cost' in card) return `${card.type} knowledge, cost ${card.cost}`;
-    return 'Creature';
+    const view = getCardPresentation(card);
+    return `${view.typeLabel}, ${view.valueLabel}`;
   };
 
   const effectiveAriaLabel = ariaLabel || [

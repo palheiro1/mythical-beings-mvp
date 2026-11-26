@@ -27,10 +27,10 @@ export default function DigitalCardFace({ card, rotation = card.rotation ?? 0, v
     data-element={card.element} data-card-id={card.id} data-rotation-step={view.step} data-final={view.final || undefined}>
     <span className="dc-face">
       <span className="dc-header">
-        {detail && <span className="dc-value" aria-label={`${view.knowledge ? 'Cost' : 'Wisdom'} ${view.value}`}>
-          <strong>{view.value}</strong><span>{view.knowledge ? 'COST' : 'WISDOM'}</span>
+        {detail && <span className="dc-value" aria-label={view.valueLabel}>
+          <strong>{view.value}</strong><span>{view.knowledge ? 'WIS REQ' : 'WISDOM'}</span>
         </span>}
-        <span className="dc-name-block"><span className="dc-name">{card.name}</span><span className="dc-type">{view.knowledge ? 'Knowledge' : 'Being'} · {card.element}</span></span>
+        <span className="dc-name-block"><span className="dc-name">{card.name}</span><span className="dc-type">{view.typeLabel}</span></span>
         {(detail || view.knowledge) && <span className="dc-element" aria-label={card.element}><ElementIcon element={card.element} aria-hidden="true" /></span>}
       </span>
       <span className={`dc-art-window ${getCardArtClass(card)}`}>
@@ -39,7 +39,7 @@ export default function DigitalCardFace({ card, rotation = card.rotation ?? 0, v
       </span>
       {detail && <span className="dc-rules">
         <span className="dc-rules-label"><Sparkles aria-hidden="true" />{view.knowledge ? 'Card effect' : 'Passive ability'}</span>
-        <span className="dc-rules-text" id={descriptionId}>{view.rules}</span>
+        <span className="dc-rules-text" id={descriptionId}>{view.description}</span>
       </span>}
       <span className="dc-footer">
         {detail ? <>
@@ -54,8 +54,8 @@ export default function DigitalCardFace({ card, rotation = card.rotation ?? 0, v
           </span>
         </> : <>
           <span className="dc-summary">
-            <span className="dc-primary" aria-label={`${view.knowledge ? 'Cost' : 'Wisdom'} ${view.value}`}>
-              <strong>{view.value}</strong><span>{view.knowledge ? 'Cost' : 'Wisdom'}</span>
+            <span className="dc-primary" aria-label={view.valueLabel}>
+              <strong>{view.value}</strong><span>{view.knowledge ? 'Wis req' : 'Wisdom'}</span>
             </span>
             {view.knowledge ? <span className="dc-compact-stat" aria-label={view.current.label}>
               <CurrentIcon aria-hidden="true" /><span>{view.current.kind === 'limit' ? '≤' : ''}{view.current.value}</span><span className="dc-stat-kind">{shortKinds[view.current.kind]}</span>

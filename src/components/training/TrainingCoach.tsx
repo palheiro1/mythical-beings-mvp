@@ -1,20 +1,25 @@
 import { ArrowRight } from 'lucide-react';
 import type { GuideGlowTarget } from '../../hooks/useGuideGlow.js';
-import type { GuideStep, TrainingSession } from '../../game/trainingSession.js';
+import { GUIDED_CARD_ID, type GuideStep, type TrainingSession } from '../../game/trainingSession.js';
+import { getDisplayCardById } from '../../utils/cardCatalog.js';
 import { getCardArtClass, getCardPresentation, type DisplayCard } from '../../utils/digitalCards.js';
 import CardArtwork from '../CardArtwork.js';
 
+const firstCard = getDisplayCardById(GUIDED_CARD_ID);
+if (!firstCard) throw new Error('The guided lesson card is missing from the catalog.');
+const first = getCardPresentation(firstCard);
+
 const steps: Record<Exclude<GuideStep, 'free'>, { title: string; text: string; progress: number }> = {
   // Fallback only: guided lessons dispatch 'start-guide' from the introduction, so 'welcome' is unreachable in practice.
-  welcome: { title: 'Your first duel', text: 'Your three creatures share 20 Power. Bring the other side to zero to win. Each creature can carry one Knowledge card if its Wisdom meets the cost. Those cards and creature abilities deal damage.', progress: 0 },
-  draw: { title: 'Draw Lepidoptera', text: 'Choose Draw on the marked market card. This uses the first of your two actions.', progress: 1 },
-  rotate: { title: 'Rotate Tarasca', text: 'Lepidoptera needs 1 Wisdom. Choose Rotate under Tarasca to give it enough Wisdom for your next turn.', progress: 2 },
+  welcome: { title: 'Your first duel', text: 'Your three Creatures share 20 Power. Reduce the bot’s Power to zero to win. Each Creature can hold one Knowledge card.', progress: 0 },
+  draw: { title: 'Draw Lepidoptera', text: `Lepidoptera is an ${first.typeLabel}. Choose Draw in the Market to spend your first action.`, progress: 1 },
+  rotate: { title: 'Rotate Tarasca', text: `Lepidoptera requires ${first.value} Wisdom. Choose Rotate under Tarasca to prepare it for your next turn.`, progress: 2 },
   watch: { title: 'The bot takes its turn', text: 'You used both actions. Now the bot goes through its Knowledge Phase, then chooses its actions.', progress: 3 },
-  summon: { title: 'Select Lepidoptera', text: 'Choose the spell in your hand. It needs 1 Wisdom and Tarasca now has 2.', progress: 4 },
-  end: { title: 'End your turn', text: 'Your team gained 1 Power when Lepidoptera entered play. End your turn to see it strike when your next turn begins.', progress: 5 },
-  'wait-for-strike': { title: 'Watch the bot’s Power', text: 'Lepidoptera acts on its own when your turn begins.', progress: 5 },
-  strike: { title: 'Lepidoptera strikes', text: 'In your Knowledge Phase, the spell acts automatically and rotates. Your Action Phase comes next.', progress: 6 },
-  complete: { title: 'Tulpar’s bonus', text: 'Playing an air spell lets Tulpar rotate one of your creatures for free. Continue to play on with a 30-second turn clock.', progress: 6 },
+  summon: { title: 'Select Lepidoptera', text: `Select the Ally in your hand. Lepidoptera requires ${first.value} Wisdom and Tarasca has 2.`, progress: 4 },
+  end: { title: 'End your turn', text: `${first.description} Choose End Turn to see Lepidoptera act during your next Knowledge Phase.`, progress: 5 },
+  'wait-for-strike': { title: 'Watch the bot’s Power', text: 'Lepidoptera acts automatically during your Knowledge Phase.', progress: 5 },
+  strike: { title: 'Lepidoptera strikes', text: 'In your Knowledge Phase, the Ally acts automatically and rotates. Your Action Phase comes next.', progress: 6 },
+  complete: { title: 'Tulpar’s bonus', text: 'When you play an Air Knowledge card, Tulpar lets you rotate one of your Creatures for free. Continue to play on with a 30-second turn clock.', progress: 6 },
   handoff: { title: 'Ready to play on?', text: 'Keep this team and board. You’ll have 30 seconds per turn.', progress: 0 },
 };
 
@@ -37,7 +42,7 @@ function MoveIllustration({ session }: { session: TrainingSession }) {
   const player = game.players[0];
   switch (guide) {
     case 'draw': {
-      const card = game.market.find(item => item.id === 'aerial1');
+      const card = game.market.find(item => item.id === GUIDED_CARD_ID);
       return card && <MoveFigure card={card} label="Draw" from="Market" to="Hand" />;
     }
     case 'rotate': {
@@ -48,11 +53,11 @@ function MoveIllustration({ session }: { session: TrainingSession }) {
       return next && <MoveFigure card={card} label="Tarasca’s Wisdom" from={value} to={next.value} />;
     }
     case 'summon': {
-      const card = player.hand.find(item => item.id === 'aerial1');
+      const card = player.hand.find(item => item.id === GUIDED_CARD_ID);
       return card && <MoveFigure card={card} label="Play" from="Hand" to="Tarasca" />;
     }
     case 'strike': {
-      const card = player.field.find(slot => slot.knowledge?.id === 'aerial1')?.knowledge;
+      const card = player.field.find(slot => slot.knowledge?.id === GUIDED_CARD_ID)?.knowledge;
       return card && firstStrike && <MoveFigure card={card} label="Bot Power" from={firstStrike.before} to={firstStrike.after} />;
     }
     default: return null;
@@ -77,14 +82,14 @@ export default function TrainingCoach({ session, direct, lessonBonus, glow, onSt
   const content = steps[step];
   let title = content.title;
   let text = content.text;
-  if (direct && step === 'draw') text = 'Tap the marked spell. This uses 1 of 2 actions.';
-  if (direct && step === 'rotate') text = 'Tap Tarasca to turn it. The spell needs 1 Wisdom.';
-  if (direct && step === 'summon') text = 'The spell needs 1 Wisdom. Tarasca has 2.';
+  if (direct && step === 'draw') text = `Tap the marked ${first.typeLabel} in the Market. This uses your first action.`;
+  if (direct && step === 'rotate') text = `Tap Tarasca to rotate it. Lepidoptera requires ${first.value} Wisdom.`;
+  if (direct && step === 'summon') text = `Select the Ally in your hand. Lepidoptera requires ${first.value} Wisdom. Tarasca has 2.`;
   if (step === 'summon' && session.selectedId) {
     title = 'Play Lepidoptera on Tarasca';
-    text = direct ? 'Tap Tarasca to play the spell for one action.' : 'Choose Play here under Tarasca to play the spell for one action.';
+    text = direct ? 'Tap Tarasca to play the Ally for one action. Tarasca keeps its Wisdom.' : 'Choose Play here under Tarasca. Playing the Ally uses one action. Tarasca keeps its Wisdom.';
   }
-  if (step === 'end' && lessonBonus) text = 'Lepidoptera gave you 1 Power. Choose End Turn to pass on Tulpar’s bonus and watch the spell on your next turn.';
+  if (step === 'end' && lessonBonus) text = `${first.description} Choose End Turn to skip Tulpar’s optional rotation and see Lepidoptera act next turn.`;
   if (step === 'strike' && firstStrike) text = `In your Knowledge Phase, Lepidoptera dealt ${firstStrike.damage} damage and rotated. Your Action Phase starts now.`;
   const finished = step === 'complete' || step === 'handoff';
   return <aside className={glow === 'coach' ? 'wd-coach wd-coach-highlight' : 'wd-coach'} data-step={step} aria-label="Guided lesson">

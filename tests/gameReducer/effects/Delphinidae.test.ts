@@ -67,7 +67,7 @@ describe('Delphinidae (aquatic4) Effect', () => {
       isFinalRotation: false,
       trigger: 'onPhase',
     });
-    expect(result.log.some(log => log.includes('provides 2 potential defense') && log.includes('Delphinidae'))).toBe(true);
+    expect(result.log.some(log => log.includes('provides 2 potential Defense') && log.includes('Delphinidae'))).toBe(true);
   });
 
   it('should deal 1 damage at 180º rotation', () => {

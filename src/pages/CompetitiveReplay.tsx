@@ -7,6 +7,7 @@ import {
   suspendMatch,
   type CompetitiveSnapshot,
 } from '@mythicalb/wisdom-duel-engine';
+import { formatMatchEvent } from '../utils/gameHistory.js';
 import { useAuth } from '../hooks/useAuth.js';
 import { competitive, competitiveError } from '../services/competitiveService.js';
 import { PageShell, Panel } from '../components/ui/index.js';
@@ -112,7 +113,7 @@ export default function CompetitiveReplay() {
       ))}
       {frame ? (
         <p>
-          Turn {frame.state.turn} · {frame.events[frame.events.length - 1]?.type ?? 'Start'}
+          Turn {frame.state.turn} · {formatMatchEvent(frame.events[frame.events.length - 1]?.type)}
           {frame.outcome ? ` · ${frame.outcome.reason}` : ''}
         </p>
       ) : null}

@@ -104,8 +104,8 @@ export default function ChallengeArena({ projection, playerId, standingsPath, se
           };
         }}
         knowledgeAction={(creature, card) => ({
-          label: `Rotate knowledge: ${card.name}`,
-          reason: `Rotate knowledge: ${card.name}`,
+          label: `Rotate Knowledge card ${card.name}`,
+          reason: `Rotate Knowledge card ${card.name}`,
           valid: canSpend && Boolean(card.instanceId),
           onActivate: () => {
             if (canSpend && card.instanceId) void play({ type: 'rotate_knowledge', creatureId: creature.id, fieldInstanceId: card.instanceId });

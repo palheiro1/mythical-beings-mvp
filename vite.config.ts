@@ -49,6 +49,12 @@ export default defineConfig(({ command }) => ({
             return 'vendor-crypto'
           }
 
+          // Card faces on the landing page only need the printed catalog.
+          if (id.includes('/@mythicalb/wisdom-duel-engine/dist/assets/') ||
+              id.endsWith('/@mythicalb/wisdom-duel-engine/dist/game/catalog.js')) {
+            return 'card-catalog'
+          }
+
           if (id.includes('/@mythicalb/')) {
             return 'vendor-mythical'
           }

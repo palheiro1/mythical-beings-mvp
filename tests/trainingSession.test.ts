@@ -81,7 +81,7 @@ describe('guided practice uses the real game engine', () => {
     s = summon(s);
     expect(s.selectedId).toBe(before.selectedId);
     expect(s.game).toBe(before.game);
-    expect(s.feedback).toMatch(/wisdom/);
+    expect(s.feedback).toMatch(/Wisdom/);
     expect(s.rejected).toBe(true);
   });
   it('allows replacing a knowledge and retains the conservation of card instances', () => {

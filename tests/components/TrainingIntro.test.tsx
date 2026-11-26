@@ -24,7 +24,7 @@ describe('training introduction', () => {
   it('shows three illustrated introductions and lets the player revisit the example', () => {
     renderFlow();
     expect(screen.getByRole('dialog')).toHaveAccessibleName('Bring the bot’s Power to zero.');
-    const team = screen.getByRole('figure', { name: 'Your creatures and their shared Power' });
+    const team = screen.getByRole('figure', { name: 'Your Creatures and their shared Power' });
     expect(team).toHaveTextContent('Tarasca, Adaro, Tulpar');
     expect(team).toHaveTextContent('20Shared team Power');
     expect(screen.getByText('1 / 3')).toBeInTheDocument();
@@ -34,14 +34,19 @@ describe('training introduction', () => {
     const phases = within(screen.getByRole('list', { name: 'Turn order' })).getAllByRole('listitem');
     expect(phases).toHaveLength(2);
     expect(within(phases[0]).getByRole('heading', { name: 'Knowledge Phase' })).toBeInTheDocument();
-    expect(phases[0]).toHaveTextContent('the spells on your creatures take effect automatically, then rotate');
+    expect(phases[0]).toHaveTextContent('Your Knowledge cards in play take effect automatically at the start of your turn, then rotate one step');
     expect(phases[0]).toHaveTextContent('Lepidoptera in play');
+    expect(phases[0]).toHaveTextContent('1 damage');
     expect(within(phases[1]).getByRole('heading', { name: 'Action Phase' })).toBeInTheDocument();
-    expect(phases[1]).toHaveTextContent('two actions unless a card effect changes that number');
+    expect(phases[1]).toHaveTextContent('two actions. Card effects can change that number');
+    const example = screen.getByRole('figure', { name: 'Try a rotation with the lesson cards' });
+    expect(example).toHaveTextContent('Air Ally');
+    expect(example).toHaveTextContent('Lepidoptera requires 1 Wisdom. Tarasca has 0.');
     click('Try rotating Tarasca');
-    expect(screen.getByText('Tarasca now has 2 Wisdom. Enough to play Lepidoptera!')).toBeInTheDocument();
+    expect(screen.getByText('Tarasca can now play Lepidoptera and keep its 2 Wisdom.')).toBeInTheDocument();
     click('Next');
-    expect(screen.getByRole('dialog')).toHaveAccessibleName('Find your first card.');
+    expect(screen.getByRole('dialog')).toHaveAccessibleName('Draw from the Market');
+    expect(screen.getByRole('dialog')).toHaveTextContent('the marked Air Ally');
     expect(screen.getByText('3 / 3')).toBeInTheDocument();
     expect(screen.getByRole('figure', { name: 'Map of the practice arena' })).toBeInTheDocument();
     click('Back');

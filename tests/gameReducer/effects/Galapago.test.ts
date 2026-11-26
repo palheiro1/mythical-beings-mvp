@@ -33,7 +33,7 @@ describe('Galapago (aquatic5) Effect', () => {
       isFinalRotation: false,
       trigger: 'onPhase',
     });
-    expect(result.log.some(log => log.includes('provides 2 potential defense') && log.includes('Galapago'))).toBe(true);
+    expect(result.log.some(log => log.includes('provides 2 potential Defense') && log.includes('Galapago'))).toBe(true);
     // No power change
     expect(result.players[1].power).toBe(20);
   });
@@ -62,7 +62,7 @@ describe('Galapago (aquatic5) Effect', () => {
       isFinalRotation: false,
       trigger: 'onPhase',
     });
-    expect(result.log.some(log => log.includes('provides 2 potential defense') && log.includes('Galapago'))).toBe(true);
+    expect(result.log.some(log => log.includes('provides 2 potential Defense') && log.includes('Galapago'))).toBe(true);
     expect(result.players[1].power).toBe(20);
   });
 

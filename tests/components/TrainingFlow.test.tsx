@@ -279,7 +279,7 @@ describe('public practice journey', () => {
     click('Play Lepidoptera on Tarasca');
     expect(screen.getByLabelText('Bot Power: 20')).toBeInTheDocument();
     expect(screen.getByLabelText('Your Power: 21')).toBeInTheDocument();
-    expect(screen.getByText(/End Turn to pass on Tulpar’s bonus/)).toBeInTheDocument();
+    expect(screen.getByText(/End Turn to skip Tulpar’s optional rotation/)).toBeInTheDocument();
     click('End Turn');
     botTurn();
     expect(screen.getByRole('img', { name: 'Bot Power, from 20 to 19' })).toBeInTheDocument();

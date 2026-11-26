@@ -1,3 +1,4 @@
+import { getCardPresentation } from '../../utils/digitalCards.js';
 import { cardAnchor } from '../../game/presentation.js';
 import { BookOpen, Library } from 'lucide-react';
 import { HUMAN_ID, validateTrainingAction, type TrainingAction, type TrainingSession } from '../../game/trainingSession.js';
@@ -19,25 +20,25 @@ export function DuelTrays({ playerId, hand, market, deckCount, selectedId, tab, 
     return <article key={card.instanceId} className={`wd-tray-card ${marketRow ? 'wd-market-row' : ''} ${selectedId === card.instanceId ? 'is-selected' : ''} ${action.highlighted ? 'is-highlighted' : ''}`}>
       <TrainingCard motionAnchor={cardAnchor('', card)} card={card} selected={selectedId === card.instanceId} playFace={direct} onInspect={onInspect}
         action={direct ? action : undefined} marketRow={marketRow} />
-      {!direct && <><span className="wd-tray-name">{card.name}</span><span className="wd-card-stat">{card.element}</span>
+      {!direct && <><span className="wd-tray-name">{card.name}</span><span className="wd-card-stat">{getCardPresentation(card).typeLabel}</span>
       <button className={`wd-card-action ${action.glowing ? 'wd-guide-glow' : ''}`} type="button" aria-disabled={!action.valid} aria-pressed={action.pressed} aria-label={action.label} data-guide-target={action.guideTarget} onClick={action.onActivate}>{inMarket ? 'Draw' : selectedId === card.instanceId ? 'Selected' : 'Select'}</button></>}
     </article>;
   };
   return <>
-    <div className="wd-tray-tabs" role="tablist" aria-label="Your cards and the market">{tabs.map(value => <button key={value} data-motion-anchor={value === 'hand' ? `hand:${playerId}` : 'market'} id={`tab-${value}`} role="tab" aria-selected={tab === value} aria-controls={`panel-${value}`} tabIndex={tab === value ? 0 : -1} onClick={() => setTab(value)} onKeyDown={event => {
+    <div className="wd-tray-tabs" role="tablist" aria-label="Your cards and the Market">{tabs.map(value => <button key={value} data-motion-anchor={value === 'hand' ? `hand:${playerId}` : 'market'} id={`tab-${value}`} role="tab" aria-selected={tab === value} aria-controls={`panel-${value}`} tabIndex={tab === value ? 0 : -1} onClick={() => setTab(value)} onKeyDown={event => {
       if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) {
         event.preventDefault(); const next = event.key === 'Home' ? 'hand' : event.key === 'End' ? 'market' : value === 'hand' ? 'market' : 'hand';
         setTab(next); document.getElementById(`tab-${next}`)?.focus();
       }
     }}>{value === 'hand' ? <BookOpen size={15} aria-hidden="true" /> : <Library size={15} aria-hidden="true" />}{value === 'hand' ? 'Hand' : 'Market'} <span>{value === 'hand' ? hand.length : market.length}</span></button>)}</div>
     <section id="panel-hand" className={`wd-tray wd-hand ${tab === 'hand' ? 'is-active' : ''}`} aria-label="Your hand">
-      <header data-motion-anchor={`hand:${playerId}`}><h2><span className="wd-tray-title"><BookOpen size={17} aria-hidden="true" />Your hand</span><span>{hand.length}/5</span></h2><p>Choose a card, then a creature.</p></header>
-      {hand.length ? <div className="wd-tray-cards">{hand.map(card => renderCard(card, false))}</div> : <div className="wd-empty-hand"><span>Knowledge starts here.</span><p>Draw a card from the market, then play it on a creature with enough wisdom.</p><button className="wd-text-button wd-mobile-only" onClick={() => setTab('market')}>Open market →</button></div>}
+      <header data-motion-anchor={`hand:${playerId}`}><h2><span className="wd-tray-title"><BookOpen size={17} aria-hidden="true" />Your hand</span><span>{hand.length}/5</span></h2><p>Choose a Knowledge card, then a Creature.</p></header>
+      {hand.length ? <div className="wd-tray-cards">{hand.map(card => renderCard(card, false))}</div> : <div className="wd-empty-hand"><span>Your hand is empty.</span><p>Draw a Knowledge card from the Market, then play it on a Creature that meets its Wisdom requirement.</p><button className="wd-text-button wd-mobile-only" onClick={() => setTab('market')}>Open Market →</button></div>}
     </section>
     <section id="panel-market" className={`wd-tray wd-market ${tab === 'market' ? 'is-active' : ''}`} aria-label="Market">
       <header data-motion-anchor="market"><h2><span className="wd-tray-title"><Library size={17} aria-hidden="true" />Market</span><span>{market.length}</span></h2><p data-motion-anchor="deck">{deckCount} in deck · Drawing uses one action</p></header>
       <div className="wd-tray-cards">{market.map(card => renderCard(card, true))}</div>
-      {!market.length && <p className="wd-empty-hand">The market is empty. Play the cards in your hand.</p>}
+      {!market.length && <p className="wd-empty-hand">The Market is empty. Play the cards in your hand.</p>}
     </section>
   </>;
 }

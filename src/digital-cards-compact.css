@@ -18,6 +18,9 @@
 .dc-being .dc-ticks>.is-current { background:#ffdfa0; }
 .dc-compact[data-final=true] .dc-ticks>.is-current { background:#ffce94; }
 .dc-final-mark { color:#ffce94; font-size:10px; padding-left:1px; }
+@container (min-width:110px) {
+  .dc-compact .dc-type { display:block; margin-top:1px; font-size:clamp(8px,5cqw,10px); line-height:1.15; }
+}
 @container (max-width:125px) {
   .dc-compact .dc-header { min-height:16px; padding:2px 3px; }
   .dc-compact .dc-footer { padding:3px 4px; }

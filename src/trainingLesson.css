@@ -50,8 +50,7 @@
   padding-left: 35px;
 }
 .lesson-phases li + li { margin-top: var(--phase-gap); }
-.lesson-phases li::before {
-  content: counter(list-item);
+.lesson-phase-number {
   position: absolute;
   inset: 0 auto auto 0;
   display: grid;
@@ -244,7 +243,7 @@
 .lesson-map-market { grid-area: market; flex-direction: column; border: 2px solid #f5d387; background: #2a4138; }
 .lesson-map-trays { display: flex; align-items: center; justify-content: center; gap: 6px; }
 .lesson-map-trays > strong { color: #ffe49f; }
-.lesson-map-spell { width: min(84%, 50px); aspect-ratio: 1; border: 1px solid #f5d387; border-radius: 3px; background: #f5f3ec; }
+.lesson-map-card { width: min(84%, 50px); aspect-ratio: 1; border: 1px solid #f5d387; border-radius: 3px; background: #f5f3ec; }
 .lesson-map-tabs { grid-template-columns: 1.25fr 1fr; grid-template-areas: 'clock clock' 'board coach' 'board market'; }
 .lesson-map-tabs .lesson-map-trays > span { color: #d1ddd3; font-weight: 400; }
 
@@ -346,13 +345,17 @@
   .lesson-map-tabs { grid-template-columns: 1fr; grid-template-areas: 'clock' 'coach' 'board' 'market'; }
   .lesson-map-tabs .lesson-map-row { grid-template-columns: 36px 1fr; align-items: center; }
   .lesson-map-tabs .lesson-map-market { flex-direction: row; gap: 14px; }
-  .lesson-map-tabs .lesson-map-spell { width: 28px; }
+  .lesson-map-tabs .lesson-map-card { width: 28px; }
 }
 @media (orientation: landscape) and (max-height: 600px) {
   .wd-dialog.lesson-opening { min-height: min(278px, calc(100dvh - 36px)); }
+  .wd-dialog.lesson-opening:has(.lesson-phases) {
+    --lesson-gutter: clamp(14px, 2.5vw, 22px);
+    grid-template-columns: 42% minmax(0, 1fr);
+  }
   .lesson-illustration { padding-block: 14px; }
   .lesson-example, .lesson-orientation { gap: 9px; }
-  .lesson-example-pair { max-width: min(230px, 62dvh); }
+  .lesson-example-pair { max-width: min(260px, 73dvh); }
   .lesson-map { max-width: min(260px, 75dvh); }
   .lesson-team-cards { max-width: min(260px, 71dvh); }
   .lesson-opening > header { padding-top: 15px; }

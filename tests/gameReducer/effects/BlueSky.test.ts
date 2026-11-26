@@ -31,7 +31,7 @@ describe('Blue Sky (aerial2) Effect', () => {
       trigger: 'onPhase',
     });
     expect(result.players[0].power).toBe(21);
-    expect(result.log.some(log => log.includes('gains +1 Power'))).toBe(true);
+    expect(result.log).toContain('Player 1 gains 1 Power from Blue Sky at 0°.');
   });
 
   it('should grant 2 power at 90º rotation', () => {
@@ -43,7 +43,7 @@ describe('Blue Sky (aerial2) Effect', () => {
       trigger: 'onPhase',
     });
     expect(result.players[0].power).toBe(22);
-    expect(result.log.some(log => log.includes('gains +2 Power'))).toBe(true);
+    expect(result.log).toContain('Player 1 gains 2 Power from Blue Sky at 90°.');
   });
 
   it('should grant 3 power at 180º rotation', () => {
@@ -55,7 +55,7 @@ describe('Blue Sky (aerial2) Effect', () => {
       trigger: 'onPhase',
     });
     expect(result.players[0].power).toBe(23);
-    expect(result.log.some(log => log.includes('gains +3 Power'))).toBe(true);
+    expect(result.log).toContain('Player 1 gains 3 Power from Blue Sky at 180°.');
   });
 
   it('should grant 0 power at 270º rotation', () => {
@@ -67,6 +67,6 @@ describe('Blue Sky (aerial2) Effect', () => {
       trigger: 'onPhase',
     });
     expect(result.players[0].power).toBe(20);
-    expect(result.log.some(log => log.includes('gains +'))).toBe(false);
+    expect(result.log).toHaveLength(0);
   });
 });

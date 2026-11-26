@@ -23,13 +23,13 @@ const STEPS = [
   },
   {
     title: 'Choose a card in your hand',
-    description: 'Select a Knowledge card first. Its cost must be no higher than the Wisdom of the creature that will summon it.',
+    description: 'Select a Knowledge card first. Check its Wisdom requirement, then choose a Creature with at least that much Wisdom.',
     targetId: 'hand:anchor',
     targetLabel: 'Your hand',
   },
   {
     title: 'Command your creatures',
-    description: 'With no card selected, choose a creature to rotate it and raise its Wisdom. With a card selected, choose a creature to summon that Knowledge.',
+    description: 'With no card selected, choose a Creature to rotate it one step. With a card selected, choose the Creature you want to play it on.',
     targetId: 'table:anchor',
     targetLabel: 'Your creatures',
   },
