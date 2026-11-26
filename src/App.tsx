@@ -69,6 +69,7 @@ function AppContent() {
           <Route path="/competition" element={PVP_ENABLED ? <CompetitiveHub /> : <Navigate to={WEEKLY_CHALLENGE_ENABLED ? '/challenge' : '/'} replace />} />
           {WEEKLY_CHALLENGE_ENABLED ? <Route path="/challenge" element={<WeeklyChallenge />} /> : null}
           {CASUAL_DUELS_ENABLED ? <Route path="/duels" element={<CasualDuels />} /> : null}
+          {CASUAL_DUELS_ENABLED ? <Route path="/duels/public" element={<CasualDuels publicLobby />} /> : null}
           <Route path="/wagers" element={<WagerEntry />}>
             <Route index element={<WagerLobby />} />
           </Route>

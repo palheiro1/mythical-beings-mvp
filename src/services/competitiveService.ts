@@ -1,5 +1,6 @@
 import { createWisdomDuelClient } from '@mythicalb/sdk/wisdom-duel';
-import { FunctionRegion } from '@supabase/supabase-js';
+import { FunctionRegion, type SupabaseClient } from '@supabase/supabase-js';
+import type { Database } from '@mythicalb/sdk';
 import type { WisdomWalletConfig } from '@mythicalb/sdk/wisdom-duel-wallet';
 import { mythical } from './mythicalClient.js';
 import {
@@ -11,6 +12,31 @@ import {
 } from '../config/playhub.js';
 
 export const competitive = createWisdomDuelClient(mythical.supabase, { region: FunctionRegion.EuWest1 });
+export interface OpenDuel {
+  match_id: string;
+  expires_at: string;
+}
+
+// The deployed lobby adds two RPCs to the schema in the vendored SDK.
+type LobbyDatabase = Database & { public: { Functions: {
+  wisdom_duel_open_rooms: { Args: { p_match_id?: string }; Returns: OpenDuel[] };
+  wisdom_duel_publish_room: { Args: { p_match_id: string }; Returns: undefined };
+} } };
+const lobbyClient = mythical.supabase as SupabaseClient<LobbyDatabase>;
+
+export const OPEN_DUELS_PER_PAGE = 12;
+
+export async function openDuels(matchId?: string, offset = 0): Promise<OpenDuel[]> {
+  const { data, error } = await lobbyClient.rpc('wisdom_duel_open_rooms', matchId ? { p_match_id: matchId } : {})
+    .order('expires_at').order('match_id').range(offset, offset + OPEN_DUELS_PER_PAGE);
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function publishDuel(matchId: string): Promise<void> {
+  const { error } = await lobbyClient.rpc('wisdom_duel_publish_room', { p_match_id: matchId });
+  if (error) throw error;
+}
 export type {
   WisdomMatchView,
   WisdomMatchResponse,

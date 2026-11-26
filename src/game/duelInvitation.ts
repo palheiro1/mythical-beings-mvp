@@ -19,13 +19,19 @@ export function duelLobbyPath(code?: string | null) {
   return code ? `/duels?join=${encodeURIComponent(code)}` : '/duels';
 }
 
-export function duelAccountPath(code: string | null) {
-  return `/?duel=${encodeURIComponent(code ?? 'new')}#account`;
+export function duelAccountPath(code: string | null, publicLobby = false) {
+  const intent = publicLobby ? (code ? `public-${code}` : 'public') : (code ?? 'new');
+  return `/?duel=${encodeURIComponent(intent)}#account`;
+}
+
+function validIntent(intent: unknown): intent is string {
+  return typeof intent === 'string' && (intent === 'new' || intent === 'public' || roomCode.test(intent) ||
+    (intent.startsWith('public-') && roomCode.test(intent.slice(7))));
 }
 
 export function duelSignInIntent(search: string): string | null {
   const intent = new URLSearchParams(search).get('duel');
-  return intent === 'new' || (intent && roomCode.test(intent)) ? intent : null;
+  return validIntent(intent) ? intent : null;
 }
 
 export function playHubRedirectUrl(): string {
@@ -43,9 +49,11 @@ export function signedInDuelPath(search: string): string | null {
   try {
     const saved = JSON.parse(localStorage.getItem(pendingKey) ?? 'null');
     localStorage.removeItem(pendingKey);
-    if (!intent && saved?.until > Date.now() && (saved.intent === 'new' || roomCode.test(saved.intent))) {
+    if (!intent && saved?.until > Date.now() && validIntent(saved.intent)) {
       intent = saved.intent;
     }
   } catch { /* Storage is optional for URL-based callbacks. */ }
+  if (intent === 'public') return '/duels/public';
+  if (intent?.startsWith('public-')) return `/duels/public?join=${intent.slice(7)}`;
   return intent ? duelLobbyPath(intent === 'new' ? null : intent) : null;
 }

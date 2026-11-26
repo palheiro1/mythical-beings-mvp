@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useLocation, useParams } from 'react-router-dom';
 import type {
   CompetitiveCommand,
   CompetitiveProjection,
@@ -312,6 +312,7 @@ function Preparation({
     [cardRecipient, setCardRecipient] = useState(''),
     [cardClaimHash, setCardClaimHash] = useState('');
   const { polygonWallet, connectPolygonWallet, user } = useAuth();
+  const { state: navigationState } = useLocation();
   const storageKey = `wisdom-economy:${user?.id}:${match.matchId}`;
   useEffect(() => {
     try {
@@ -364,7 +365,7 @@ function Preparation({
   const outcomeFinished = match.status === 'finished';
   return (
     <Panel className="space-y-4 p-6">
-      {match.status === 'waiting' && match.mode === 'casual' ? <DuelInvitation matchId={match.matchId} /> : null}
+      {match.status === 'waiting' && match.mode === 'casual' ? <DuelInvitation matchId={match.matchId} retryListing={navigationState?.retryListing === true} /> : null}
       {match.status === 'waiting' && match.mode === 'wager' ? (
         <>
           <h2 className="text-2xl font-bold">Convida um adversário</h2>
@@ -620,23 +621,23 @@ export default function CompetitiveMatch() {
   const projection = data?.projection;
   const challengeId = challengeMatchId(data?.match);
   const standingsPath = challengeId ? `/challenge?period=${challengeId}` : '/standings';
-  const friendDuel = data?.match.mode === 'casual' && !challengeId;
-  const lobbyPath = friendDuel ? '/duels' : standingsPath;
-  if (projection && (challengeId || friendDuel) && user) {
-    return <ChallengeArena key={matchId} projection={projection} playerId={user.id} lobbyPath={lobbyPath} friendDuel={friendDuel}
+  const casualDuel = data?.match.mode === 'casual' && !challengeId;
+  const lobbyPath = casualDuel ? '/duels/public' : standingsPath;
+  if (projection && (challengeId || casualDuel) && user) {
+    return <ChallengeArena key={matchId} projection={projection} playerId={user.id} lobbyPath={lobbyPath} casualDuel={casualDuel}
       sending={sending} retryable={retryable} error={error} send={submit} />;
   }
   return (
     <PageShell contentClassName="space-y-5">
-      <Link className="text-cyan-200" to={friendDuel || challengeId ? lobbyPath : '/competition'}>
-        {friendDuel ? '← Friend duels' : challengeId ? '← Challenge standings' : '← Game modes'}
+      <Link className="text-cyan-200" to={casualDuel || challengeId ? lobbyPath : '/competition'}>
+        {casualDuel ? '← Player duels' : challengeId ? '← Challenge standings' : '← Game modes'}
       </Link>
       <h1 className="text-3xl font-bold">
         {!data ? 'Duel' : challengeId ? 'Weekly Challenge duel' : data.match.mode === 'league'
           ? 'Partida da liga'
           : data?.match.mode === 'wager'
             ? 'Duelo com aposta'
-            : 'Friend duel'}
+            : 'Casual duel'}
       </h1>
       {!data ? <p>Loading your duel…</p> : null}
       {error ? (

@@ -208,8 +208,8 @@ const Home: React.FC = () => {
   if (duelIntent) return (
     <PageShell contentClassName="max-w-xl">
       <Panel id="account" className="space-y-2 p-6">
-        <h1 className="text-3xl font-bold">{duelIntent === 'new' ? 'Sign in to create a duel' : 'Sign in to join this duel'}</h1>
-        <p>Continue with your Play Hub account to return to the invitation.</p>
+        <h1 className="text-3xl font-bold">{duelIntent === 'public' ? 'Sign in to create a public duel' : duelIntent === 'new' ? 'Sign in to create a duel' : 'Sign in to join this duel'}</h1>
+        <p>Continue with your Play Hub account to return to the duel lobby.</p>
         {accountPanel}
       </Panel>
     </PageShell>
