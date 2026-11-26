@@ -3,7 +3,7 @@
     "id": "adaro",
     "name": "Adaro",
     "element": "water",
-    "passiveAbility": "When Adaro summons an aquatic Knowledge, draw a card from the Market (no Action cost).",
+    "passiveAbility": "When you play a Water Knowledge card on Adaro, draw the first card from the Market without spending an action.",
     "image": "/images/beings/adaro.webp",
     "wisdomCycle": [0, 1, 4, 5]
   },
@@ -11,7 +11,7 @@
     "id": "caapora",
     "name": "Caapora",
     "element": "earth",
-    "passiveAbility": "At the start of your turn, if the Opponent has more cards in hand than you, deal 1 damage to the Opponent.",
+    "passiveAbility": "At the start of your turn, if your opponent has more cards in hand than you, deal 1 damage to them.",
     "image": "/images/beings/caapora.webp",
     "wisdomCycle": [0, 1, 4, 5]
   },
@@ -19,7 +19,7 @@
     "id": "dudugera",
     "name": "Dudugera",
     "element": "air",
-    "passiveAbility": "Dudugera can summon Knowledges without spending Actions.",
+    "passiveAbility": "Playing a Knowledge card on Dudugera uses no action.",
     "image": "/images/beings/dudugera.webp",
     "wisdomCycle": [0, 1, 4, 5]
   },
@@ -27,7 +27,7 @@
     "id": "inkanyamba",
     "name": "Inkanyamba",
     "element": "water",
-    "passiveAbility": "When you draw an aquatic Knowledge, you may discard 1 card from the Market.",
+    "passiveAbility": "When you draw a Water Knowledge card, you may discard one card from the Market.",
     "image": "/images/beings/inkanyamba.webp",
     "wisdomCycle": [0, 2, 3, 5]
   },
@@ -35,7 +35,7 @@
     "id": "japinunus",
     "name": "Japinunus",
     "element": "air",
-    "passiveAbility": "Your aeric Knowledges gain: 'On Summon: +1 Power'.",
+    "passiveAbility": "When you play an Air Knowledge card, gain 1 Power.",
     "image": "/images/beings/japinunus.webp",
     "wisdomCycle": [0, 1, 4, 5]
   },
@@ -43,7 +43,7 @@
     "id": "kappa",
     "name": "Kappa",
     "element": "water",
-    "passiveAbility": "Kappa can summon aquatic Knowledges without spending Actions.",
+    "passiveAbility": "Playing a Water Knowledge card on any of your Creatures uses no action.",
     "image": "/images/beings/kappa.webp",
     "wisdomCycle": [0, 1, 4, 5]
   },
@@ -51,7 +51,7 @@
     "id": "kyzy",
     "name": "Kyzy",
     "element": "fire",
-    "passiveAbility": "When any player summons a terrestrial Knowledge, the Opponent must discard 1 card.",
+    "passiveAbility": "Whenever either player plays an Earth Knowledge card, your opponent discards one card.",
     "image": "/images/beings/kyzy.webp",
     "wisdomCycle": [1, 2, 3, 4]
   },
@@ -59,7 +59,7 @@
     "id": "lisovik",
     "name": "Lisovik",
     "element": "earth",
-    "passiveAbility": "Your terrestrial Knowledges gain: 'On Leave: Deal 1 damage'.",
+    "passiveAbility": "When one of your Earth Knowledge cards leaves play, deal 1 damage to your opponent.",
     "image": "/images/beings/lisovik.webp",
     "wisdomCycle": [0, 2, 3, 5]
   },
@@ -67,7 +67,7 @@
     "id": "pele",
     "name": "Pele",
     "element": "fire",
-    "passiveAbility": "When Pele summons a terrestrial Knowledge, discard an Opponent's Knowledge with a lower Wisdom cost.",
+    "passiveAbility": "When you play an Earth Knowledge card, discard one opposing Knowledge card in play with a lower Wisdom requirement.",
     "image": "/images/beings/pele.webp",
     "wisdomCycle": [1, 2, 3, 4]
   },
@@ -75,7 +75,7 @@
     "id": "tarasca",
     "name": "Tarasca",
     "element": "earth",
-    "passiveAbility": "When the Opponent summons a terrestrial Knowledge, deal 1 damage to the Opponent.",
+    "passiveAbility": "When your opponent plays an Earth Knowledge card, deal 1 damage to them.",
     "image": "/images/beings/tarasca.webp",
     "wisdomCycle": [0, 2, 3, 5]
   },
@@ -83,7 +83,7 @@
     "id": "trempulcahue",
     "name": "Trempulcahue",
     "element": "water",
-    "passiveAbility": "Your Knowledges gain +1 Defense.",
+    "passiveAbility": "While you have Defense, gain 1 additional Defense.",
     "image": "/images/beings/trempulcahue.webp",
     "wisdomCycle": [1, 2, 3, 4]
   },
@@ -91,7 +91,7 @@
     "id": "lafaic",
     "name": "Lafaic",
     "element": "water",
-    "passiveAbility": "Each time Lafaic summons an aquatic Knowledge in its slot, other knowledges rotate 90°.",
+    "passiveAbility": "When you play a Water Knowledge card on Lafaic, choose one of your other Knowledge cards in play and rotate it one step.",
     "image": "/images/beings/lafaic.webp",
     "wisdomCycle": [1, 2, 3, 4]
   },
@@ -99,7 +99,7 @@
     "id": "tsenehale",
     "name": "Tsenehale",
     "element": "air",
-    "passiveAbility": "Your aeric Knowledges gain: 'On Leave: +1 Power'.",
+    "passiveAbility": "When any Air Knowledge card leaves play, gain 1 Power.",
     "image": "/images/beings/tsenehale.webp",
     "wisdomCycle": [0, 2, 3, 5]
   },
@@ -107,7 +107,7 @@
     "id": "tulpar",
     "name": "Tulpar",
     "element": "air",
-    "passiveAbility": "Whenever you summon air Knowledge, you may rotate one of your creatures once for free.",
+    "passiveAbility": "When you play an Air Knowledge card, you may rotate one of your Creatures without spending an action.",
     "image": "/images/beings/tulpar.webp",
     "wisdomCycle": [0, 2, 3, 5]
   },
@@ -115,7 +115,7 @@
     "id": "zhar-ptitsa",
     "name": "Zhar Ptitsa",
     "element": "fire",
-    "passiveAbility": "Your aeric Knowledges cannot be blocked.",
+    "passiveAbility": "Damage dealt by an Air Knowledge card on Zhar Ptitsa bypasses Defense.",
     "image": "/images/beings/zhar-ptitsa.webp",
     "wisdomCycle": [1, 2, 3, 4]
   }

@@ -26,7 +26,7 @@ describe('Zhar-Ptitsa Passive', () => {
 
       expect(result.players[1].power).toBe(beforePower - 1);
       expect(result.log.join(' ')).toContain(
-        `[Passive Effect] Zhar-Ptitsa (Owner: ${p1Id}) bypasses defense`
+        `[Passive Effect] Zhar Ptitsa (Owner: ${p1Id}) bypasses Defense`
       );
        // Check that the damage log is present
       expect(result.log.join(' ')).toContain(

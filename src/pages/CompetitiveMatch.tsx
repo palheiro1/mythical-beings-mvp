@@ -6,10 +6,11 @@ import type {
   Creature,
   Knowledge,
 } from '@mythicalb/wisdom-duel-engine';
-import creatures from '../assets/creatures.json';
+import { creatures } from '@mythicalb/wisdom-duel-engine/catalog';
 import CardFaceByImage from '../components/CardFaceByImage.js';
 import ChallengeArena from '../components/competition/ChallengeArena.js';
 import { ArenaButton, PageShell, Panel } from '../components/ui/index.js';
+import { formatMatchEvent } from '../utils/gameHistory.js';
 import { useAuth } from '../hooks/useAuth.js';
 import { useCompetitiveMatch, useMatchClock } from '../hooks/useCompetitiveMatch.js';
 import {
@@ -127,7 +128,7 @@ function Board({
                   })
                 }
               >
-                Comprar
+                Tirar do Mercado
               </ArenaButton>
             </Card>
           ))}
@@ -137,7 +138,7 @@ function Board({
         <h2 className="text-xl font-bold">A tua equipa · {mine.power} Poder</h2>
         {chosen ? (
           <p role="status" className="text-amber-200">
-            Escolhe a criatura para invocar {chosen.name}. Uma carta já nesse espaço será descartada.{' '}
+            Escolhe a criatura em que vais jogar {chosen.name}. Uma carta já nesse espaço será descartada.{' '}
             <button className="underline" onClick={() => setSelected(null)}>
               Cancelar seleção
             </button>
@@ -162,7 +163,7 @@ function Board({
                           })
                     }
                   >
-                    {chosen ? 'Invocar aqui' : 'Rodar criatura'}
+                    {chosen ? 'Jogar aqui' : 'Rodar criatura'}
                   </ArenaButton>
                 </Card>
                 {knowledge ? (
@@ -179,7 +180,7 @@ function Board({
                         })
                       }
                     >
-                      Rodar conhecimento
+                      Rodar carta de Conhecimento
                     </ArenaButton>
                   </Card>
                 ) : (
@@ -203,12 +204,12 @@ function Board({
                 variant={chosen?.instanceId === k.instanceId ? 'primary' : 'secondary'}
                 onClick={() => setSelected(chosen?.instanceId === k.instanceId ? null : k)}
               >
-                {chosen?.instanceId === k.instanceId ? 'Selecionado' : 'Invocar'}
+                {chosen?.instanceId === k.instanceId ? 'Selecionado' : 'Selecionar'}
               </ArenaButton>
             </Card>
           ))}
         </div>
-        {hand.length === 0 ? <p>A tua mão está vazia. Compra um conhecimento no mercado.</p> : null}
+        {hand.length === 0 ? <p>A tua mão está vazia. Tira uma carta de Conhecimento do Mercado.</p> : null}
       </Panel>
       {projection.pendingEffect ? (
         <Panel className="space-y-3 border-amber-300 p-5" role="region" aria-label="Decisão pendente">
@@ -271,7 +272,7 @@ function Board({
           {projection.events.slice(-12).map((event) => (
             <li key={event.sequence}>
               {event.sequence}. {event.actorId === playerId ? 'Tu' : 'Adversário'} ·{' '}
-              {event.type.replace(/_/g, ' ')}
+              {formatMatchEvent(event.type)}
             </li>
           ))}
         </ol>

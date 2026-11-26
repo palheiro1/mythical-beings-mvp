@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { ArrowRight, BookOpen, ExternalLink } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import DigitalCardFace from '../DigitalCardFace.js';
-import creatureData from '../../assets/creatures.json';
+import { creatures as creatureData } from '@mythicalb/wisdom-duel-engine/catalog';
 import type { Creature } from '../../game/types.js';
 import { BUILD_LABEL } from '../../config/build.js';
 import { WEEKLY_CHALLENGE_ENABLED } from '../../config/release.js';
@@ -33,7 +33,7 @@ export default function TrainingLanding({ children }: { children: ReactNode }) {
     </section>
     <section className="wd-intro-strip" aria-label="How a duel works">
       <div><span>01</span><p><strong>Choose your creatures</strong>Three legends, each with a different ability.</p></div>
-      <div><span>02</span><p><strong>Make every action count</strong>Rotate, draw, or play a knowledge card.</p></div>
+      <div><span>02</span><p><strong>Make every action count</strong>Draw from the Market, rotate a Creature, or play a Knowledge card.</p></div>
       <div><span>03</span><p><strong>Find your combination</strong>Outlast the bot and play again.</p></div>
     </section>
     <section className="wd-about" aria-labelledby="about-mythical">

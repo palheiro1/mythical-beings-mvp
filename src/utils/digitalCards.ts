@@ -1,6 +1,8 @@
-import type { Creature, Knowledge } from '../game/types.js';
+import { FIRE_MAX_WISDOM_REQUIREMENT } from '@mythicalb/wisdom-duel-engine/catalog';
+import { getDisplayCardById, type DisplayCard } from './cardCatalog.js';
+import type { Knowledge } from '../game/types.js';
 
-export type DisplayCard = Creature | Knowledge;
+export type { DisplayCard } from './cardCatalog.js';
 export type CycleKind = 'wisdom' | 'damage' | 'defense' | 'power' | 'rotate' | 'block' | 'limit' | 'effect';
 export interface CardCycleStep { value: number | string; kind: CycleKind; label: string }
 
@@ -19,10 +21,10 @@ export function getCardCycle(card: DisplayCard): CardCycleStep[] {
       return { value: Math.abs(value), kind, label: `${value < 0 ? 'Defense' : 'Damage'} ${Math.abs(value)}` };
     }
     if (card.id === 'aerial2') return { value: index + 1, kind: 'power', label: `Gain ${index + 1} Power` };
-    if (card.id === 'aquatic1') return { value: 1, kind: 'rotate', label: 'Rotate a Knowledge 1 step' };
-    if (card.id === 'aquatic3') return { value: '—', kind: 'block', label: 'Block opposing summons' };
-    if (card.id === 'terrestrial3') return { value: 'W', kind: 'damage', label: 'Damage equal to summoner Wisdom' };
-    if (card.id === 'terrestrial4') return { value: Math.max(0, 2 - index), kind: 'limit', label: `Discard opposing Knowledge costing ${Math.max(0, 2 - index)} or less` };
+    if (card.id === 'aquatic1') return { value: 1, kind: 'rotate', label: 'Rotate another Knowledge card one step' };
+    if (card.id === 'aquatic3') return { value: '—', kind: 'block', label: 'Block play on the opposing Creature' };
+    if (card.id === 'terrestrial3') return { value: 'W', kind: 'damage', label: 'Damage equal to this Creature’s Wisdom' };
+    if (card.id === 'terrestrial4') return { value: FIRE_MAX_WISDOM_REQUIREMENT, kind: 'limit', label: `Discard opposing Knowledge cards requiring ${FIRE_MAX_WISDOM_REQUIREMENT} Wisdom or less` };
     return { value: '✦', kind: 'effect', label: 'Card effect' };
   });
 }
@@ -33,13 +35,18 @@ export function getCardPresentation(card: DisplayCard, rotation = card.rotation 
   const step = Math.min(cycle.length - 1, Math.floor(normalizeCardRotation(rotation) / 90));
   const current = cycle[step];
   const value = knowledge ? card.cost : (card.currentWisdom ?? Number(current.value));
-  const description = knowledge ? card.effect : card.passiveAbility;
+  // Saved games and older servers may still send the original all-Spell catalog.
+  // Use current printed details while keeping Wisdom, rotations and instance values live.
+  const definition = getDisplayCardById(card.id) ?? card;
+  const subtype = isKnowledgeCard(definition) ? (definition.type === 'ally' ? 'Ally' : 'Spell') : 'Creature';
+  const element = definition.element || 'neutral';
+  const description = isKnowledgeCard(definition) ? definition.effect : definition.passiveAbility;
+  const typeLabel = `${element[0].toUpperCase()}${element.slice(1)} ${subtype}`;
+  const valueLabel = knowledge ? `Requires ${value} Wisdom` : `Wisdom ${value}`;
   return {
-    knowledge, cycle, step, current, value, description,
+    knowledge, cycle, step, current, value, valueLabel, typeLabel, description,
     final: knowledge && step === cycle.length - 1,
     nameIsLong: card.name.length > 11,
-    // The numeric rotation track already communicates this information.
-    rules: description.replace(/\s*Deals damage(?:\/defense)? based on rotation\.?/i, '').trim(),
   };
 }
 

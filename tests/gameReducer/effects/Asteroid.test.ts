@@ -35,7 +35,7 @@ describe('Aquatic2 (Asteroid) Effect', () => {
     });
     // No damage dealt, only defense is provided (handled in calculateDamage when attacked)
     expect(result.players[1].power).toBe(20);
-    expect(result.log.some(log => log.includes('causes no damage this rotation') || log.includes('defense'))).toBe(true);
+    expect(result.log.some(log => log.includes('causes no damage this rotation') || log.includes('Defense'))).toBe(true);
   });
 
   it('should deal 1 damage at 90º rotation', () => {
@@ -67,7 +67,7 @@ describe('Aquatic2 (Asteroid) Effect', () => {
       trigger: 'onPhase',
     });
     expect(result.players[1].power).toBe(20);
-    expect(result.log.some(log => log.includes('causes no damage this rotation') || log.includes('defense'))).toBe(true);
+    expect(result.log.some(log => log.includes('causes no damage this rotation') || log.includes('Defense'))).toBe(true);
   });
 
   it('should deal 1 damage at 270º rotation', () => {
@@ -102,7 +102,7 @@ describe('Aquatic2 (Asteroid) Effect', () => {
     );
     // Asteroid gives 1 defense from its value cycle and +1 more when the opposing slot is empty.
     expect(result.finalDamage).toBe(0);
-    expect(result.logs.some(log => log.includes('Asteroid') && log.includes('+1 defense'))).toBe(true);
+    expect(result.logs.some(log => log.includes('Asteroid') && log.includes('+1 Defense'))).toBe(true);
   });
 
   it('should only provide value-cycle defense if opposing slot has knowledge', () => {
@@ -119,6 +119,6 @@ describe('Aquatic2 (Asteroid) Effect', () => {
       fieldSlotIndex
     );
     expect(result.finalDamage).toBe(1);
-    expect(result.logs.some(log => log.includes('Asteroid') && log.includes('+1 defense'))).toBe(true);
+    expect(result.logs.some(log => log.includes('Asteroid') && log.includes('+1 Defense'))).toBe(true);
   });
 });

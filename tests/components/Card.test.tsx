@@ -41,7 +41,7 @@ describe('Card', () => {
     await user.click(screen.getByRole('button', { name: /inspect adaro/i }));
 
     expect(screen.getByRole('dialog', { name: /adaro/i })).toBeInTheDocument();
-    expect(screen.getByText(/draw a card/i)).toBeInTheDocument();
+    expect(screen.getByText(/draw the first card from the Market/i)).toBeInTheDocument();
   });
 
   it('traps focus in card details and returns it to the inspect control', async () => {

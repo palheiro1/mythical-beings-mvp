@@ -4,6 +4,7 @@ import { isValidAction, type RuleValidationResult } from './rules.js';
 import type { GameAction, GameState } from './types.js';
 import { GUIDED_TEAM, type TrainingMode } from '../utils/trainingMode.js';
 
+export const GUIDED_CARD_ID = 'aerial1';
 export const HUMAN_ID = 'local-player';
 export const BOT_ID = 'bot';
 export const BOT_TEAM = ['adaro', 'lisovik', 'kappa'];
@@ -33,11 +34,11 @@ export function createTrainingSession(team: string[], mode: TrainingMode, gameId
     player2SelectedIds: BOT_TEAM,
   }, mode === 'guided' ? createGameRandomState('42'.repeat(32)) : undefined);
   if (mode === 'guided') {
-    const marketIndex = game.market.findIndex(card => card.id === 'aerial1');
+    const marketIndex = game.market.findIndex(card => card.id === GUIDED_CARD_ID);
     if (marketIndex >= 0) {
       [game.market[0], game.market[marketIndex]] = [game.market[marketIndex], game.market[0]];
     } else {
-      const deckIndex = game.knowledgeDeck.findIndex(card => card.id === 'aerial1');
+      const deckIndex = game.knowledgeDeck.findIndex(card => card.id === GUIDED_CARD_ID);
       if (deckIndex < 0) throw new Error('Tutorial card is missing from the catalog.');
       [game.market[0], game.knowledgeDeck[deckIndex]] = [game.knowledgeDeck[deckIndex], game.market[0]];
     }
@@ -51,9 +52,9 @@ export function validateTrainingAction(session: TrainingSession, action: Trainin
   if (!validation.isValid) return validation;
   if (action.payload.playerId !== HUMAN_ID || session.guide === 'free' || action.type === 'RESOLVE_PENDING_EFFECT') return validation;
   const allowed =
-    (session.guide === 'draw' && action.type === 'DRAW_KNOWLEDGE' && action.payload.knowledgeId === 'aerial1') ||
+    (session.guide === 'draw' && action.type === 'DRAW_KNOWLEDGE' && action.payload.knowledgeId === GUIDED_CARD_ID) ||
     (session.guide === 'rotate' && action.type === 'ROTATE_CREATURE' && action.payload.creatureId === 'tarasca') ||
-    (session.guide === 'summon' && action.type === 'SUMMON_KNOWLEDGE' && action.payload.creatureId === 'tarasca' && action.payload.knowledgeId === 'aerial1') ||
+    (session.guide === 'summon' && action.type === 'SUMMON_KNOWLEDGE' && action.payload.creatureId === 'tarasca' && action.payload.knowledgeId === GUIDED_CARD_ID) ||
     (session.guide === 'end' && action.type === 'END_TURN');
   return allowed ? validation : { isValid: false, reason: 'Follow the highlighted lesson action, or skip the tutorial to practise freely.' };
 }
@@ -66,7 +67,7 @@ export function trainingSessionReducer(session: TrainingSession, event: Training
   if (event.type === 'select') {
     const card = session.game.players[0].hand.find(item => item.instanceId === event.instanceId);
     if (event.instanceId && !card) return session;
-    if (session.guide !== 'free' && event.instanceId && !(session.guide === 'summon' && card?.id === 'aerial1')) return session;
+    if (session.guide !== 'free' && event.instanceId && !(session.guide === 'summon' && card?.id === GUIDED_CARD_ID)) return session;
     return { ...session, selectedId: session.selectedId === event.instanceId ? null : event.instanceId, feedback: '', rejected: false };
   }
   if (session.game.phase === 'gameOver') return session;
@@ -91,7 +92,7 @@ export function trainingSessionReducer(session: TrainingSession, event: Training
   if (game.currentPlayerIndex === 0 && game.phase === 'action') {
     if (guide === 'watch') guide = 'summon';
     else if (guide === 'wait-for-strike') {
-      const spellId = game.players[0].field.find(slot => slot.knowledge?.id === 'aerial1')?.knowledge?.instanceId;
+      const spellId = game.players[0].field.find(slot => slot.knowledge?.id === GUIDED_CARD_ID)?.knowledge?.instanceId;
       const hit = game.presentationCues?.find(cue => cue.kind === 'combat' && cue.source === `card:${spellId}` && cue.target === `power:${BOT_ID}`);
       if (hit) firstStrike = { damage: hit.amount ?? 0, before: session.game.players[1].power, after: game.players[1].power };
       guide = 'strike';

@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { ArrowRight, BookOpen, Clock3, Flag, History, Layers, RotateCcw, Smartphone, X } from 'lucide-react';
-import creatureData from '../assets/creatures.json';
+import { creatures as creatureData } from '@mythicalb/wisdom-duel-engine/catalog';
 import { track } from '../analytics/productAnalytics.js';
 import { isValidBotCreatureSelection, readBotCreatureSelection, clearBotCreatureSelection } from '../utils/botSelection.js';
+import { formatGameHistoryEntry } from '../utils/gameHistory.js';
 import { GUIDED_TEAM, rememberTutorial, trainingModeFromSearch, type TrainingMode } from '../utils/trainingMode.js';
 import { BOT_ID, HUMAN_ID, createTrainingSession, trainingSessionReducer, type TrainingAction } from '../game/trainingSession.js';
 import { useTurnTimer } from '../hooks/useTurnTimer.js';
@@ -13,6 +14,7 @@ import { useTrainingMotion } from '../hooks/useTrainingMotion.js';
 import { useTrainingAudio } from '../hooks/useTrainingAudio.js';
 import TrainingSoundControls from '../components/training/TrainingSoundControls.js';
 import { useDirectCards } from '../hooks/useDirectCards.js';
+import { guideGlowSequence, useGuideGlow } from '../hooks/useGuideGlow.js';
 import CardDetailOverlay from '../components/CardDetailOverlay.js';
 import CardFaceByImage from '../components/CardFaceByImage.js';
 import { getPendingEffectCard } from '../utils/pendingEffectCard.js';
@@ -21,12 +23,14 @@ import PlayCardFace from '../components/training/PlayCardFace.js';
 import TrainingTrays, { type TrayTab } from '../components/training/TrainingTrays.js';
 import TrainingCoach from '../components/training/TrainingCoach.js';
 import TrainingDialog from '../components/training/TrainingDialog.js';
+import TrainingIntro, { type IntroProgress } from '../components/training/TrainingIntro.js';
 import type { DisplayCard } from '../components/training/TrainingCard.js';
 import '../trainingLandscape.css';
 import '../trainingMotion.css';
 import '../trainingArena.css';
 import '../trainingAudio.css';
 import '../trainingKai.css';
+import '../trainingLesson.css';
 
 function PowerMedallion({ power, side, handSize, actions }: {
   power: number;
@@ -72,12 +76,24 @@ function PracticeMatch({ team, mode, gameId, rulesOpen, openRules, resumeDuel, o
   const directCards = useDirectCards();
   const [allowPortrait, setAllowPortrait] = useState(false);
   const orientationPaused = portrait && !allowPortrait;
+  // Keep the introduction in match state so a change of orientation preserves progress.
+  const [intro, setIntro] = useState<IntroProgress | null>(() =>
+    mode === 'guided' && !rulesOpen ? { step: 0, turnBeat: 0, rotated: false } : null);
+  const introOpen = intro !== null;
+  const introFinished = useRef(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (introOpen || !introFinished.current) return;
+    introFinished.current = false;
+    containerRef.current?.querySelector<HTMLElement>('[data-guide-target="market"]')?.focus({ preventScroll: true });
+  }, [introOpen]);
   const motionLayerRef = useRef<HTMLDivElement>(null);
   const audio = useTrainingAudio(orientationPaused);
-  const { capture, announcement, presenting } = useTrainingMotion(game, containerRef, motionLayerRef, `${directCards}-${tab}`, orientationPaused || rulesOpen, audio.presentation, !lessonBonus);
+  const { capture, announcement, presenting } = useTrainingMotion(game, containerRef, motionLayerRef, `${directCards}-${tab}`, orientationPaused || rulesOpen || introOpen, audio.presentation, !lessonBonus);
+  // One pulse per guided step, on whatever the player must touch next.
+  const glowTarget = useGuideGlow(guide, session.selectedId, introOpen || orientationPaused || rulesOpen, presenting);
   const onAction = useCallback((action: TrainingAction) => { capture(); dispatch({ type: 'play', action }); }, [capture]);
-  useTrainingBot(game, onAction, orientationPaused || rulesOpen);
+  useTrainingBot(game, onAction, orientationPaused || rulesOpen || introOpen);
   const playerTurn = game.currentPlayerIndex === 0;
   const isMyTurn = playerTurn && game.phase === 'action';
   const gameOver = game.phase === 'gameOver';
@@ -105,7 +121,7 @@ function PracticeMatch({ team, mode, gameId, rulesOpen, openRules, resumeDuel, o
     onAction({ type: 'END_TURN', payload: { playerId: HUMAN_ID } });
   }, [lessonBonus, pending, onAction]);
   const remainingTime = useTurnTimer({ isMyTurn: isMyTurn && !paused, phase: game.phase === 'action' ? 'action' : null,
-    turnDurationSeconds: 30, onTimerEnd: endTurn, gameTurn: game.turn, currentPlayerIndex: game.currentPlayerIndex, paused: orientationPaused || rulesOpen || !!pending });
+    turnDurationSeconds: 30, onTimerEnd: endTurn, gameTurn: game.turn, currentPlayerIndex: game.currentPlayerIndex, paused: orientationPaused || rulesOpen || introOpen || !!pending });
   const observed = useRef({ started: false, first: false, ended: false, abandonTimeout: 0 });
   useEffect(() => {
     window.clearTimeout(observed.current.abandonTimeout);
@@ -128,7 +144,9 @@ function PracticeMatch({ team, mode, gameId, rulesOpen, openRules, resumeDuel, o
     if (guide === 'complete' || guide === 'handoff') rememberTutorial(session.tutorialCompleted);
     if (guide === 'draw') setTab('market');
     if (guide === 'summon') setTab('hand');
-    const target = guide === 'draw' ? 'market' : guide === 'rotate' ? 'creature' : guide === 'summon' ? 'hand' : guide === 'end' ? 'end' : null;
+  }, [guide, session.tutorialCompleted]);
+  useEffect(() => {
+    const target = guideGlowSequence(guide, session.selectedId).at(-1);
     if (!target) return;
     const frame = window.requestAnimationFrame(() => {
       const element = containerRef.current?.querySelector<HTMLElement>(`[data-guide-target="${target}"]`);
@@ -141,7 +159,7 @@ function PracticeMatch({ team, mode, gameId, rulesOpen, openRules, resumeDuel, o
       }
     });
     return () => window.cancelAnimationFrame(frame);
-  }, [guide, session.tutorialCompleted, orientationPaused]);
+  }, [guide, session.selectedId, orientationPaused]);
   const [player, bot] = game.players;
   const selected = player.hand.find(card => card.instanceId === session.selectedId);
   const actionsLeft = Math.max(0, game.actionsPerTurn - game.actionsTakenThisTurn);
@@ -149,7 +167,7 @@ function PracticeMatch({ team, mode, gameId, rulesOpen, openRules, resumeDuel, o
   const clockRunning = isMyTurn && !clockPaused;
   const clockWarning = isMyTurn && !paused && remainingTime <= 10 ? remainingTime <= 5 ? 'red' : 'amber' : undefined;
   const clockText = `${Math.floor(remainingTime / 60)}:${String(remainingTime % 60).padStart(2, '0')}`;
-  let message = directCards ? 'Tap a creature to rotate, a market card to draw, or a hand card to select.' : 'Rotate a creature, draw from the market, or select a card in your hand.';
+  let message = directCards ? 'Tap a Creature to rotate it, a Knowledge card in the Market to draw it, or a card in your hand to select it.' : 'Draw from the Market, rotate a Creature, or select a Knowledge card in your hand.';
   if (gameOver) message = 'The duel is over.';
   else if (pending && !lessonBonus) message = pending.playerId === HUMAN_ID ? 'Choose a target to resolve the card effect.' : 'The bot is resolving a card effect.';
   else if (!isMyTurn) message = 'The bot is thinking. Your next turn is coming.';
@@ -157,12 +175,12 @@ function PracticeMatch({ team, mode, gameId, rulesOpen, openRules, resumeDuel, o
   else if (guide === 'strike') message = 'Take a moment to look at the bot’s Power.';
   else if (guide === 'complete' || guide === 'handoff') message = 'Continue Practice starts the turn clock.';
   else if (paused) message = 'Follow the highlighted lesson action. Take your time.';
-  else if (selected) message = `Play ${selected.name} on a highlighted creature.`;
+  else if (selected) message = `Play ${selected.name} on a highlighted Creature.`;
   if (orientationPaused) return <div className="wd wd-rotate-notice">
     <Smartphone size={64} strokeWidth={1.2} aria-hidden="true" />
     <p className="wd-eyebrow">Wisdom Duel · Landscape play</p>
     <h1>Turn your phone to play.</h1>
-    <p>The board, your hand and the market fit side by side in landscape.</p>
+    <p>The board, your hand and the Market fit side by side in landscape.</p>
     <p role="status">Your match and clock are paused. Rotate your phone to continue.</p>
     <Link className="wd-button" to="/">Back to Home</Link>
     <button className="wd-button" onClick={() => setAllowPortrait(true)}>Can’t rotate? Continue in portrait</button>
@@ -183,14 +201,14 @@ function PracticeMatch({ team, mode, gameId, rulesOpen, openRules, resumeDuel, o
         <TrainingSoundControls preferences={audio.preferences} update={audio.update} error={audio.error} play={audio.presentation.play} open={dialog === 'sound' && !pending && !inspection && (!gameOver || resultDismissed)} onOpen={() => setDialog('sound')} onClose={() => setDialog(null)} />
       </div>
     </header>
-    {!gameOver && <TrainingCoach session={session} direct={directCards} lessonBonus={lessonBonus} onStart={() => dispatch({ type: 'start-guide' })} onSkip={() => dispatch({ type: 'skip-guide' })} onShowBonus={() => dispatch({ type: 'show-bonus' })} onContinue={() => dispatch({ type: 'continue' })} />}
+    {!gameOver && !introOpen && <TrainingCoach session={session} direct={directCards} lessonBonus={lessonBonus} glow={glowTarget} onStart={() => dispatch({ type: 'start-guide' })} onSkip={() => dispatch({ type: 'skip-guide' })} onShowBonus={() => dispatch({ type: 'show-bonus' })} onContinue={() => dispatch({ type: 'continue' })} />}
     <div className="wd-game-layout">
-      <TrainingBoard direct={directCards} session={session} onAction={onAction} onInspect={setInspection} hud={{
+      <TrainingBoard direct={directCards} session={session} onAction={onAction} onInspect={setInspection} glow={glowTarget} hud={{
         opponent: <PowerMedallion power={bot.power} side="opponent" handSize={bot.hand.length} />,
         turn: <div className="wd-turn"><span>Turn {game.turn}</span><strong key={`${game.turn}:${game.currentPlayerIndex}`} className={gameOver ? undefined : 'wd-turn-callout'}>{gameOver ? 'Duel complete' : playerTurn ? 'Your turn' : 'Bot’s turn'}</strong></div>,
         player: <PowerMedallion power={player.power} side="player" actions={{ remaining: isMyTurn && (!pending || lessonBonus) ? actionsLeft : 0, total: game.actionsPerTurn }} />,
       }} />
-      <TrainingTrays direct={directCards} session={session} tab={tab} setTab={setTab} onAction={onAction} onSelect={instanceId => dispatch({ type: 'select', instanceId })} onInspect={setInspection} />
+      <TrainingTrays direct={directCards} session={session} tab={tab} setTab={setTab} onAction={onAction} onSelect={instanceId => dispatch({ type: 'select', instanceId })} onInspect={setInspection} glow={glowTarget} />
     </div>
     <footer className="wd-actionbar">
       <div className="wd-action-context"><p className={session.rejected ? 'wd-error' : ''} role={session.rejected ? 'alert' : 'status'}>{session.feedback || message}</p></div>
@@ -199,18 +217,20 @@ function PracticeMatch({ team, mode, gameId, rulesOpen, openRules, resumeDuel, o
         <button className="wd-discard-button" data-motion-anchor="discard" aria-label={`Discard pile, ${game.discardPile.length} ${game.discardPile.length === 1 ? 'card' : 'cards'}`} onClick={() => setDialog('discard')}><Layers size={17} /><span>{game.discardPile.length}</span><span className="wd-discard-label">Discards</span></button>
         <button className="wd-icon-button" aria-label="Game history" onClick={() => setDialog('history')}><History size={18} /></button>
         {!gameOver && <button className="wd-icon-button" aria-label="Concede match" onClick={() => setDialog('resign')}><Flag size={17} /></button>}
-        {gameOver ? <button className="wd-button wd-button-primary" onClick={() => setResultDismissed(false)}>View Result</button> : <button className={`wd-button wd-button-primary ${guide === 'end' ? 'is-highlighted' : ''}`} data-guide-target="end" disabled={!isMyTurn || (!!pending && !lessonBonus) || (paused && guide !== 'end')} onClick={endTurn}>End Turn <ArrowRight size={16} /></button>}
+        {gameOver ? <button className="wd-button wd-button-primary" onClick={() => setResultDismissed(false)}>View Result</button> : <button className={`wd-button wd-button-primary ${guide === 'end' ? 'is-highlighted' : ''} ${glowTarget === 'end' ? 'wd-guide-glow' : ''}`} data-guide-target="end" disabled={!isMyTurn || (!!pending && !lessonBonus) || (paused && guide !== 'end')} onClick={endTurn}>End Turn <ArrowRight size={16} /></button>}
       </div>
     </footer>
     <div className="wd-match-links"><button className="wd-text-button" onClick={() => navigate('/bot-selection?mode=guided')}><RotateCcw size={14} />Repeat tutorial</button><span>Solo practice · No competitive rewards</span></div>
     <CardDetailOverlay card={inspection} open={!!inspection && !rulesOpen} onClose={closeInspection} contextLabel="Card details" />
+    {intro && <TrainingIntro team={player} opponent={bot} market={game.market} direct={directCards}
+      progress={intro} onProgress={setIntro} onFinish={() => { introFinished.current = true; setIntro(null); dispatch({ type: 'start-guide' }); }} />}
     {rulesOpen && <TrainingDialog title="Duel rules" onClose={resumeDuel}>
       <p>Turn {game.turn} · Duel paused</p>
       <ul className="wd-rules-list">
-        <li>Each team’s three creatures share one Power total. Reduce your opponent’s Power to zero to win.</li>
-        <li>You normally have two actions each turn. Draw from the market, rotate a creature, or play Knowledge from your hand.</li>
-        <li>Rotating a creature advances its Wisdom. It can play Knowledge that costs no more than its current Wisdom.</li>
-        <li>At the start of your turn, active Knowledge resolves its effects and rotates. A different position can change what the card does.</li>
+        <li>Each team’s three Creatures share 20 starting Power. Reduce your opponent’s Power to zero to win.</li>
+        <li>During your Knowledge Phase, your Knowledge cards in play automatically resolve at their current rotation, then rotate one step. On final rotation, they resolve and leave play.</li>
+        <li>In your Action Phase, draw from the Market, rotate a Creature, or play a Knowledge card from your hand. You normally get two actions, and card effects can change that number.</li>
+        <li>Rotate a Creature to advance its Wisdom. You can play an Ally or a Spell on a Creature that meets its Wisdom requirement. It keeps its Wisdom.</li>
       </ul>
       <div className="wd-dialog-actions">
         <button type="button" className="wd-button wd-button-primary" onClick={resumeDuel}>Resume duel</button>
@@ -226,11 +246,11 @@ function PracticeMatch({ team, mode, gameId, rulesOpen, openRules, resumeDuel, o
       </div>
     </TrainingDialog>}
     {dialog === 'discard' && !pending && (!gameOver || resultDismissed) && <TrainingDialog title="Discard pile" onClose={() => setDialog(null)}><p>{game.discardPile.length ? `${game.discardPile.length} ${game.discardPile.length === 1 ? 'card' : 'cards'} · Most recent first` : 'Cards that leave play arrive here.'}</p><div className="wd-discard-grid">{[...game.discardPile].reverse().map(card => <button key={card.instanceId} className="wd-discard-card" aria-label={`Inspect discarded ${card.name}`} onClick={() => { setDialog(null); setInspection(card); }}><PlayCardFace card={card} /><span>{card.name}</span></button>)}</div></TrainingDialog>}
-    {dialog === 'history' && !pending && (!gameOver || resultDismissed) && <TrainingDialog title="Game history" onClose={() => setDialog(null)}><ol className="wd-history">{game.log.map((entry, index) => <li key={index}>{entry.split(HUMAN_ID).join('You').split(BOT_ID).join('Bot').replace(/^\[[^\]]+\]\s*/, '')}</li>)}</ol></TrainingDialog>}
+    {dialog === 'history' && !pending && (!gameOver || resultDismissed) && <TrainingDialog title="Game history" onClose={() => setDialog(null)}><ol className="wd-history">{game.log.map((entry, index) => <li key={index}>{formatGameHistoryEntry(entry, { [HUMAN_ID]: 'You', [BOT_ID]: 'Bot' })}</li>)}</ol></TrainingDialog>}
     {dialog === 'resign' && !pending && !gameOver && <TrainingDialog title="Concede this match?" onClose={() => setDialog(null)}><p>You can start another practice match at any time.</p><div className="wd-dialog-actions"><button className="wd-button" onClick={() => setDialog(null)}>Keep Playing</button><button className="wd-button wd-button-primary" onClick={() => { setDialog(null); dispatch({ type: 'resign' }); }}>Concede Match</button></div></TrainingDialog>}
     {gameOver && !rulesOpen && !resultDismissed && !inspection && !presenting && <TrainingDialog title={session.resigned ? 'Match conceded' : game.winner === HUMAN_ID ? 'Victory is yours.' : game.winner === BOT_ID ? 'The bot wins this duel.' : 'A draw between legends.'} onClose={() => setResultDismissed(true)}>
       <p className="wd-eyebrow">Practice complete · Turn {game.turn}</p><div className="wd-result-score"><span>You <strong>{Math.max(0, player.power)}</strong></span><span>Power</span><span>Bot <strong>{Math.max(0, bot.power)}</strong></span></div>
-      <p>{game.winner === HUMAN_ID ? 'Your creatures and knowledge found their rhythm. Try another combination.' : 'Every duel is a chance to discover a new combination. Your next one starts here.'}</p>
+      <p>{game.winner === HUMAN_ID ? 'Your Creatures and Knowledge cards won the duel. Try another combination.' : 'Every duel is a chance to discover a new combination. Your next one starts here.'}</p>
       <div className="wd-dialog-actions"><button className="wd-button wd-button-primary" onClick={onReplay}><RotateCcw size={17} />Play Again</button><button className="wd-button" onClick={() => navigate('/bot-selection?mode=free')}>Choose Another Team</button></div><button className="wd-text-button" onClick={() => setResultDismissed(true)}>Review the board</button>
     </TrainingDialog>}
   </div>;

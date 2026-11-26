@@ -203,6 +203,11 @@
 }
 .wd-kai .wd-empty-slot svg { width: 16px; color: #bf9f63; }
 .wd-kai .wd-lane-action { margin-inline: 5px; min-height: 38px; }
+/* Guided-lesson pulse on the KAI table: the shared golden ring, warmed toward the arena's #f2d18b,
+   layered over each control's resting shadow so nothing flattens while it glows. */
+.wd-kai :is(.wd-lane-action,.wd-card-action).wd-guide-glow { box-shadow:inset 0 1px #d9c58e29,0 2px 3px #0004,inset 0 0 0 2px #0c2028,0 0 0 2px #f2d18b44,0 0 11px 2px #f2d18b2b; }
+.wd-kai .wd-button.wd-guide-glow { box-shadow:inset 0 0 0 2px #50391344,inset 0 2px #fff1ce,0 3px 7px #0005,0 0 0 3px #f2d18b66,0 0 15px 4px #f2d18b3a; }
+.wd-kai .wd-card-art.wd-guide-glow { box-shadow:0 0 0 2px #f2d18b44,0 0 11px 2px #f2d18b2b; }
 
 .wd-power-medallion {
   position: relative;

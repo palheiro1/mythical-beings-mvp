@@ -72,7 +72,7 @@
 .wd-team-start { display:flex; align-items:center; gap:16px; }
 .wd-team-start>span { font-size:12px; color:var(--wd-muted); white-space:nowrap; }
 .wd-card { height:100%; position:relative; min-width:0; }
-.wd-card-art { display:block; background:transparent; border:0; margin:auto; padding:0; height:100%; max-width:100%; min-width:44px; min-height:44px; aspect-ratio:720/951; border-radius:6px; transform:rotate(var(--card-rotation,0deg)); transition:transform .25s ease; }
+.wd-card-art { display:block; background:transparent; border:0; margin:auto; padding:0; height:100%; max-width:100%; min-width:44px; min-height:44px; aspect-ratio:720/951; border-radius:6px; transform:rotate(var(--card-rotation,0deg)); transition:transform .25s ease,box-shadow .35s ease; }
 .wd-card-art img { border-radius:6px; }
 .wd-card-detail-mark { display:none; }
 .wd-card.is-selected .wd-card-art { outline:2px solid var(--wd-gold); outline-offset:3px; }
@@ -129,7 +129,16 @@
 .wd-coach h2 { font-size:18px; line-height:1.2; margin:2px 0; }
 .wd-coach p { font-size:12px; color:#c3ccd8; }
 .wd-coach-controls { display:flex; align-items:center; gap:16px; flex-shrink:0; }
-.wd-lesson-progress { color:var(--wd-gold); font-size:15px; }
+/* Brief golden glow drawing attention to the coach after the intro modals close.
+   Transition-based (not keyframes) so the brightness ramps smoothly in and out instead of stepping. */
+.wd-coach { transition:border-color .35s ease,box-shadow .35s ease; }
+.wd-coach-highlight { border-color:var(--wd-gold); box-shadow:0 0 0 2px #e8c38344,0 0 11px 2px #e8c3832b; }
+/* The same golden ring marks whichever control the guided lesson asks for next.
+   Every step's pulse rides the same transition ramp, so it eases in and out. */
+.wd-lane-action,.wd-card-action,.wd-button { transition:box-shadow .35s ease; }
+.wd-guide-glow { box-shadow:0 0 0 2px #e8c38344,0 0 11px 2px #e8c3832b; }
+.wd-button.wd-guide-glow { box-shadow:0 0 0 3px #e8c38366,0 0 15px 4px #e8c3833a; }
+.wd-lesson-progress,.wd-intro-progress { color:var(--wd-gold); font-size:15px; }
 .wd-actionbar { position:sticky; bottom:0; z-index:30; background:#0e1723fa; backdrop-filter:blur(12px); border-top:1px solid #4b4436; padding:10px 0; margin-top:8px; display:flex; justify-content:space-between; align-items:center; gap:18px; box-shadow:0 -10px 25px #090f1944; }
 .wd-action-context { max-width:680px; padding-left:6px; }
 .wd-action-context>p { font-size:12px; color:#d8dce2; }
@@ -149,6 +158,10 @@
 .wd-dialog .wd-button,.wd-dialog .wd-icon-button { border-color:#4b586a; color:#f2f0ea; }
 .wd-dialog .wd-text-button { color:#e8c383!important; }
 .wd-dialog-actions { display:flex; flex-wrap:wrap; gap:10px; margin:25px 0 12px; }
+/* Intro walkthrough: themed like the confluence arena — deep green panel, golden double frame and gold text. */
+.wd-dialog-intro { background:linear-gradient(160deg,#1c3126,#0e1f18 72%); border:1px solid #a68d5e; box-shadow:inset 0 0 0 3px #0d1f16,inset 0 0 0 4px #ba9a624a,0 7px 22px #040d1340; color:#e0ceb0; }
+.wd-dialog-intro h2 { color:var(--wd-gold); }
+.wd-dialog-intro p { color:#d8cbaa; }
 .wd-result-score { display:flex; align-items:center; justify-content:space-between; padding:25px 10px; border-block:1px solid #344252; }
 .wd-result-score>span { font-size:13px; color:#bcc6d1; }
 .wd-result-score strong { display:block; font:48px Georgia,serif; color:#e8c383; }

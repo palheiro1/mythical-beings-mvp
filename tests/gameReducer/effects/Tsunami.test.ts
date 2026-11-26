@@ -84,7 +84,7 @@ describe('Tsunami (aquatic1) Effect', () => {
 
     const tsunamiKnowledgeAfter = newState.players[playerIndex].field[tsunamiSlotIndex].knowledge;
     expect(tsunamiKnowledgeAfter!.rotation).toBe(initialTsunamiRotation); // Rotation should be unchanged
-    expect(newState.log.some(log => log.includes('Tsunami: No other knowledge cards to rotate.'))).toBe(true);
+    expect(newState.log.some(log => log.includes('Tsunami: No other Knowledge cards to rotate.'))).toBe(true);
   });
 
   it('should not rotate a card that is already at max rotation', () => {
@@ -104,7 +104,7 @@ describe('Tsunami (aquatic1) Effect', () => {
     const targetKnowledgeAfter = newState.players[playerIndex].field[targetSlotIndex].knowledge;
     expect(targetKnowledgeAfter!.rotation).toBe(maxRotationValue); // Rotation should be unchanged
     // Check the log message indicating no cards were available to rotate
-    expect(newState.log.some(log => log.includes(`${tsunamiKnowledge.name}: No other knowledge cards to rotate.`))).toBe(true);
+    expect(newState.log.some(log => log.includes(`${tsunamiKnowledge.name}: No other Knowledge cards to rotate.`))).toBe(true);
   });
 
    it('should do nothing if there are no other knowledge cards', () => {
@@ -122,7 +122,7 @@ describe('Tsunami (aquatic1) Effect', () => {
 
     expect(newState.players[playerIndex].field[tsunamiSlotIndex].knowledge!.rotation).toBe(initialTsunamiRotation);
     expect(newState.players[playerIndex].field.length).toBe(gameState.players[playerIndex].field.length); // No field changes
-    expect(newState.log.some(log => log.includes('Tsunami: No other knowledge cards to rotate.'))).toBe(true);
+    expect(newState.log.some(log => log.includes('Tsunami: No other Knowledge cards to rotate.'))).toBe(true);
   });
 
   // TODO: Add test for when Tsunami rotates a card, does that card's effect trigger immediately?

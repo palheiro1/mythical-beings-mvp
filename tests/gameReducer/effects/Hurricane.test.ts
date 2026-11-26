@@ -31,7 +31,7 @@ describe('Hurricane (aquatic3) Effect', () => {
       trigger: 'onPhase',
     });
     expect(result.blockedSlots[1]).toEqual([]);
-    expect(result.log.some(log => log.includes('Hurricane blocks summons'))).toBe(true);
+    expect(result.log.some(log => log.includes('the opponent cannot play a Knowledge card on the Creature facing it'))).toBe(true);
 
     const p2Card = createTestKnowledge('aerial1');
     result.players[1].hand = [p2Card];

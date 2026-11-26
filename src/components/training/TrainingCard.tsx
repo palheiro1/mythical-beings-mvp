@@ -1,3 +1,4 @@
+import { getCardPresentation } from '../../utils/digitalCards.js';
 import { Info } from 'lucide-react';
 import DigitalCardFace from '../DigitalCardFace.js';
 import PlayCardFace from './PlayCardFace.js';
@@ -12,6 +13,8 @@ export interface CardAction {
   reason?: string;
   pressed?: boolean;
   highlighted?: boolean;
+  /** Brief golden pulse drawing the eye to the lesson's current target. */
+  glowing?: boolean;
   guideTarget?: string;
   replacement?: string;
 }
@@ -24,12 +27,12 @@ export default function TrainingCard({ card, onInspect, rotation = card.rotation
 }) {
   const caption = <><span><span>{card.name}</span>{playFace && action?.replacement && <small className="wd-play-replacement">Replaces {action.replacement}</small>}</span><Info size={12} aria-hidden="true" /></>;
   return <div className={`wd-card ${board ? 'wd-card-board' : ''} ${selected ? 'is-selected' : ''} ${playFace ? 'wd-play-card' : ''}`}>
-    <button type="button" data-motion-anchor={motionAnchor} className={`wd-card-art ${action?.highlighted ? 'is-highlighted' : ''}`} onClick={action ? action.onActivate : () => onInspect({ ...card, rotation })}
+    <button type="button" data-motion-anchor={motionAnchor} className={`wd-card-art ${action?.highlighted ? 'is-highlighted' : ''} ${action?.glowing ? 'wd-guide-glow' : ''}`} onClick={action ? action.onActivate : () => onInspect({ ...card, rotation })}
       aria-label={action?.label ?? `Inspect ${card.name}`} aria-disabled={action ? !action.valid : undefined}
       aria-pressed={action?.pressed} title={action?.reason} data-guide-target={action?.guideTarget}>
       {playFace ? <PlayCardFace card={card} rotation={rotation} /> : <DigitalCardFace card={card} rotation={rotation} sizes={board ? '180px' : '(max-width: 767px) 250px, 360px'} />}
       {!playFace && !action && <span className="wd-card-detail-mark" aria-hidden="true"><Info size={13} /></span>}
-      {marketRow && <><span className="wd-market-row-name"><strong>{card.name}</strong><small>{card.element}</small></span><span className="wd-market-row-draw">Draw</span></>}
+      {marketRow && <><span className="wd-market-row-name"><strong>{card.name}</strong><small>{getCardPresentation(card).typeLabel}</small></span><span className="wd-market-row-draw">Draw</span></>}
       {playFace && !action && <span className="wd-play-caption">{caption}</span>}
       {!playFace && action?.replacement && <span className="wd-card-replacement">Replaces {action.replacement}</span>}
     </button>

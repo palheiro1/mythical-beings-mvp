@@ -310,7 +310,7 @@ describe('Passive Interactions', () => {
 
       // Check Kappa effect (free action)
       expect(result.actionsTakenThisTurn).toBe(initialActions); // Action not consumed
-      expect(result.log).toContain(`[Passive Effect] Kappa allows summoning aquatic knowledge ${aquaticCard.name} without spending an action.`);
+      expect(result.log).toContain(`[Passive Effect] Kappa lets you play ${aquaticCard.name} without spending an action.`);
 
       // Check Adaro effect (draw)
       expect(result.players[0].hand.length).toBe(initialHandSize); // -1 summon, +1 draw = 0 change
@@ -348,7 +348,7 @@ describe('Passive Interactions', () => {
 
       // Check Dudugera effect (free action)
       expect(result.actionsTakenThisTurn).toBe(initialActions); // Action not consumed
-      expect(result.log).toContain(`[Passive Effect] Dudugera allows summoning ${earthCard.name} onto itself without spending an action.`);
+      expect(result.log).toContain(`[Passive Effect] Playing ${earthCard.name} on Dudugera uses no action.`);
 
       // Check Kyzy effect (forces P1 - opponent of Kyzy owner - to discard)
       expect(result.players[0].hand.length).toBe(initialP1Hand - 2); // -1 summon, -1 discard

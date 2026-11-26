@@ -56,7 +56,7 @@
  .wd-coach-controls .wd-button { font-size:11px; padding:5px; }
  .wd-coach-controls .wd-button svg { display:none; }
  .wd-coach-controls .wd-text-button { font-size:10px; padding:4px; }
- .wd-lesson-progress { font-size:12px; }
+ .wd-lesson-progress,.wd-intro-progress { font-size:12px; }
  .wd-tray-tabs { grid-column:2; grid-row:2; align-self:start; margin-top:calc(var(--wd-coach-height) + 4px); display:flex; border-bottom:1px solid var(--wd-line); }
  .wd-tray-tabs button { flex:1; min-height:44px; background:none; border:0; border-bottom:2px solid transparent; color:var(--wd-muted); font-size:12px; }
  .wd-tray-tabs button[aria-selected=true] { color:var(--wd-gold); border-bottom-color:var(--wd-gold); }
@@ -101,6 +101,7 @@
  .wd-board-side { line-height:8px; padding:0; font-size:7px; }
  .wd-direct .wd-board-side { display:none; }
  .wd-direct .wd-lane { gap:4px; }
+ /* The coach counter is hidden here; the introduction's own counter (.wd-intro-progress) always stays visible. */
  .wd-lesson-progress { display:none; }
 }
 
