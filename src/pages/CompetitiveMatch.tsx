@@ -6,6 +6,8 @@ import type {
 import { creatures } from '@mythicalb/wisdom-duel-engine/catalog';
 import CardFaceByImage from '../components/CardFaceByImage.js';
 import ChallengeArena from '../components/competition/ChallengeArena.js';
+import DuelCallControls from '../components/competition/DuelCallControls.js';
+import { useInvitationCall } from '../calls/useInvitationCall.js';
 import DuelInvitation from '../components/competition/DuelInvitation.js';
 import { ArenaButton, PageShell, Panel } from '../components/ui/index.js';
 import { useAuth } from '../hooks/useAuth.js';
@@ -358,10 +360,16 @@ export default function CompetitiveMatch() {
   const challengeId = challengeMatchId(data?.match);
   const standingsPath = challengeId ? `/challenge?period=${challengeId}` : '/standings';
   const casualDuel = data?.match.mode === 'casual' && !challengeId;
+  const match = data?.match;
+  const canCall = casualDuel && match?.matchId === matchId && !!match.player2 && !!user &&
+    (match.player1 === user.id || match.player2 === user.id) &&
+    ['preparing','selecting','initializing','playing'].includes(match.status) && !projection?.outcome;
+  const call = useInvitationCall(canCall ? matchId : null, user?.id);
+  const callControls = call && <DuelCallControls model={call.model} view={call.view} />;
   const lobbyPath = casualDuel ? '/duels/public' : data?.match.mode === 'wager' ? '/wagers' : standingsPath;
   if (projection && user && data) {
     return <>
-      <ChallengeArena key={matchId} projection={projection} playerId={user.id} lobbyPath={lobbyPath} casualDuel={casualDuel}
+      <ChallengeArena key={matchId} projection={projection} playerId={user.id} lobbyPath={lobbyPath} casualDuel={casualDuel} callControls={callControls}
         sending={sending} retryable={retryable} error={error} send={submit} />
       {projection.outcome && data.match.mode === 'wager' && <PageShell><Preparation match={data.match} serverNow={data.serverNow} refresh={refresh} /></PageShell>}
     </>;
@@ -378,6 +386,7 @@ export default function CompetitiveMatch() {
             ? 'Duelo com aposta'
             : 'Casual duel'}
       </h1>
+      {callControls}
       {!data ? <p>Loading your duel…</p> : null}
       {error ? (
         <p role="alert" className="rounded border border-red-400/40 bg-red-950/40 p-3 text-red-100">
