@@ -31,7 +31,7 @@
     "@mythicalb/ardor-core": "0.2.0",
     "@mythicalb/ardor-provider": "0.2.0",
     "@mythicalb/sdk": "file:vendor/mythicalb-sdk-0.4.0.tgz",
-    "@mythicalb/wisdom-duel-engine": "file:vendor/mythicalb-wisdom-duel-engine-1.0.0-turn-clock.tgz",
+    "@mythicalb/wisdom-duel-engine": "file:vendor/mythicalb-wisdom-duel-engine-1.0.0-turn-clock-v2.tgz",
     "@supabase/supabase-js": "^2.49.4",
     "lucide-react": "^1.14.0",
     "react": "19.1.0",
