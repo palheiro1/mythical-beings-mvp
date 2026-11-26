@@ -7,7 +7,7 @@ import {
 import { updateCreatureWisdomFromRotation } from '@mythicalb/wisdom-duel-engine/utils';
 import type { GameState } from '../../src/game/types.js';
 
-export const scenarios = ['Earthquake', 'Fire', 'Migration', 'Tulpar'] as const;
+export const scenarios = ['Earthquake', 'Fire', 'Migration', 'Tulpar', 'Serpent'] as const;
 export type Scenario = (typeof scenarios)[number];
 
 function takeCard(state: GameState, name: string) {
@@ -44,12 +44,17 @@ export async function effectScenario(name: Scenario, now = new Date().toISOStrin
     now,
   });
   const game = match.state;
-  if (name === 'Tulpar') {
+  if (name === 'Tulpar' || name === 'Serpent') {
     game.currentPlayerIndex = 0;
     match.clock.runningPlayerId = 'north';
     rotate(game, 0, 'adaro', 180);
-    rotate(game, 0, 'tulpar', 270);
-    game.players[0].hand.push(takeCard(game, 'Lepidoptera'));
+    if (name === 'Serpent') {
+      game.players[0].hand.push(takeCard(game, 'Serpent'));
+      game.players[1].hand.push(takeCard(game, 'Fire'), takeCard(game, 'Lupus'));
+    } else {
+      rotate(game, 0, 'tulpar', 270);
+      game.players[0].hand.push(takeCard(game, 'Lepidoptera'));
+    }
     return match;
   }
   game.currentPlayerIndex = 1;
@@ -78,8 +83,8 @@ export function resolveScenario(name: Scenario, match: CompetitiveSnapshot, now 
       protocolVersion: COMMAND_PROTOCOL_V2,
       expectedVersion: match.version,
       commandId: 'ef000000-0000-4000-8000-000000000002',
-      command: name === 'Tulpar'
-        ? { type: 'summon_knowledge', creatureId: 'adaro', handInstanceId: actor.hand.find(c => c.name === 'Lepidoptera')!.instanceId! }
+      command: name === 'Tulpar' || name === 'Serpent'
+        ? { type: 'summon_knowledge', creatureId: 'adaro', handInstanceId: actor.hand[0].instanceId! }
         : { type: 'end_turn' },
     },
     now,

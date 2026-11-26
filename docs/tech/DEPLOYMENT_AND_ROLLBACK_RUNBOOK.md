@@ -16,6 +16,33 @@ alterada apenas pelo repositório/processo canónico do Hub e sempre forward-onl
 Falhar qualquer gate mantém o respetivo recurso desligado; não se compensa um gate em falta
 abrindo outro.
 
+## Domínio apresentado pelo Google
+
+O login de Wisdom Duel usa o projeto Supabase partilhado pelo Play Hub. O Google recebe
+o endereço de callback desse projeto. O endereço de regresso ao jogo, que também pode
+conter um convite, é configurado separadamente.
+
+1. Confirmar com o responsável pelo Play Hub o subdomínio a usar. A proposta é
+   `auth.mythicalbeings.io`. Verificar a disponibilidade do complemento Custom Domains
+   no projeto partilhado antes de o contratar.
+2. Registar o subdomínio em Custom Domains no Supabase, publicar o CNAME e o registo de
+   validação indicados no painel e aguardar a emissão do certificado.
+3. Antes da ativação, acrescentar `https://auth.mythicalbeings.io/auth/v1/callback` aos
+   endereços de redirecionamento autorizados no cliente OAuth do Google. Conservar o
+   callback atual durante a transição. Rever o nome e o domínio autorizado no ecrã de
+   consentimento do Google e registar o novo callback nos restantes fornecedores OAuth
+   do mesmo projeto.
+4. Ativar o domínio no Supabase. O serviço passa a anunciá-lo ao Google também para os
+   clientes que usam o URL de projeto existente em `VITE_SUPABASE_URL`.
+5. Abrir um convite no domínio público de Wisdom Duel e iniciar «Continue with Google».
+   Na navegação para `accounts.google.com`, confirmar que `redirect_uri` é exatamente
+   `https://auth.mythicalbeings.io/auth/v1/callback`. Com uma conta de teste, concluir
+   o login e confirmar o regresso ao duelo do convite. Verificar também o login de uma
+   segunda aplicação que use este projeto do Play Hub.
+
+O procedimento de ativação e o comportamento do callback estão descritos na
+[documentação de Custom Domains do Supabase](https://supabase.com/docs/guides/platform/custom-domains).
+
 ## Fase 1 — publicar apenas o Training Preview
 
 1. Criar deploy imutável de preview do frontend, sem `VITE_ENABLE_PVP`.

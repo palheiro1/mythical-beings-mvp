@@ -1,13 +1,14 @@
-import {act,render,renderHook,screen,waitFor} from '@testing-library/react';
+import {act,fireEvent,render,renderHook,screen,waitFor,within} from '@testing-library/react';
 import {beforeEach,describe,expect,it,vi} from 'vitest';
 import {MemoryRouter,Route,Routes} from 'react-router-dom';
 import {webcrypto} from 'node:crypto';
 import {COMPETITIVE_CATALOG,initializeCompetitiveMatch,projectMatch} from '@mythicalb/wisdom-duel-engine';
 import {useCompetitiveMatch} from '../../src/hooks/useCompetitiveMatch.js';
 import ProtectedRoute from '../../src/components/ProtectedRoute.js';
+import CompetitiveMatch from '../../src/pages/CompetitiveMatch.js';
 
-const mocks=vi.hoisted(()=>({projection:vi.fn(),command:vi.fn(),channel:vi.fn(),removeChannel:vi.fn(),user:{id:'018f2f9a-4e1c-7b8a-8f2c-0242ac120003',isGuest:false}}));
-vi.mock('../../src/services/competitiveService.js',()=>({competitive:{projection:mocks.projection,command:mocks.command},competitiveError:(e:Error)=>e.message}));
+const mocks=vi.hoisted(()=>({projection:vi.fn(),command:vi.fn(),selection:vi.fn(),channel:vi.fn(),removeChannel:vi.fn(),user:{id:'018f2f9a-4e1c-7b8a-8f2c-0242ac120003',isGuest:false}}));
+vi.mock('../../src/services/competitiveService.js',()=>({competitive:{projection:mocks.projection,command:mocks.command,selection:mocks.selection},competitiveError:(e:Error)=>e.message}));
 vi.mock('../../src/services/mythicalClient.js',()=>({playHubSupabase:{channel:mocks.channel,removeChannel:mocks.removeChannel}}));
 vi.mock('../../src/hooks/useAuth.js',()=>({useAuth:()=>({user:mocks.user,polygonWallet:null,loading:false})}));
 const other='018f2f9a-4e1c-7b8a-8f2c-0242ac120004',id='018f2f9a-4e1c-7b8a-8f2c-0242ac120002';
@@ -18,6 +19,36 @@ async function response(matchId=id){
 }
 beforeEach(()=>{vi.clearAllMocks();sessionStorage.clear();vi.stubGlobal('crypto',webcrypto);mocks.channel.mockImplementation(()=>({on(){return this;},subscribe(){return this;}}));mocks.removeChannel.mockResolvedValue(undefined);});
 describe('competitive account and recovery',()=>{
+  it('keeps every offered creature readable before and after confirming a full team', async () => {
+    const offer = ['adaro', 'tarasca', 'kappa', 'lafaic'];
+    const match = { matchId: id, mode: 'league', status: 'selecting', offer, deadline: new Date(Date.now() + 120_000).toISOString() };
+    const data = { match, projection: null, serverNow: new Date().toISOString() };
+    mocks.projection.mockResolvedValue(data);
+    mocks.selection.mockImplementation(async (_id, selection) => {
+      mocks.projection.mockResolvedValue({ ...data, match: { ...match, selection } });
+    });
+    render(<MemoryRouter><CompetitiveMatch /></MemoryRouter>);
+    const inspect = await screen.findByRole('button', { name: 'Inspect Lafaic' });
+    inspect.focus();
+    fireEvent.click(inspect);
+    const details = screen.getByRole('dialog', { name: 'Lafaic' });
+    expect(details).toHaveTextContent('Wisdom cycle');
+    expect(details).toHaveTextContent('When you play a Water Knowledge card on Lafaic');
+    fireEvent.keyDown(window, { key: 'Escape' });
+    await waitFor(() => expect(inspect).toHaveFocus());
+    expect(screen.getByRole('button', { name: 'Confirm team' })).toBeDisabled();
+
+    for (const name of ['Adaro', 'Tarasca', 'Kappa']) fireEvent.click(screen.getByRole('button', { name: 'Select ' + name }));
+    expect(screen.getByRole('button', { name: 'Select Lafaic' })).toBeDisabled();
+    fireEvent.click(inspect);
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Close card details' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm team' }));
+    expect(mocks.selection).toHaveBeenCalledExactlyOnceWith(id, offer.slice(0, 3));
+    expect(await screen.findByRole('button', { name: 'Team confirmed' })).toBeDisabled();
+    fireEvent.click(inspect);
+    expect(screen.getByRole('dialog', { name: 'Lafaic' })).toBeVisible();
+  });
+
   it('admits a persistent league account without a wallet',()=>{
     render(<MemoryRouter initialEntries={['/league']}><Routes><Route element={<ProtectedRoute/>}><Route path="/league" element={<p>Liga disponível</p>}/></Route><Route path="/" element={<p>Login</p>}/></Routes></MemoryRouter>);
     expect(screen.getByText('Liga disponível')).toBeInTheDocument();

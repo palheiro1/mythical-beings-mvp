@@ -179,7 +179,7 @@ function PracticeMatch({ team, mode, gameId, rulesOpen, openRules, resumeDuel, o
     <div className="wd-game-layout">
       <TrainingBoard direct={directCards} session={session} onAction={onAction} onInspect={setInspection} glow={glowTarget} hud={{
         opponent: <PowerMedallion owner={BOT_ID} label="Bot" power={bot.power} side="opponent" handSize={bot.hand.length} actions={!playerTurn ? { remaining: actionsLeft, total: game.actionsPerTurn } : undefined} />,
-        turn: <TurnCallout turn={game.turn} complete={gameOver} label={gameOver ? 'Duel complete' : playerTurn ? 'Your turn' : 'Bot’s turn'} />,
+        turn: <TurnCallout turn={game.turn} playerId={game.players[game.currentPlayerIndex].id} complete={gameOver} label={gameOver ? 'Duel complete' : playerTurn ? 'Your turn' : 'Bot’s turn'} />,
         player: <PowerMedallion owner={HUMAN_ID} label="Your" power={player.power} side="player" actions={playerTurn ? { remaining: actionsLeft, total: game.actionsPerTurn } : undefined} />,
       }} />
       <TrainingTrays direct={directCards} session={session} tab={tab} setTab={setTab} onAction={onAction} onSelect={instanceId => dispatch({ type: 'select', instanceId })} onInspect={setInspection} glow={glowTarget} />

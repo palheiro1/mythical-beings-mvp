@@ -5,6 +5,21 @@ import { effectScenario, resolveScenario } from './browser/duelEffectScenarios.j
 
 const now = '2026-01-01T12:00:00Z';
 describe('effects as received by a duel participant', () => {
+  it('explains a zero-Wisdom Earthquake to both players without reporting a block', async () => {
+    const setup = await effectScenario('Earthquake', now);
+    const creature = setup.state.players[0].creatures[0];
+    creature.rotation = 0;
+    creature.currentWisdom = 0;
+    const end = resolveScenario('Earthquake', setup, now);
+    for (const viewer of ['north', 'south']) {
+      const steps = duelMotion(projectMatch(setup, viewer, now), projectMatch(end, viewer, now), true);
+      const message = steps.map(step => describeMotion(step, viewer)).join(' ');
+      expect(message).toContain('Earthquake · Final rotation · 0 damage because the Creature has 0 Wisdom');
+      expect(message).not.toContain('Fully blocked');
+    }
+    expect(end.state.players[1].power).toBe(20);
+  });
+
   it('shows attack, each contribution and the actual score on either side', async () => {
     const setup = await effectScenario('Earthquake', now);
     const end = resolveScenario('Earthquake', setup, now);
