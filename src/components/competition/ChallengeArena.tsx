@@ -157,7 +157,9 @@ export default function ChallengeArena({ projection, playerId, lobbyPath, casual
             : <button type="button" className="wd-button wd-button-primary" disabled={!canAct} onClick={() => void play({ type: 'end_turn' })}>End Turn <ArrowRight size={16} /></button>}
       </div>
     </footer>
-    <div className="wd-match-links"><Link className="wd-text-button" to={lobbyPath}>{casualDuel ? lobbyLabel : 'Challenge standings'}</Link><span>{modeName} · Play Hub</span></div>
+    <div className="wd-match-links"><Link className="wd-text-button" to={lobbyPath}>{casualDuel ? lobbyLabel : 'Challenge standings'}</Link>
+      {!outcome && <Link className="wd-text-button" to={`/watch/${projection.matchId}`} target="_blank" rel="noopener noreferrer">Open spectator view</Link>}
+      <span>{modeName} · Play Hub</span></div>
 
     {hasResultDialog && outcome ? <TrainingDialog title={outcome.winnerId === null ? 'Draw' : outcome.winnerId === playerId ? 'Victory' : 'Defeat'} onClose={() => setResultDismissed(true)}>
       <p>{outcomeReasons[outcome.reason]}</p>

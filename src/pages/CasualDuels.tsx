@@ -86,6 +86,7 @@ export default function CasualDuels({ publicLobby = false }: { publicLobby?: boo
     <nav aria-label="Duel lobbies" className="flex flex-wrap gap-3">
       <NavLink end to="/duels/public" className="duel-lobby-link">Public duels</NavLink>
       <NavLink end to="/duels" className="duel-lobby-link">Private invitations</NavLink>
+      <Link to="/watch" className="duel-lobby-link">Watch live</Link>
     </nav>
     <p>{publicLobby ? 'Join an open room or create a duel that any Play Hub player can join. Entry is free.' : 'Create a private duel and send the invitation to one other player. Both players need a Play Hub account. Entry is free.'}</p>
     {activeRoom && <Panel className="space-y-2 p-6" role="status">
@@ -97,6 +98,7 @@ export default function CasualDuels({ publicLobby = false }: { publicLobby?: boo
     <Panel className="space-y-4 p-6">
       <h2 className="text-xl font-bold">{publicLobby ? 'Create a public duel' : 'Create a private duel'}</h2>
       <p>{publicLobby ? 'Your room stays open for up to 15 minutes. The first player to join becomes your opponent.' : 'Your friend has 15 minutes to join. Once you are both in the room, you can choose your Creatures.'}</p>
+      <p className="text-sm text-slate-300">Once both teams are ready, spectators can watch the board. Each player’s hand stays hidden.</p>
       <ArenaButton loading={busy} disabled={loading || Boolean(activeRoom)} onClick={() => void enter()}>
         {publicLobby ? (player ? 'Create public duel' : 'Sign in to create a public duel') : (player ? 'Create duel' : 'Sign in to create a duel')}
       </ArenaButton>

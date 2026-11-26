@@ -17,6 +17,8 @@ const WeeklyChallenge = lazy(() => import('./pages/WeeklyChallenge.js'));
 const LeagueQueue = lazy(() => import('./pages/LeagueQueue.js'));
 const WagerLobby = lazy(() => import('./pages/WagerLobby.js'));
 const CasualDuels = lazy(() => import('./pages/CasualDuels.js'));
+const LiveDuels = lazy(() => import('./pages/LiveDuels.js'));
+const SpectatorMatch = lazy(() => import('./pages/SpectatorMatch.js'));
 const CompetitiveMatch = lazy(() => import('./pages/CompetitiveMatch.js'));
 const CompetitiveReplay = lazy(() => import('./pages/CompetitiveReplay.js'));
 const LeagueStandings = lazy(() => import('./pages/LeagueStandings.js'));
@@ -62,6 +64,8 @@ function AppContent() {
           {/* Public Route */}
           <Route path="/" element={<Home />} />
           <Route path="/how-to-play" element={<HowToPlay />} />
+          <Route path="/watch" element={<LiveDuels />} />
+          <Route path="/watch/:matchId" element={<SpectatorMatch />} />
           <Route path="/bot-selection" element={<TrainingSelection />} />
           <Route path="/bot-game" element={<BotGame />} />
           <Route path="/leaderboard" element={<Navigate to="/standings" replace />} />

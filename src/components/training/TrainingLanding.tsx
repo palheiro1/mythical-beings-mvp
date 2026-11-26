@@ -25,6 +25,7 @@ export default function TrainingLanding({ children }: { children: ReactNode }) {
             <Link className="wd-button" to="/duels">Challenge a friend</Link>
           </> : null}
           {WEEKLY_CHALLENGE_ENABLED ? <Link className="wd-button" to="/challenge">View Weekly Challenge<ArrowRight size={18} aria-hidden /></Link> : null}
+          <Link className="wd-button" to="/watch">Watch live</Link>
         </div>
         <p className="wd-caption">{CASUAL_DUELS_ENABLED ? 'Play solo as a guest or use your Play Hub account to duel another player.' : 'Solo play against the bot. No account or wallet needed.'}</p>
       </div>
