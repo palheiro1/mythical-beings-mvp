@@ -21,7 +21,7 @@ async function fixture() {
 function page(projection: CompetitiveProjection, actor: string) {
   const send = vi.fn().mockResolvedValue('accepted');
   render(<MemoryRouter><ChallengeArena projection={projection} playerId={actor}
-    standingsPath="/challenge?period=fixture" sending={false} retryable={false} error="" send={send} /></MemoryRouter>);
+    lobbyPath="/challenge?period=fixture" sending={false} retryable={false} error="" send={send} /></MemoryRouter>);
   return send;
 }
 

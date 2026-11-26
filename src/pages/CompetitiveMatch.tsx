@@ -9,6 +9,7 @@ import type {
 import { creatures } from '@mythicalb/wisdom-duel-engine/catalog';
 import CardFaceByImage from '../components/CardFaceByImage.js';
 import ChallengeArena from '../components/competition/ChallengeArena.js';
+import DuelInvitation from '../components/competition/DuelInvitation.js';
 import { ArenaButton, PageShell, Panel } from '../components/ui/index.js';
 import { useTrainingMotion } from '../hooks/useTrainingMotion.js';
 import { cardAnchor } from '../game/presentation.js';
@@ -363,7 +364,8 @@ function Preparation({
   const outcomeFinished = match.status === 'finished';
   return (
     <Panel className="space-y-4 p-6">
-      {match.status === 'waiting' ? (
+      {match.status === 'waiting' && match.mode === 'casual' ? <DuelInvitation matchId={match.matchId} /> : null}
+      {match.status === 'waiting' && match.mode === 'wager' ? (
         <>
           <h2 className="text-2xl font-bold">Convida um adversário</h2>
           <label className="block">
@@ -594,7 +596,7 @@ function Preparation({
           loading={busy}
           onClick={() => void run(() => competitive.cancelPreparation(match.matchId))}
         >
-          Cancelar preparação
+          {match.mode === 'casual' ? 'Cancel duel' : 'Cancelar preparação'}
         </ArenaButton>
       ) : null}
       {error ? (
@@ -618,21 +620,23 @@ export default function CompetitiveMatch() {
   const projection = data?.projection;
   const challengeId = challengeMatchId(data?.match);
   const standingsPath = challengeId ? `/challenge?period=${challengeId}` : '/standings';
-  if (projection && challengeId && user) {
-    return <ChallengeArena key={matchId} projection={projection} playerId={user.id} standingsPath={standingsPath}
+  const friendDuel = data?.match.mode === 'casual' && !challengeId;
+  const lobbyPath = friendDuel ? '/duels' : standingsPath;
+  if (projection && (challengeId || friendDuel) && user) {
+    return <ChallengeArena key={matchId} projection={projection} playerId={user.id} lobbyPath={lobbyPath} friendDuel={friendDuel}
       sending={sending} retryable={retryable} error={error} send={submit} />;
   }
   return (
     <PageShell contentClassName="space-y-5">
-      <Link className="text-cyan-200" to={challengeId ? standingsPath : '/competition'}>
-        {challengeId ? '← Challenge standings' : '← Game modes'}
+      <Link className="text-cyan-200" to={friendDuel || challengeId ? lobbyPath : '/competition'}>
+        {friendDuel ? '← Friend duels' : challengeId ? '← Challenge standings' : '← Game modes'}
       </Link>
       <h1 className="text-3xl font-bold">
         {!data ? 'Duel' : challengeId ? 'Weekly Challenge duel' : data.match.mode === 'league'
           ? 'Partida da liga'
           : data?.match.mode === 'wager'
             ? 'Duelo com aposta'
-            : 'Encontro casual'}
+            : 'Friend duel'}
       </h1>
       {!data ? <p>Loading your duel…</p> : null}
       {error ? (

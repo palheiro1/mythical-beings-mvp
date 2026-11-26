@@ -29,7 +29,7 @@ export default function CompetitiveHub() {
         ))}
       </div>
       <p>
-        <Link className="text-cyan-200 underline" to="/wagers?mode=casual">
+        <Link className="text-cyan-200 underline" to="/duels">
           Encontro casual por convite
         </Link>{' '}
         · Sem Elo ou aposta.

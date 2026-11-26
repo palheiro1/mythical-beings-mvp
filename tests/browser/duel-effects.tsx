@@ -65,7 +65,7 @@ export default function Demo() {
         key={`${key}-${viewer}`}
         projection={projection}
         playerId={viewer}
-        standingsPath="/"
+        lobbyPath="/"
         sending={false}
         retryable={false}
         error=""

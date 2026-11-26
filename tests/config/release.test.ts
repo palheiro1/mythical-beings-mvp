@@ -15,9 +15,11 @@ describe('release mode', () => {
     vi.resetModules();
     vi.stubEnv('VITE_ENABLE_PVP', undefined);
     vi.stubEnv('VITE_ENABLE_WEEKLY_CHALLENGE', undefined);
+    vi.stubEnv('VITE_ENABLE_CASUAL_DUELS', undefined);
     const release = await import('../../src/config/release.js');
     expect(release.PVP_ENABLED).toBe(false);
     expect(release.WEEKLY_CHALLENGE_ENABLED).toBe(false);
+    expect(release.CASUAL_DUELS_ENABLED).toBe(false);
     expect(release.TRAINING_PREVIEW_ENABLED).toBe(true);
   });
 
@@ -26,6 +28,7 @@ describe('release mode', () => {
     vi.stubEnv('VITE_ENABLE_PVP', ' TRUE ');
     const release = await import('../../src/config/release.js');
     expect(release.PVP_ENABLED).toBe(true);
+    expect(release.CASUAL_DUELS_ENABLED).toBe(true);
     expect(release.TRAINING_PREVIEW_ENABLED).toBe(false);
     expect(release.assertPvpEnabled).not.toThrow();
   });
@@ -36,6 +39,15 @@ describe('release mode', () => {
     vi.stubEnv('VITE_ENABLE_WEEKLY_CHALLENGE', 'true');
     const release = await import('../../src/config/release.js');
     expect(release.WEEKLY_CHALLENGE_ENABLED).toBe(true);
+    expect(release.PVP_ENABLED).toBe(false);
+    expect(release.TRAINING_PREVIEW_ENABLED).toBe(true);
+  });
+
+  it('opens private invitations independently of funded competition', async () => {
+    vi.stubEnv('VITE_ENABLE_PVP', 'false');
+    vi.stubEnv('VITE_ENABLE_CASUAL_DUELS', 'true');
+    const release = await import('../../src/config/release.js');
+    expect(release.CASUAL_DUELS_ENABLED).toBe(true);
     expect(release.PVP_ENABLED).toBe(false);
     expect(release.TRAINING_PREVIEW_ENABLED).toBe(true);
   });

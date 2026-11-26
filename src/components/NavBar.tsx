@@ -3,7 +3,7 @@ import { BookOpen, Bot, Home, LogIn, LogOut, Swords, Trophy, User, UserCircle, W
 import { useAuth } from '../hooks/useAuth.js';
 import { cn } from './ui/cn.js';
 import { formatAddress } from '../utils/format.js';
-import { PVP_ENABLED, TRAINING_PREVIEW_ENABLED, WEEKLY_CHALLENGE_ENABLED } from '../config/release.js';
+import { CASUAL_DUELS_ENABLED, PVP_ENABLED, TRAINING_PREVIEW_ENABLED, WEEKLY_CHALLENGE_ENABLED } from '../config/release.js';
 import { BUILD_LABEL, BUILD_SHA } from '../config/build.js';
 
 const NavBar: React.FC = () => {
@@ -36,6 +36,7 @@ const NavBar: React.FC = () => {
         ? [{ to: '/league', label: 'Liga', icon: Swords }, { to: '/wagers', label: 'Duelos com aposta', icon: WalletCards }, { to: '/bot-selection', label: 'Treinar', icon: Bot }]
         : []),
     { to: '/how-to-play', label: 'How to Play', icon: BookOpen },
+    ...(CASUAL_DUELS_ENABLED ? [{ to: '/duels', label: 'Challenge a friend', icon: Swords }] : []),
     ...(WEEKLY_CHALLENGE_ENABLED ? [{ to: '/challenge', label: 'Weekly Challenge', icon: Trophy }] : []),
     ...(PVP_ENABLED ? [{ to: '/standings', label: 'Classificação e prémios', icon: Trophy }] : []),
     ...(user && polygonWallet ? [{ to: '/profile', label: 'Profile', icon: User }] : []),
@@ -53,6 +54,7 @@ const NavBar: React.FC = () => {
       <Link to="/" className="wd-brand" aria-label="Wisdom Duel home"><img src="/logos/logo-header-dark.webp" alt="" width="52" height="39" /><span>Wisdom Duel</span></Link>
       <div className="wd-nav-links">
         <NavLink to="/bot-selection?mode=free" aria-label="Training"><Bot size={17} /><span>Practice</span></NavLink>
+        {CASUAL_DUELS_ENABLED ? <NavLink to="/duels" aria-label="Challenge a friend"><Swords size={17} /><span>Duels</span></NavLink> : null}
         {WEEKLY_CHALLENGE_ENABLED ? <NavLink to="/challenge" aria-label="Weekly Challenge"><Trophy size={17} /><span>Challenge</span></NavLink> : null}
         <NavLink to="/how-to-play" aria-label="How to Play"><BookOpen size={17} /><span>Rules</span></NavLink>
         {user && polygonWallet && <Link to="/profile" aria-label="Profile"><User size={17} /></Link>}
