@@ -1,4 +1,5 @@
-/* Practice arena. Match controls and presentation anchors stay on the live board. */
+/* The arena header owns navigation once a live or practice board is mounted. */
+nav:has(+ #main-content .wd-kai) { display:none; }
 .wd-kai.wd-confluence {
   --wd-medallion-size: clamp(52px, 7.2dvh, 84px);
   --wd-duel-card: clamp(62px, calc((100dvh - 365px) * .37), 218px);
