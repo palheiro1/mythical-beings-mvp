@@ -10,5 +10,7 @@ export function motionSounds(step: MotionStep): TrainingSound[] {
     ...(step.amount ?? 0) > 0 ? [{ kind: 'damage' as const, amount: step.amount, delay: step.blocked ? 0.15 : 0 }] : [],
   ];
   if (step.kind === 'power') return step.amount ? [{ kind: step.amount > 0 ? 'heal' : 'damage', amount: Math.abs(step.amount), element: step.element }] : [];
-  return [{ kind: 'effect', element: step.element }];
+  const kind = step.action === 'draw' ? 'draw' : step.action === 'discard' ? 'discard' : step.action === 'play' ? 'place'
+    : step.action === 'rotate' || step.action === 'reverse' ? 'rotate' : 'effect';
+  return [{ kind, element: step.element }];
 }

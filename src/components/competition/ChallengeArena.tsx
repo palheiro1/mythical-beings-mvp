@@ -1,4 +1,8 @@
-import { useCallback, useState } from 'react';
+import { useTrainingMotion } from '../../hooks/useTrainingMotion.js';
+import ActionLights from '../game/ActionLights.js';
+import DuelTargetChoices from '../game/DuelTargetChoices.js';
+import DuelEffectHistory from '../game/DuelEffectHistory.js';
+import { useCallback, useRef, useState } from 'react';
 import { ArrowRight, Clock3, Flag, History, Layers, Trophy, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import type { CompetitiveCommand, CompetitiveProjection } from '@mythicalb/wisdom-duel-engine';
@@ -29,16 +33,17 @@ function Scorebar({ projection, mine, rival }: {
   const active = projection.clock.runningPlayerId;
   return <header className="wd-scorebar">
     <div className="wd-score">
-      <span>You</span><strong aria-label={`Your Power: ${Math.max(0, mine.power)}`}>{Math.max(0, mine.power)}</strong>
+      <span>You</span><strong data-motion-anchor={`power:${mine.id}`} aria-label={`Your Power: ${Math.max(0, mine.power)}`}>{Math.max(0, mine.power)}</strong>
       <small className={active === playerId && remaining(playerId) <= 60000 ? 'wd-clock-low' : undefined} aria-label={`Your clock: ${clock(playerId)}`}>{clock(playerId)}</small>
     </div>
     <div className="wd-turn">
       <span>Turn {projection.turn}</span>
       <strong>{projection.outcome ? 'Duel complete' : projection.clock.suspendedAt ? 'Paused' : projection.decisionPlayerId === playerId ? 'Your decision' : 'Opponent’s decision'}</strong>
+      {!projection.outcome && <ActionLights owner={projection.currentPlayerId} remaining={Math.max(0, projection.actionsPerTurn - projection.actionsTakenThisTurn)} total={projection.actionsPerTurn} />}
     </div>
     <div className="wd-score wd-score-bot">
       <small className={active === opponentId && remaining(opponentId) <= 60000 ? 'wd-clock-low' : undefined} aria-label={`Opponent’s clock: ${clock(opponentId)}`}>{clock(opponentId)}</small>
-      <strong aria-label={`Opponent’s Power: ${Math.max(0, rival.power)}`}>{Math.max(0, rival.power)}</strong><span>Opponent <small>{rival.hand.count} in hand</small></span>
+      <strong data-motion-anchor={`power:${rival.id}`} aria-label={`Opponent’s Power: ${Math.max(0, rival.power)}`}>{Math.max(0, rival.power)}</strong><span data-motion-anchor={`hand:${rival.id}`}>Opponent <small>{rival.hand.count} in hand</small></span>
     </div>
   </header>;
 }
@@ -65,24 +70,30 @@ export default function ChallengeArena({ projection, playerId, standingsPath, se
   const rival = projection.players.find(player => player.id !== playerId)!;
   const hand = mine.hand.visibility === 'visible' ? mine.hand.cards : [];
   const selected = hand.find(card => card.instanceId === selectedId);
+  const root = useRef<HTMLDivElement>(null);
+  const layer = useRef<HTMLDivElement>(null);
+  const motion = useTrainingMotion(projection, root, layer, `${tab}:${direct}`, false, undefined, true, playerId);
   const { outcome, pendingEffect: pending } = projection;
   const suspended = Boolean(projection.clock.suspendedAt);
   const canDecide = !sending && !retryable && !suspended && !outcome && projection.decisionPlayerId === playerId;
   const canAct = canDecide && !pending && projection.phase === 'action' && projection.currentPlayerId === playerId;
   const actionsLeft = Math.max(0, projection.actionsPerTurn - projection.actionsTakenThisTurn);
   const canSpend = canAct && actionsLeft > 0;
-  const hasResultDialog = Boolean(outcome && !resultDismissed && !retryable);
+  const hasResultDialog = Boolean(outcome && !resultDismissed && !retryable && !motion.presenting);
   const hasPendingDialog = Boolean(pending && !inspection && !outcome && !suspended);
   const activeSide = outcome || suspended ? undefined : projection.decisionPlayerId === playerId ? 'player' : 'opponent';
   const message = error || (outcome ? 'The duel is over.' : suspended ? 'The clocks are paused while this duel is reviewed.' : pending ? 'Choose a target to resolve the effect.' : !canAct ? 'Waiting for the opponent.' : selected ? `Play ${selected.name} on one of your creatures.` : 'Draw from the market, rotate a card in play, or select a card from your hand.');
 
   const play = async (command: CompetitiveCommand) => {
+    motion.finish();
+    motion.capture();
     const status = await send(command);
     if (status === 'accepted' || status === 'duplicate') setSelectedId(null);
   };
 
-  return <div className={`wd wd-match wd-confluence ${direct ? 'wd-direct' : ''}`} data-active-side={activeSide}>
+  return <div ref={root} className={`wd wd-match wd-confluence ${direct ? 'wd-direct' : ''}`} data-active-side={activeSide}>
     <h1 className="sr-only">Wisdom Duel — Weekly Challenge duel</h1>
+    <div ref={layer} className="wd-motion-layer" aria-hidden="true" inert />
     <Scorebar projection={projection} mine={mine} rival={rival} />
     <div className="wd-game-layout">
       <DuelBoard player={mine} opponent={rival} opponentLabel="Opponent’s creatures" direct={direct} onInspect={setInspection}
@@ -126,7 +137,8 @@ export default function ChallengeArena({ projection, playerId, standingsPath, se
     </div>
     <footer className="wd-actionbar">
       <div className="wd-action-context">
-        <p className={error ? 'wd-error' : undefined} role={error ? 'alert' : 'status'}>{message}</p>
+        {motion.summary && <p className="wd-effect-summary" role="status" aria-label="Latest effects">{motion.summary}</p>}
+        <p className={error ? 'wd-error' : motion.summary && !selected && !pending ? 'wd-idle-hint' : undefined} role={error ? 'alert' : 'status'}>{message}</p>
         <div className="wd-action-meta">
           <span>{canAct ? `${actionsLeft} / ${projection.actionsPerTurn} actions left` : 'Weekly challenge'}</span>
           <span><Clock3 size={14} aria-hidden="true" />10 min per player · total decision time</span>
@@ -135,7 +147,7 @@ export default function ChallengeArena({ projection, playerId, standingsPath, se
       <div className="wd-action-buttons">
         <Link to={standingsPath} className="wd-icon-button" aria-label="Standings" title="Standings"><Trophy size={18} /></Link>
         {selected ? <button type="button" className="wd-icon-button" aria-label="Cancel card selection" onClick={() => setSelectedId(null)}><X size={18} /></button> : null}
-        <button type="button" className="wd-discard-button" aria-label="Discard pile" onClick={() => setDialog('discard')}><Layers size={17} /><span>{projection.discardPile.length}</span><span className="wd-discard-label">Discards</span></button>
+        <button type="button" className="wd-discard-button" data-motion-anchor="discard" aria-label="Discard pile" onClick={() => setDialog('discard')}><Layers size={17} /><span>{projection.discardPile.length}</span><span className="wd-discard-label">Discards</span></button>
         <button type="button" className="wd-icon-button" aria-label="Game history" onClick={() => setDialog('history')}><History size={18} /></button>
         {!outcome && !suspended ? <button type="button" className="wd-icon-button" aria-label="Concede match" disabled={sending || retryable} onClick={() => setDialog('resign')}><Flag size={17} /></button> : null}
         {retryable ? <button type="button" className="wd-button wd-button-primary" disabled={sending} onClick={() => void send()}>Retry last move</button>
@@ -153,14 +165,14 @@ export default function ChallengeArena({ projection, playerId, standingsPath, se
       </div>
     </TrainingDialog> : null}
 
-    {hasPendingDialog && pending ? <TrainingDialog title="Resolve the card effect">
+    {hasPendingDialog && pending ? <section className="wd-live-choice" aria-label="Resolve the card effect">
       <p>{pending.prompt}</p>
-      <div className="wd-effect-choices">{pending.choices.map(choice => <button type="button" key={choice.key} className="wd-effect-choice"
-        disabled={!canDecide} onClick={() => void play({ type: 'resolve_pending_effect', effectId: pending.id, choiceKey: choice.key })}>{choice.label}</button>)}</div>
+      <DuelTargetChoices view={projection} board={root} className="wd-effect-choices">{pending.choices.map((choice, index) => <button type="button" key={choice.key} data-choice-index={index} className="wd-effect-choice"
+        disabled={!canDecide} onClick={() => void play({ type: 'resolve_pending_effect', effectId: pending.id, choiceKey: choice.key })}>{choice.label}</button>)}</DuelTargetChoices>
       {pending.optional ? <button type="button" className="wd-button" disabled={!canDecide} onClick={() => void play({ type: 'resolve_pending_effect', effectId: pending.id, skip: true })}>Skip effect</button> : null}
       {error ? <p role="alert">{error}</p> : null}
       {retryable ? <button type="button" className="wd-button wd-button-primary" disabled={sending} onClick={() => void send()}>Retry last move</button> : null}
-    </TrainingDialog> : null}
+    </section> : null}
 
     {!hasPendingDialog && !hasResultDialog && dialog === 'resign' && !outcome && !suspended ? <TrainingDialog title="Concede match" onClose={() => setDialog(null)}>
       <p>Conceding records a loss for this duel.</p>
@@ -175,9 +187,7 @@ export default function ChallengeArena({ projection, playerId, standingsPath, se
     </TrainingDialog> : null}
 
     {!hasPendingDialog && !hasResultDialog && dialog === 'history' ? <TrainingDialog title="Game history" onClose={() => setDialog(null)}>
-      <ol>{projection.events.slice(-12).map(event => <li key={event.sequence}>
-        {event.sequence}. {event.actorId === playerId ? 'You' : event.actorId ? 'Opponent' : 'Match'} · {event.type.replace(/_/g, ' ')}
-      </li>)}</ol>
+      <DuelEffectHistory events={projection.events} viewer={playerId} />
     </TrainingDialog> : null}
     <CardDetailOverlay card={inspection} open={Boolean(inspection) && !hasResultDialog} onClose={closeInspection} contextLabel="Card details" />
   </div>;

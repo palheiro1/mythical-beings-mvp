@@ -1,3 +1,4 @@
+import { describeMotion } from '../utils/trainingMotion.js';
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import {
@@ -111,6 +112,7 @@ export default function CompetitiveReplay() {
           <p>Cards in hand · {player.hand.count}</p>
         </Panel>
       ))}
+      {projection?.events.at(-1)?.cues?.map((cue, i) => <p key={i}>{describeMotion(cue,user?.id)}</p>)}
       {frame ? (
         <p>
           Turn {frame.state.turn} · {formatMatchEvent(frame.events[frame.events.length - 1]?.type)}

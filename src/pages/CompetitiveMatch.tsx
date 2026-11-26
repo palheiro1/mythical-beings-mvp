@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import type {
   CompetitiveCommand,
@@ -10,7 +10,12 @@ import { creatures } from '@mythicalb/wisdom-duel-engine/catalog';
 import CardFaceByImage from '../components/CardFaceByImage.js';
 import ChallengeArena from '../components/competition/ChallengeArena.js';
 import { ArenaButton, PageShell, Panel } from '../components/ui/index.js';
-import { formatMatchEvent } from '../utils/gameHistory.js';
+import { useTrainingMotion } from '../hooks/useTrainingMotion.js';
+import { cardAnchor } from '../game/presentation.js';
+import ActionLights from '../components/game/ActionLights.js';
+import DuelTargetChoices from '../components/game/DuelTargetChoices.js';
+import DuelEffectHistory from '../components/game/DuelEffectHistory.js';
+import { CreatureStatus } from '../components/training/TrainingBoard.js';
 import { useAuth } from '../hooks/useAuth.js';
 import { useCompetitiveMatch, useMatchClock } from '../hooks/useCompetitiveMatch.js';
 import {
@@ -53,9 +58,9 @@ function Countdown({ deadline, serverNow }: { deadline: string; serverNow: strin
   }, [deadline, serverNow]);
   return <span className="tabular-nums">{remaining}s</span>;
 }
-function Card({ card, children }: { card: Creature | Knowledge; children?: React.ReactNode }) {
+function Card({ card, owner = '', children }: { card: Creature | Knowledge; owner?: string; children?: React.ReactNode }) {
   return (
-    <div className="w-32 shrink-0 space-y-2 sm:w-40">
+    <div data-motion-anchor={cardAnchor(owner,card)} data-motion-face className="w-32 shrink-0 space-y-2 sm:w-40">
       <CardFaceByImage card={card} src={card.image} alt={card.name} />
       <p className="text-sm font-semibold">{card.name}</p>
       {children}
@@ -66,13 +71,21 @@ function Board({
   projection,
   playerId,
   disabled,
-  send,
+  send: submit,
 }: {
   projection: CompetitiveProjection;
   playerId: string;
   disabled: boolean;
   send: (command: CompetitiveCommand) => Promise<unknown>;
 }) {
+  const root = useRef<HTMLDivElement>(null);
+  const layer = useRef<HTMLDivElement>(null);
+  const motion = useTrainingMotion(projection, root, layer, 'classic', false, undefined, true, playerId);
+  function send(command: CompetitiveCommand) {
+    motion.finish();
+    motion.capture();
+    return submit(command);
+  }
   const [selected, setSelected] = useState<Knowledge | null>(null);
   const mine = projection.players.find((p) => p.id === playerId)!,
     rival = projection.players.find((p) => p.id !== playerId)!;
@@ -84,6 +97,7 @@ function Board({
     projection.currentPlayerId === playerId &&
     projection.decisionPlayerId === playerId;
   const canSpend = canAct && projection.actionsTakenThisTurn < projection.actionsPerTurn;
+  const lights = !projection.outcome && <ActionLights owner={projection.currentPlayerId} remaining={Math.max(0, projection.actionsPerTurn - projection.actionsTakenThisTurn)} total={projection.actionsPerTurn} />;
   const hand = mine.hand.visibility === 'visible' ? mine.hand.cards : [];
   const chosen = selected && hand.some((k) => k.instanceId === selected.instanceId) ? selected : null;
   async function summon(creatureId: string) {
@@ -96,15 +110,18 @@ function Board({
     if (result === 'accepted' || result === 'duplicate') setSelected(null);
   }
   return (
-    <div className="space-y-5">
+    <div className="space-y-5" ref={root}>
+      <div className="wd-motion-layer" ref={layer} aria-hidden="true" inert />
+      {motion.summary && <p role="status" aria-label="Latest effects" className="wd-effect-summary wd-classic-summary">{motion.summary}</p>}
       <Panel className="space-y-3 p-4">
         <h2 className="text-xl font-bold">
-          Adversário · {rival.power} Poder · {rival.hand.count} cartas na mão
+          Adversário · <strong data-motion-anchor={`power:${rival.id}`}>{rival.power}</strong> Power · <span data-motion-anchor={`hand:${rival.id}`}>{rival.hand.count} cartas na mão</span> {projection.currentPlayerId === rival.id && lights}
         </h2>
         <div className="flex gap-4 overflow-x-auto pb-2">
           {rival.creatures.map((c) => (
-            <div key={c.id} className="space-y-2">
-              <Card card={c} />
+            <div key={c.id} data-motion-anchor={`slot:${rival.id}:${c.id}`} className="space-y-2">
+              <CreatureStatus owl={rival.field.some(s => s.knowledge?.id === 'aerial3')} hurricane={mine.field[rival.creatures.indexOf(c)]?.knowledge?.id === 'aquatic3'} />
+              <Card owner={rival.id} card={c} />
               {rival.field.find((f) => f.creatureId === c.id)?.knowledge ? (
                 <Card card={rival.field.find((f) => f.creatureId === c.id)!.knowledge!} />
               ) : null}
@@ -113,7 +130,7 @@ function Board({
         </div>
       </Panel>
       <Panel className="space-y-3 p-4">
-        <h2 className="text-xl font-bold">Mercado · {projection.deckCount} cartas no baralho</h2>
+        <h2 data-motion-anchor="market" className="text-xl font-bold">Mercado · {projection.deckCount} cartas no baralho</h2>
         <div className="flex gap-4 overflow-x-auto pb-2">
           {projection.market.map((k) => (
             <Card key={k.instanceId} card={k}>
@@ -135,7 +152,7 @@ function Board({
         </div>
       </Panel>
       <Panel className="space-y-3 p-4">
-        <h2 className="text-xl font-bold">A tua equipa · {mine.power} Poder</h2>
+        <h2 className="text-xl font-bold">A tua equipa · <strong data-motion-anchor={`power:${mine.id}`}>{mine.power}</strong> Power {projection.currentPlayerId === mine.id && lights}</h2>
         {chosen ? (
           <p role="status" className="text-amber-200">
             Escolhe a criatura em que vais jogar {chosen.name}. Uma carta já nesse espaço será descartada.{' '}
@@ -148,8 +165,9 @@ function Board({
           {mine.creatures.map((c) => {
             const knowledge = mine.field.find((f) => f.creatureId === c.id)?.knowledge;
             return (
-              <div key={c.id} className="space-y-3">
-                <Card card={c}>
+              <div key={c.id} data-motion-anchor={`slot:${mine.id}:${c.id}`} className="space-y-3">
+                <CreatureStatus owl={mine.field.some(s => s.knowledge?.id === 'aerial3')} hurricane={rival.field[mine.creatures.indexOf(c)]?.knowledge?.id === 'aquatic3'} />
+                <Card owner={mine.id} card={c}>
                   <ArenaButton
                     size="sm"
                     fullWidth
@@ -192,7 +210,7 @@ function Board({
         </div>
       </Panel>
       <Panel className="space-y-3 p-4">
-        <h2 className="text-xl font-bold">A tua mão</h2>
+        <h2 data-motion-anchor={`hand:${mine.id}`} className="text-xl font-bold">A tua mão</h2>
         <div className="flex gap-4 overflow-x-auto pb-2">
           {hand.map((k) => (
             <Card key={k.instanceId} card={k}>
@@ -214,10 +232,11 @@ function Board({
       {projection.pendingEffect ? (
         <Panel className="space-y-3 border-amber-300 p-5" role="region" aria-label="Decisão pendente">
           <h2 className="text-xl font-bold">{projection.pendingEffect.prompt}</h2>
-          <div className="flex flex-wrap gap-3">
-            {projection.pendingEffect.choices.map((choice) => (
+          <DuelTargetChoices view={projection} board={root} className="flex flex-wrap gap-3">
+            {projection.pendingEffect.choices.map((choice, index) => (
               <ArenaButton
                 key={choice.key}
+                data-choice-index={index}
                 disabled={
                   disabled ||
                   Boolean(projection.clock.suspendedAt) ||
@@ -253,7 +272,7 @@ function Board({
                 Passar efeito
               </ArenaButton>
             ) : null}
-          </div>
+          </DuelTargetChoices>
         </Panel>
       ) : null}
       <div className="flex flex-wrap items-center gap-4">
@@ -266,16 +285,9 @@ function Board({
         </p>
       </div>
       <details>
-        <summary className="cursor-pointer text-cyan-200">Descartes e acontecimentos públicos</summary>
+        <summary data-motion-anchor="discard" className="cursor-pointer text-cyan-200">Descartes e acontecimentos públicos</summary>
         <p>{projection.discardPile.map((k) => k.name).join(', ') || 'Sem descartes.'}</p>
-        <ol className="mt-3 space-y-1 text-sm">
-          {projection.events.slice(-12).map((event) => (
-            <li key={event.sequence}>
-              {event.sequence}. {event.actorId === playerId ? 'Tu' : 'Adversário'} ·{' '}
-              {formatMatchEvent(event.type)}
-            </li>
-          ))}
-        </ol>
+        <DuelEffectHistory events={projection.events} viewer={playerId} />
       </details>
     </div>
   );

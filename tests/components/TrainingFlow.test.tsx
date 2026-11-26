@@ -337,9 +337,13 @@ describe('public practice journey', () => {
     expect(flare).toBeInTheDocument();
     click('Play Lepidoptera on Tarasca');
     expect(screen.getByRole('dialog')).toHaveAccessibleName('Tulpar');
+    const option = screen.getByRole('dialog').querySelector<HTMLButtonElement>('[data-choice-index="0"]')!;
+    act(() => option.focus());
+    expect(document.querySelector('.wd-choice-pointer')).toBeInTheDocument();
     const choices = within(screen.getByRole('dialog')).getAllByRole('button').map(choice => choice.textContent);
     fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Rules' }));
     expect(screen.getByRole('dialog')).toHaveAccessibleName('Duel rules');
+    expect(document.querySelector('.wd-choice-pointer')).toBeNull();
     act(() => { vi.advanceTimersByTime(30_000); }); click('Resume duel');
     expect(screen.getByRole('dialog')).toHaveAccessibleName('Tulpar');
     expect(within(screen.getByRole('dialog')).getAllByRole('button').map(choice => choice.textContent)).toEqual(choices);
