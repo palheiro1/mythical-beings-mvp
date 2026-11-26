@@ -33,9 +33,9 @@ const outcomeReasons = {
   draw: 'The duel ended in a draw.',
 };
 
-export default function ChallengeArena({ projection, playerId, lobbyPath, casualDuel = false, sending = false, retryable = false, error = '', send, observer }: {
+export default function ChallengeArena({ projection, playerId, lobbyPath, casualDuel = false, sending = false, retryable = false, error = '', send, observer, callControls }: {
   projection: ArenaProjection; playerId?: string; lobbyPath: string; casualDuel?: boolean; sending?: boolean; retryable?: boolean;
-  error?: string; send?: (command?: CompetitiveCommand) => Promise<unknown>;
+  callControls?: ReactNode; error?: string; send?: (command?: CompetitiveCommand) => Promise<unknown>;
   observer?: { turnLabel: string; latest: string; history: ReactNode };
 }) {
   const seat = playerId ?? projection.players[0].id;
@@ -81,6 +81,7 @@ export default function ChallengeArena({ projection, playerId, lobbyPath, casual
   const title = observer ? 'Spectating — ' + modeName : 'Wisdom Duel — ' + (modeName === 'Weekly challenge' ? 'Weekly Challenge duel' : modeName);
   return <DuelArena root={root} layer={layer} direct={direct} activeSide={activeSide} unlock={audio.unlock} title={title} announcement={motion.announcement}
     header={<LiveHeader projection={projection} onRules={() => setDialog('rules')}>
+      {callControls}
       <TrainingSoundControls preferences={audio.preferences} update={audio.update} error={audio.error} play={audio.presentation.play}
         open={dialog === 'sound' && !inspection} onOpen={() => setDialog('sound')} onClose={() => setDialog(null)} />
     </LiveHeader>}>

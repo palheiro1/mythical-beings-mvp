@@ -1,0 +1,16 @@
+.wd-call { position:relative; display:inline-flex; align-items:center; gap:.35rem; width:max-content; max-width:100%; color:#f4efe4; font:500 13px/1.35 system-ui,sans-serif; }
+.wd-call button { display:inline-flex; align-items:center; justify-content:center; gap:.35rem; padding:.4rem .55rem; border:1px solid #686958; border-radius:6px; color:inherit; background:#182527; cursor:pointer; }
+.wd-call-toggle[data-incoming="true"] { border-color:#edcb83; background:#58421b; }
+.wd-call-toggle[data-incoming="true"]::after { content:""; width:7px; height:7px; border-radius:50%; background:#ffda7d; }
+.wd-call button:focus-visible,.wd-call input:focus-visible { outline:2px solid #f5cf79; outline-offset:2px; }
+.wd-call video { width:auto; height:34px; max-width:60px; object-fit:contain; border-radius:4px; }
+.wd-call-panel { position:absolute; left:0; top:calc(100% + .35rem); z-index:60; width: min(238px,85vw); display:grid; gap:.65rem; padding:.85rem; border:1px solid #796f53; border-radius:9px; background:#132026; box-shadow:0 6px 24px #0008; text-align:left; }
+.wd-match-header .wd-call-panel { left:auto; right:0; }
+.wd-call-panel p { margin:0; }
+.wd-call-panel label { display:flex; gap:.55rem; align-items:center; }
+.wd-call-panel input { accent-color:#eac277; }
+.wd-call-actions { display:flex; flex-wrap:wrap; gap:.4rem; }
+@media (max-width:600px), (max-height:480px) {
+  .wd-call-toggle span { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); }
+  .wd-call video { height:26px; max-width:36px; }
+}

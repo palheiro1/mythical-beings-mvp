@@ -162,3 +162,11 @@ release manifests and recovery procedures are in the SDK's
 builds and verifies the two app packages without publishing them. Keep this app's
 coverage, lint, types, build, bundle, public-artifact and logging checks enabled;
 the original critical coverage thresholds also measure the installed engine.
+
+### Voice and video in invitation duels
+
+Once both seats are filled, open **Voice & video** during team selection or in the arena. Choose the microphone and camera independently, then invite or accept. Both devices start off. Leaving the call, closing the duel, or finishing the match stops capture. The opponent's video can be hidden while listening.
+
+The pilot uses the Play Hub Supabase project. Apply the SDK migration `wisdom_duel_invitation_calls`, deploy its `wisdom-duel-turn` Edge Function, and configure `CLOUDFLARE_TURN_KEY_ID` and `CLOUDFLARE_TURN_API_TOKEN` in that project's Edge Function secrets. These values come from a Cloudflare Realtime TURN key. The availability check hides the controls until both secrets are present. [Cloudflare TURN keys](https://developers.cloudflare.com/realtime/turn/generate-credentials/)
+
+The server admits the two signed-in players in an invitation duel and removes eligibility if the room is ever listed publicly. At rollout, still-open invitations and newly created invitations qualify. Each acceptance belongs to one browser tab and one call. Signaling uses private Supabase Realtime broadcasts, media uses relay-only WebRTC, and the game records neither audio nor video.
