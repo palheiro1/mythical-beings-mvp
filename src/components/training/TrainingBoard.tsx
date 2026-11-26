@@ -39,7 +39,7 @@ export function DuelBoard({ player, opponent, opponentLabel, guidance, direct = 
   opponentLabel: string;
   guidance?: string;
   direct?: boolean;
-  creatureAction: (creature: Creature, knowledge: Knowledge | null) => CreatureAction;
+  creatureAction?: (creature: Creature, knowledge: Knowledge | null) => CreatureAction;
   knowledgeAction?: (creature: Creature, knowledge: Knowledge) => CardAction;
   onInspect: (card: DisplayCard) => void;
   hud?: BoardHud;
@@ -52,9 +52,9 @@ export function DuelBoard({ player, opponent, opponentLabel, guidance, direct = 
       const enemy = opponent.creatures[i];
       const ours = player.field.find(slot => slot.creatureId === creature.id)?.knowledge ?? null;
       const theirs = opponent.field.find(slot => slot.creatureId === enemy?.id)?.knowledge ?? null;
-      const action = creatureAction(creature, ours);
+      const action = creatureAction?.(creature, ours);
       const ourKnowledge = <KnowledgeSlot card={ours} inspect={onInspect} direct={direct} showEmpty={!!hud} action={ours ? knowledgeAction?.(creature, ours) : undefined} />;
-      return <div key={creature.id} className={`wd-lane ${action.highlighted ? 'is-target' : ''}`}>
+      return <div key={creature.id} className={`wd-lane ${action?.highlighted ? 'is-target' : ''}`}>
         <div className="wd-card-pair wd-enemy-pair" data-element={enemy?.element} data-motion-anchor={`slot:${opponent.id}:${enemy?.id}`}>
           {!hud && <SeatMark element={enemy?.element} />}
           <div className="wd-creature-slot wd-enemy-creature">
@@ -64,7 +64,7 @@ export function DuelBoard({ player, opponent, opponentLabel, guidance, direct = 
           </div>
           <KnowledgeSlot card={theirs} inspect={onInspect} direct={direct} showEmpty={!!hud} />
         </div>
-        <div className={`wd-card-pair wd-player-pair ${action.highlighted ? 'is-target' : ''}`} data-element={creature.element} data-motion-anchor={`slot:${player.id}:${creature.id}`}>
+        <div className={`wd-card-pair wd-player-pair ${action?.highlighted ? 'is-target' : ''}`} data-element={creature.element} data-motion-anchor={`slot:${player.id}:${creature.id}`}>
           {!hud && <><SeatMark element={creature.element} />{ourKnowledge}</>}
           <div className="wd-creature-slot">
             <CreatureStatus owl={ourOwl} hurricane={theirs?.id === 'aquatic3'} />
@@ -73,7 +73,7 @@ export function DuelBoard({ player, opponent, opponentLabel, guidance, direct = 
           </div>
           {hud && ourKnowledge}
         </div>
-        {!direct && <button type="button" className={`wd-lane-action ${action.highlighted ? 'is-highlighted' : ''} ${action.glowing ? 'wd-guide-glow' : ''}`} aria-disabled={!action.valid} aria-label={action.label} title={action.reason} data-guide-target={action.guideTarget} onClick={action.onActivate}>{action.playing ? <>Play here{action.replacement && <span className="wd-replacement">Replaces {action.replacement}</span>}</> : <><RotateCw size={14} />Rotate</>}</button>}
+        {!direct && action && <button type="button" className={`wd-lane-action ${action.highlighted ? 'is-highlighted' : ''} ${action.glowing ? 'wd-guide-glow' : ''}`} aria-disabled={!action.valid} aria-label={action.label} title={action.reason} data-guide-target={action.guideTarget} onClick={action.onActivate}>{action.playing ? <>Play here{action.replacement && <span className="wd-replacement">Replaces {action.replacement}</span>}</> : <><RotateCw size={14} />Rotate</>}</button>}
       </div>;
     })}{hud?.turn}</div>
     {hud?.player ?? <div className="wd-board-side">{guidance ?? 'Your creatures · Click artwork for details'}</div>}

@@ -548,6 +548,7 @@ function Preparation({
             Choose three creatures · <Countdown deadline={match.deadline} serverNow={serverNow} />
           </h2>
           <p>Your team stays hidden until both players confirm. Once you confirm your team, your choices are final.</p>
+          <p>When both teams are ready, anyone can watch the board. Your hand stays private.</p>
           <div className="flex gap-4 overflow-x-auto pb-2">
             {(match.offer ?? []).map((id) => {
               const c = creatures.find((c) => c.id === id) as Creature | undefined;
@@ -653,6 +654,7 @@ export default function CompetitiveMatch() {
       {projection ? (
         <>
           <ClockDisplay projection={projection} playerId={user!.id} />
+          {!projection.outcome && <Link className="text-cyan-200 underline" to={`/watch/${matchId}`} target="_blank" rel="noopener noreferrer">Open spectator view</Link>}
           {projection.outcome ? (
             <Panel className="space-y-3 p-6" role="status">
               <h2 className="text-3xl font-bold">

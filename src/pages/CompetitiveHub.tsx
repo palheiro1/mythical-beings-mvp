@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { PageShell, Panel } from '../components/ui/index.js';
 import { WEEKLY_CHALLENGE_ENABLED } from '../config/release.js';
 const entries = [
+  ['/watch', 'Watch live', 'Follow the board and the turns of a duel in progress.'],
   ...(WEEKLY_CHALLENGE_ENABLED ? [['/challenge', 'Weekly Challenge', 'Find a duel and see the standings for each edition.']] : []),
   ['/bot-selection', 'Treinar', 'Aprende as regras e experimenta equipas.'],
   ['/league', 'Jogar na liga', 'Uma oferta igual para ambos. Sem NFTs nem aposta.'],

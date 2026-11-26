@@ -58,6 +58,7 @@ export default function WeeklyChallenge() {
     <PageShell contentClassName="max-w-4xl space-y-6">
       <Link className="text-cyan-200" to="/">← Wisdom Duel</Link>
       <h1 className="text-4xl font-bold">Weekly Challenge</h1>
+      <Link className="text-cyan-200 underline" to="/watch">Watch live duels</Link>
       {error ? (
         <Panel className="space-y-3 p-5">
           <p role="alert" className="text-red-200">{error}</p>
