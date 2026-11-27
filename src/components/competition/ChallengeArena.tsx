@@ -12,11 +12,13 @@ import type { CompetitiveCommand } from '@mythicalb/wisdom-duel-engine';
 import { useDirectCards } from '../../hooks/useDirectCards.js';
 import { useMatchClock } from '../../hooks/useCompetitiveMatch.js';
 import CardDetailOverlay from '../CardDetailOverlay.js';
+import CardFaceByImage from '../CardFaceByImage.js';
 import { DuelBoard } from '../training/TrainingBoard.js';
 import type { DisplayCard } from '../training/TrainingCard.js';
 import TrainingDialog from '../training/TrainingDialog.js';
 import PlayCardFace from '../training/PlayCardFace.js';
 import { DuelTrays, type TrayTab } from '../training/TrainingTrays.js';
+import { getCardPresentation } from '../../utils/digitalCards.js';
 function LiveHeader({ projection, onRules, children }: { projection: ArenaProjection; onRules: () => void; children: ReactNode }) {
   const remaining = useMatchClock(projection);
   const running = projection.clock.runningPlayerId;
@@ -65,7 +67,10 @@ export default function ChallengeArena({ projection, playerId, lobbyPath, casual
   const hasResultDialog = Boolean(outcome && !resultDismissed && !retryable && !motion.presenting);
   const hasPendingDialog = !observer && Boolean(pending && !inspection && !outcome && !suspended);
   const activeSide = outcome || suspended ? undefined : projection.decisionPlayerId === seat ? 'player' : 'opponent';
-  const message = error || observer?.latest || (outcome ? 'The duel is over.' : suspended ? 'The clocks are paused while this duel is reviewed.' : pending ? 'Choose a target to resolve the effect.' : !canAct ? 'Waiting for the opponent.' : selected ? `Play ${selected.name} on one of your creatures.` : 'Draw from the market, rotate a card in play, or select a card from your hand.');
+  const selectedHint = selected && (getCardPresentation(selected, 0).current.kind === 'damage'
+    ? `Play ${selected.name} on a creature. Its cycle damage resolves in your next Knowledge Phase.`
+    : `Play ${selected.name} on one of your creatures.`);
+  const message = error || observer?.latest || (outcome ? 'The duel is over.' : suspended ? 'The clocks are paused while this duel is reviewed.' : pending ? 'Choose a target to resolve the effect.' : !canAct ? 'Waiting for the opponent.' : selectedHint || 'Draw from the market, rotate a card in play, or select a card from your hand.');
 
   const play = async (command: CompetitiveCommand) => {
     if (!send || observer) return;
@@ -91,7 +96,7 @@ export default function ChallengeArena({ projection, playerId, lobbyPath, casual
         hud={{
           player: <PowerMedallion owner={seat} side="player" label={observer ? 'Player 1' : 'Your'} power={mine.power} actions={myTurn && !outcome ? lights : undefined} />,
           opponent: <PowerMedallion owner={rival.id} side="opponent" label={observer ? 'Player 2' : 'Opponent’s'} power={rival.power} handSize={rival.hand.count} actions={!myTurn && !outcome ? lights : undefined} />,
-          turn: <TurnCallout turn={projection.turn} label={turnLabel} complete={!!outcome} />,
+          turn: <TurnCallout turn={projection.turn} playerId={projection.currentPlayerId} label={turnLabel} complete={!!outcome} />,
         }}
         creatureAction={observer ? undefined : (creature, knowledge) => {
           const handInstanceId = selected?.instanceId;
@@ -164,8 +169,18 @@ export default function ChallengeArena({ projection, playerId, lobbyPath, casual
 
     {hasPendingDialog && pending ? <section className="wd-live-choice" aria-label="Resolve the card effect">
       <p>{pending.prompt}</p>
-      <DuelTargetChoices view={projection} board={root} className="wd-effect-choices">{pending.choices.map((choice, index) => <button type="button" key={choice.key} data-choice-index={index} className="wd-effect-choice"
-        disabled={!canDecide} onClick={() => void play({ type: 'resolve_pending_effect', effectId: pending.id, choiceKey: choice.key })}>{choice.label}</button>)}</DuelTargetChoices>
+      <DuelTargetChoices view={projection} board={root} className="wd-effect-choices">{pending.choices.map((choice, index) => {
+        const handDiscard = pending.type === 'chooseOpponentHandDiscard' && choice.kind === 'hand';
+        return <button type="button" key={choice.key} data-choice-index={index} className="wd-effect-choice"
+          aria-label={handDiscard ? `Discard ${choice.label}` : undefined}
+          disabled={!canDecide} onClick={() => void play({ type: 'resolve_pending_effect', effectId: pending.id, choiceKey: choice.key })}>
+          {handDiscard && <span className="wd-discard-option-art" aria-hidden="true">
+            {choice.image ? <CardFaceByImage src={choice.image} alt="" />
+              : <img src="/images/spells/back-360.webp" alt="" />}
+          </span>}
+          {choice.label}
+        </button>;
+      })}</DuelTargetChoices>
       {pending.optional ? <button type="button" className="wd-button" disabled={!canDecide} onClick={() => void play({ type: 'resolve_pending_effect', effectId: pending.id, skip: true })}>Skip effect</button> : null}
       {error ? <p role="alert">{error}</p> : null}
       {observer ? null : retryable ? <button type="button" className="wd-button wd-button-primary" disabled={sending} onClick={() => void send?.()}>Retry last move</button> : null}
@@ -187,7 +202,9 @@ export default function ChallengeArena({ projection, playerId, lobbyPath, casual
       {observer ? observer.history : <DuelEffectHistory events={projection.events} viewer={seat} />}
     </TrainingDialog> : null}
     {dialog === 'rules' && <TrainingDialog title="Duel rules" onClose={() => setDialog(null)}>
-      <p>Reduce the other team’s Power to zero. Your Knowledge cards resolve in the Knowledge Phase. You normally have two actions in the Action Phase.</p>
+      <p>Reduce the other team’s Power to zero. Drawing adds a card to your hand. Play it on a creature to use it. On-play abilities happen immediately. Cycle damage resolves in your Knowledge Phase.</p>
+      <p>Defense absorbs damage before it reaches Power. Open Game history to see which card attacked, what blocked it and how much Power changed.</p>
+      <p>You normally have two actions in the Action Phase.</p>
       <p>{projection.clock.turnMs ? 'Each turn has 30 seconds. When time runs out the turn passes. Missing two of your turns in a row without making a move loses the duel.' : 'This duel started with a ten-minute decision clock per player.'}</p>
       <Link className="wd-button" to="/how-to-play" target="_blank" rel="noopener">Full rules</Link>
     </TrainingDialog>}

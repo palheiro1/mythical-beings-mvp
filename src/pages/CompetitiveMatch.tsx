@@ -1,10 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link, useLocation, useParams } from 'react-router-dom';
-import type {
-  Creature,
-} from '@mythicalb/wisdom-duel-engine';
 import { creatures } from '@mythicalb/wisdom-duel-engine/catalog';
-import CardFaceByImage from '../components/CardFaceByImage.js';
+import CardDetailOverlay from '../components/CardDetailOverlay.js';
+import TrainingCard, { type DisplayCard } from '../components/training/TrainingCard.js';
 import ChallengeArena from '../components/competition/ChallengeArena.js';
 import DuelCallControls from '../components/competition/DuelCallControls.js';
 import { useInvitationCall } from '../calls/useInvitationCall.js';
@@ -49,6 +47,8 @@ function Preparation({
     [deferredCards, setDeferredCards] = useState<{ cardId: string; amount: string }[] | null>(null),
     [cardRecipient, setCardRecipient] = useState(''),
     [cardClaimHash, setCardClaimHash] = useState('');
+  const [inspectedCard, setInspectedCard] = useState<DisplayCard | null>(null);
+  const closeInspection = useCallback(() => setInspectedCard(null), []);
   const { polygonWallet, connectPolygonWallet, user } = useAuth();
   const { state: navigationState } = useLocation();
   const storageKey = `wisdom-economy:${user?.id}:${match.matchId}`;
@@ -287,30 +287,37 @@ function Preparation({
           </h2>
           <p>Your team stays hidden until both players confirm. Once you confirm your team, your choices are final.</p>
           <p>When both teams are ready, anyone can watch the board. Your hand stays private. Each turn lasts 30 seconds. Missing two of your turns in a row without a move loses the duel.</p>
-          <div className="flex gap-4 overflow-x-auto pb-2">
+          <p>Open a card to read its ability and Wisdom cycle. Choose your three creatures below.</p>
+          <section className="wd wd-selection-grid rounded-xl p-4" aria-label="Available creatures">
             {(match.offer ?? []).map((id) => {
-              const c = creatures.find((c) => c.id === id) as Creature | undefined;
-              if (!c) return null;
+              const card = creatures.find((creature) => creature.id === id);
+              if (!card) return null;
               const chosen = (match.selection ?? selected).includes(id);
               return (
-                <div className="w-36 shrink-0" key={id}>
+                <article key={id} className={`wd-choice${chosen ? ' is-selected' : ''}`}>
+                  <TrainingCard card={card} onInspect={setInspectedCard} />
+                  <div className="wd-choice-copy">
+                    <p className="wd-eyebrow">{card.element}</p>
+                    <h3 className="text-xl">{card.name}</h3>
+                    <p>{card.passiveAbility}</p>
+                  </div>
                   <button
                     type="button"
-                    className={`w-full rounded-xl p-2 focus:ring-2 focus:ring-cyan-200 ${chosen ? 'bg-amber-300/25 ring-2 ring-amber-300' : ''}`}
+                    className="wd-button"
                     disabled={Boolean(match.selection) || busy || (!chosen && selected.length === 3)}
                     aria-pressed={chosen}
-                    aria-label={`Select ${c.name}`}
+                    aria-label={`Select ${card.name}`}
                     onClick={() =>
                       setSelected((ids) => (ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id]))
                     }
                   >
-                    <CardFaceByImage card={c} src={c.image} alt={c.name} />
-                    <span>{c.name}</span>
+                    {chosen ? 'Selected' : 'Choose creature'}
                   </button>
-                </div>
+                </article>
               );
             })}
-          </div>
+          </section>
+          <CardDetailOverlay card={inspectedCard} open={!!inspectedCard} onClose={closeInspection} contextLabel="Team selection" />
           <ArenaButton
             loading={busy}
             disabled={Boolean(match.selection) || selected.length !== 3}

@@ -47,6 +47,6 @@ export function PowerMedallion({ power, side, owner, label, handSize, actions }:
   </div>;
 }
 
-export function TurnCallout({ turn, label, complete }: { turn: number; label: string; complete?: boolean }) {
-  return <div className="wd-turn"><span>Turn {turn}</span><strong key={turn + label} className={complete ? undefined : 'wd-turn-callout'}>{label}</strong></div>;
+export function TurnCallout({ turn, playerId, label, complete }: { turn: number; playerId: string; label: string; complete?: boolean }) {
+  return <div className="wd-turn"><span>Turn {turn}</span><strong key={`${turn}/${playerId}`} className={complete ? undefined : 'wd-turn-callout'}>{label}</strong></div>;
 }

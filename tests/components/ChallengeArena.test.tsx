@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { COMPETITIVE_CATALOG, initializeCompetitiveMatch, projectMatch } from '@mythicalb/wisdom-duel-engine';
 import type { CompetitiveProjection } from '@mythicalb/wisdom-duel-engine';
 import ChallengeArena from '../../src/components/competition/ChallengeArena.js';
+import { TurnCallout } from '../../src/components/game/DuelArena.js';
 import { effectScenario, resolveScenario } from '../browser/duelEffectScenarios.js';
 
 const matchId = 'a1f2d04c-5d42-4536-981b-0f23451791b8';
@@ -26,6 +27,38 @@ function page(projection: CompetitiveProjection, actor: string) {
 }
 
 describe('weekly challenge arena', () => {
+  it('starts a new turn animation on handoff and keeps the same one during a decision', () => {
+    const { rerender } = render(<TurnCallout turn={1} playerId="north" label="Your turn" />);
+    const callout = screen.getByText('Your turn');
+    rerender(<TurnCallout turn={1} playerId="north" label="Your decision" />);
+    expect(screen.getByText('Your decision')).toBe(callout);
+    rerender(<TurnCallout turn={1} playerId="south" label="Opponent’s turn" />);
+    expect(screen.getByText('Opponent’s turn')).not.toBe(callout);
+  });
+
+  it('displays the revealed hand for Serpent and submits the chosen opaque key', async () => {
+    const snapshot = resolveScenario('Serpent', await effectScenario('Serpent', now), now);
+    const projection = projectMatch(snapshot, 'north', now);
+    const send = page(projection, 'north');
+    const choices = within(screen.getByRole('region', { name: 'Resolve the card effect' }));
+    expect(choices.getByRole('button', { name: 'Discard Fire' }).querySelector('img[alt="Fire"]'))
+      .toHaveAttribute('src', expect.stringContaining('/images/spells/terrestrial4.webp'));
+    fireEvent.click(choices.getByRole('button', { name: 'Discard Lupus' }));
+    expect(send).toHaveBeenCalledExactlyOnceWith({
+      type: 'resolve_pending_effect', effectId: projection.pendingEffect!.id, choiceKey: 'choice-2',
+    });
+  });
+
+  it('shows card backs for choices a server keeps concealed', async () => {
+    const snapshot = resolveScenario('Serpent', await effectScenario('Serpent', now), now);
+    const projection = projectMatch(snapshot, 'north', now);
+    projection.pendingEffect!.choices = [{ key: 'choice-1', kind: 'hand', label: 'Hidden card 1' }];
+    page(projection, 'north');
+    const choices = screen.getByRole('region', { name: 'Resolve the card effect' });
+    expect(choices.querySelector('img')).toHaveAttribute('src', '/images/spells/back-360.webp');
+    expect(choices).not.toHaveTextContent('Lupus');
+  });
+
   it('draws one pointer only while aiming and sends the matching Tulpar choice from the board', async () => {
     const match = resolveScenario('Tulpar', await effectScenario('Tulpar', now), now);
     const projection = projectMatch(match, 'north', now);
