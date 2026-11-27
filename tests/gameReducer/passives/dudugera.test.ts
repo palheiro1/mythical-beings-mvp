@@ -28,7 +28,7 @@ describe('Dudugera Passive', () => {
       expect(result.actionsTakenThisTurn).toBe(before);
       // log contains passive effect
       expect(result.log).toContain(
-        `[Passive Effect] Dudugera allows summoning ${card.name} onto itself without spending an action.`
+        `[Passive Effect] Playing ${card.name} on Dudugera uses no action.`
       );
     });
 
@@ -50,7 +50,7 @@ describe('Dudugera Passive', () => {
       const result = gameReducer(initialState, action) as GameState;
 
       expect(result.actionsTakenThisTurn).toBe(before + 1);
-      expect(result.log).not.toContain('Dudugera allows summoning');
+      expect(result.log).not.toContainEqual(expect.stringContaining('on Dudugera uses no action'));
     });
   });
 });

@@ -1,4 +1,4 @@
-import creaturesData from '../assets/creatures.json';
+import { creatures as creaturesData } from '@mythicalb/wisdom-duel-engine/catalog';
 import type {
   AuthoritativeInitializedMatch,
   AuthoritativeInitializationParticipant,

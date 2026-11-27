@@ -2,10 +2,10 @@ import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import CardArtwork from '../../src/components/CardArtwork.js';
-import { getResponsiveCardSrcSet } from '../../src/utils/cardAssets.js';
+import { getCardArtworkSrc, getResponsiveCardSrcSet } from '../../src/utils/cardAssets.js';
 
 describe('CardArtwork', () => {
-  it('offers correctly sized local WebP candidates and intrinsic dimensions', () => {
+  it('refreshes cached artwork in both sizes while preserving intrinsic dimensions', () => {
     render(
       <CardArtwork
         src="/images/beings/adaro.webp"
@@ -16,9 +16,10 @@ describe('CardArtwork', () => {
     );
 
     const artwork = screen.getByRole('img', { name: 'Adaro' });
+    expect(artwork).toHaveAttribute('src', '/images/beings/adaro.webp?v=srgb-20260918');
     expect(artwork).toHaveAttribute(
       'srcset',
-      '/images/beings/adaro-360.webp 360w, /images/beings/adaro.webp 720w',
+      '/images/beings/adaro-360.webp?v=srgb-20260918 360w, /images/beings/adaro.webp?v=srgb-20260918 720w',
     );
     expect(artwork).toHaveAttribute('sizes', '150px');
     expect(artwork).toHaveAttribute('width', '720');
@@ -29,5 +30,7 @@ describe('CardArtwork', () => {
   it('does not invent local variants for remote or vector artwork', () => {
     expect(getResponsiveCardSrcSet('https://cdn.example/card.webp')).toBeUndefined();
     expect(getResponsiveCardSrcSet('/images/beings/lafaic.svg')).toBeUndefined();
+    expect(getCardArtworkSrc('https://cdn.example/card.webp')).toBe('https://cdn.example/card.webp');
+    expect(getCardArtworkSrc('/images/beings/lafaic.svg')).toBe('/images/beings/lafaic.svg');
   });
 });

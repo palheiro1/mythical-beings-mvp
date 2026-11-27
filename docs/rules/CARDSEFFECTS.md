@@ -1,4 +1,6 @@
-# Card Effects Implementation Status
+# Historical card implementation checklist
+
+This early checklist records the original implementation work. For current card text and digital targets, use the [Knowledge card catalog](../../src/assets/knowledges.json), [Creature catalog](../../src/assets/creatures.json) and [digital rules](RULES.md).
 
 **Legend:**
 *   ✅: Implemented and working correctly based on available information.
@@ -26,7 +28,7 @@
 ## Knowledge Cards (Effects)
 
 *   ✅ **terrestrial1:** If the opposing Creature has no Spells of Allies, Ursus causes +1 damage.
-*   ✅ **terrestrial2:** Apparition: Look at the opponent's hand and discard 1 card. (Implemented with auto-discard)
+*   ✅ **Serpent (terrestrial2)** lets you look at your opponent’s hand when you play it and choose one card for them to discard.
 *   ✅ **terrestrial3:** It causes as many point of damage as the Wisdom of the summoning Creature.
 *   ✅ **terrestrial4:** Rival Allies of Wisdom X or lower are discarded (X being the value in the upper left corner). 
 *   ✅ **terrestrial5:** Final: Remove 1 knowledge card from the Rival's table. (Implemented as rotational damage)

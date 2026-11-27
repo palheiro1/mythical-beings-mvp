@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { InMemoryAuthoritativeGameExecutor } from '../../src/game/authoritativeExecutor.js';
+import { InMemoryAuthoritativeGameExecutor, mapCommandToAction } from '../../src/game/authoritativeExecutor.js';
 import { GAME_COMMAND_PROTOCOL_VERSION, type GameCommandEnvelope } from '../../src/game/protocol.js';
 import { computeGameSeedCommitment, createGameRandomState } from '../../src/game/random.js';
-import { replayAuthoritativeEvents } from '../../src/game/replay.js';
+import { createSeededAuthoritativeGame, replayAuthoritativeEvents } from '../../src/game/replay.js';
 import { initializeGame } from '../../src/game/state.js';
 
 const MATCH_ID = '018f2f9a-4e1c-7b8a-8f2c-0242ac120002';
@@ -43,6 +43,55 @@ function enabledExecutor() {
 }
 
 describe('in-memory authoritative command executor', () => {
+  it('keeps a packaged seeded game reproducible and rejects a corrupted reveal', async () => {
+    const payload = { gameId: MATCH_ID, player1Id: 'player-1', player2Id: 'player-2',
+      player1SelectedIds: ['lafaic', 'adaro', 'kappa'], player2SelectedIds: ['pele', 'tulpar', 'tarasca'] };
+    const generated = await createSeededAuthoritativeGame(payload);
+    expect(await createSeededAuthoritativeGame(payload, generated.state.privateRandom!.seedHex)).toEqual(generated);
+    generated.state.phase = 'gameOver';
+    const executor = new InMemoryAuthoritativeGameExecutor({ enabled: true });
+    executor.registerMatch(generated.state, { seedCommitment: '00'.repeat(32) });
+    await expect(executor.revealFinishedMatchSeed(MATCH_ID)).rejects.toThrow('commitment');
+    expect(executor.execute('player-1', envelope(1, 0))).toMatchObject({ code: 'match_not_playable' });
+  });
+
+  it('binds Knowledge intentions to the authenticated player and exact card instance', () => {
+    const state = createState();
+    const card = state.knowledgeDeck.shift()!;
+    state.players[0].hand.push(card);
+    expect(mapCommandToAction(state, 'player-1', { type: 'summon_knowledge',
+      handInstanceId: card.instanceId!, creatureId: 'lafaic' })).toMatchObject({
+      valid: true, action: { payload: { knowledgeId: card.id, instanceId: card.instanceId, playerId: 'player-1' } },
+    });
+    state.players[0].hand.pop();
+    state.players[0].field[0].knowledge = card;
+    expect(mapCommandToAction(state, 'player-1', { type: 'rotate_knowledge',
+      creatureId: 'lafaic', fieldInstanceId: card.instanceId! })).toMatchObject({ valid: true });
+    expect(mapCommandToAction(state, 'player-2', { type: 'rotate_knowledge',
+      creatureId: 'lafaic', fieldInstanceId: card.instanceId! })).toEqual({ valid: false });
+    expect(mapCommandToAction(state, 'player-1', { type: 'draw_knowledge',
+      marketInstanceId: card.instanceId! })).toEqual({ valid: false });
+    const market = state.market[0];
+    expect(mapCommandToAction(state, 'player-1', { type: 'draw_knowledge',
+      marketInstanceId: market.instanceId! })).toMatchObject({ valid: true, action: { payload: { instanceId: market.instanceId } } });
+  });
+
+  it('rejects ambiguous restored metadata and missing match access', () => {
+    const executor = new InMemoryAuthoritativeGameExecutor({ enabled: true });
+    expect(executor.getProjection(MATCH_ID, { kind: 'player', playerId: 'player-1' })).toBeNull();
+    expect(executor.exportPrivateSnapshot(MATCH_ID)).toBeNull();
+    expect(executor.exportEventsForReplay(MATCH_ID)).toEqual([]);
+    expect(executor.execute('player-1', envelope(1, 0))).toMatchObject({ code: 'match_not_playable' });
+    for (const options of [{ initialVersion: -1 }, { initialEventSequence: -1 },
+      { seedCommitment: 'invalid' }, { turnDeadline: 'invalid' }]) {
+      expect(() => executor.registerMatch(createState(), options)).toThrow();
+    }
+    executor.registerMatch(createState());
+    expect(() => executor.registerMatch(createState())).toThrow('already registered');
+    expect(executor.getProjection(MATCH_ID, { kind: 'player', playerId: 'intruder' })).toBeNull();
+    expect(executor.execute('player-1', envelope(1, 0))).toMatchObject({ status: 'accepted' });
+    expect(Date.parse(executor.exportEventsForReplay(MATCH_ID)[0].occurredAt)).toBeGreaterThan(0);
+  });
   it('is disabled by default before authentication or match access', () => {
     const executor = new InMemoryAuthoritativeGameExecutor();
     expect(executor.execute(null, { forged: true })).toEqual({

@@ -47,6 +47,17 @@ describe('Logs', () => {
     expect(screen.getByRole('status')).toHaveTextContent('Latest event: Training Bot draws a card.');
   });
 
+  it('reads earlier plays and effect timings in the current vocabulary', () => {
+    expect(formatGameHistoryEntry('local-player summoned Lepidoptera onto tarasca.', { 'local-player': 'You' }))
+      .toBe('You played Lepidoptera on Tarasca.');
+    expect(formatGameHistoryEntry('local-player replaced Blue Sky with Lepidoptera onto tarasca.', { 'local-player': 'You' }))
+      .toBe('You played Lepidoptera on Tarasca, replacing Blue Sky.');
+    expect(formatGameHistoryEntry('[Apparition] Lepidoptera grants +1 Power.'))
+      .toBe('On play · Lepidoptera grants +1 Power.');
+    expect(formatGameHistoryEntry('[Final] Galapago grants an action.'))
+      .toBe('On final rotation · Galapago grants an action.');
+  });
+
   it('formats tagged entries without altering identifiers inside longer words', () => {
     expect(formatGameHistoryEntry('[Action] bot acts after robot.', { bot: 'Bot' }))
       .toBe('Bot acts after robot.');

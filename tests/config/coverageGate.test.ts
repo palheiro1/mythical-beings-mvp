@@ -15,7 +15,7 @@ describe('critical coverage gate', () => {
     const packageJson = JSON.parse(rootFile('package.json'));
     const coverageScript = packageJson.scripts['test:coverage'] as string;
 
-    expect(packageJson.devDependencies['@vitest/coverage-v8']).toBe('3.2.6');
+    expect(packageJson.devDependencies['@vitest/coverage-v8']).toBe('4.1.12');
     expect(coverageScript).toContain('--config vitest.coverage.config.ts');
     expect(coverageScript).toContain('--coverage.enabled');
     expect(coverageScript).toContain('--coverage.reporter=text');
@@ -30,9 +30,9 @@ describe('critical coverage gate', () => {
       'src/game/authoritativeHttp.ts',
       'src/game/authoritativePersistence.ts',
       'src/game/durableAuthoritativeService.ts',
-      'src/game/invariants.ts',
-      'src/game/protocol.ts',
-      'src/game/replay.ts',
+      '.coverage-engine/game/invariants.js',
+      '.coverage-engine/game/protocol.js',
+      '.coverage-engine/game/replay.js',
     ];
 
     for (const file of requiredFiles) {
@@ -67,12 +67,12 @@ describe('critical coverage gate', () => {
       ...criticalCoverageFiles.map((file) => [`/workspace/${file}`, metrics(100)]),
     ]);
 
-    delete summary['/workspace/src/game/replay.ts'];
-    summary['/workspace/src/game/invariants.ts'].branches.pct = 64.99;
+    delete summary['/workspace/.coverage-engine/game/replay.js'];
+    summary['/workspace/.coverage-engine/game/invariants.js'].branches.pct = 64.99;
 
     expect(evaluateCriticalCoverageSummary(summary)).toEqual(expect.arrayContaining([
-      { file: 'src/game/replay.ts', metric: 'present', expected: 1, actual: 0 },
-      { file: 'src/game/invariants.ts', metric: 'branches', expected: 65, actual: 64.99 },
+      { file: '.coverage-engine/game/replay.js', metric: 'present', expected: 1, actual: 0 },
+      { file: '.coverage-engine/game/invariants.js', metric: 'branches', expected: 65, actual: 64.99 },
     ]));
   });
 

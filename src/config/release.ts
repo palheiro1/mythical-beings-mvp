@@ -1,6 +1,8 @@
 const pvpFlag = String(import.meta.env.VITE_ENABLE_PVP ?? '').trim().toLowerCase();
 
 export const PVP_ENABLED = pvpFlag === 'true';
+export const CASUAL_DUELS_ENABLED = PVP_ENABLED || import.meta.env.VITE_ENABLE_CASUAL_DUELS === 'true';
+export const WEEKLY_CHALLENGE_ENABLED = import.meta.env.VITE_ENABLE_WEEKLY_CHALLENGE === 'true';
 export const TRAINING_PREVIEW_ENABLED = !PVP_ENABLED;
 
 export const PVP_DISABLED_CODE = 'multiplayer_disabled';
@@ -24,4 +26,4 @@ export function assertPvpEnabled(): void {
 
 export const TRAINING_PREVIEW_LABEL = 'Training Preview';
 export const CHAMPIONSHIP_MESSAGE =
-  'Multiplayer competition opens with the Wisdom Duel Championship in the coming months.';
+  'The competitive league and optional wager duels will open after validation. Training remains available.';

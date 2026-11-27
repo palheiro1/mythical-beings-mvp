@@ -25,6 +25,10 @@ export default defineConfig(({ command }) => ({
       output: {
         onlyExplicitManualChunks: true,
         manualChunks(id) {
+          // Keep the two pinned optional PostHog vendor chunks separate from
+          // first-party code and from the initial render dependency graph.
+          if (id.endsWith('/analytics/vendor/analytics-PMCQKV6M.js')) return 'vendor-analytics-core'
+          if (id.endsWith('/analytics/vendor/analytics-A5QQIJ6P.js')) return 'vendor-analytics-replay'
           if (!id.includes('node_modules')) {
             return undefined
           }
@@ -43,6 +47,12 @@ export default defineConfig(({ command }) => ({
 
           if (id.includes('/@noble/') || id.includes('/@scure/')) {
             return 'vendor-crypto'
+          }
+
+          // Card faces on the landing page only need the printed catalog.
+          if (id.includes('/@mythicalb/wisdom-duel-engine/dist/assets/') ||
+              id.endsWith('/@mythicalb/wisdom-duel-engine/dist/game/catalog.js')) {
+            return 'card-catalog'
           }
 
           if (id.includes('/@mythicalb/')) {

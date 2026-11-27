@@ -47,7 +47,7 @@ describe('Pele Passive', () => {
       expect(stateAfterSummon.players[1].field[kyzyFieldIndexP2].knowledge?.instanceId).toBe(lowerCostKnowledge.instanceId);
       // Assert: The higher cost card remains on opponent's field
       expect(stateAfterSummon.players[1].field[lisovikFieldIndexP2].knowledge?.instanceId).toBe(higherCostKnowledge.instanceId);
-      expect(stateAfterSummon.log.some(log => log.includes('Pele: choose an opponent Knowledge'))).toBe(true);
+      expect(stateAfterSummon.log.some(log => log.includes('Pele: choose an opposing Knowledge card'))).toBe(true);
     });
 
     it('should discard only the first lower cost opponent knowledge if multiple exist', () => {

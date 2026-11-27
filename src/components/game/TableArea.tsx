@@ -168,7 +168,7 @@ const TableArea: React.FC<TableAreaProps> = ({
                         {renderSlot({
                             cardData: opponentCreature ?? null,
                             keyName: opponentCreature ? `op-creature-${opponentCreature.id}` : `op-creature-empty-${index}`,
-                            rotation: ((opponentCreature?.rotation ?? 0) + 180),
+                            rotation: opponentCreature?.rotation ?? 0,
                             isDisabled: true,
                             kind: 'creature',
                             emptyLabel: 'Opponent',
@@ -178,7 +178,7 @@ const TableArea: React.FC<TableAreaProps> = ({
                             {renderSlot({
                                 cardData: opponentKnowledge,
                                 keyName: opponentKnowledge ? `op-knowledge-${opponentKnowledge.instanceId}` : `op-knowledge-empty-${opponentCreature?.id ?? index}`,
-                                rotation: ((opponentKnowledge?.rotation ?? 0) + 180),
+                                rotation: opponentKnowledge?.rotation ?? 0,
                                 isDisabled: true,
                                 kind: 'knowledge',
                                 emptyLabel: 'Knowledge',

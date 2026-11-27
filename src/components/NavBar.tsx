@@ -1,13 +1,16 @@
-import { Link, NavLink } from 'react-router-dom';
+import { Link, NavLink, useMatch } from 'react-router-dom';
 import { BookOpen, Bot, Home, LogIn, LogOut, Swords, Trophy, User, UserCircle, WalletCards } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth.js';
 import { cn } from './ui/cn.js';
 import { formatAddress } from '../utils/format.js';
-import { PVP_ENABLED, TRAINING_PREVIEW_ENABLED } from '../config/release.js';
+import { CASUAL_DUELS_ENABLED, PVP_ENABLED, TRAINING_PREVIEW_ENABLED, WEEKLY_CHALLENGE_ENABLED } from '../config/release.js';
 import { BUILD_LABEL, BUILD_SHA } from '../config/build.js';
 
 const NavBar: React.FC = () => {
   const { user, profile, polygonWallet, loading, signOut } = useAuth();
+  const practiceMatch = useMatch('/bot-game');
+
+  if (practiceMatch) return null;
 
   const handleSignOut = async () => {
     try {
@@ -29,11 +32,13 @@ const NavBar: React.FC = () => {
     { to: '/', label: 'Home', icon: Home },
     ...(TRAINING_PREVIEW_ENABLED
       ? [{ to: '/bot-selection', label: 'Training', icon: Bot }]
-      : user && polygonWallet
-        ? [{ to: '/lobby', label: 'Lobby', icon: Swords }]
+      : user
+        ? [{ to: '/league', label: 'Liga', icon: Swords }, { to: '/wagers', label: 'Duelos com aposta', icon: WalletCards }, { to: '/bot-selection', label: 'Treinar', icon: Bot }]
         : []),
     { to: '/how-to-play', label: 'How to Play', icon: BookOpen },
-    ...(PVP_ENABLED ? [{ to: '/leaderboard', label: 'Leaderboard', icon: Trophy }] : []),
+    ...(CASUAL_DUELS_ENABLED ? [{ to: '/duels/public', label: 'Player duels', icon: Swords }] : []),
+    ...(WEEKLY_CHALLENGE_ENABLED ? [{ to: '/challenge', label: 'Weekly Challenge', icon: Trophy }] : []),
+    ...(PVP_ENABLED ? [{ to: '/standings', label: 'Classificação e prémios', icon: Trophy }] : []),
     ...(user && polygonWallet ? [{ to: '/profile', label: 'Profile', icon: User }] : []),
   ];
 
@@ -44,11 +49,25 @@ const NavBar: React.FC = () => {
       : 'text-slate-300 hover:bg-white/[0.06] hover:text-white',
   );
 
+  if (TRAINING_PREVIEW_ENABLED) return (
+    <nav className="wd wd-nav" aria-label="Main navigation">
+      <Link to="/" className="wd-brand" aria-label="Wisdom Duel home"><img src="/logos/logo-header-dark.webp" alt="" width="52" height="39" /><span>Wisdom Duel</span></Link>
+      <div className="wd-nav-links">
+        <NavLink to="/bot-selection?mode=free" aria-label="Training"><Bot size={17} /><span>Practice</span></NavLink>
+        {CASUAL_DUELS_ENABLED ? <NavLink to="/duels/public" aria-label="Player duels"><Swords size={17} /><span>Duels</span></NavLink> : null}
+        {WEEKLY_CHALLENGE_ENABLED ? <NavLink to="/challenge" aria-label="Weekly Challenge"><Trophy size={17} /><span>Challenge</span></NavLink> : null}
+        <NavLink to="/how-to-play" aria-label="How to Play"><BookOpen size={17} /><span>Rules</span></NavLink>
+        {user && polygonWallet && <Link to="/profile" aria-label="Profile"><User size={17} /></Link>}
+        {user ? <button onClick={handleSignOut} aria-label="Sign out"><LogOut size={17} /></button> : <Link to="/#account" aria-label="Sign in to Play Hub"><UserCircle size={17} /><span className="wd-account-label">Account</span></Link>}
+      </div>
+    </nav>
+  );
+
   return (
     <nav className="sticky top-0 z-40 flex h-[var(--navbar-height)] items-center justify-between border-b border-white/10 bg-[#060912]/88 px-4 text-white shadow-[0_18px_36px_-24px_rgba(0,0,0,0.9)] backdrop-blur-xl">
       <div className="flex min-w-0 items-center gap-5">
         <Link
-          to={TRAINING_PREVIEW_ENABLED ? '/' : user ? '/lobby' : '/'}
+          to={TRAINING_PREVIEW_ENABLED ? '/' : user ? '/competition' : '/'}
           className="group flex min-w-0 items-center gap-3"
           aria-label="Wisdom Duel home"
         >

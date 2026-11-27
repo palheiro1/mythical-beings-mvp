@@ -1,0 +1,123 @@
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
+import { describe, expect, it, vi } from 'vitest';
+import { COMPETITIVE_CATALOG, initializeCompetitiveMatch, projectMatch } from '@mythicalb/wisdom-duel-engine';
+import type { CompetitiveProjection } from '@mythicalb/wisdom-duel-engine';
+import ChallengeArena from '../../src/components/competition/ChallengeArena.js';
+import { TurnCallout } from '../../src/components/game/DuelArena.js';
+import { effectScenario, resolveScenario } from '../browser/duelEffectScenarios.js';
+
+const matchId = 'a1f2d04c-5d42-4536-981b-0f23451791b8';
+const now = '2026-11-09T13:00:00.000Z';
+
+async function fixture() {
+  const team = COMPETITIVE_CATALOG.slice(0, 3);
+  const snapshot = await initializeCompetitiveMatch({
+    matchId, mode: 'casual', players: ['a', 'b'], selections: [team, team], seedHex: '2e'.repeat(32), now,
+  });
+  const actor = snapshot.state.players[snapshot.state.currentPlayerIndex].id;
+  return { actor, projection: projectMatch(snapshot, actor, now) };
+}
+
+function page(projection: CompetitiveProjection, actor: string) {
+  const send = vi.fn().mockResolvedValue('accepted');
+  render(<MemoryRouter><ChallengeArena projection={projection} playerId={actor}
+    lobbyPath="/challenge?period=fixture" sending={false} retryable={false} error="" send={send} /></MemoryRouter>);
+  return send;
+}
+
+describe('weekly challenge arena', () => {
+  it('starts a new turn animation on handoff and keeps the same one during a decision', () => {
+    const { rerender } = render(<TurnCallout turn={1} playerId="north" label="Your turn" />);
+    const callout = screen.getByText('Your turn');
+    rerender(<TurnCallout turn={1} playerId="north" label="Your decision" />);
+    expect(screen.getByText('Your decision')).toBe(callout);
+    rerender(<TurnCallout turn={1} playerId="south" label="Opponent’s turn" />);
+    expect(screen.getByText('Opponent’s turn')).not.toBe(callout);
+  });
+
+  it('displays the revealed hand for Serpent and submits the chosen opaque key', async () => {
+    const snapshot = resolveScenario('Serpent', await effectScenario('Serpent', now), now);
+    const projection = projectMatch(snapshot, 'north', now);
+    const send = page(projection, 'north');
+    const choices = within(screen.getByRole('region', { name: 'Resolve the card effect' }));
+    expect(choices.getByRole('button', { name: 'Discard Fire' }).querySelector('img[alt="Fire"]'))
+      .toHaveAttribute('src', expect.stringContaining('/images/spells/terrestrial4.webp'));
+    fireEvent.click(choices.getByRole('button', { name: 'Discard Lupus' }));
+    expect(send).toHaveBeenCalledExactlyOnceWith({
+      type: 'resolve_pending_effect', effectId: projection.pendingEffect!.id, choiceKey: 'choice-2',
+    });
+  });
+
+  it('shows card backs for choices a server keeps concealed', async () => {
+    const snapshot = resolveScenario('Serpent', await effectScenario('Serpent', now), now);
+    const projection = projectMatch(snapshot, 'north', now);
+    projection.pendingEffect!.choices = [{ key: 'choice-1', kind: 'hand', label: 'Hidden card 1' }];
+    page(projection, 'north');
+    const choices = screen.getByRole('region', { name: 'Resolve the card effect' });
+    expect(choices.querySelector('img')).toHaveAttribute('src', '/images/spells/back-360.webp');
+    expect(choices).not.toHaveTextContent('Lupus');
+  });
+
+  it('draws one pointer only while aiming and sends the matching Tulpar choice from the board', async () => {
+    const match = resolveScenario('Tulpar', await effectScenario('Tulpar', now), now);
+    const projection = projectMatch(match, 'north', now);
+    const send = page(projection, 'north');
+    const options = screen.getByRole('region', { name: 'Resolve the card effect' });
+    const adaro = within(options).getByRole('button', { name: 'Adaro' });
+    const kappa = document.querySelector<HTMLElement>('[data-motion-anchor="creature:north:kappa"]')!;
+    const rects = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function(this: HTMLElement) {
+      const left = this.dataset.motionAnchor?.endsWith(':tulpar') ? 310 : this.dataset.motionAnchor?.endsWith(':kappa') ? 170 : 30;
+      return new DOMRect(left, 100, 64, 90);
+    });
+    try {
+      expect(document.querySelector('.wd-choice-pointer')).toBeNull();
+      act(() => adaro.focus());
+      const adaroPath = document.querySelector('.wd-choice-shaft')?.getAttribute('d');
+      expect(adaroPath).toMatch(/^M /);
+      fireEvent.pointerOver(kappa);
+      expect(document.querySelectorAll('.wd-choice-pointer')).toHaveLength(1);
+      expect(document.querySelector('.wd-choice-shaft')?.getAttribute('d')).not.toBe(adaroPath);
+      fireEvent.pointerOut(kappa);
+      expect(document.querySelector('.wd-choice-pointer')).toBeNull();
+      fireEvent.pointerDown(kappa);
+      expect(document.querySelector('.wd-choice-pointer')).toBeInTheDocument();
+      fireEvent.click(kappa);
+      expect(send).toHaveBeenCalledExactlyOnceWith({
+        type: 'resolve_pending_effect', effectId: projection.pendingEffect!.id, choiceKey: projection.pendingEffect!.choices[1].key,
+      });
+      expect(document.querySelector('.wd-choice-pointer')).toBeNull();
+    } finally {
+      rects.mockRestore();
+    }
+  });
+
+  it('shows the shared arena and turns market and turn controls into authoritative commands', async () => {
+    const { actor, projection } = await fixture();
+    const send = page(projection, actor);
+    expect(screen.getByRole('region', { name: 'Duel board' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Your Power: 20')).toBeInTheDocument();
+    expect(screen.getByRole('timer', { name: 'Turn clock' })).toHaveTextContent('0:30');
+    expect(document.querySelector('.wd-kai .wd-power-medallion')).toBeInTheDocument();
+    const [card] = projection.market;
+    fireEvent.click(within(screen.getByRole('region', { name: 'Market' })).getAllByRole('button', { name: `Draw ${card.name}` })[0]);
+    expect(send).toHaveBeenCalledWith({ type: 'draw_knowledge', marketInstanceId: card.instanceId });
+    fireEvent.click(screen.getByRole('button', { name: 'End Turn' }));
+    expect(send).toHaveBeenCalledWith({ type: 'end_turn' });
+  });
+
+  it('opens the stored timeout result with links to the edition and replay', async () => {
+    const { actor, projection } = await fixture();
+    const rival = projection.players.find(player => player.id !== actor)!;
+    const send = page({
+      ...projection, phase: 'gameOver', decisionPlayerId: null,
+      outcome: { reason: 'timeout', winnerId: rival.id, finishedAt: now },
+    }, actor);
+    const result = screen.getByRole('dialog', { name: 'Defeat' });
+    expect(within(result).getByText(/Two consecutive turns passed without a move/)).toBeInTheDocument();
+    expect(within(result).getByRole('link', { name: 'Standings' })).toHaveAttribute('href', '/challenge?period=fixture');
+    expect(within(result).getByRole('link', { name: 'View full replay' })).toHaveAttribute('href', `/replay/${matchId}`);
+    expect(screen.getByRole('button', { name: 'View Result' })).toBeInTheDocument();
+    expect(send).not.toHaveBeenCalled();
+  });
+});

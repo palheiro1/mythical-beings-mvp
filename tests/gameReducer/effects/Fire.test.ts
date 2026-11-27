@@ -23,10 +23,11 @@ describe('Fire (terrestrial4) Effect', () => {
     gameState.log = [];
   });
 
-  it('should eliminate opponent knowledges with cost 1 or 2', () => {
+  it.each([0, 90])('discards an opposing Ally and Spell requiring up to 2 Wisdom at %i degrees', rotation => {
+    gameState.players[0].field[fieldSlotIndex].knowledge!.rotation = rotation;
     // Place two knowledges on opponent: one with cost 1, one with cost 2
     const k1 = createTestKnowledge('aerial1'); // cost 1
-    const k2 = createTestKnowledge('aquatic2'); // cost 2
+    const k2 = createTestKnowledge('aerial2'); // cost 2
     gameState.players[1].field[0].knowledge = { ...k1, instanceId: 'k1' };
     gameState.players[1].field.push({ creatureId: 'dummy', knowledge: { ...k2, instanceId: 'k2' } });
     // Run effect
@@ -36,6 +37,8 @@ describe('Fire (terrestrial4) Effect', () => {
       knowledge: gameState.players[0].field[fieldSlotIndex].knowledge!,
       trigger: 'onPhase',
     });
+    expect([k1.type, k2.type]).toEqual(['ally', 'spell']);
+    expect(result.players[1].creatures).toEqual(gameState.players[1].creatures);
     // Both should be eliminated
     expect(result.players[1].field[0].knowledge).toBeNull();
     expect(result.players[1].field[1].knowledge).toBeNull();
@@ -43,7 +46,7 @@ describe('Fire (terrestrial4) Effect', () => {
     expect(result.discardPile.some(k => k.instanceId === 'k1')).toBe(true);
     expect(result.discardPile.some(k => k.instanceId === 'k2')).toBe(true);
     // Log should mention eliminations by name
-    expect(result.log.some(log => log.includes('eliminates opponent') && log.includes(k1.name) && log.includes(k2.name))).toBe(true);
+    expect(result.log.some(log => log.includes('Fire discarded') && log.includes(k1.name) && log.includes(k2.name))).toBe(true);
   });
 
   it('should NOT eliminate opponent knowledges with cost 3 or higher', () => {
@@ -61,7 +64,7 @@ describe('Fire (terrestrial4) Effect', () => {
     expect(result.players[1].field[0].knowledge).not.toBeNull();
     expect(result.discardPile.some(k => k.instanceId === 'k3')).toBe(false);
     // Log should mention none eliminated
-    expect(result.log.some(log => log.includes('eliminates opponent') && log.includes('none'))).toBe(true);
+    expect(result.log.some(log => log.includes('no opposing Knowledge cards requiring 2 Wisdom or less'))).toBe(true);
   });
 
   it('should do nothing if opponent has no knowledges', () => {
@@ -76,6 +79,6 @@ describe('Fire (terrestrial4) Effect', () => {
     // No changes, discard pile empty
     expect(result.discardPile.length).toBe(0);
     // Log should mention none eliminated
-    expect(result.log.some(log => log.includes('eliminates opponent') && log.includes('none'))).toBe(true);
+    expect(result.log.some(log => log.includes('no opposing Knowledge cards requiring 2 Wisdom or less'))).toBe(true);
   });
 });

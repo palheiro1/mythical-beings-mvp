@@ -210,7 +210,7 @@ describe('Lupus (terrestrial5) Effect', () => {
     const opponentFieldSlot = newState.players[opponentIndex].field.find(slot => slot.creatureId === p2CreatureId);
     expect(opponentFieldSlot?.knowledge).toBeNull();
     expect(newState.pendingEffect).toBeFalsy();
-    expect(newState.log.some(log => log.includes('[Final] Lupus: no opponent Knowledge cards to discard.'))).toBe(true);
+    expect(newState.log.some(log => log.includes('[On final rotation] Lupus: no opponent Knowledge cards to discard.'))).toBe(true);
     expect(newState.players[opponentIndex].power).toBe(17);
   });
 

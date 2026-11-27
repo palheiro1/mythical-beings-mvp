@@ -40,11 +40,11 @@ describe('Home training preview', () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByRole('button', { name: /start training.*no sign-in/i })).toBeInTheDocument();
-    expect(screen.getByText(/account and polygon wallet are optional/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /learn to play/i })).toBeInTheDocument();
+    expect(screen.getByText(/no account or wallet needed/i)).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: /start training.*no sign-in/i }));
+    await user.click(screen.getByRole('button', { name: /learn to play/i }));
 
-    expect(navigateMock).toHaveBeenCalledWith('/bot-selection');
+    expect(navigateMock).toHaveBeenCalledWith('/bot-selection?mode=guided');
   });
 });

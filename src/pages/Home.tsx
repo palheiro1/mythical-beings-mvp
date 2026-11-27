@@ -1,13 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { BookOpenCheck, Bot, FlaskConical, LogIn, Mail, ShieldCheck, Sparkles, Trophy, WalletCards } from 'lucide-react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { LogIn, Mail, ShieldCheck, WalletCards } from 'lucide-react';
+import TrainingLanding from '../components/training/TrainingLanding.js';
 import { useAuth } from '../hooks/useAuth.js';
-import { ArenaButton, Input, Panel, StatusBadge } from '../components/ui/index.js';
-import {
-  CHAMPIONSHIP_MESSAGE,
-  TRAINING_PREVIEW_ENABLED,
-  TRAINING_PREVIEW_LABEL,
-} from '../config/release.js';
+import { ArenaButton, Input, PageShell, Panel } from '../components/ui/index.js';
+import { CASUAL_DUELS_ENABLED, TRAINING_PREVIEW_ENABLED } from '../config/release.js';
+import { duelSignInIntent, signedInDuelPath } from '../game/duelInvitation.js';
 
 function formatCooldown(seconds: number): string {
   const minutes = Math.floor(seconds / 60);
@@ -22,6 +20,8 @@ function formatCooldown(seconds: number): string {
 
 const Home: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const duelIntent = CASUAL_DUELS_ENABLED && duelSignInIntent(location.search);
   const {
     user,
     profile,
@@ -37,7 +37,8 @@ const Home: React.FC = () => {
   const [email, setEmail] = useState('');
   const [authMode, setAuthMode] = useState<'google' | 'email' | 'polygon' | null>(null);
   const [authError, setAuthError] = useState<string | null>(error);
-  const [showSignInOptions, setShowSignInOptions] = useState(false);
+  const [showSignInOptions, setShowSignInOptions] = useState(location.hash === '#account');
+  useEffect(() => { if (location.hash === '#account') setShowSignInOptions(true); }, [location.hash]);
   const [showEmailFallback, setShowEmailFallback] = useState(false);
   const [now, setNow] = useState(() => Date.now());
   const authLoading = authMode !== null;
@@ -47,13 +48,15 @@ const Home: React.FC = () => {
   const magicLinkCoolingDown = magicLinkCooldownSeconds > 0;
 
   useEffect(() => {
-    if (!TRAINING_PREVIEW_ENABLED && !loading && user && polygonWallet) {
-      navigate('/lobby');
+    if (!loading && user && !user.isGuest) {
+      const duelPath = CASUAL_DUELS_ENABLED && signedInDuelPath(location.search);
+      if (duelPath) navigate(duelPath, { replace: true });
+      else if (!TRAINING_PREVIEW_ENABLED) navigate('/competition');
     }
     if (error) {
       setAuthError(error);
     }
-  }, [user, polygonWallet, loading, navigate, error]);
+  }, [user, loading, navigate, error, location.search]);
 
   useEffect(() => {
     if (!magicLinkCooldownUntil) return;
@@ -106,86 +109,20 @@ const Home: React.FC = () => {
     }
   };
 
-  return (
-    <div className="arena-page arena-card-backdrop relative flex min-h-[calc(100vh-var(--navbar-height))] items-center justify-center overflow-hidden px-4 py-12 text-white">
-      <div className="pointer-events-none absolute left-[6%] top-[22%] hidden h-56 w-40 -rotate-12 overflow-hidden rounded-xl border border-violet-300/25 opacity-70 shadow-[0_24px_54px_rgba(0,0,0,0.42)] lg:block">
-        <img src="/images/beings/zhar-ptitsa.webp" srcSet="/images/beings/zhar-ptitsa-360.webp 360w, /images/beings/zhar-ptitsa.webp 720w" sizes="160px" alt="" width="720" height="951" loading="lazy" decoding="async" className="h-full w-full object-cover" />
-      </div>
-      <div className="pointer-events-none absolute right-[8%] top-[25%] hidden h-60 w-44 rotate-12 overflow-hidden rounded-xl border border-amber-300/25 opacity-70 shadow-[0_24px_54px_rgba(0,0,0,0.42)] lg:block">
-        <img src="/images/spells/aerial3.webp" srcSet="/images/spells/aerial3-360.webp 360w, /images/spells/aerial3.webp 720w" sizes="176px" alt="" width="720" height="951" loading="lazy" decoding="async" className="h-full w-full object-cover" />
-      </div>
-      <div className="pointer-events-none absolute bottom-[14%] right-[18%] hidden h-44 w-32 -rotate-6 overflow-hidden rounded-xl border border-cyan-300/25 opacity-60 shadow-[0_20px_44px_rgba(0,0,0,0.38)] xl:block">
-        <img src="/images/beings/kappa.webp" srcSet="/images/beings/kappa-360.webp 360w, /images/beings/kappa.webp 720w" sizes="128px" alt="" width="720" height="951" loading="lazy" decoding="async" className="h-full w-full object-cover" />
-      </div>
-
-      <div className="relative z-10 flex w-full max-w-5xl flex-col items-center text-center">
-        <StatusBadge tone={TRAINING_PREVIEW_ENABLED ? 'amber' : 'violet'} className="mb-5">
-          <Sparkles className="h-3.5 w-3.5" aria-hidden />
-          {TRAINING_PREVIEW_ENABLED ? TRAINING_PREVIEW_LABEL : 'Digital Card Arena'}
-        </StatusBadge>
-        <Panel glow className="w-full max-w-2xl px-6 py-8 sm:px-10 sm:py-10">
-          <div className="mx-auto mb-6 grid h-20 w-20 place-items-center overflow-hidden rounded-xl border border-amber-200/25 bg-black/30 sm:h-24 sm:w-24">
-            <img src="/logos/logo-header-dark.webp" alt="Wisdom Duel" width="520" height="388" className="h-16 w-16 object-contain opacity-95 sm:h-20 sm:w-20" />
-          </div>
-          <h1 className="font-display text-4xl font-black text-slate-50 sm:text-6xl">
-            {TRAINING_PREVIEW_ENABLED ? 'Train for Wisdom Duel' : 'Welcome to Wisdom Duel'}
-          </h1>
-          <p className="mx-auto mt-4 max-w-xl text-base leading-7 text-slate-300 sm:text-lg">
-            {TRAINING_PREVIEW_ENABLED
-              ? 'Learn the rules, test card combinations, and refine your strategy against the bot before the multiplayer arena opens.'
-              : 'Collect powerful cards, command legendary beings, and battle for control of the arena.'}
-          </p>
-
-          {TRAINING_PREVIEW_ENABLED && (
-            <div className="mt-6 space-y-2">
-              <ArenaButton
-                type="button"
-                onClick={() => navigate('/bot-selection')}
-                size="lg"
-                icon={<Bot className="h-5 w-5" aria-hidden />}
-                fullWidth
-              >
-                Start Training — No Sign-In
-              </ArenaButton>
-              <p className="text-sm text-slate-400">Your training match runs locally in this browser. A Play Hub account and Polygon wallet are optional.</p>
-            </div>
-          )}
-
-          {TRAINING_PREVIEW_ENABLED && (
-            <>
-              <div className="mt-6 grid gap-2 text-left sm:grid-cols-3">
-                {[
-                  { icon: BookOpenCheck, label: 'Learn the rules' },
-                  { icon: FlaskConical, label: 'Test strategies' },
-                  { icon: Trophy, label: 'Prepare to compete' },
-                ].map(({ icon: Icon, label }) => (
-                  <div key={label} className="flex items-center gap-2 rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-sm text-slate-200">
-                    <Icon className="h-4 w-4 shrink-0 text-cyan-200" aria-hidden />
-                    <span>{label}</span>
-                  </div>
-                ))}
-              </div>
-              <div className="mt-5 rounded-lg border border-amber-300/25 bg-amber-500/[0.08] px-4 py-3 text-sm text-amber-100">
-                <p className="font-bold">This preview is training-only.</p>
-                <p className="mt-1 text-amber-100/75">{CHAMPIONSHIP_MESSAGE}</p>
-              </div>
-            </>
-          )}
-
-          {TRAINING_PREVIEW_ENABLED && (
-            <div className="mt-5 space-y-4">
-              {!user ? (
+  const accountPanel = (
+<div className="mt-5 space-y-4">
+              {!user || user.isGuest ? (
                 <div className="border-t border-white/10 pt-4">
-                  <button
+                  {!duelIntent && <button
                     type="button"
                     onClick={() => setShowSignInOptions((visible) => !visible)}
                     className="min-h-11 rounded-lg px-3 text-sm font-bold uppercase tracking-normal text-cyan-200 transition hover:bg-white/[0.05] hover:text-cyan-100"
                     aria-expanded={showSignInOptions}
                   >
                     {showSignInOptions ? 'Hide Play Hub sign-in' : 'Optional: sign in to Play Hub'}
-                  </button>
+                  </button>}
 
-                  {showSignInOptions && (
+                  {(duelIntent || showSignInOptions) && (
                     <div className="mt-4 space-y-4">
                       <ArenaButton
                         type="button"
@@ -255,19 +192,35 @@ const Home: React.FC = () => {
                 </div>
               )}
 
-              <div className="flex items-center justify-center gap-2 text-sm text-slate-400">
+              {!duelIntent && <div className="flex items-center justify-center gap-2 text-sm text-slate-400">
                 <ShieldCheck className="h-4 w-4 text-cyan-200" aria-hidden />
                 <span>Solo training does not affect rankings or award competitive rewards.</span>
-              </div>
+              </div>}
 
-              {authError && showSignInOptions && (
+              {authError && (duelIntent || showSignInOptions) && (
                 <div className="rounded-xl border border-red-300/35 bg-red-500/10 p-4 text-sm text-red-100" role="alert">
                   {authError}
                 </div>
               )}
             </div>
-          )}
+  );
 
+  if (duelIntent) return (
+    <PageShell contentClassName="max-w-xl">
+      <Panel id="account" className="space-y-2 p-6">
+        <h1 className="text-3xl font-bold">{duelIntent === 'public' ? 'Sign in to create a public duel' : duelIntent === 'new' ? 'Sign in to create a duel' : 'Sign in to join this duel'}</h1>
+        <p>Continue with your Play Hub account to return to the duel lobby.</p>
+        {accountPanel}
+      </Panel>
+    </PageShell>
+  );
+  if (TRAINING_PREVIEW_ENABLED) return <TrainingLanding>{accountPanel}</TrainingLanding>;
+
+  return (
+    <div className="arena-page flex min-h-[calc(100dvh-var(--navbar-height))] items-center justify-center p-6 text-white">
+      <Panel className="w-full max-w-2xl p-8 text-center">
+        <h1 className="font-display text-4xl">Welcome to Wisdom Duel</h1>
+        <p className="mt-4 text-slate-300">Collect powerful cards, command legendary beings, and battle for control of the arena.</p>
           {!TRAINING_PREVIEW_ENABLED && (!user ? (
             <div className="mt-8 space-y-4">
               <ArenaButton
@@ -359,7 +312,9 @@ const Home: React.FC = () => {
                 <span>Play Hub identity is required.</span>
                 <span className="hidden text-slate-600 sm:inline">|</span>
                 <span className="text-cyan-200">
-                  Polygon wallet linking unlocks {TRAINING_PREVIEW_ENABLED ? 'training' : 'the arena'}.
+                  {TRAINING_PREVIEW_ENABLED
+                    ? 'No wallet is needed for training.'
+                    : 'A carteira Polygon só é necessária para receber prémios e participar em duelos com aposta.'}
                 </span>
               </div>
 
@@ -371,8 +326,7 @@ const Home: React.FC = () => {
             </>
           )}
 
-        </Panel>
-      </div>
+      </Panel>
     </div>
   );
 };

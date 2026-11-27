@@ -1,128 +1,54 @@
-# 🔮 Mythical Beings: A Strategic Card Game of Wisdom and Elemental Power
+# Wisdom Duel · Mythical Beings
 
 ![Game Banner](public/images/kukul.png)
 
-Enter a world where legendary creatures wield elemental knowledge. Build a team, rotate your beings to gather wisdom, and unleash powerful effects to outmaneuver your opponent.
+Build a team of three Creatures from the world of Mythical Beings. Draw Knowledge cards from a shared Market, rotate your Creatures and play Allies and Spells to reduce your opponent’s Power to zero.
 
-— Learn the rules in minutes. Master them over many duels.
+## Objective and setup
 
-## What Is Mythical Beings?
+Each player starts with 20 Power shared across their three Creatures. If both players reach zero or less simultaneously, the game is a draw. Five Knowledge cards start face up in the Market. Each Creature has an element, a passive ability and a Wisdom cycle. A Creature can hold one Knowledge card at a time.
 
-Mythical Beings is a fast, tactical, turn-based card game for two players. Each player commands three creatures (mythical beings) and equips them with Knowledge cards (spells/skills) from the Market. Rotate beings to gain wisdom and pay knowledge costs, trigger card effects and passives, and whittle down your opponent’s power to win.
+## Playing a turn
 
-## Objective
+In your **Knowledge Phase**, your Knowledge cards in play resolve at their current rotation, then rotate one step (90°). Some deal damage, provide Defense or grant Power. A card leaves play after its final rotation. Replacing a card also makes it leave play and can trigger a Creature’s passive ability.
 
-- Reduce your opponent’s power to 0.
-- If both players reach 0 power or less simultaneously, the game is a draw.
+In your **Action Phase**, you normally have two actions. **Draw from the Market** to add a card to your hand. **Rotate a Creature** to advance its Wisdom cycle. **Play a Knowledge card** from your hand on a Creature that meets its Wisdom requirement. If your hand exceeds five cards, discard down to five. **End Turn** lets you finish early.
 
-## Components At A Glance
+## Example turn
 
-- Creatures: Your three beings on the battlefield. Each has a passive ability and gains wisdom by rotating.
-- Knowledge Cards: Elemental cards (Aquatic/Water, Terrestrial/Earth, Aerial/Air). Played onto a specific creature’s slot. Each has a cost, an effect that depends on rotation, and eventually leaves play after a number of rotations.
-- Market: The shared row where players draw knowledge from.
-- Power: Your life total. When it reaches 0, you lose.
-- Hand: Knowledge cards you’re holding (max size 5).
+Draw Lepidoptera and rotate Tarasca from 0 Wisdom to 2. Next turn, play Lepidoptera on Tarasca. The Air Ally requires 1 Wisdom, so Tarasca keeps its 2 Wisdom and Lepidoptera gives you 1 Power on play.
 
-## Turn Structure (2 Actions Per Turn)
+## Passives and signature interactions
 
-Every turn flows through clear phases:
+- **Kappa** lets you play Water Knowledge cards without spending an action. **Dudugera** does the same for any Knowledge card played on it.
+- **Lisovik** deals 1 damage when one of your Earth Knowledge cards leaves play. **Tarasca** deals 1 damage when your opponent plays an Earth Knowledge card.
+- **Lafaic** can rotate another of your Knowledge cards when you play a Water card on it. **Zhar Ptitsa** lets damage from an Air Knowledge card on it bypass Defense.
 
-1) Knowledge Phase
-- All knowledge cards on the field rotate +90°.
-- Their effects trigger according to the card’s value cycle (see below).
-- Cards that reach their final rotation leave play (discard). “Leaves play” can trigger passives.
+## Strategy tips
 
-2) Action Phase
-- You have 2 actions by default. Typical actions:
-  - Draw 1 knowledge from the Market (if space in hand).
-  - Summon 1 knowledge from your hand onto one of your creatures.
-  - Rotate one of your creatures 90° to change its wisdom.
-  - End Turn (always allowed when it’s your turn).
+- Plan around rotations. The next step on a card’s cycle shows how much damage, Defense or Power to expect.
+- Time a replacement to trigger an ability when a Knowledge card leaves play.
+- Hurricane can block an opposing Creature. Fire can discard several opposing Knowledge cards in one Knowledge Phase.
+- Keep room in your hand for a Market draw. The hand limit is five.
 
-3) End Turn
-- Any end-of-turn effects resolve. Turn passes to your opponent.
+## Learn the cards
 
-Notes
-- You can’t take actions if it’s not your Action Phase.
-- Some passives can make specific summons free (don’t consume actions) or modify normal rules.
+The digital rules explain card types, actions, effect timing and the differences from the printed edition. [Digital rules](docs/rules/RULES.md) · [Card compendium](https://wisdomduel.mythicalbeings.io/how-to-play) · [Physical rulebook](public/RULEBOOK.pdf)
 
-## Core Mechanics
-
-Creatures and Wisdom
-- Each creature has a current wisdom value determined by its rotation (wisdom cycle).
-- Wisdom pays the cost to summon knowledge onto that creature’s slot.
-
-Summoning Knowledge
-- A creature may hold at most one knowledge card on its slot.
-- To summon: the creature’s current wisdom must be ≥ the knowledge cost.
-- Knowledge replacement is not allowed: you can’t summon onto an occupied slot.
-- Some slots may be blocked by effects (you can’t summon there while blocked).
-
-Rotation & Value Cycles
-- Each knowledge has a valueCycle, mapping rotation (0°/90°/180°/270°) to the effect’s strength or behavior.
-- During the Knowledge Phase, the effect uses the pre-increment rotation to determine values, then rotates +90°.
-- After a number of rotations (maxRotations), the knowledge leaves play (goes to discard).
-
-Leaves Play Triggers
-- When a knowledge leaves play, some creatures’ passives react. Example: Lisovik deals 1 damage to the opponent when its owner’s earth knowledge leaves play.
-
-Damage, Defense, and Power
-- Many effects deal damage directly to the opposing player’s power.
-- Some knowledge provides defense or modifies how damage is applied.
-- If multiple effects/passives trigger, the game resolves them deterministically and logs the sequence.
-
-Market & Hand
-- Draw from the Market into your hand (max hand size: 5).
-- The Market refills according to the game rules (see logs/effects for specifics in edge cases).
-
-## Example Turn
-
-Setup: You control Lisovik and two other beings. You’ve summoned an Earth knowledge onto one creature.
-
-1) Knowledge Phase
-- Your Earth knowledge triggers at its current rotation and then rotates. If it reaches its final rotation, it’s discarded. If it was yours and Earth, Lisovik may deal 1 damage on leave.
-
-2) Action Phase (2 actions)
-- Action 1: Rotate your second creature to gain wisdom.
-- Action 2: Summon an Air knowledge from your hand (you meet the cost thanks to the rotation).
-
-3) End Turn
-- Any pending effects resolve. It’s now your opponent’s turn.
-
-## Passives & Signature Interactions (Examples)
-
-- Lisovik (Earth synergy): When your Earth knowledge leaves play, deal 1 damage to the opponent.
-- Kappa: Summoning Aquatic knowledge can be a free action on Kappa (does not consume actions).
-- Dudugera: Summoning onto Dudugera can be free (specific conditions apply).
-- Zhar-Ptitsa: Start-of-turn draw; aerial damage may bypass defense in specific checks.
-- Tarasca: Punishes opponents when they summon terrestrial knowledge.
-- Lafaic: Rotates another friendly knowledge when you summon Aquatic onto Lafaic.
-
-These examples illustrate how passives shape your plan: time rotations, line up leaves-play triggers, and pressure your opponent’s power.
-
-## Strategy Tips
-
-- Plan around rotations: many effects peak at specific angles. Don’t waste a strong tick.
-- Prepare for leaves-play: set up passives that benefit when your cards rotate out.
-- Deny the opponent: block, discard, or rotate their board to disrupt timing.
-- Hand discipline: keep space for pivotal Market draws (max 5).
-
-## Learn the Cards
-
-- Rulebook PDF: public/RULEBOOK.pdf (visual reference of creatures and knowledges)
-- Digital rules (matches engine): docs/rules/RULES.md
-- Tests as specs: the tests in `tests/gameReducer` document edge cases and intended behaviors.
+The reducer tests cover individual card interactions and edge cases. [Card and turn tests](tests/gameReducer)
 
 ## Play Locally
 
 Prerequisites
-- Node.js 20+
-- npm (or yarn)
+- Node.js 22.13+ or 24.x (the repository pins 22.22.2 in `.nvmrc`)
+- npm 10+
 
 Install & Run
 ```bash
-git clone https://github.com/YourUsername/CardGame.git
-cd CardGame/mythical-beings-mvp
+git clone https://github.com/palheiro1/mythical-beings-mvp.git
+cd mythical-beings-mvp
+nvm install
+nvm use
 npm install
 npm run dev
 ```
@@ -140,11 +66,26 @@ VITE_WISDOM_DUEL_ESCROW_ADDRESS=0x4DF3B86B9b1332779d8EAE7c276BcC1bDe2e19e9
 VITE_ENABLE_PVP=false
 ```
 
-Public builds default to the training-only preview. Keep `VITE_ENABLE_PVP=false`
-until multiplayer sessions, GEM stakes, rankings, and competitive rewards are
-ready to launch. Set it to `true` only for an intentional PvP release.
+Public builds default to the training-only preview. Keep both independent release
+gates disabled until multiplayer sessions, GEM stakes, rankings, and competitive
+rewards pass their launch gate:
+
+- frontend: `VITE_ENABLE_PVP=false`
+- Supabase Edge Functions: `WISDOM_DUEL_PVP_ENABLED=false`
+
+Enabling the frontend flag alone must never enable multiplayer. A deliberate PvP
+release requires both gates plus the server-authority and data-security gates in
+`docs/tech/AUTHORITATIVE_GAME_PROTOCOL.md`.
+The executable in-memory boundary and its remaining production limits are documented in
+`docs/tech/AUTHORITATIVE_EXECUTOR.md`.
 
 For competitive GEM matches, configure the matching Supabase Edge Function secrets listed in `.env.example`.
+
+Observability is disabled by default. Error telemetry and Core Web Vitals are only
+sent when both `VITE_OBSERVABILITY_ENABLED=true` and an HTTPS
+`VITE_OBSERVABILITY_ENDPOINT` are configured. Payloads are sanitized and never
+include game state, hands, deck, wallet, email, tokens, query strings, or session
+identifiers. See `docs/tech/OBSERVABILITY_AND_PRIVACY.md` before enabling it.
 
 Useful Commands
 ```bash
@@ -157,11 +98,14 @@ npm run build
 # Run tests
 npm test
 
-# Reset a test game (for development)
-node reset-game.js
+# Check TypeScript without creating build files
+npm run typecheck
 
-# Verify authentication implementation
-./apply-auth-profile-sync.sh
+# Check Supabase Edge Functions with the pinned Deno runtime
+npm run typecheck:edge
+
+# Run lint checks
+npm run lint
 ```
 
 ## Project Structure (Short)
@@ -183,7 +127,7 @@ Contributions are welcome! Open an issue or PR with a clear description, and inc
 
 ## License
 
-MIT — see LICENSE.
+No license has been declared in this repository yet. Confirm the intended license with the project owner before redistributing the code or assets.
 
 ## Acknowledgements
 
@@ -191,3 +135,38 @@ MIT — see LICENSE.
 - Thanks to contributors, playtesters, and artists
 
 <p align="center"><em>May the wisest being win! 🏆</em></p>
+
+## Wisdom Duel competitive v2
+
+The competitive client has four entries: training, the free skill league, optional
+GEM/card wagers, and standings/prizes. `/competition` opens the hub; `/league-admin`
+requires a server-assigned organization role. League login needs a persistent
+account; a verified Polygon wallet is required only for prizes and wagers.
+
+The app and authoritative SDK use the exact vendored
+`@mythicalb/wisdom-duel-engine@1.0.0` and `@mythicalb/sdk@0.4.0` packages. Tactical
+modules re-export the shared engine. Browsers submit intentions with command IDs
+and expected versions; private state, clocks, results, ratings and payments are
+committed by the server. The client recovers pending commands across reconnects.
+
+Set `VITE_WISDOM_DUEL_ESCROW_V2_ADDRESS` to the audited V2 deployment; the historical
+escrow address is not interchangeable. Leave `VITE_ENABLE_PVP=false` until the full
+integration and contract review gates pass. Existing match/replay/prize recovery
+routes remain reachable when new entry is closed. Server admission, command and
+recovery controls are independent. Season dates and GEM budget have no implicit
+production defaults.
+
+Canonical migrations, eight Edge APIs, pool funding instructions, Cron/Vault setup,
+release manifests and recovery procedures are in the SDK's
+`docs/wisdom-duel/OPERATIONS.md`. Its `scripts/verify-wisdom-release.mjs --pack`
+builds and verifies the two app packages without publishing them. Keep this app's
+coverage, lint, types, build, bundle, public-artifact and logging checks enabled;
+the original critical coverage thresholds also measure the installed engine.
+
+### Voice and video in invitation duels
+
+Once both seats are filled, open **Voice & video** during team selection or in the arena. Choose the microphone and camera independently, then invite or accept. Both devices start off. Leaving the call, closing the duel, or finishing the match stops capture. The opponent's video can be hidden while listening.
+
+The pilot uses the Play Hub Supabase project. Apply the SDK migration `wisdom_duel_invitation_calls`, deploy its `wisdom-duel-turn` Edge Function, and configure `CLOUDFLARE_TURN_KEY_ID` and `CLOUDFLARE_TURN_API_TOKEN` in that project's Edge Function secrets. These values come from a Cloudflare Realtime TURN key. The availability check hides the controls until both secrets are present. [Cloudflare TURN keys](https://developers.cloudflare.com/realtime/turn/generate-credentials/)
+
+The server admits the two signed-in players in an invitation duel and removes eligibility if the room is ever listed publicly. At rollout, still-open invitations and newly created invitations qualify. Each acceptance belongs to one browser tab and one call. Signaling uses private Supabase Realtime broadcasts, media uses relay-only WebRTC, and the game records neither audio nor video.

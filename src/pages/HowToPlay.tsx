@@ -2,8 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { BookOpen, Download, GraduationCap, Play, RotateCw, Search, ScrollText, Sparkles, Swords } from 'lucide-react';
 import Card from '../components/Card.js';
 import { Creature, Knowledge } from '../game/types.js';
-import creatureData from '../assets/creatures.json' with { type: 'json' };
-import knowledgeData from '../assets/knowledges.json' with { type: 'json' };
+import { creatures as creatureData, knowledgeCards as knowledgeData } from '@mythicalb/wisdom-duel-engine/catalog';
 import { ArenaLink, Input, PageShell, Panel, StatusBadge } from '../components/ui/index.js';
 
 const ALL_CREATURES: Creature[] = creatureData as Creature[];
@@ -12,7 +11,7 @@ const UNIQUE_KNOWLEDGES = ALL_KNOWLEDGES.filter(
   (knowledge, index, cards) => cards.findIndex((candidate) => candidate.id === knowledge.id) === index,
 );
 
-type CardTypeFilter = 'all' | 'creature' | 'knowledge';
+type CardTypeFilter = 'all' | 'creature' | 'knowledge' | 'ally' | 'spell';
 type ElementFilter = 'all' | 'earth' | 'water' | 'air' | 'fire';
 
 const matchesCardFilters = (
@@ -25,25 +24,6 @@ const matchesCardFilters = (
   && (!normalizedQuery || searchableText.toLocaleLowerCase().includes(normalizedQuery))
 );
 
-// Map knowledge IDs to user-friendly effect descriptions
-const knowledgeEffectDescriptions: Record<string, string> = {
-  terrestrial1: "If the opposing creature has no allied Knowledge, Ursus deals 1 additional damage.",
-  terrestrial2: "Apparition: Look at the opponent's hand and discard 1 card.",
-  terrestrial3: "Deal damage equal to the Wisdom of the creature that summoned this card.",
-  terrestrial4: "Discard opposing creatures with Wisdom X or lower, where X is the value in the upper-left corner.",
-  terrestrial5: "Final: Remove 1 Knowledge card from the opponent's field.",
-  aquatic1: "Immediately rotate one of your other Knowledge cards.",
-  aquatic2: "Gain +1 when defending if the opposing Creature has no Knowledge cards.",
-  aquatic3: "The opposing creature cannot summon Knowledge cards.",
-  aquatic4: "Apparition: Draw 1 card from the Market with no cost.",
-  aquatic5: "Final: Win 1 extra Action.",
-  aerial1: "Apparition: Gain +1 Power.",
-  aerial2: "Gain X Power (X being the value in the upper left corner).",
-  aerial3: "While in play, it adds +1 to the Wisdom of all your Creatures.",
-  aerial4: "Each point of damage caused by the Chiropter gives you +1 Power.",
-  aerial5: "The opponent rotates all their creatures 90°.",
-};
-
 const HowToPlay: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [cardType, setCardType] = useState<CardTypeFilter>('all');
@@ -52,7 +32,7 @@ const HowToPlay: React.FC = () => {
   const normalizedQuery = searchQuery.trim().toLocaleLowerCase();
 
   const filteredCreatures = useMemo(
-    () => cardType === 'knowledge'
+    () => cardType !== 'all' && cardType !== 'creature'
       ? []
       : ALL_CREATURES.filter((creature) => matchesCardFilters(
         creature.element,
@@ -66,9 +46,9 @@ const HowToPlay: React.FC = () => {
   const filteredKnowledge = useMemo(
     () => cardType === 'creature'
       ? []
-      : UNIQUE_KNOWLEDGES.filter((knowledge) => matchesCardFilters(
+      : UNIQUE_KNOWLEDGES.filter((knowledge) => (cardType === 'all' || cardType === 'knowledge' || cardType === knowledge.type) && matchesCardFilters(
         knowledge.element,
-        `${knowledge.name} ${knowledge.element} ${knowledge.effect} ${knowledgeEffectDescriptions[knowledge.id] ?? ''}`,
+        `${knowledge.name} ${knowledge.element} ${knowledge.type} Knowledge card ${knowledge.effect}`,
         element,
         normalizedQuery,
       )),
@@ -114,11 +94,11 @@ const HowToPlay: React.FC = () => {
 
           <ol className="mt-6 grid list-none gap-3 sm:grid-cols-2 xl:grid-cols-5" aria-label="Five steps to play a turn">
             {[
-              ['1', 'Read the board', 'Check Power, actions, your hand, the Market, and each creature’s current Wisdom.'],
-              ['2', 'Draw or prepare', 'Drawing a face-up Knowledge card normally costs one of your two actions.'],
-              ['3', 'Select Knowledge', 'Choose a card whose cost does not exceed the summoning creature’s Wisdom.'],
-              ['4', 'Use a creature', 'Summon the selected card, or rotate a creature to advance its Wisdom cycle.'],
-              ['5', 'End deliberately', 'Use the remaining action or end the turn; reduce the rival’s Power to zero to win.'],
+              ['1', 'Read the board', 'Each team starts with 20 Power. In your Knowledge Phase, your cards in play resolve and rotate. Then your Action Phase begins.'],
+              ['2', 'Draw from the Market', 'Choose a face-up Knowledge card and put it into your hand. This normally uses one action.'],
+              ['3', 'Rotate a Creature', 'Advance its Wisdom to the next value on its rotation cycle.'],
+              ['4', 'Play a Knowledge card', 'Play an Ally or a Spell from your hand on a Creature that meets its Wisdom requirement. The Creature keeps its Wisdom.'],
+              ['5', 'End Turn', 'You can finish your turn early. Reduce your opponent’s Power to zero to win.'],
             ].map(([number, title, description]) => (
               <li key={number} className="rounded-xl border border-white/10 bg-black/20 p-4">
                 <span className="grid h-8 w-8 place-items-center rounded-full border border-cyan-300/35 bg-cyan-500/10 text-sm font-black text-cyan-100" aria-hidden>{number}</span>
@@ -158,7 +138,9 @@ const HowToPlay: React.FC = () => {
               >
                 <option value="all">All card types</option>
                 <option value="creature">Creatures</option>
-                <option value="knowledge">Knowledge</option>
+                <option value="knowledge">Knowledge cards</option>
+                <option value="ally">Allies</option>
+                <option value="spell">Spells</option>
               </select>
             </label>
             <label className="block">
@@ -188,8 +170,8 @@ const HowToPlay: React.FC = () => {
             </div>
           </div>
           <div>
-            <h2 className="font-display text-3xl font-bold text-slate-50">Official Rulebook</h2>
-            <p className="mt-2 text-slate-300">For the complete visual rules reference, open the official rulebook PDF. The digital engine remains the source of truth for implemented behavior.</p>
+            <h2 className="font-display text-3xl font-bold text-slate-50">Physical Rulebook</h2>
+            <p className="mt-2 text-slate-300">The original printed edition illustrates the cards and their rotations. The compendium above and the card entries below describe Wisdom Duel’s digital rules.</p>
           </div>
           <ArenaLink href="/RULEBOOK.pdf" target="_blank" rel="noopener noreferrer" icon={<Download className="h-4 w-4" aria-hidden />}>
             Download Rulebook (PDF)
@@ -200,7 +182,7 @@ const HowToPlay: React.FC = () => {
           <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <StatusBadge tone="amber">Creatures</StatusBadge>
-              <h2 className="mt-3 font-display text-3xl font-bold text-slate-50">Legendary Beings</h2>
+              <h2 className="mt-3 font-display text-3xl font-bold text-slate-50">Creature Cards</h2>
               <p className="mt-1 text-sm text-slate-400">Each creature has a passive ability and a Wisdom cycle driven by rotation.</p>
             </div>
             <span className="text-sm text-slate-500">{filteredCreatures.length} of {ALL_CREATURES.length} creatures</span>
@@ -226,7 +208,7 @@ const HowToPlay: React.FC = () => {
             <div>
               <StatusBadge tone="blue">Knowledge</StatusBadge>
               <h2 className="mt-3 font-display text-3xl font-bold text-slate-50">Knowledge Cards</h2>
-              <p className="mt-1 text-sm text-slate-400">Knowledge shapes the flow of battle through costs, effects, rotations, and discard timing.</p>
+              <p className="mt-1 text-sm text-slate-400">Allies and Spells are Knowledge cards. Both use the same Play action and occupy one slot on a Creature.</p>
             </div>
             <span className="text-sm text-slate-500">{filteredKnowledge.length} of {UNIQUE_KNOWLEDGES.length} unique cards</span>
           </div>
@@ -238,7 +220,7 @@ const HowToPlay: React.FC = () => {
                   <Card card={knowledge} isDisabled={true} imageLoading="lazy" />
                 </div>
                 <p className="max-w-[170px] text-xs leading-5 text-slate-400">
-                  {knowledgeEffectDescriptions[knowledge.id] || 'Effect description missing.'}
+                  {knowledge.effect}
                 </p>
               </div>
             ))}

@@ -1,9 +1,6 @@
 import { mythical } from './mythicalClient.js';
-
-function getRedirectUrl(): string {
-  return window.location.origin;
-}
+import { playHubRedirectUrl } from '../game/duelInvitation.js';
 
 export async function signInWithGoogle(): Promise<void> {
-  await mythical.auth.signInWithOAuth('google', getRedirectUrl());
+  await mythical.auth.signInWithOAuth('google', playHubRedirectUrl());
 }

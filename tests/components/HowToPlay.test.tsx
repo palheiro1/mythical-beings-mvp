@@ -20,13 +20,27 @@ describe('HowToPlay', () => {
     expect(screen.getByRole('link', { name: /start guided training/i })).toHaveAttribute('href', '/bot-selection');
   });
 
+  it('finds both subtypes and shows the same Fire rule as the card', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    const type = screen.getByRole('combobox', { name: /card type/i });
+    await user.selectOptions(type, 'ally');
+    expect(screen.getByRole('status')).toHaveTextContent('9 cards match');
+    await user.selectOptions(type, 'spell');
+    expect(screen.getByRole('status')).toHaveTextContent('6 cards match');
+    await user.type(screen.getByRole('searchbox'), 'Fire');
+    expect(screen.getByRole('status')).toHaveTextContent('1 card matches');
+    expect(screen.getByRole('button', { name: /Fire, Earth Spell, Requires 4 Wisdom/ })).toBeInTheDocument();
+    expect(screen.getByText(/discard every opposing Knowledge card in play that requires 2 Wisdom or less/)).toBeInTheDocument();
+  });
+
   it('filters the complete compendium by text, card type, and element', async () => {
     const user = userEvent.setup();
     renderPage();
 
     await user.type(screen.getByRole('searchbox', { name: /search the card compendium/i }), 'Lupus');
     expect(screen.getByRole('status')).toHaveTextContent('1 card matches');
-    expect(screen.getByRole('button', { name: /Lupus, spell knowledge/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Lupus, Earth Ally/i })).toBeInTheDocument();
     expect(screen.getByText(/no creatures match these filters/i)).toBeInTheDocument();
 
     await user.clear(screen.getByRole('searchbox', { name: /search the card compendium/i }));

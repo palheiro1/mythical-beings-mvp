@@ -1,7 +1,7 @@
 {
   "name": "Wisdom Duel",
   "short_name": "Wisdom Duel",
-  "description": "Learn Wisdom Duel in a solo tactical card match against the training bot.",
+  "description": "Learn Wisdom Duel against the bot or invite a friend to a free private duel.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
